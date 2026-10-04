@@ -9,7 +9,7 @@ ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A 
 - `packages/chapterjs`: the framework and its `chapterjs` CLI (`dev`, `start`, `build`). Public API is re-exported from `src/index.ts`.
 - `packages/create-chapter`: the project scaffolder (`pnpm create chapter [dir]`), built on `@clack/prompts`: asks for the target folder (`.` = current folder, must be new or empty), the package manager (each one checked with `<pm> --version` in parallel during the first question; missing ones are shown but disabled; the one from `npm_config_user_agent` is preselected) and a template, copies it, then runs `<pm> install`. Modules: `project.ts` (folder validation, copy, package name), `package-manager.ts` (detection, installed versions, install), `templates.ts` (listing), `choose.ts` (a select menu that skips itself and logs the answer when only one choice can be picked; used for the package manager and the template). Every folder of `templates/` is a template, its menu hint is its package.json `description` (removed on copy); `default` is listed first; `_gitignore` is renamed to `.gitignore` (npm strips `.gitignore` when publishing); the `chapterjs` dependency is set to `^<create-chapter version>`.
 - `packages/create-chapterjs`: alias so `pnpm create chapterjs` works too.
-- `apps/docs`: the user-facing documentation site; has its own `AGENTS.md`.
+- `apps/docs`: the user-facing documentation site; has its own `AGENTS.md`. `index.mdx` is the landing page (Mintlify `mode: "custom"`: no default typography, everything is styled with Tailwind classes); keep its feature claims and commands in sync with the framework.
 
 The three packages are always released with the same version.
 
