@@ -1,20 +1,483 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "ChapterJS"
+sidebarTitle: "Home"
+description: "The Discord framework. Ultra simple, but ultra customizable."
+mode: "custom"
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+export const BLURPLE = "#5865F2";
 
-<Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
-</Tip>
+export const Plus = ({ className }) => (
+  <svg className={`absolute w-4 h-4 text-zinc-400 dark:text-zinc-600 ${className}`} viewBox="0 0 16 16" fill="none">
+    <path d="M8 0v16M0 8h16" stroke="currentColor" strokeWidth="1" />
+  </svg>
+);
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+export const Frame = ({ className = "", children }) => (
+  <div className={`relative border border-zinc-200 dark:border-white/10 ${className}`}>
+    <Plus className="-top-2 -left-2" />
+    <Plus className="-top-2 -right-2" />
+    <Plus className="-bottom-2 -left-2" />
+    <Plus className="-bottom-2 -right-2" />
+    {children}
+  </div>
+);
+
+export const Grid = ({ className = "", children }) => (
+  <div className={`grid gap-px bg-zinc-200 dark:bg-white/10 ${className}`}>{children}</div>
+);
+
+export const Box = ({ className = "", children }) => (
+  <div className={`bg-[#F5F6FC] dark:bg-[#0B0D1E] ${className}`}>{children}</div>
+);
+
+export const Eyebrow = ({ children }) => (
+  <p className="font-mono text-xs uppercase tracking-widest" style={{ color: BLURPLE }}>{children}</p>
+);
+
+export const Heading = ({ eyebrow, title, children }) => (
+  <div className="max-w-2xl">
+    <Eyebrow>{eyebrow}</Eyebrow>
+    <h2 className="mt-3 text-3xl sm:text-5xl font-bold tracking-tighter text-zinc-950 dark:text-white">{title}</h2>
+    {children && <p className="mt-4 text-base sm:text-lg leading-7 text-zinc-600 dark:text-zinc-400">{children}</p>}
+  </div>
+);
+
+export const Cell = ({ icon, title, children, visual, className = "" }) => (
+  <Box className={`group flex flex-col gap-6 p-6 sm:p-8 transition-colors hover:bg-white dark:hover:bg-white/[0.02] ${className}`}>
+    {visual && <div className="flex-1 flex items-center justify-center min-h-[110px]">{visual}</div>}
+    <div>
+      <div className="flex items-center gap-2">
+        {icon && <Icon icon={icon} color={BLURPLE} size={16} />}
+        <h3 className="text-base font-semibold tracking-tight text-zinc-950 dark:text-white">{title}</h3>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{children}</p>
+    </div>
+  </Box>
+);
+
+export const C = ({ children }) => (
+  <code className="px-1 py-0.5 rounded bg-zinc-200/60 dark:bg-white/10 font-mono text-[0.85em] text-zinc-950 dark:text-zinc-100">{children}</code>
+);
+
+export const Mono = ({ className = "", style, children }) => (
+  <div className={`font-mono text-xs text-zinc-600 dark:text-zinc-400 ${className}`} style={style}>{children}</div>
+);
+
+export const Chip = ({ children, privileged }) => (
+  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] font-mono text-xs text-zinc-700 dark:text-zinc-300">
+    <span className="w-1.5 h-1.5 rounded-full" style={{ background: privileged ? "#F0B232" : BLURPLE }} />
+    {children}
+  </span>
+);
+
+export const Check = ({ children }) => (
+  <li className="flex gap-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+    <span className="mt-0.5 shrink-0"><Icon icon="check" color={BLURPLE} size={14} /></span>
+    <span>{children}</span>
+  </li>
+);
+
+export const Dots = () => (
+  <div className="flex gap-1.5">
+    <span className="w-3 h-3 rounded-full" style={{ background: "#FF5F57" }} />
+    <span className="w-3 h-3 rounded-full" style={{ background: "#FEBC2E" }} />
+    <span className="w-3 h-3 rounded-full" style={{ background: "#28C840" }} />
+  </div>
+);
+
+export const TreeItem = ({ depth = 0, name, active, folder }) => (
+  <div
+    className="flex items-center gap-2 py-1 pr-3 rounded"
+    style={{
+      paddingLeft: `${0.75 + depth * 0.9}rem`,
+      background: active ? "rgba(88,101,242,0.18)" : "transparent",
+      color: active ? "#fff" : folder ? "#8B8FA8" : "#C5C8D8",
+    }}
+  >
+    <Icon icon={folder ? "folder" : "file"} color={folder ? "#8B8FA8" : active ? "#949CF7" : "#6B6F85"} size={11} />
+    {name}
+  </div>
+);
+
+export const Message = ({ avatar, name, bot, children }) => (
+  <div className="flex gap-3">
+    <div className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-sm font-semibold text-white" style={{ background: avatar }}>
+      {name[0]}
+    </div>
+    <div className="min-w-0">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="font-medium" style={{ color: bot ? "#C9CDFB" : "#F2F3F5" }}>{name}</span>
+        {bot && <span className="px-1 rounded text-[10px] font-semibold text-white" style={{ background: BLURPLE }}>APP</span>}
+        <span className="text-[11px]" style={{ color: "#949BA4" }}>Today at 14:02</span>
+      </div>
+      <div className="mt-0.5 text-sm" style={{ color: "#DBDEE1" }}>{children}</div>
+    </div>
+  </div>
+);
+
+{/* Hero */}
+
+<div className="relative overflow-hidden">
+  <div
+    className="absolute inset-0 pointer-events-none"
+    style={{
+      backgroundImage:
+        "linear-gradient(to right, rgba(128,128,160,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(128,128,160,0.12) 1px, transparent 1px)",
+      backgroundSize: "64px 64px",
+      maskImage: "radial-gradient(ellipse 70% 60% at 50% 0%, black 35%, transparent 80%)",
+      WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 50% 0%, black 35%, transparent 80%)",
+    }}
+  />
+  <div
+    className="absolute inset-x-0 top-0 h-[700px] pointer-events-none"
+    style={{ background: "radial-gradient(ellipse 45% 40% at 50% 0%, rgba(88,101,242,0.20), transparent)" }}
+  />
+
+  <div className="relative px-6 pt-16 lg:pt-24 max-w-5xl mx-auto text-center">
+    <a
+      href="/quickstart"
+      className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur-md text-xs text-zinc-600 dark:text-zinc-300 no-underline hover:border-zinc-300 dark:hover:border-white/20 transition-colors"
+    >
+      <span className="px-2 py-0.5 rounded-full text-[11px] font-medium text-white" style={{ background: BLURPLE }}>New</span>
+      Create a bot in one command →
+    </a>
+
+    <h1 className="mt-7 text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tighter leading-[0.95] text-zinc-950 dark:text-white">
+      The Discord<br />
+      <span style={{ color: BLURPLE }}>Framework</span>
+    </h1>
+
+    <p className="mt-7 text-lg sm:text-xl leading-8 text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
+      Ultra simple, but ultra customizable. ChapterJS turns <span className="font-semibold text-zinc-950 dark:text-white">a folder of files</span> into <span className="font-semibold text-zinc-950 dark:text-white">a fast, type-safe Discord bot</span>. Connection, intents, commands, hot reload and scaling are handled for you.
+    </p>
+
+    <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <a
+        href="/quickstart"
+        className="h-12 inline-flex items-center gap-2 px-6 rounded-full text-white text-sm font-medium no-underline hover:opacity-90 transition-opacity"
+        style={{ background: BLURPLE, boxShadow: "0 8px 30px rgba(88,101,242,0.35)" }}
+      >
+        Get Started <Icon icon="arrow-right" color="#fff" size={12} />
+      </a>
+      <div className="w-full sm:w-auto sm:min-w-[260px] text-left [&>div]:my-0">
+        <CodeGroup>
+        ```bash pnpm
+        pnpm create chapter
+        ```
+
+        ```bash npm
+        npm create chapter@latest
+        ```
+
+        ```bash yarn
+        yarn create chapter
+        ```
+
+        ```bash bun
+        bun create chapter
+        ```
+        </CodeGroup>
+      </div>
+    </div>
+  </div>
+
+  {/* Product shot */}
+
+  <div className="relative px-4 sm:px-6 mt-16 max-w-6xl mx-auto">
+    <div
+      className="absolute -inset-x-10 top-10 bottom-0 pointer-events-none"
+      style={{ background: "radial-gradient(ellipse 50% 60% at 50% 40%, rgba(88,101,242,0.25), transparent)" }}
+    />
+    <div
+      className="relative rounded-xl overflow-hidden border text-left"
+      style={{ borderColor: "rgba(255,255,255,0.10)", background: "#0F1020", boxShadow: "0 30px 80px rgba(10,12,40,0.45)" }}
+    >
+      <div className="flex items-center gap-4 px-4 h-10 border-b" style={{ borderColor: "rgba(255,255,255,0.08)", background: "#14152A" }}>
+        <Dots />
+        <span className="font-mono text-xs" style={{ color: "#8B8FA8" }}>my-bot</span>
+      </div>
+
+      <div className="grid md:grid-cols-[200px_1fr_1.2fr]">
+        {/* File tree */}
+        <div className="hidden md:block py-3 px-2 font-mono text-xs border-r" style={{ borderColor: "rgba(255,255,255,0.08)", background: "#111226" }}>
+          <div className="px-3 pb-2 text-[10px] uppercase tracking-widest" style={{ color: "#6B6F85" }}>Explorer</div>
+          <TreeItem name="src" folder />
+          <TreeItem depth={1} name="commands" folder />
+          <TreeItem depth={2} name="ping.ts" active />
+          <TreeItem depth={2} name="poll.ts" />
+          <TreeItem depth={1} name="events" folder />
+          <TreeItem depth={2} name="memberJoin.ts" />
+          <TreeItem name=".env" />
+          <TreeItem name="package.json" />
+        </div>
+
+        {/* Terminal */}
+        <div className="flex flex-col font-mono text-xs border-r" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center gap-2 px-4 h-9 border-b" style={{ borderColor: "rgba(255,255,255,0.08)", color: "#8B8FA8" }}>
+            <Icon icon="terminal" color="#8B8FA8" size={11} /> Terminal
+          </div>
+          <div className="p-4 space-y-2 leading-5" style={{ color: "#C5C8D8" }}>
+            <div><span style={{ color: "#6B6F85" }}>{"$"}</span> pnpm dev</div>
+            <div><span style={{ color: "#28C840" }}>✓</span> Connected to your dev server</div>
+            <div><span style={{ color: "#949CF7" }}>ℹ</span> Intents computed from your files</div>
+            <div><span style={{ color: "#28C840" }}>✓</span> 2 commands, 1 event loaded</div>
+            <div className="pt-2" style={{ color: "#6B6F85" }}>  saved src/commands/ping.ts</div>
+            <div><span style={{ color: "#949CF7" }}>↻</span> Reloaded in 12 ms</div>
+            <div className="flex items-center gap-1"><span style={{ color: "#6B6F85" }}>{"$"}</span><span className="w-2 h-4" style={{ background: "#C5C8D8" }} /></div>
+          </div>
+        </div>
+
+        {/* Discord */}
+        <div className="flex flex-col" style={{ background: "#313338" }}>
+          <div className="flex items-center gap-2 px-4 h-9 border-b text-sm font-semibold" style={{ borderColor: "rgba(0,0,0,0.25)", color: "#F2F3F5" }}>
+            <span style={{ color: "#80848E" }}>#</span> bot-testing
+          </div>
+          <div className="flex-1 p-4 space-y-4">
+            <Message avatar="#F0B232" name="Alex">
+              used <span className="px-1 rounded" style={{ background: "rgba(88,101,242,0.3)", color: "#C9CDFB" }}>/ping</span>
+            </Message>
+            <Message avatar={BLURPLE} name="My Bot" bot>
+              <div className="mt-1 pl-3 py-2 pr-4 rounded border-l-4" style={{ borderColor: BLURPLE, background: "#2B2D31" }}>
+                <div className="font-semibold" style={{ color: "#F2F3F5" }}>Pong! 🏓</div>
+                <div className="text-xs mt-1" style={{ color: "#B5BAC1" }}>Gateway latency: 42 ms</div>
+              </div>
+            </Message>
+          </div>
+          <div className="m-3 mt-0 px-4 h-10 flex items-center rounded-lg text-sm" style={{ background: "#383A40", color: "#6D6F78" }}>
+            Message #bot-testing
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{/* Stats */}
+
+<div className="px-6 mt-20 max-w-6xl mx-auto">
+  <Frame>
+    <Grid className="grid-cols-2 md:grid-cols-4">
+      <Box className="p-6 sm:p-8">
+        <div className="text-4xl sm:text-5xl font-bold tracking-tighter text-zinc-950 dark:text-white">0</div>
+        <Mono className="mt-2">runtime dependencies</Mono>
+      </Box>
+      <Box className="p-6 sm:p-8">
+        <div className="text-4xl sm:text-5xl font-bold tracking-tighter text-zinc-950 dark:text-white">100%</div>
+        <Mono className="mt-2">type-safe, no <C>any</C></Mono>
+      </Box>
+      <Box className="p-6 sm:p-8">
+        <div className="text-4xl sm:text-5xl font-bold tracking-tighter text-zinc-950 dark:text-white">v10</div>
+        <Mono className="mt-2">Discord API and gateway</Mono>
+      </Box>
+      <Box className="p-6 sm:p-8">
+        <div className="text-4xl sm:text-5xl font-bold tracking-tighter text-zinc-950 dark:text-white">1</div>
+        <Mono className="mt-2">command to start</Mono>
+      </Box>
+    </Grid>
+  </Frame>
+</div>
+
+{/* Features */}
+
+<div className="px-6 mt-28 max-w-6xl mx-auto">
+  <Heading eyebrow="Features" title="What's in ChapterJS?">
+    Everything you need to build a great bot, and nothing you have to set up.
+  </Heading>
+
+  <Frame className="mt-10">
+    <Grid className="md:grid-cols-3">
+      <Cell
+        className="md:col-span-2"
+        icon="folder-tree"
+        title="Files are the API"
+        visual={
+          <div className="w-full max-w-lg grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+            <Mono className="space-y-1.5 text-left">
+              <div>src/commands/<span className="text-zinc-950 dark:text-white">ping.ts</span></div>
+              <div>src/commands/<span className="text-zinc-950 dark:text-white">poll.ts</span></div>
+              <div>src/events/<span className="text-zinc-950 dark:text-white">memberJoin.ts</span></div>
+            </Mono>
+            <Icon icon="arrow-right" color={BLURPLE} size={16} />
+            <div className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-2 space-y-1">
+              <Mono className="px-2 py-1 rounded bg-zinc-100 dark:bg-white/5"><span style={{ color: BLURPLE }}>/</span>ping</Mono>
+              <Mono className="px-2 py-1"><span style={{ color: BLURPLE }}>/</span>poll</Mono>
+              <Mono className="px-2 py-1">on member join</Mono>
+            </div>
+          </div>
+        }
+      >
+        Put a file in <C>src/events/</C> and your bot reacts to it. Put one in <C>src/commands/</C> and the command shows up on Discord. No client, no registration script.
+      </Cell>
+
+      <Cell
+        icon="bolt"
+        title="Instant hot reload"
+        visual={
+          <div className="flex items-center gap-3">
+            <Mono>save</Mono>
+            <span className="w-10 h-px bg-zinc-300 dark:bg-zinc-700" />
+            <span className="w-2.5 h-2.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+            <span className="w-10 h-px bg-zinc-300 dark:bg-zinc-700" />
+            <span className="w-3.5 h-3.5 rounded-full" style={{ background: BLURPLE, boxShadow: `0 0 16px ${BLURPLE}` }} />
+            <Mono>live</Mono>
+          </div>
+        }
+      >
+        <C>chapterjs dev</C> reloads every file you save. A broken file never crashes the bot: the last working version keeps running.
+      </Cell>
+
+      <Cell
+        icon="shield-check"
+        title="Type-safe end to end"
+        visual={
+          <div className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-4 py-3">
+            <Mono className="text-sm">
+              option.<span style={{ textDecoration: "underline wavy #ef4444", textUnderlineOffset: "4px" }}>amout</span>
+            </Mono>
+            <Mono className="mt-2 text-[11px]" ><span style={{ color: "#ef4444" }}>✗</span> Did you mean <span className="text-zinc-950 dark:text-white">amount</span>?</Mono>
+          </div>
+        }
+      >
+        Events, command options, components, modals and config are all typed. Mistakes are underlined before the bot even runs.
+      </Cell>
+
+      <Cell
+        icon="wand-magic-sparkles"
+        title="Intents computed for you"
+        visual={
+          <div className="flex flex-wrap justify-center gap-2 max-w-[280px]">
+            <Chip>GUILDS</Chip>
+            <Chip>GUILD_MESSAGES</Chip>
+            <Chip privileged>GUILD_MEMBERS</Chip>
+            <Chip privileged>MESSAGE_CONTENT</Chip>
+          </div>
+        }
+      >
+        Worked out from your files. Privileged ones are listed with a direct link to enable them in the Developer Portal.
+      </Cell>
+
+      <Cell
+        icon="message-exclamation"
+        title="Errors in plain words"
+        visual={
+          <div className="w-full max-w-[280px] rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-3 text-left">
+            <div className="text-xs font-semibold text-zinc-950 dark:text-white">What happened</div>
+            <div className="mt-1.5 h-1.5 w-4/5 rounded bg-zinc-200 dark:bg-white/10" />
+            <div className="mt-3 text-xs font-semibold" style={{ color: BLURPLE }}>What to do</div>
+            <div className="mt-1.5 h-1.5 w-3/5 rounded bg-zinc-200 dark:bg-white/10" />
+          </div>
+        }
+      >
+        Missing token, bot not in your server, missing permission: every message says what happened and how to fix it.
+      </Cell>
+
+      <Cell icon="feather" title="Zero dependencies">
+        Only Node.js built-ins and native TypeScript. Fast startup, low memory, and no REST call that the cache can answer.
+      </Cell>
+      <Cell icon="gauge-high" title="Discord limits handled">
+        Rate limits, payload sizes and presence throttling are taken care of. You never write retry logic.
+      </Cell>
+      <Cell icon="power-off" title="Clean shutdown">
+        Ctrl+C or SIGTERM closes the Discord session properly, so no ghost bot stays online.
+      </Cell>
+    </Grid>
+  </Frame>
+</div>
+
+{/* How it works */}
+
+<div className="px-6 mt-28 max-w-6xl mx-auto">
+  <Heading eyebrow="Quickstart" title="From zero to online in three steps" />
+
+  <Frame className="mt-10">
+    <Grid className="md:grid-cols-3">
+      <Box className="p-6 sm:p-8">
+        <Mono style={{ color: BLURPLE }}>01</Mono>
+        <h3 className="mt-3 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">Create</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Run <C>pnpm create chapter</C>, pick a folder and a template. Dependencies are installed for you.</p>
+      </Box>
+      <Box className="p-6 sm:p-8">
+        <Mono style={{ color: BLURPLE }}>02</Mono>
+        <h3 className="mt-3 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">Configure</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Add <C>BOT_TOKEN</C> and <C>DEV_GUILD_ID</C> to <C>.env</C>. Anything missing is explained before connecting.</p>
+      </Box>
+      <Box className="p-6 sm:p-8">
+        <Mono style={{ color: BLURPLE }}>03</Mono>
+        <h3 className="mt-3 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">Run</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Start <C>pnpm dev</C>. Your bot joins your test server and reloads every time you save.</p>
+      </Box>
+    </Grid>
+  </Frame>
+</div>
+
+{/* Dev vs start */}
+
+<div className="px-6 mt-28 max-w-6xl mx-auto">
+  <Heading eyebrow="CLI" title="One CLI, from first test to production">
+    The same project runs in development and in production. A dev process and a production process can even share one bot token.
+  </Heading>
+
+  <Frame className="mt-10">
+    <Grid className="md:grid-cols-2">
+      <Box className="p-6 sm:p-8">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-lg font-semibold text-zinc-950 dark:text-white">chapterjs dev</span>
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: "rgba(88,101,242,0.15)", color: BLURPLE }}>development</span>
+        </div>
+        <ul className="mt-6 space-y-3 list-none p-0">
+          <Check>Runs on your test server only</Check>
+          <Check>Hot reload of every file you write</Check>
+          <Check>A broken file keeps the last working version</Check>
+          <Check>Errors shown with the file and line</Check>
+        </ul>
+      </Box>
+      <Box className="p-6 sm:p-8">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-lg font-semibold text-zinc-950 dark:text-white">chapterjs start</span>
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-200 dark:bg-white/10 text-zinc-700 dark:text-zinc-300">production</span>
+        </div>
+        <ul className="mt-6 space-y-3 list-none p-0">
+          <Check>Commands registered globally</Check>
+          <Check>Any invalid file stops startup</Check>
+          <Check>Runs on several processes for large bots</Check>
+          <Check>Ignores your dev server</Check>
+        </ul>
+      </Box>
+    </Grid>
+  </Frame>
+</div>
+
+{/* Call to action */}
+
+<div className="px-6 mt-28 mb-24 max-w-6xl mx-auto">
+  <Frame className="relative overflow-hidden">
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{ background: "radial-gradient(ellipse 60% 80% at 50% 100%, rgba(88,101,242,0.22), transparent)" }}
+    />
+    <div className="relative px-6 py-16 sm:py-20 text-center">
+      <h2 className="text-4xl sm:text-6xl font-bold tracking-tighter text-zinc-950 dark:text-white">
+        Your bot is one command away.
+      </h2>
+      <p className="mt-4 text-base sm:text-lg text-zinc-600 dark:text-zinc-400">
+        Create a project, add your token, and run it on your test server.
+      </p>
+      <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+        <a
+          href="/quickstart"
+          className="h-12 inline-flex items-center gap-2 px-6 rounded-full text-white text-sm font-medium no-underline hover:opacity-90 transition-opacity"
+          style={{ background: BLURPLE, boxShadow: "0 8px 30px rgba(88,101,242,0.35)" }}
+        >
+          Read the quickstart <Icon icon="arrow-right" color="#fff" size={12} />
+        </a>
+        <a
+          href="https://github.com/chapterjs/chapterjs"
+          className="h-12 inline-flex items-center gap-2 px-6 rounded-full border border-zinc-300 dark:border-white/15 text-zinc-950 dark:text-white text-sm font-medium no-underline hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors"
+        >
+          <Icon icon="github" size={14} /> Star on GitHub
+        </a>
+      </div>
+    </div>
+  </Frame>
+</div>

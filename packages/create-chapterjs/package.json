@@ -1,0 +1,31 @@
+{
+  "name": "create-chapterjs",
+  "version": "0.1.3",
+  "description": "Alias of create-chapter: scaffolds a ChapterJS Discord bot",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-chapterjs": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "check-types": "tsc --noEmit && tsc -p test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@chapterjs/test-utils": "workspace:*",
+    "@types/node": "^24.0.0",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "^7.0.2",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "create-chapter": "workspace:^"
+  }
+}

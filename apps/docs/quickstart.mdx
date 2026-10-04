@@ -1,47 +1,80 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: 'Quickstart'
+description: 'Create your first ChapterJS bot in a minute'
 ---
-
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
 
 ## Prerequisites
 
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- Node.js 22.18 or newer
+- A Discord application with a bot, from the [Developer Portal](https://discord.com/developers/applications)
+- A Discord server where you can test your bot
 
 ## Get started
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Create the project">
+    Run the command for your package manager:
 
-    ```bash
-    npm install your-package
+    <CodeGroup>
+    ```bash pnpm
+    pnpm create chapter
     ```
+
+    ```bash npm
+    npm create chapter@latest
+    ```
+
+    ```bash yarn
+    yarn create chapter
+    ```
+
+    ```bash bun
+    bun create chapter
+    ```
+    </CodeGroup>
+
+    It asks you up to three questions:
+
+    1. **Where to create the project**: a folder name like `my-bot`, or `.` to use the current folder. The folder must be new or empty.
+    2. **Which package manager to use**: only the ones installed on your computer can be picked, and the one you ran the command with is selected by default.
+    3. **Which template to start from**.
+
+    A question with only one possible answer is skipped: if you have a single package manager installed, it is used directly.
+
+    It then copies the template and installs the dependencies.
+
+    <Tip>
+      You can skip the first question by passing the folder name: `pnpm create chapter my-bot`.
+    </Tip>
+
   </Step>
   <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+    Copy `.env.example` to `.env` and fill in:
 
-    ```bash
-    your-cli init
-    ```
+    - `BOT_TOKEN`: your bot token, from the **Bot** page of your application.
+    - `DEV_GUILD_ID`: the ID of your test server (right-click the server, then **Copy Server ID**).
+
   </Step>
   <Step title="Run it">
-    Show the first thing a user does to see it working.
-
-    ```bash
-    your-cli start
+    <CodeGroup>
+    ```bash pnpm
+    pnpm dev
     ```
+
+    ```bash npm
+    npm run dev
+    ```
+
+    ```bash yarn
+    yarn dev
+    ```
+
+    ```bash bun
+    bun dev
+    ```
+    </CodeGroup>
+
+    Your bot connects to your test server and reloads every time you save a file.
+
   </Step>
 </Steps>
-
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>

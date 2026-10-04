@@ -1,17 +1,24 @@
 {
   "name": "chapterjs",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "check-types": "turbo run check-types",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "coverage": "turbo run coverage"
   },
   "devDependencies": {
+    "@chapterjs/test-utils": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
     "prettier": "3.9.6",
     "turbo": "^2.11.7",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitest": "catalog:"
   },
   "packageManager": "pnpm@11.25.0",
   "engines": {
