@@ -1,0 +1,77 @@
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { cp, readFile, rename, writeFile } from 'node:fs/promises';
+import { basename, join, resolve } from 'node:path';
+import { templatesDir } from './templates.js';
+
+/** Files that don't make a folder "used": a project can still be created there. */
+const ignoredFiles = new Set([
+  '.git',
+  '.DS_Store',
+  'Thumbs.db',
+  '.idea',
+  '.vscode',
+]);
+
+/** Returns why `input` can't hold a new project, or `undefined` when it can. */
+export function validateTargetDir(
+  input: string | undefined
+): string | undefined {
+  const dir = input?.trim();
+  if (!dir) return 'Type a folder name, or . to use the current folder.';
+  const path = resolve(dir);
+  if (!existsSync(path)) return undefined;
+  if (!statSync(path).isDirectory())
+    return `${dir} is a file, not a folder. Pick another name.`;
+  const used = readdirSync(path).some(file => !ignoredFiles.has(file));
+  if (used) {
+    return dir === '.'
+      ? 'The current folder is not empty. Type a name to create a new folder instead.'
+      : `The folder ${dir} is not empty. Pick another name.`;
+  }
+  return undefined;
+}
+
+/** A valid npm package name from a folder name, e.g. `My Bot` → `my-bot`. */
+export function toPackageName(dir: string): string {
+  const name = basename(resolve(dir))
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/^[._]+/, '')
+    .replace(/[^a-z0-9-~._]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return name || 'chapter-bot';
+}
+
+export interface CreateOptions {
+  dir: string;
+  template: string;
+  /** The `chapterjs` version range the project depends on. */
+  chapterjsVersion: string;
+}
+
+/** Copies the template into `dir` and names the project after its folder. */
+export async function createProject({
+  dir,
+  template,
+  chapterjsVersion,
+}: CreateOptions) {
+  const root = resolve(dir);
+  await cp(join(templatesDir, template), root, { recursive: true });
+
+  // npm strips `.gitignore` from published packages, so templates ship it as `_gitignore`.
+  const gitignore = join(root, '_gitignore');
+  if (existsSync(gitignore)) await rename(gitignore, join(root, '.gitignore'));
+
+  const pkgPath = join(root, 'package.json');
+  const pkg = JSON.parse(await readFile(pkgPath, 'utf8')) as {
+    name?: string;
+    description?: string;
+    dependencies?: Record<string, string>;
+  };
+  pkg.name = toPackageName(dir);
+  // The template's description is for the menu, not for the user's bot.
+  delete pkg.description;
+  pkg.dependencies = { ...pkg.dependencies, chapterjs: chapterjsVersion };
+  await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+}

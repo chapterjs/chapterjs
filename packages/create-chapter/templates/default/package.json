@@ -1,0 +1,21 @@
+{
+  "name": "chapter-bot",
+  "description": "A minimal bot, ready to grow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "chapterjs dev",
+    "start": "chapterjs start",
+    "build": "chapterjs build"
+  },
+  "dependencies": {
+    "chapterjs": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

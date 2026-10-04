@@ -7,8 +7,8 @@ ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A 
 ## Layout
 
 - `packages/chapterjs`: the framework and its `chapterjs` CLI (`dev`, `start`, `build`). Public API is re-exported from `src/index.ts`.
-- `packages/create-chapter`: the project scaffolder (`npm create chapter`): asks for a template, copies it, installs dependencies with the user's package manager.
-- `packages/create-chapterjs`: alias so `npm create chapterjs` works too.
+- `packages/create-chapter`: the project scaffolder (`pnpm create chapter [dir]`), built on `@clack/prompts`: asks for the target folder (`.` = current folder, must be new or empty), the package manager (each one checked with `<pm> --version` in parallel during the first question; missing ones are shown but disabled; the one from `npm_config_user_agent` is preselected) and a template, copies it, then runs `<pm> install`. Modules: `project.ts` (folder validation, copy, package name), `package-manager.ts` (detection, installed versions, install), `templates.ts` (listing), `choose.ts` (a select menu that skips itself and logs the answer when only one choice can be picked; used for the package manager and the template). Every folder of `templates/` is a template, its menu hint is its package.json `description` (removed on copy); `default` is listed first; `_gitignore` is renamed to `.gitignore` (npm strips `.gitignore` when publishing); the `chapterjs` dependency is set to `^<create-chapter version>`.
+- `packages/create-chapterjs`: alias so `pnpm create chapterjs` works too.
 - `apps/docs`: the user-facing documentation site; has its own `AGENTS.md`.
 
 The three packages are always released with the same version.
@@ -55,6 +55,7 @@ Rules that follow:
 - When a handler throws, the end user gets a short, plain answer (e.g. which permission the bot is missing) and the developer gets the error with the line in their code.
 - Discord limits (rate limits, payload sizes, presence throttling…) are handled by the framework, never by the user.
 - Every value from user code is validated: errors appear at load time with a clear message, ideally underlined in the editor.
+- **Ask as little as possible.** Every action the user has to take is a cost: never ask what can be detected, never ask a question with only one possible answer (take it and say so with `ℹ`), and preselect the most likely answer. Applies everywhere: CLI prompts, config, file conventions, error fixes.
 
 ## Messages
 
@@ -65,7 +66,7 @@ Every message is written for amateur developers: plain words, what happened, the
 A change is not finished until these are updated, in the same change:
 
 - **This file (CLAUDE.md)**: after every change that makes it inaccurate or incomplete, user-facing or internal: a new or removed module, a new public API, a renamed option or command, a new env var, a new convention, constraint or architecture decision. Never add work that was only discussed and not implemented.
-- **Docs** (`apps/docs`, Mintlify: MDX pages, navigation in `docs.json`; read `apps/docs/AGENTS.md` first): after every user-facing change (new or renamed API, option, event, file convention, env var, CLI command or message users will see). New feature → its page, added to `docs.json`; changed API → every page and sample using it. Samples must compile against the current API and match the templates.
+- **Docs** (`apps/docs`, Mintlify: MDX pages, navigation in `docs.json`; read `apps/docs/AGENTS.md` first): after every user-facing change (new or renamed API, option, event, file convention, env var, CLI command or message users will see). New feature → its page, added to `docs.json`; changed API → every page and sample using it. Samples must compile against the current API and match the templates. Commands are shown for every package manager in a `<CodeGroup>`, always in the order pnpm, npm, yarn, bun (pnpm is the preferred one, same order as the scaffolder).
 - **Templates** (`packages/create-chapter/templates/`): how users discover the framework. Every template must type-check and run without errors; only templates that clearly need a privileged intent may require one, other examples stay commented. Prefer short commented examples over extra files.
 
 ## Commands
