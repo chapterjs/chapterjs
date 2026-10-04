@@ -1,0 +1,79 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A user creates a project, drops files into conventional folders (`src/events/`, `src/commands/`…) and the `chapterjs` CLI does everything else: connection, intents, command registration, hot reload, scaling. pnpm + Turborepo monorepo; read `AGENTS.md` before touching Turborepo config. The root `README.md` is the Turborepo starter and does not describe this project.
+
+## Layout
+
+- `packages/chapterjs`: the framework and its `chapterjs` CLI (`dev`, `start`, `build`). Public API is re-exported from `src/index.ts`.
+- `packages/create-chapter`: the project scaffolder (`npm create chapter`): asks for a template, copies it, installs dependencies with the user's package manager.
+- `packages/create-chapterjs`: alias so `npm create chapterjs` works too.
+- `apps/docs`: the user-facing documentation site; has its own `AGENTS.md`.
+
+The three packages are always released with the same version.
+
+## Constraints
+
+- **100% type-safe**: everything the user writes is typed end to end (event context, command options, component data, modal fields, config…), with no `any` in the public API. A mistake should be underlined in the editor before the bot even runs, and what types promise is also checked at runtime.
+- **Ultra performant**: low memory and CPU, fast startup, no unnecessary REST calls (cache first), no work done for features the project doesn't use. Performance must hold for large bots (sharding, multiple processes).
+- **Zero runtime dependencies** for `chapterjs`: only Node built-ins (Node ≥ 22.18, native TypeScript). Keep it that way.
+- **The only source of truth for Discord is the official documentation: https://docs.discord.com/developers/reference** (API/gateway v10). Read the relevant page before implementing anything Discord-related; never rely on discord.js, discord-api-types or memory of them. Code comments link to the exact section used.
+- **Users can't bypass the framework**: the connection, login, intents, presence, event routing and shutdown are driven only by the CLI. Never export a way for user code to run them; exporting types is fine. What handlers receive is enforced at runtime, not only by types.
+- Packages are ESM with `NodeNext` resolution (internal imports use `.js`). User project files are run directly by Node, so their relative imports use `.ts`.
+
+## Architecture first
+
+The framework is built in two layers, and the order matters:
+
+1. **A generic core, designed once and meant to stay stable**: talking to Discord (REST, gateway, rate limits), the cache, the structures wrapping Discord data, loading and hot reloading user files, routing, validation, error reporting, storage. Each piece solves its problem in general, not for one feature.
+2. **Features assembled from that core**: events, commands, components, tasks, presence… are thin layers that combine core building blocks. Adding a feature should mean adding files, not rewriting existing ones.
+
+Rules that follow:
+
+- **Think before coding.** Before writing a core piece, design how every known feature (and plausible future ones) will use it. For a significant change, propose the architecture first and wait for approval.
+- **One mechanism per problem.** If two features need the same thing (scanning a folder, reloading a file, validating options, answering an interaction…), it lives once in the core and both use it. Never copy-paste a mechanism to adapt it.
+- **Extend, don't modify.** The core exposes clear extension points (e.g. a new user folder convention, a new event, a new component kind should be a registration, not a change to the loader or the router).
+- **A feature that forces a core rewrite is a design signal.** Stop and rethink the core piece so it becomes generic enough, rather than adding a special case to it.
+- **Behind an interface, never hard-wired.** Anything that could have several implementations later (where data is stored, how processes coordinate, how a cache is kept, how something is scheduled…) is accessed through a small interface with a default implementation. Adding a new backend later must mean writing one new implementation and plugging it in (2 or 3 places at most: the implementation, the config option, the wiring), with no change to the features that use it.
+- **Design for the features that will come, not only the current one.** The framework will keep growing (new data sources, new ways to run the bot, new user conventions). When designing a core piece, ask what a future feature of the same family would need, and leave room for it without implementing it.
+- Small modules with one responsibility and explicit dependencies, so a piece can be replaced or improved without touching the rest.
+
+## What the framework does
+
+### CLI
+
+- `chapterjs dev`: runs the bot against one dev server (`DEV_GUILD_ID`) with hot reload of every user file. A broken file never crashes the bot: the error is shown with the file and line, and the last working version is kept.
+- `chapterjs start`: production. No hot reload, any invalid file fails startup, commands are registered globally, can run on several processes.
+- A dev process and a production process can share one bot token: dev only sees the dev server, production ignores it.
+- Before connecting, it checks what's missing and says exactly how to fix it: missing/placeholder `.env` values, bot not in the dev server (prints an invite link), privileged intents not enabled (lists the files that need them, with a direct link to the Developer Portal; in a terminal it waits until they're enabled).
+- Intents are computed from the files the user wrote: the user never lists them by hand.
+- Shutdown (Ctrl+C, SIGTERM) closes the Discord session cleanly, so no ghost bot stays online.
+
+### Expected behavior
+
+- When a handler throws, the end user gets a short, plain answer (e.g. which permission the bot is missing) and the developer gets the error with the line in their code.
+- Discord limits (rate limits, payload sizes, presence throttling…) are handled by the framework, never by the user.
+- Every value from user code is validated: errors appear at load time with a clear message, ideally underlined in the editor.
+
+## Messages
+
+Every message is written for amateur developers: plain words, what happened, then what to do. Symbols: `✓` success, `↻` reload/reconnection, `ℹ` a note, `⚠` warning, `✗` error prefixed with the file (and line when known). Messages shown to end users never contain technical details.
+
+## Keep things in sync
+
+A change is not finished until these are updated, in the same change:
+
+- **This file (CLAUDE.md)**: after every change that makes it inaccurate or incomplete, user-facing or internal: a new or removed module, a new public API, a renamed option or command, a new env var, a new convention, constraint or architecture decision. Never add work that was only discussed and not implemented.
+- **Docs** (`apps/docs`, Mintlify: MDX pages, navigation in `docs.json`; read `apps/docs/AGENTS.md` first): after every user-facing change (new or renamed API, option, event, file convention, env var, CLI command or message users will see). New feature → its page, added to `docs.json`; changed API → every page and sample using it. Samples must compile against the current API and match the templates.
+- **Templates** (`packages/create-chapter/templates/`): how users discover the framework. Every template must type-check and run without errors; only templates that clearly need a privileged intent may require one, other examples stay commented. Prefer short commented examples over extra files.
+
+## Commands
+
+```bash
+pnpm build          # build every workspace
+pnpm check-types    # type-check every workspace
+pnpm format         # prettier
+```
+
+There is no test suite: changes are verified by building and running the CLI on a scratch project. Running a real bot needs a `.env` with `BOT_TOKEN` and `DEV_GUILD_ID`.
