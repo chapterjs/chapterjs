@@ -35,9 +35,11 @@ const versionsCheck = installedVersions();
 
 // `pnpm create chapter my-bot` skips the first question when the folder is valid.
 const argDir = process.argv[2];
+const argError = argDir === undefined ? undefined : validateTargetDir(argDir);
+if (argError) p.log.warn(argError);
 const dir =
-  argDir !== undefined && validateTargetDir(argDir) === undefined
-    ? argDir
+  argDir !== undefined && argError === undefined
+    ? argDir.trim()
     : orExit(
         await p.text({
           message:
@@ -92,9 +94,9 @@ const spinner = p.spinner();
 spinner.start(`Installing dependencies with ${pm}`);
 const result = await install(pm, dir);
 if (result.ok) {
-  spinner.stop('Dependencies installed');
+  spinner.stop(`Dependencies installed with ${pm}`);
 } else {
-  spinner.error('The dependencies could not be installed');
+  spinner.error(`The dependencies could not be installed with ${pm}`);
   if (result.output) p.log.message(result.output);
 }
 

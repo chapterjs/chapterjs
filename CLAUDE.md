@@ -9,6 +9,7 @@ ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A 
 - `packages/chapterjs`: the framework and its `chapterjs` CLI (`dev`, `start`, `build`). Public API is re-exported from `src/index.ts`.
 - `packages/create-chapter`: the project scaffolder (`pnpm create chapter [dir]`), built on `@clack/prompts`: asks for the target folder (`.` = current folder, must be new or empty), the package manager (each one checked with `<pm> --version` in parallel during the first question; missing ones are shown but disabled; the one from `npm_config_user_agent` is preselected) and a template, copies it, then runs `<pm> install`. Modules: `project.ts` (folder validation, copy, package name), `package-manager.ts` (detection, installed versions, install), `templates.ts` (listing), `choose.ts` (a select menu that skips itself and logs the answer when only one choice can be picked; used for the package manager and the template). Every folder of `templates/` is a template, its menu hint is its package.json `description` (removed on copy); `default` is listed first; `_gitignore` is renamed to `.gitignore` (npm strips `.gitignore` when publishing); the `chapterjs` dependency is set to `^<create-chapter version>`.
 - `packages/create-chapterjs`: alias so `pnpm create chapterjs` works too.
+- `packages/test-utils` (`@chapterjs/test-utils`, private, never published, exports its TypeScript sources): test helpers shared by every package: `tempDir()` (a folder deleted when the test ends), `fakeBin()` (fake commands to use as the only `PATH` entry), `startCli()` (runs a CLI as a real process and drives it through stdin: `waitFor`, `type`, `press`, `exited`). Any new test helper useful to more than one package goes here.
 - `apps/docs`: the user-facing documentation site; has its own `AGENTS.md`. `index.mdx` is the landing page (Mintlify `mode: "custom"`: no default typography, everything is styled with Tailwind classes); keep its feature claims and commands in sync with the framework.
 
 The three packages are always released with the same version.
@@ -68,13 +69,29 @@ A change is not finished until these are updated, in the same change:
 - **This file (CLAUDE.md)**: after every change that makes it inaccurate or incomplete, user-facing or internal: a new or removed module, a new public API, a renamed option or command, a new env var, a new convention, constraint or architecture decision. Never add work that was only discussed and not implemented.
 - **Docs** (`apps/docs`, Mintlify: MDX pages, navigation in `docs.json`; read `apps/docs/AGENTS.md` first): after every user-facing change (new or renamed API, option, event, file convention, env var, CLI command or message users will see). New feature → its page, added to `docs.json`; changed API → every page and sample using it. Samples must compile against the current API and match the templates. Commands are shown for every package manager in a `<CodeGroup>`, always in the order pnpm, npm, yarn, bun (pnpm is the preferred one, same order as the scaffolder).
 - **Templates** (`packages/create-chapter/templates/`): how users discover the framework. Every template must type-check and run without errors; only templates that clearly need a privileged intent may require one, other examples stay commented. Prefer short commented examples over extra files.
+- **Tests**: see below.
+
+## Tests
+
+Every change comes with its tests, in the same change: a new feature gets new tests, a changed behavior gets its tests updated, a fixed bug gets a test that fails without the fix. A change is not finished until `pnpm test` and `pnpm check-types` pass.
+
+- **Vitest** (version set once in the `catalog` of `pnpm-workspace.yaml`), in every package: `test/**/*.test.ts` next to `src/`, never built nor published. Shared settings live in `vitest.shared.ts` at the root, merged by each package's `vitest.config.ts`. `test/tsconfig.json` type-checks tests with the sources.
+- **Test hard, not just the happy path**: empty, blank and huge inputs, unicode, every branch and error message, cancellation, missing tools, failing commands, files already there, several things at once. Prefer `it.each` tables to cover many cases.
+- **End-to-end tests run the real thing**: the built CLI as a separate process (`startCli`, after a `globalSetup` that builds the package so `dist/` is never stale), with the outside world faked through `PATH` (`fakeBin`) instead of mocks, and its environment fully controlled (nothing inherited from the runner). Assert what the user sees (messages, next steps) and what ends up on disk.
+- **Mocks only for what can't run for real** (e.g. an interactive prompt in a unit test). Each test cleans after itself (`tempDir`, restored mocks and env).
+- **Check that tests catch bugs**: after writing tests for a piece of code, reintroduce plausible bugs one at a time and confirm a test fails for each; a bug that no test catches means a missing test.
+- Tests that need a POSIX shell are skipped on Windows (`describe.skipIf(process.platform === 'win32')`).
+- Discord itself is never called by tests: a fake Discord (REST and gateway) will be needed for `chapterjs` and belongs in `@chapterjs/test-utils`.
 
 ## Commands
 
 ```bash
 pnpm build          # build every workspace
-pnpm check-types    # type-check every workspace
+pnpm check-types    # type-check every workspace, tests included
+pnpm test           # run every test suite (Turborepo, cached)
+pnpm test:watch     # rerun tests on change
+pnpm coverage       # tests with a coverage report (coverage/ in each package)
 pnpm format         # prettier
 ```
 
-There is no test suite: changes are verified by building and running the CLI on a scratch project. Running a real bot needs a `.env` with `BOT_TOKEN` and `DEV_GUILD_ID`.
+Inside a package, `pnpm test` / `pnpm vitest run test/cli.test.ts` run only its tests. What tests can't cover (a real bot connecting to Discord) is also checked by running the CLI on a scratch project; that needs a `.env` with `BOT_TOKEN` and `DEV_GUILD_ID`.

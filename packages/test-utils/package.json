@@ -1,0 +1,21 @@
+{
+  "name": "@chapterjs/test-utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Test helpers shared by every package of this repository: never published",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "vitest": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "catalog:"
+  }
+}

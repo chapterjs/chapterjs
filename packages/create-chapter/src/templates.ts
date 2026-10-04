@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -14,27 +15,34 @@ export interface Template {
   description: string | undefined;
 }
 
-/** Every folder of `templates/` is a template: adding one needs no code change. */
-export async function listTemplates(): Promise<Template[]> {
-  const entries = await readdir(templatesDir, { withFileTypes: true });
+/**
+ * Every folder of `templates/` with a package.json is a template: adding one
+ * needs no code change.
+ */
+export async function listTemplates(dir = templatesDir): Promise<Template[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
   const templates = await Promise.all(
     entries
       .filter(entry => entry.isDirectory())
-      .map(async (entry): Promise<Template> => {
-        const pkg = JSON.parse(
-          await readFile(join(templatesDir, entry.name, 'package.json'), 'utf8')
-        ) as { description?: unknown };
+      .map(async (entry): Promise<Template | undefined> => {
+        const pkgPath = join(dir, entry.name, 'package.json');
+        if (!existsSync(pkgPath)) return undefined;
+        const pkg = JSON.parse(await readFile(pkgPath, 'utf8')) as {
+          description?: unknown;
+        };
         const description =
           typeof pkg.description === 'string' ? pkg.description : undefined;
         return { name: entry.name, description };
       })
   );
   // `default` first, so it is the preselected choice.
-  return templates.sort((a, b) =>
-    a.name === 'default'
-      ? -1
-      : b.name === 'default'
-        ? 1
-        : a.name.localeCompare(b.name)
-  );
+  return templates
+    .filter(template => template !== undefined)
+    .sort((a, b) =>
+      a.name === 'default'
+        ? -1
+        : b.name === 'default'
+          ? 1
+          : a.name.localeCompare(b.name)
+    );
 }

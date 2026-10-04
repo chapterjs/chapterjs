@@ -24,22 +24,26 @@ export function validateTargetDir(
     return `${dir} is a file, not a folder. Pick another name.`;
   const used = readdirSync(path).some(file => !ignoredFiles.has(file));
   if (used) {
-    return dir === '.'
+    return path === process.cwd()
       ? 'The current folder is not empty. Type a name to create a new folder instead.'
       : `The folder ${dir} is not empty. Pick another name.`;
   }
   return undefined;
 }
 
-/** A valid npm package name from a folder name, e.g. `My Bot` → `my-bot`. */
+/** A valid npm package name from a folder name, e.g. `Mon Bot Été` → `mon-bot-ete`. */
 export function toPackageName(dir: string): string {
   const name = basename(resolve(dir))
-    .trim()
+    // `é` → `e`: split letters from their accents, then drop the accents.
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/^[._]+/, '')
     .replace(/[^a-z0-9-~._]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/-{2,}/g, '-')
+    // npm names can't start with `.` or `_`, and 214 characters is the maximum.
+    .replace(/^[-._]+/, '')
+    .slice(0, 214)
+    .replace(/[-.]+$/, '');
   return name || 'chapter-bot';
 }
 
@@ -48,6 +52,8 @@ export interface CreateOptions {
   template: string;
   /** The `chapterjs` version range the project depends on. */
   chapterjsVersion: string;
+  /** Where templates are read from: `templates/` of this package by default. */
+  templatesRoot?: string;
 }
 
 /** Copies the template into `dir` and names the project after its folder. */
@@ -55,9 +61,10 @@ export async function createProject({
   dir,
   template,
   chapterjsVersion,
+  templatesRoot = templatesDir,
 }: CreateOptions) {
   const root = resolve(dir);
-  await cp(join(templatesDir, template), root, { recursive: true });
+  await cp(join(templatesRoot, template), root, { recursive: true });
 
   // npm strips `.gitignore` from published packages, so templates ship it as `_gitignore`.
   const gitignore = join(root, '_gitignore');
