@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
 
 /** In menu order: pnpm, the one ChapterJS itself uses, comes first. */
 export const packageManagers = ['pnpm', 'npm', 'yarn', 'bun'] as const;
@@ -26,6 +27,11 @@ export async function installedVersions(): Promise<
         new Promise<string | undefined>(resolve => {
           let output = '';
           const child = spawn(pm, ['--version'], {
+            // Outside the current folder: a `packageManager` field in a parent
+            // package.json makes corepack refuse to run any other manager.
+            cwd: tmpdir(),
+            // Corepack must never stop to ask before downloading a manager.
+            env: { ...process.env, COREPACK_ENABLE_DOWNLOAD_PROMPT: '0' },
             shell: process.platform === 'win32',
             stdio: ['ignore', 'pipe', 'ignore'],
           });
