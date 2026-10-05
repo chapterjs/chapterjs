@@ -1,0 +1,179 @@
+---
+title: 'Interaction'
+description: 'Someone used something of the bot and waits for an answer: reply, defer, edit, follow up'
+---
+
+An `Interaction` is what you answer with: the `interaction` of a [command](/commands) is a `CommandInteraction`. Discord wants a first answer within 3 seconds, and accepts edits and other messages for 15 minutes.
+
+```ts
+import type { CommandInteraction } from 'chapterjs';
+
+export async function deny(interaction: CommandInteraction, why: string) {
+  // Only the person sees it, whatever the command says.
+  await interaction.reply({ content: `Sorry: ${why}`, ephemeral: true });
+}
+```
+
+<Note>
+  You never create an interaction: your `run` function receives one. This page lists everything it has; how to answer well (when to defer, ephemeral answers, what happens when `run` throws) is in [Answering](/commands/answering).
+</Note>
+
+## Properties
+
+<ResponseField name="id" type="Snowflake">
+  The unique id Discord gave it.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  When it was created: a Discord id contains its creation date.
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  Who did it.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  The id of the server; `null` in a private message.
+</ResponseField>
+
+<ResponseField name="channelId" type="Snowflake">
+  The id of the channel it happened in.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild | null">
+  The server it happened in; `null` in a private message.
+</ResponseField>
+
+<ResponseField name="channel" type="TextBasedChannel">
+  The channel it happened in. Always there, without a request: Discord sends it with the interaction.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  Who did it, as a member of the server; `null` in a private message.
+</ResponseField>
+
+<ResponseField name="locale" type="Locale">
+  The language of the person: use it to answer in their language.
+</ResponseField>
+
+<ResponseField name="answered" type="boolean">
+  Whether an answer was sent, or promised with `defer()`.
+</ResponseField>
+
+<ResponseField name="deferred" type="boolean">
+  Whether `defer()` was called and the answer is still to come.
+</ResponseField>
+
+### CommandInteraction
+
+A slash command was used. It has everything above, plus:
+
+<ResponseField name="commandName" type="string">
+  The command as the person typed it: `/mod ban`.
+</ResponseField>
+
+### In a server, in private
+
+What a command receives is more precise than `CommandInteraction`, and follows the `where` of the command:
+
+| Type | For | What changes |
+| --- | --- | --- |
+| `GuildCommandInteraction` | A command used in a server (`where: 'guild'`, the default) | `guildId` is a `Snowflake`, `guild` is a `Guild`, `member` is a `GuildMember`, `channel` is a `GuildTextBasedChannel` |
+| `DmCommandInteraction` | A command of private messages only (`where: 'dm'`) | `guildId`, `guild` and `member` do not exist; `channel` is a `DMChannel` |
+| `PrivateCommandInteraction` | A command used in private, in a command that works in both places (`where: 'both'`) | `guildId`, `guild` and `member` are `null`; `channel` is a `DMChannel` |
+
+With `where: 'both'`, `run` receives `GuildCommandInteraction | PrivateCommandInteraction`: one `if (interaction.guild)` narrows everything.
+
+## Actions
+
+Answers are sent one after the other, in the order they were asked: you can call `reply()` and `followUp()` without waiting for the first to finish.
+
+### reply()
+
+```ts
+reply(message: InteractionReply): Promise<Message>
+```
+
+Answers. If `defer()` was called, or if ChapterJS deferred for you, this completes the pending answer.
+
+Throws when the interaction was already answered: use `followUp()` for another message, or `edit()` to change the answer.
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#create-interaction-response)
+
+### defer()
+
+```ts
+defer(options?: { ephemeral?: boolean }): Promise<void>
+```
+
+Tells Discord the answer is coming: the person sees "thinking…" until `reply()`. You rarely need it: after 2 seconds without an answer, ChapterJS defers for you. Does nothing when the interaction was already answered or deferred.
+
+Whether the answer is ephemeral is decided here: pass `{ ephemeral: true }` for a slow answer that must stay private.
+
+### edit()
+
+```ts
+edit(message: string | MessageEditOptions): Promise<Message>
+```
+
+Changes the answer. Only what you pass changes.
+
+Throws when there is no answer yet: call `reply()` first.
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#edit-original-interaction-response)
+
+### followUp()
+
+```ts
+followUp(message: InteractionReply): Promise<Message>
+```
+
+Sends another message, after the answer.
+
+Throws when there is no answer yet: call `reply()` first.
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#create-followup-message)
+
+### delete()
+
+```ts
+delete(): Promise<void>
+```
+
+Deletes the answer.
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#delete-original-interaction-response)
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+The data of the interaction, without its token: a token is a secret, and `console.log(interaction)` never shows it either.
+
+## Types
+
+### InteractionReply
+
+What `reply()` and `followUp()` take: a text, or `InteractionReplyOptions`.
+
+### InteractionReplyOptions
+
+Everything a [message](/reference/message-options) takes, except `replyTo` and `stickers`, plus:
+
+<ResponseField name="ephemeral" type="boolean">
+  Only show the answer to who used the command. By default: what the command says with its own `ephemeral`, else visible to everyone.
+</ResponseField>
+
+```ts
+import type { CommandInteraction } from 'chapterjs';
+
+export async function report(interaction: CommandInteraction, lines: string[]) {
+  await interaction.reply({
+    embeds: [{ title: 'Report', description: lines.join('\n') }],
+    files: [{ name: 'report.txt', data: lines.join('\n') }],
+    ephemeral: true,
+  });
+}
+```

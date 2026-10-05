@@ -1,0 +1,121 @@
+---
+title: 'Troubleshooting'
+description: 'Every message your bot can show you, and what to do about it'
+---
+
+Every message of ChapterJS says what happened, then what to do. This page gathers them, with the symbol you see in front:
+
+| Symbol | Meaning |
+| --- | --- |
+| `✓` | Something worked |
+| `ℹ` | Something worth knowing |
+| `↻` | A reload or a reconnection |
+| `⚠` | Something to look at; the bot keeps running |
+| `✗` | Something failed: what happened, then what to do |
+
+## Before connecting
+
+<AccordionGroup>
+  <Accordion title="✗ There is no .env file in this folder.">
+    `chapterjs dev` needs `BOT_TOKEN` and `DEV_GUILD_ID`. Copy `.env.example` to `.env` and fill them in: see [Your Discord application](/setup/discord-application).
+  </Accordion>
+  <Accordion title="✗ .env: BOT_TOKEN is empty, or still the example value">
+    Copy the token from the Developer Portal: your application → **Bot** → **Reset Token**. A token is only shown once, and resetting it makes the old one invalid everywhere it was used.
+  </Accordion>
+  <Accordion title="✗ .env: DEV_GUILD_ID is empty, or is not a server ID">
+    In Discord, right-click your test server → **Copy Server ID**. If you don't see it, enable **Settings** → **Advanced** → **Developer Mode**. A server ID is a number of 17 to 20 digits.
+  </Accordion>
+  <Accordion title="✗ Discord refused your token">
+    The token is not the one of your bot any more, usually because it was reset. Copy it again from the Developer Portal. Nothing can work until it is fixed, so the bot stops.
+  </Accordion>
+  <Accordion title="✗ Your bot is not in your dev server yet">
+    The message gives you a link: open it, pick your test server, confirm. In a terminal, `chapterjs dev` waits and goes on by itself once the bot joined. If the link shows another server, `DEV_GUILD_ID` is not the ID of a server you manage.
+  </Accordion>
+  <Accordion title="✗ Your files need an option that is not enabled for your bot">
+    One of your folders needs a privileged intent (**Message Content** for `messageCreate` and `messageUpdate`, **Server Members** for `memberJoin`, `memberLeave` and `memberUpdate`). The message lists the files and gives the link to the right page: enable the option under **Privileged Gateway Intents**, save. In a terminal, the command waits and goes on by itself.
+  </Accordion>
+  <Accordion title="✗ There is no src folder here.">
+    Run the command in the folder of your bot, the one with `package.json`. To start a project, run `pnpm create chapter`.
+  </Accordion>
+  <Accordion title="ℹ Nothing to run yet">
+    Your `src/` has no command and no event. Add a file in `src/commands/`, or in a folder like `src/events/messageCreate/`: see [Project structure](/setup/project-structure).
+  </Accordion>
+</AccordionGroup>
+
+## While your bot runs
+
+<AccordionGroup>
+  <Accordion title="✗ src/…:line …, then ⚠ Reloaded with an error: that file keeps running its last working version">
+    A file you saved can't run: the first line names it, with the line and what is wrong. Your bot is still online with the last version of that file that worked. Fix the file and save: it reloads.
+  </Accordion>
+  <Accordion title="↻ Your files now need more from Discord (…): reconnecting...">
+    A file you added listens to something the connection was not asked for (a new event folder). ChapterJS reconnects by itself with what is needed; if that needs a privileged intent, see above.
+  </Accordion>
+  <Accordion title="ℹ … only works in private messages, and chapterjs dev only runs your bot in …">
+    `chapterjs dev` only runs your bot in your test server, so a command or an event of private messages only can't be tried there. It works with [`chapterjs start`](/run/start).
+  </Accordion>
+  <Accordion title="ℹ /name is not the same here as in production, so … shows it twice">
+    You are changing a command that is already online for everyone. Your test server shows both until production runs your version: see [Commands are shown once](/run/start#commands-are-shown-once).
+  </Accordion>
+  <Accordion title="⚠ Connection to Discord lost, reconnecting...">
+    Nothing to do: the bot reconnects by itself, and tells you with `✓ Reconnected to Discord`. Your files keep running.
+  </Accordion>
+  <Accordion title="ℹ Memory was getting full">
+    The bot now remembers fewer members per server, and your code works the same. Nothing to do: see [Memory](/memory).
+  </Accordion>
+  <Accordion title="⚠ The bot uses … of the … MB of memory it can use, and already remembers as little as it can">
+    The message says how much remembering less freed. **Little**: look in your own code for something that only grows (a list, a `Map` you add to and never empty). **A lot**, and it is still full: your bot is large; give it more memory with `NODE_OPTIONS=--max-old-space-size=4096` (in MB) on a machine that has that much.
+  </Accordion>
+  <Accordion title="✗ Something unexpected happened: … This is probably a bug in ChapterJS">
+    Please [open an issue](https://github.com/chapterjs/chapterjs/issues) with the message. Your bot stops only if the error prevented it from connecting.
+  </Accordion>
+</AccordionGroup>
+
+## Building and starting
+
+<AccordionGroup>
+  <Accordion title="✗ Your project has type errors, so it was not built">
+    The lines below are what your editor underlines. Fix them, or find them all at once with the `typecheck` script of your project. The build never ships a file that does not type-check.
+  </Accordion>
+  <Accordion title="ℹ Types were not checked: TypeScript is not installed">
+    The build goes on without checking the types. To check them where you build, install the development dependencies of your project too.
+  </Accordion>
+  <Accordion title="✗ … This file can't run, so your bot was not built.">
+    The line above names the file and what is wrong, as `chapterjs dev` does when you save it. Fix it and build again.
+  </Accordion>
+  <Accordion title="✗ There is no build of your bot here.">
+    `chapterjs start` runs what `chapterjs build` prepared, and nothing else. Run the `build` script first, on the same machine or before uploading `.chapterjs/build`.
+  </Accordion>
+  <Accordion title="✗ This build was made with chapterjs X, and this is chapterjs Y.">
+    The version of ChapterJS changed since the build. Run `chapterjs build` again.
+  </Accordion>
+  <Accordion title="⚠ Your files changed since the last build: the bot runs the build, not your changes.">
+    In production, saving a file changes nothing until you build again. Run `chapterjs build`, then start again.
+  </Accordion>
+  <Accordion title="✗ BOT_TOKEN is not set.">
+    On a host, give `BOT_TOKEN` in its settings (often called "environment variables" or "secrets"), or put it in a `.env` file next to `package.json`. The host wins when both are there.
+  </Accordion>
+  <Accordion title="✗ The bot needs to start N session(s) but Discord only allows M more until …">
+    Discord limits how many times a day a bot can connect, and resets the token of a bot that goes over. ChapterJS stops before that. It usually means the bot was restarted too many times: look for what makes it stop, then start it again after the time given in the message.
+  </Accordion>
+</AccordionGroup>
+
+## What people see on Discord
+
+<AccordionGroup>
+  <Accordion title="The application did not respond">
+    Your `run` function finished without calling `interaction.reply()`, or it took longer than 15 minutes. `chapterjs dev` warns you about the first case. Every command must answer: see [Answering](/commands/answering).
+  </Accordion>
+  <Accordion title="This interaction failed">
+    Someone clicked a button or a select menu, or sent a modal. ChapterJS does not handle those yet, and nothing in your project runs: see [What's not there yet](/not-yet).
+  </Accordion>
+  <Accordion title="Something went wrong while running this command">
+    Your `run` function threw. The person gets this short answer, privately; you get the error with the file and the line in your terminal. When Discord refused an action for a missing permission, the person reads "I don't have the permission to do that here" instead.
+  </Accordion>
+  <Accordion title="A command is missing, or shown twice">
+    Commands appear at once, in your test server with `chapterjs dev` and everywhere with `chapterjs start`. If one is missing, the terminal said why when it started: a name Discord refused, or two files that are the same command. Shown twice: see [Commands are shown once](/run/start#commands-are-shown-once). A command the person can't see is one whose `permissions` they don't have: see [Who can use a command](/commands#who-can-use-a-command).
+  </Accordion>
+  <Accordion title="The bot stays online after I stopped it">
+    Press `Ctrl+C` once and let it disconnect: you see `✓ Disconnected` and the bot goes offline at once. A second `Ctrl+C` stops the process without waiting, and Discord then keeps the bot online until it notices the connection is gone.
+  </Accordion>
+</AccordionGroup>
