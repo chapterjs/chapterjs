@@ -39,7 +39,7 @@ description: 'Create your first ChapterJS bot in a minute'
     2. **Which package manager to use**: only the ones installed on your computer can be picked, and the one you ran the command with is selected by default.
     3. **Which template to start from**.
 
-    A question with only one possible answer is skipped: if you have a single package manager installed, it is used directly.
+    A question with only one possible answer is skipped: if you have a single package manager installed, it is used directly, and so is the template while there is only one.
 
     It then copies the template and installs the dependencies.
 
@@ -77,22 +77,26 @@ description: 'Create your first ChapterJS bot in a minute'
     Your bot connects to your test server. If something is missing (the bot is not in the server yet, an option to enable...), the command tells you what to do and waits for you: see [chapterjs dev](/dev).
 
   </Step>
-  <Step title="Write your first event">
-    Create the folder `src/events/messageCreate/`, and in it a file `ping.ts`:
+  <Step title="Try your first command">
+    The default template comes with a command, in `src/commands/ping.ts`:
 
-    ```ts src/events/messageCreate/ping.ts
-    import { event } from 'chapterjs';
+    ```ts src/commands/ping.ts
+    import { command } from 'chapterjs';
 
-    export default event(async ({ message }) => {
-      if (message.content === '!ping') await message.reply('Pong!');
+    export default command({
+      description: 'Replies with Pong!',
+      async run({ interaction }) {
+        await interaction.reply('Pong!');
+      },
     });
     ```
 
-    The folder says what to react to, the file says what to do.
+    Type `/ping` in your test server. Then change the answer and save: your bot reloads instantly.
 
-    Save: your bot reloads instantly. Reading messages needs the **Message Content Intent**; the command gives you the link to enable it. Then write `!ping` in your test server.
-
-    See [Events](/events) for everything your bot can react to.
+    The path of a file is the name of its command, and a folder in `src/events/` is something your bot reacts to: see [Commands](/commands) and [Events](/events).
 
   </Step>
 </Steps>
+
+When your bot is ready for everyone, put your project on a machine that stays on, then run [`chapterjs build`](/build) and [`chapterjs start`](/start) there.
+

@@ -7,6 +7,12 @@ import type { Context } from './context.js';
 /** Only the framework reads the context and the data of a structure. */
 export let ctxOf: (structure: Structure<object>) => Context;
 export let dataOf: <Raw extends object>(structure: Structure<Raw>) => Raw;
+/** What a structure was created with: see `known.ts`, which owns it. */
+export let originOf: (structure: Structure<object>) => object | undefined;
+export let setOrigin: (
+  structure: Structure<object>,
+  origin: object | undefined
+) => void;
 
 /**
  * Something of Discord (a server, a member, a message...) as user code sees
@@ -17,8 +23,14 @@ export let dataOf: <Raw extends object>(structure: Structure<Raw>) => Raw;
 export abstract class Structure<Raw extends object> {
   readonly #ctx: Context;
   readonly #data: Raw;
+  // One reference, in the structure itself: nothing is allocated to keep it.
+  #origin: object | undefined = undefined;
 
   static {
+    originOf = structure => structure.#origin;
+    setOrigin = (structure, origin) => {
+      structure.#origin = origin;
+    };
     ctxOf = structure => structure.#ctx;
     dataOf = <R extends object>(structure: Structure<R>) =>
       structure.#data as R;

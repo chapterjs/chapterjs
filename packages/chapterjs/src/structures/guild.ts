@@ -54,6 +54,7 @@ import { toCamelCase, toSnakeCase, type Camelize } from '../util/case.js';
 import { ctxOf, dataOf, idOf, IdStructure } from './base.js';
 import type { GuildChannel, ThreadChannel } from './channel.js';
 import type { Context } from './context.js';
+import { knownMember } from './known.js';
 import type { GuildEmoji } from './emoji.js';
 import type { Invite } from './invite.js';
 import { banUser, type BanOptions, type GuildMember } from './member.js';
@@ -209,7 +210,10 @@ export class Guild extends IdStructure<GuildData> {
     return this.#stores.roles;
   }
 
-  /** The members of the server the bot knows: not always all of them. */
+  /**
+   * The members of the server the bot knows: the ones seen the most
+   * recently, not all of them.
+   */
   get members(): ReadonlyMap<Snowflake, GuildMember> {
     return this.#stores.members;
   }
@@ -225,14 +229,32 @@ export class Guild extends IdStructure<GuildData> {
   }
 
   /** The @everyone role, which every member has. */
-  get everyoneRole(): Role | null {
-    return this.#stores.roles.get(this.id) ?? null;
+  get everyoneRole(): Role {
+    const role = this.#stores.roles.get(this.id);
+    if (!role) throw this.#notReceived('roles');
+    return role;
   }
 
-  /** The bot as a member of this server, when it is known. */
-  get me(): GuildMember | null {
+  /** The bot as a member of this server. */
+  get me(): GuildMember {
     const self = ctxOf(this).self;
-    return self ? (this.#stores.members.get(self.userId) ?? null) : null;
+    // Kept apart too: a limit on how many members are remembered must
+    // never make the bot forget itself.
+    const member =
+      (self ? this.#stores.members.get(self.userId) : undefined) ??
+      knownMember(this);
+    if (!member) throw this.#notReceived('members');
+    return member;
+  }
+
+  /**
+   * Discord sends the roles of a server and the bot as one of its members
+   * with the server itself: they are only missing while it is unavailable.
+   */
+  #notReceived(what: string): Error {
+    return new Error(
+      `Discord has not sent the ${what} of the server ${this.id}${this.available ? '' : ', which is unavailable (an outage on their side)'}.`
+    );
   }
 
   /** The URL of the icon of the server, when it has one. */

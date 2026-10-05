@@ -13,6 +13,7 @@ import {
   createProject,
   toPackageName,
   validateTargetDir,
+  PNPM_WORKSPACE,
 } from '../src/project.js';
 
 /** Runs `validateTargetDir` as if the user ran the CLI from `cwd`. */
@@ -250,6 +251,30 @@ describe('createProject', () => {
     expect(existsSync(join(dir, 'src/commands/.gitkeep'))).toBe(true);
     expect(readFileSync(join(dir, 'deep/a/b/c.txt'), 'utf8')).toBe('deep');
   });
+
+  it.each([
+    ['pnpm', true],
+    ['npm', false],
+    ['yarn', false],
+    ['bun', false],
+    [undefined, false],
+  ] as const)(
+    'writes the pnpm settings for %s: %s',
+    async (packageManager, written) => {
+      const templatesRoot = fakeTemplates({ 'package.json': templatePackage });
+      const dir = join(tempDir(), 'my-bot');
+      await createProject({
+        dir,
+        template: 'tpl',
+        chapterjsVersion: '^1.2.3',
+        templatesRoot,
+        ...(packageManager ? { packageManager } : {}),
+      });
+      const file = join(dir, 'pnpm-workspace.yaml');
+      expect(existsSync(file)).toBe(written);
+      if (written) expect(readFileSync(file, 'utf8')).toBe(PNPM_WORKSPACE);
+    }
+  );
 
   it('renames _gitignore to .gitignore', async () => {
     const templatesRoot = fakeTemplates({

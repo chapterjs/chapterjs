@@ -8,6 +8,7 @@ import type { RawRole } from '../discord/types/permissions.js';
 import { toSnakeCase, type Camelize } from '../util/case.js';
 import { ctxOf, dataOf, IdStructure } from './base.js';
 import type { Context } from './context.js';
+import { guildOf } from './known.js';
 import type { Guild } from './guild.js';
 import type { GuildMember } from './member.js';
 
@@ -30,9 +31,9 @@ export class Role extends IdStructure<RawRole> {
     this.guildId = guildId;
   }
 
-  /** The server of the role, when it is known. */
-  get guild(): Guild | null {
-    return ctxOf(this).cache.guilds.get(this.guildId) ?? null;
+  /** The server of the role. */
+  get guild(): Guild {
+    return guildOf(this, this.guildId);
   }
 
   /** The name of the role. */

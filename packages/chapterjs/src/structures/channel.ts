@@ -52,6 +52,7 @@ import type { CreateWebhookJSONParams } from '../discord/types/webhook.js';
 import { toCamelCase, toSnakeCase, type Camelize } from '../util/case.js';
 import { ctxOf, dataOf, idOf, IdStructure, mixin, toDate } from './base.js';
 import type { Guild } from './guild.js';
+import { findGuild, guildOf } from './known.js';
 import type { Invite } from './invite.js';
 import { GuildMember } from './member.js';
 import { sendMessage, type Message } from './message.js';
@@ -105,10 +106,9 @@ export class Channel extends IdStructure<RawChannel> {
     return dataOf(this).guild_id ?? null;
   }
 
-  /** The server of the channel, when there is one and it is known. */
+  /** The server of the channel; `null` for a private one. */
   get guild(): Guild | null {
-    const id = this.guildId;
-    return id ? (ctxOf(this).cache.guilds.get(id) ?? null) : null;
+    return findGuild(this, this.guildId);
   }
 
   /** Whether messages can be sent in it. */
@@ -351,6 +351,11 @@ export class GuildChannel extends Channel {
   /** The id of the server of the channel. */
   override get guildId(): Snowflake {
     return dataOf(this).guild_id!;
+  }
+
+  /** The server of the channel. */
+  override get guild(): Guild {
+    return guildOf(this, this.guildId);
   }
 
   /** The name of the channel. */
@@ -713,20 +718,27 @@ export class ThreadChannel extends Channel {
     return dataOf(this).guild_id!;
   }
 
+  /** The server of the thread. */
+  override get guild(): Guild {
+    return guildOf(this, this.guildId);
+  }
+
   /** The name of the thread. */
   get name(): string {
     return dataOf(this).name ?? '';
   }
 
   /** The id of the channel the thread was created in. */
-  get parentId(): Snowflake | null {
-    return dataOf(this).parent_id ?? null;
+  get parentId(): Snowflake {
+    return dataOf(this).parent_id!;
   }
 
-  /** The channel the thread was created in, when it is known. */
+  /**
+   * The channel the thread was created in; `null` when it is of a kind
+   * this version does not know.
+   */
   get parent(): TextChannel | ForumChannel | null {
-    const id = this.parentId;
-    const parent = id ? ctxOf(this).cache.channels.get(id) : undefined;
+    const parent = ctxOf(this).cache.channels.get(this.parentId);
     return parent?.isText() || parent?.isForum() ? parent : null;
   }
 
@@ -857,9 +869,11 @@ export class DMChannel extends Channel {
 export interface DMChannel extends TextBasedMethods {}
 mixin(DMChannel, textBasedMethods);
 
+/** Any channel of a server messages can be sent in. */
+export type GuildTextBasedChannel = TextChannel | VoiceChannel | ThreadChannel;
+
 /** Any channel messages can be sent in. */
-export type TextBasedChannel =
-  TextChannel | VoiceChannel | ThreadChannel | DMChannel;
+export type TextBasedChannel = GuildTextBasedChannel | DMChannel;
 
 /** The class that represents a channel of a given type. */
 export function channelClass(data: RawChannel): typeof Channel {

@@ -36,11 +36,11 @@ async function describe(guild: Guild) {
 | `afkChannelId` | `Snowflake \| null` | The id of the voice channel inactive members are moved to. |
 | `joinedAt` | `Date \| null` | When the bot joined the server, when Discord said it. |
 | `roles` | `ReadonlyMap<Snowflake, Role>` | The roles of the server, @everyone included. |
-| `members` | `ReadonlyMap<Snowflake, GuildMember>` | The members of the server the bot knows: not always all of them. |
+| `members` | `ReadonlyMap<Snowflake, GuildMember>` | The members of the server the bot knows: the ones seen the most recently, not all of them (see [Memory](/memory)). |
 | `channels` | `ReadonlyMap<Snowflake, GuildChannel \| ThreadChannel>` | The channels and active threads of the server. |
 | `emojis` | `ReadonlyMap<Snowflake, GuildEmoji>` | The custom emojis of the server. |
-| `everyoneRole` | `Role \| null` | The @everyone role, which every member has. |
-| `me` | `GuildMember \| null` | The bot as a member of this server, when it is known. |
+| `everyoneRole` | `Role` | The @everyone role, which every member has. |
+| `me` | `GuildMember` | The bot as a member of this server. |
 
 
 <Info>

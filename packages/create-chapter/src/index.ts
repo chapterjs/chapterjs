@@ -87,7 +87,12 @@ if (template === undefined) {
   process.exit(1);
 }
 
-await createProject({ dir, template, chapterjsVersion: `^${version}` });
+await createProject({
+  dir,
+  template,
+  chapterjsVersion: `^${version}`,
+  packageManager: pm,
+});
 p.log.success(`Project created in ${resolve(dir)}`);
 
 const spinner = p.spinner();

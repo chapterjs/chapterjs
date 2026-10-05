@@ -25,8 +25,9 @@ bun dev
 
 ```text
 ✓ Connected to My Server as my-bot
-ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, DIRECT_MESSAGES, MESSAGE_CONTENT
-✓ 2 events loaded
+ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT
+✓ 1 command, 2 events loaded
+✓ Commands updated on My Server
 ```
 
 ## What it needs
@@ -73,10 +74,10 @@ Before connecting, `chapterjs dev` makes sure everything is in place. When somet
 Save a file and your bot uses the new version, without disconnecting:
 
 ```text
-↻ Reloaded in 12 ms, 2 events loaded
+↻ Reloaded in 12 ms, 1 command, 2 events loaded
 ```
 
-Every file under `src/` is watched: the ones in `src/events/` and the ones they import. A new folder or a new file is picked up as soon as it is saved.
+Every file under `src/` is watched: your [commands](/commands), your [events](/events) and the files they import. A new folder or a new file is picked up as soon as it is saved.
 
 A file with a mistake never stops your bot. The error is shown with the file and the line, and **the last version that worked keeps running** until you fix it:
 
@@ -128,7 +129,13 @@ bun typecheck
 
 ## Only your test server
 
-In dev, your bot only sees the server of `DEV_GUILD_ID`: what happens in the other servers it is in is ignored. Private messages sent to the bot are still received.
+In dev, your bot only sees the server of `DEV_GUILD_ID`. What happens in the other servers it is in, and in private messages, is ignored: that is for [`chapterjs start`](/start), which can run the same bot for everyone at the same time.
+
+What only works in private messages can't be tried in dev, and `chapterjs dev` tells you which files:
+
+```text
+ℹ src/commands/settings.ts /settings only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+```
 
 ## Stopping
 

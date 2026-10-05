@@ -61,6 +61,26 @@ export default event(async ({ message }) => {
 });
 ```
 
+### Organising your files
+
+Like in `src/commands/`, two kinds of names are ignored, so you can sort your files the way you like:
+
+```text
+src/events/
+├── _format.ts                  not an event: code you share
+├── ready/
+│   └── online.ts
+└── (logs)/
+    ├── messageDelete/
+    │   └── log.ts
+    └── (roles)/
+        └── roleDelete/
+            └── log.ts
+```
+
+- A folder **in parentheses**, like `(logs)`, only groups event folders. You can put as many as you want inside each other.
+- A file or a folder starting with **`_`** is private: ChapterJS never runs it as an event. Use it for the code several files share.
+
 ### Let your editor write the import
 
 Type `event(` in a new file and accept the suggestion: your editor adds `import { event } from 'chapterjs'` for you.
@@ -78,9 +98,9 @@ Each event gives your function what it is about, as [structures](/reference/over
 | Event | When | What your function receives |
 | --- | --- | --- |
 | `ready` | Once, when the bot is connected and knows its servers | `user` (the bot), `guilds` |
-| `messageCreate` | A message is sent by a person, in a server or in private ([bots are ignored by default](#bots-are-ignored-by-default)) | `message` |
-| `messageUpdate` | A message of a person is edited | `message` |
-| `messageDelete` | A message is deleted | `messageId`, `channelId`, `guildId`, `channel`, `message` |
+| `messageCreate` | A message is sent by a member of a server ([private messages](#private-messages) and [bots](#bots-are-ignored-by-default) are ignored by default) | `message` |
+| `messageUpdate` | A message of a member of a server is edited | `message` |
+| `messageDelete` | A message of a server is deleted | `messageId`, `channelId`, `guildId`, `guild`, `channel`, `message` |
 | `memberJoin` | Someone joins a server | `member`, `guild` |
 | `memberLeave` | Someone leaves a server, or is kicked or banned | `user`, `guild`, `member` |
 | `memberUpdate` | A member changes: nickname, roles, timeout... | `member`, `guild` |
@@ -97,9 +117,9 @@ Each event gives your function what it is about, as [structures](/reference/over
 
 Events about something that no longer exists give you its id, and the thing itself **as it was** when the bot knew it:
 
-- `messageDelete`: `message` is the deleted message when the bot remembered it. For now the bot keeps no message in memory, so it is always `null`: use `messageId`. `channel` is `null` when the bot does not know the channel.
+- `messageDelete`: `message` is the deleted message when the bot remembered it. For now the bot keeps no message in memory, so it is always `null`: use `messageId`. `channel` is always there.
 - `memberLeave`: `member` is `null` when the bot never saw that member. `user` is always there.
-- `roleDelete`: `role` is `null` when the bot did not know the role.
+- `roleDelete`: `role` is always there, the bot knows every role of its servers.
 
 ```ts src/events/memberLeave/goodbye.ts
 import { event } from 'chapterjs';
@@ -111,6 +131,79 @@ export default event(async ({ user, guild, member }) => {
   await channel.send(`${name} left. We are now ${guild.memberCount}.`);
 });
 ```
+
+## Servers only by default
+
+The files of `messageCreate`, `messageUpdate` and `messageDelete` only run for what happens in **servers**. So the server is always there, and you never write `if (!message.guild) return;`:
+
+```ts src/events/messageCreate/levels.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  // No "?." needed: a message of a server has a server and a member.
+  console.log(`${message.member.displayName} wrote in ${message.guild.name}`);
+});
+```
+
+### Private messages
+
+`where` says where a file listens. Pass it as the second argument:
+
+| `where` | The file runs for | The server |
+| --- | --- | --- |
+| `'guild'` (default) | Messages of servers | Always there |
+| `'dm'` | Private messages people send to your bot | Does not exist: `message.guild` is not even offered by your editor |
+| `'both'` | Both | There or not: one `if (message.guild)` tells you, for everything at once |
+
+```ts src/events/messageCreate/support.ts
+import { event } from 'chapterjs';
+
+export default event(
+  async ({ message }) => {
+    await message.reply('Thanks! A moderator will answer you soon.');
+  },
+  { where: 'dm' }
+);
+```
+
+With `'both'`, checking the server once is enough: inside the `if`, the member and the channel are the ones of a server.
+
+```ts src/events/messageCreate/hello.ts
+import { event } from 'chapterjs';
+
+export default event(
+  async ({ message }) => {
+    if (message.guild) {
+      await message.channel.send(`Hello ${message.member.displayName}!`);
+    } else {
+      await message.reply('Hello! We are in private here.');
+    }
+  },
+  { where: 'both' }
+);
+```
+
+Each file decides for itself, and ChapterJS only asks Discord for private messages when one of your files wants them. `messageDelete` works the same way, with `guild`.
+
+<Note>
+  `chapterjs dev` only runs your bot in your test server: private messages are received with [`chapterjs start`](/start).
+</Note>
+
+### What is never missing in a server
+
+In a server, what must exist is always there, with no `?.` to write:
+
+- `message.guild`, `message.member`, `message.channel` (and `channel.send()` right away);
+- `member.guild`, `role.guild`, `channel.guild`, `member.highestRole`;
+- `guild.me` (your bot as a member), `guild.everyoneRole`.
+
+They stay there while your function runs, even if the person leaves or the channel is deleted in the meantime: you get them as they were.
+
+What can be `null` is what may really not exist: a channel without a category (`channel.parent`), a message that was never edited (`message.editedAt`), a member the bot never saw in `memberLeave`...
+
+<Note>
+  When a message arrives in a channel your bot does not know yet (an old thread, for example), ChapterJS reads the channel from Discord before running your files. It is a safety net: Discord announces channels and threads to your bot, so it nearly never happens.
+</Note>
 
 ## Bots are ignored by default
 
@@ -130,7 +223,9 @@ export default event(
 );
 ```
 
-Each file decides for itself: in the same folder, one file can receive bots and another not. Your editor only offers this option in the folders where it exists.
+Each file decides for itself: in the same folder, one file can receive bots and another not. A webhook is not a member of the server, so in a file with `{ bots: true }` `message.member` can be `null`. Both options can be used together: `{ bots: true, where: 'both' }`.
+
+Your editor only offers these options in the folders where they exist.
 
 ## Intents: nothing to list
 
