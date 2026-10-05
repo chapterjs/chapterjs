@@ -74,7 +74,25 @@ description: 'Create your first ChapterJS bot in a minute'
     ```
     </CodeGroup>
 
-    Your bot connects to your test server and reloads every time you save a file.
+    Your bot connects to your test server. If something is missing (the bot is not in the server yet, an option to enable...), the command tells you what to do and waits for you: see [chapterjs dev](/dev).
+
+  </Step>
+  <Step title="Write your first event">
+    Create the folder `src/events/messageCreate/`, and in it a file `ping.ts`:
+
+    ```ts src/events/messageCreate/ping.ts
+    import { event } from 'chapterjs';
+
+    export default event(async ({ message }) => {
+      if (message.content === '!ping') await message.reply('Pong!');
+    });
+    ```
+
+    The folder says what to react to, the file says what to do.
+
+    Save: your bot reloads instantly. Reading messages needs the **Message Content Intent**; the command gives you the link to enable it. Then write `!ping` in your test server.
+
+    See [Events](/events) for everything your bot can react to.
 
   </Step>
 </Steps>

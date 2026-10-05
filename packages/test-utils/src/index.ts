@@ -7,4 +7,11 @@ export type {
   FakeDiscordRequest,
   FakeDiscordResponse,
 } from './fake-discord.js';
+export { fakeGateway } from './fake-gateway.js';
+export type {
+  FakeGateway,
+  FakeGatewayBehavior,
+  FakeGatewayConnection,
+  FakeGatewayPayload,
+} from './fake-gateway.js';
 export { tempDir } from './temp.js';
