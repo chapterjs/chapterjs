@@ -30,7 +30,7 @@ async function onPing(message: Message) {
 | `channelId` | `Snowflake` | The id of the channel of the message. |
 | `guildId` | `Snowflake \| null` | The id of the server; `null` for a private message. |
 | `channel` | `TextBasedChannel \| null` | The channel of the message, when it is known. |
-| `guild` | `Guild \| null` | The server of the message, when there is one and it is known. |
+| `guild` | `Guild \| null` | The server of the message; `null` for a private message. |
 | `member` | `GuildMember \| null` | The author as a member of the server, when it is known. |
 | `content` | `string` | The text of the message. Empty when the bot is not allowed to read it: reading the messages of others needs the Message Content intent. |
 | `type` | `MessageType` | The kind of message, as a value of `MessageType` (a regular one, a reply, a join notice...). |
@@ -47,6 +47,27 @@ async function onPing(message: Message) {
 | `repliedMessageId` | `Snowflake \| null` | The id of the message this one replies to, when it is a reply. |
 | `isFromUser` | `boolean` | Whether a person wrote it: not a bot, a webhook or Discord itself. |
 | `url` | `string` | The link that opens the message in Discord. |
+
+### In a server, in private
+
+The [events about messages](/events#private-messages) give a message that says where it comes from, so what they give is more precise than `Message`:
+
+| Type | What it is | What changes |
+| --- | --- | --- |
+| `GuildMessage` | A message of a server: its server is known. | `guildId` is a `Snowflake`, `guild` is a `Guild`, `channel` is a `GuildTextBasedChannel` |
+| `MemberMessage` | A message written in a server by one of its members: neither a private message nor the message of a webhook. | Like `GuildMessage`, and `member` is a `GuildMember` |
+| `DmMessage` | A private message, for a file that only receives those (`{ where: 'dm' }`). | `guild`, `guildId` and `member` do not exist; `channel` is a `DMChannel \| null` |
+| `PrivateMessage` | A private message, for a file that receives both kinds (`{ where: 'both' }`). | `guild`, `guildId` and `member` are `null`; `channel` is a `DMChannel \| null` |
+
+You only need these names to type a function of your own:
+
+```ts
+import type { MemberMessage } from 'chapterjs';
+
+export function xpFor(message: MemberMessage): number {
+  return message.member.roles.length + message.content.length;
+}
+```
 
 ## Reading from Discord
 

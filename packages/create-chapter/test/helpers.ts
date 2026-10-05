@@ -57,9 +57,11 @@ export interface RunOptions {
   userAgent?: string;
 }
 
+const TEMPLATE_QUESTION = 'Which template do you want to start from?';
+
 /** Starts the built `create-chapter` CLI. */
 export function runCreate({ cwd, args, path, userAgent }: RunOptions) {
-  return startCli({
+  const cli = startCli({
     bin,
     args,
     cwd,
@@ -68,4 +70,14 @@ export function runCreate({ cwd, args, path, userAgent }: RunOptions) {
       ...(userAgent === undefined ? {} : { npm_config_user_agent: userAgent }),
     },
   });
+  // The preselected template is accepted if the question shows up, so tests
+  // don't depend on how many templates exist.
+  const watching = setInterval(() => {
+    if (cli.output.includes(TEMPLATE_QUESTION)) {
+      clearInterval(watching);
+      cli.press('enter');
+    }
+  }, 10);
+  void cli.exited.catch(() => {}).finally(() => clearInterval(watching));
+  return cli;
 }

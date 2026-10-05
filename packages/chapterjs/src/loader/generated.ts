@@ -18,7 +18,10 @@ import { fileURLToPath } from 'node:url';
 export interface TypedFolder {
   /** A unique name, used for file names: `events.memberJoin`. */
   id: string;
-  /** The folder, from the project folder, with `/`. */
+  /**
+   * The folder, from the project folder, with `/`. It may contain `**` to
+   * be found at any depth (inside `(group)` folders).
+   */
   folder: string;
   /**
    * The declarations 'chapterjs' has in this folder, on top of what the
@@ -112,8 +115,12 @@ export async function writeGenerated(
       .filter(
         path =>
           !files.has(relative(root, path).split(sep).join('/')) &&
-          // What TypeScript itself leaves there to check faster next time.
-          !path.endsWith('.tsbuildinfo')
+          // What TypeScript itself leaves there to check faster next time,
+          // and what features remember between two runs.
+          !path.endsWith('.tsbuildinfo') &&
+          !relative(root, path).startsWith(`cache${sep}`) &&
+          // What `chapterjs build` made is not ours to remove.
+          !relative(root, path).startsWith(`build${sep}`)
       )
       .map(path => rm(path, { force: true }))
   );

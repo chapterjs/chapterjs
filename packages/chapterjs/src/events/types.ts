@@ -11,15 +11,38 @@ export function eventTypedFolders(): TypedFolder[] {
     const hasOptions = EVENTS[name].options !== undefined;
     return {
       id: `events.${name}`,
-      folder: `src/events/${name}`,
-      declarations: `import type { EventContexts, EventFile${hasOptions ? ', EventOptions' : ''} } from '#chapterjs';
+      // At any depth: the event folder may be inside `(group)` folders.
+      folder: `src/events/**/${name}`,
+      declarations: hasOptions
+        ? `import type { ContextOf, EventFile, EventOptions } from '#chapterjs';
+
+/**
+ * Says what to do when \`${name}\` happens. Export the result as the default
+ * export of a file of src/events/${name}/.
+ *
+ * What the function receives follows the options: what an option lets
+ * through is only there to handle in the files that turn it on.
+ */
+export declare function event<
+  const Options extends EventOptions['${name}'] = {},
+>(
+  handler: (context: ContextOf<'${name}', Options>) => unknown,
+  // The options of the event come first so editors offer them; the rest
+  // makes a misspelled option an error instead of something ignored.
+  options?: EventOptions['${name}'] &
+    Options & {
+      [Key in Exclude<keyof Options, keyof EventOptions['${name}']>]: never;
+    }
+): EventFile;
+`
+        : `import type { EventContexts, EventFile } from '#chapterjs';
 
 /**
  * Says what to do when \`${name}\` happens. Export the result as the default
  * export of a file of src/events/${name}/.
  */
 export declare function event(
-  handler: (context: EventContexts['${name}']) => unknown${hasOptions ? `,\n  options?: EventOptions['${name}']` : ''}
+  handler: (context: EventContexts['${name}']) => unknown
 ): EventFile;
 `,
     };

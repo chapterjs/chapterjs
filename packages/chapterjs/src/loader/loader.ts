@@ -15,8 +15,8 @@ export interface Convention<T> {
   many: string;
   /**
    * Checks where a file is, before it is run. `path` is its path inside
-   * the folder, with `/`. Throws an error whose message says where the file
-   * should be.
+   * the folder, with `/`, without the `(group)` folders (see below). Throws
+   * an error whose message says where the file should be.
    */
   check?(path: string): void;
   /**
@@ -47,6 +47,25 @@ export interface LoadResult<T> {
 const SOURCE = /\.(?:ts|mts|js|mjs)$/;
 const DECLARATION = /\.d\.m?ts$/;
 
+/**
+ * How users organise a conventional folder without changing what it means,
+ * the same in every feature:
+ * - a file or a folder whose name starts with `_` is private: never
+ *   loaded by the framework, free to hold shared code;
+ * - a folder whose name is in parentheses, like `(moderation)`, only groups
+ *   files: it is not part of what the path says, at any depth.
+ */
+const PRIVATE = /^_/;
+const GROUP = /^\(.*\)$/;
+
+/** The path of a file as the feature reads it: without `(group)` folders. */
+export function logicalPath(inside: string): string {
+  const parts = inside.split('/');
+  return parts
+    .filter((part, index) => index === parts.length - 1 || !GROUP.test(part))
+    .join('/');
+}
+
 /** The source files of a folder and its subfolders, in a stable order. */
 async function scan(dir: string): Promise<string[]> {
   let entries;
@@ -59,6 +78,7 @@ async function scan(dir: string): Promise<string[]> {
   }
   const files: string[] = [];
   for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    if (PRIVATE.test(entry.name)) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...(await scan(path)));
     else if (SOURCE.test(entry.name) && !DECLARATION.test(entry.name)) {
@@ -68,23 +88,47 @@ async function scan(dir: string): Promise<string[]> {
   return files;
 }
 
-/** Loads every file of a conventional folder. A broken file never throws. */
-export async function loadFolder<T>(
+/** A file of a conventional folder, found but not run. */
+export interface FoundFile {
+  /** The path from the project folder, with `/`: `src/events/ping.ts`. */
+  file: string;
+  /** Where it is on disk. */
+  path: string;
+}
+
+/** The files of a conventional folder, in a stable order. */
+export async function listFolder(
   projectDir: string,
-  convention: Convention<T>
+  convention: Pick<Convention<unknown>, 'folder'>
+): Promise<FoundFile[]> {
+  const paths = await scan(join(projectDir, 'src', convention.folder));
+  return paths
+    .map(path => ({
+      file: relative(projectDir, path).split(sep).join('/'),
+      path,
+    }))
+    .sort((a, b) => (a.file < b.file ? -1 : 1));
+}
+
+/**
+ * Hands what files export to the convention of their folder. `exportsOf`
+ * gives what a file exports (by running it, or from a build that already
+ * did); a file that fails, there or in the convention, never throws.
+ */
+async function readFiles<T>(
+  convention: Convention<T>,
+  files: readonly string[],
+  exportsOf: (file: string) => Promise<Record<string, unknown>>
 ): Promise<LoadResult<T>> {
-  const folder = join(projectDir, 'src', convention.folder);
-  const paths = await scan(folder);
-  const result: LoadResult<T> = { loaded: [], failed: [], files: [] };
+  const prefix = `src/${convention.folder}/`;
+  const result: LoadResult<T> = { loaded: [], failed: [], files: [...files] };
   await Promise.all(
-    paths.map(async path => {
-      const file = relative(projectDir, path).split(sep).join('/');
-      result.files.push(file);
+    files.map(async file => {
       try {
-        const inside = relative(folder, path).split(sep).join('/');
+        const inside = logicalPath(file.slice(prefix.length));
         // A misplaced file is not run at all.
         convention.check?.(inside);
-        const value = convention.read(await importFile(path), inside);
+        const value = convention.read(await exportsOf(file), inside);
         result.loaded.push({ file, value });
       } catch (error) {
         result.failed.push({ file, error });
@@ -97,4 +141,44 @@ export async function loadFolder<T>(
   result.failed.sort(byFile);
   result.files.sort();
   return result;
+}
+
+/** Loads every file of a conventional folder. A broken file never throws. */
+export async function loadFolder<T>(
+  projectDir: string,
+  convention: Convention<T>
+): Promise<LoadResult<T>> {
+  const found = await listFolder(projectDir, convention);
+  const paths = new Map(found.map(({ file, path }) => [file, path]));
+  return readFiles(
+    convention,
+    found.map(({ file }) => file),
+    file => importFile(paths.get(file)!)
+  );
+}
+
+/** A file of the project as a build kept it: already run. */
+export interface BuiltFile {
+  /** The path it had in the project: `src/events/ping.ts`. */
+  file: string;
+  exports: Record<string, unknown>;
+}
+
+/**
+ * Reads the files of a conventional folder from a build, which ran them
+ * all at once: nothing is scanned and nothing is imported.
+ */
+export function loadBuilt<T>(
+  convention: Convention<T>,
+  built: readonly BuiltFile[]
+): Promise<LoadResult<T>> {
+  const prefix = `src/${convention.folder}/`;
+  const mine = new Map(
+    built
+      .filter(({ file }) => file.startsWith(prefix))
+      .map(({ file, exports }) => [file, exports])
+  );
+  return readFiles(convention, [...mine.keys()], file =>
+    Promise.resolve(mine.get(file)!)
+  );
 }

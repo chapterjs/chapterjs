@@ -64,10 +64,17 @@ export interface BotOptions {
   /**
    * The servers the bot pays attention to. Events of the others are dropped
    * before anything else, as if the bot was not in them: this is how a dev
-   * bot only sees its dev server. Events that belong to no server (private
-   * messages...) always pass.
+   * bot only sees its dev server. What belongs to no server is decided by
+   * `privateEvents`.
    */
   guildFilter?: (guildId: Snowflake) => boolean;
+  /**
+   * Whether what happens outside servers (private messages, commands used
+   * there) is for this bot. Default: true. Discord sends it to every
+   * process of the bot that runs its first shard: when a dev bot and a
+   * production bot share a token, only one may answer.
+   */
+  privateEvents?: boolean;
   /**
    * How long to wait for the data of every server after connecting, in
    * milliseconds, before going on without the ones that did not come
@@ -106,6 +113,16 @@ function guildIdOf(
       ? fields.id
       : fields.guild_id;
   return typeof id === 'string' ? id : undefined;
+}
+
+/**
+ * Whether an event that belongs to no server happened in a private
+ * conversation: it has a channel. What is about the bot itself (its user,
+ * its session) has none, and is always needed.
+ */
+function isPrivate(data: unknown): boolean {
+  const fields = data as { channel_id?: unknown; recipients?: unknown };
+  return typeof fields.channel_id === 'string' || 'recipients' in fields;
 }
 
 export function createBot(options: BotOptions): Bot {
@@ -167,9 +184,13 @@ export function createBot(options: BotOptions): Bot {
             )
           )
         );
-      } else if (filter) {
+      } else {
         const guildId = guildIdOf(event, data);
-        if (guildId !== undefined && !filter(guildId)) return;
+        if (guildId === undefined) {
+          if (options.privateEvents === false && isPrivate(data)) return;
+        } else if (filter && !filter(guildId)) {
+          return;
+        }
       }
       if (event === 'GUILD_CREATE' || event === 'GUILD_DELETE') {
         const { id } = data as GatewayDispatchEvents['GUILD_DELETE'];

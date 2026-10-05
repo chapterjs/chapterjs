@@ -31,7 +31,11 @@
         "group": "Essentials",
         "pages": [
           "dev",
-          "events"
+          "build",
+          "start",
+          "commands",
+          "events",
+          "memory"
         ]
       },
       {

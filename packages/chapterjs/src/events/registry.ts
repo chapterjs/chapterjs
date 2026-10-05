@@ -3,22 +3,33 @@
 // send them, and how to build what the handler receives. Adding an event is
 // adding an entry; the router and the loader never change.
 
+import type { CacheLimits } from '../cache/cache.js';
+import { GetChannel } from '../discord/endpoints.js';
 import { GatewayIntent } from '../discord/intents.js';
 import type { Snowflake } from '../discord/types/common.js';
+import type { RawGuildMember } from '../discord/types/guild.js';
 import type {
   GatewayDispatchEventName,
   GatewayDispatchEvents,
 } from '../discord/types/gateway-events.js';
 import type {
   Channel,
+  DMChannel,
   GuildChannel,
+  GuildTextBasedChannel,
   TextBasedChannel,
   ThreadChannel,
 } from '../structures/channel.js';
 import type { Context } from '../structures/context.js';
 import type { Guild } from '../structures/guild.js';
 import type { GuildMember } from '../structures/member.js';
-import type { Message } from '../structures/message.js';
+import type {
+  DmMessage,
+  GuildMessage,
+  MemberMessage,
+  Message,
+  PrivateMessage,
+} from '../structures/message.js';
 import type { Role } from '../structures/role.js';
 import type { User } from '../structures/user.js';
 
@@ -41,6 +52,8 @@ export interface EventContexts {
     channelId: Snowflake;
     /** The id of the server; `null` for a private message. */
     guildId: Snowflake | null;
+    /** The server; `null` for a private message. */
+    guild: Guild | null;
     /** The channel, when the bot knows it. */
     channel: TextBasedChannel | null;
     /** The message as it was, when the bot remembered it. */
@@ -75,8 +88,8 @@ export interface EventContexts {
   roleDelete: {
     roleId: Snowflake;
     guild: Guild;
-    /** The role as it was, when the bot knew it. */
-    role: Role | null;
+    /** The role as it was. */
+    role: Role;
   };
 }
 
@@ -91,8 +104,24 @@ export interface EventFile {
   readonly options: unknown;
 }
 
+/**
+ * Where something happens: in servers (`'guild'`), in private messages with
+ * the bot (`'dm'`), or in both.
+ */
+export type EventWhere = 'guild' | 'dm' | 'both';
+
+/** The option of the events that also happen in private messages. */
+export interface WhereEventOptions {
+  /**
+   * Where the file listens: `'guild'` (in servers, the default), `'dm'` (in
+   * private messages with the bot) or `'both'`. What the function receives
+   * follows it: a server that is always there, never there, or to check.
+   */
+  where?: EventWhere;
+}
+
 /** Options of the events about messages. */
-export interface MessageEventOptions {
+export interface MessageEventOptions extends WhereEventOptions {
   /**
    * Also run for messages written by bots (this one included) and by
    * webhooks. By default they are ignored: a bot that answers bots can end
@@ -108,7 +137,101 @@ export interface MessageEventOptions {
 export interface EventOptions {
   messageCreate: MessageEventOptions;
   messageUpdate: MessageEventOptions;
+  messageDelete: WhereEventOptions;
 }
+
+/**
+ * Whether a file turned an option on, from the type of what it passed. An
+ * option that is only known to be a boolean counts: it may be on.
+ */
+type IsOn<Options, Key extends string> = Key extends keyof Options
+  ? Exclude<Options[Key], undefined> extends false
+    ? false
+    : true
+  : false;
+
+/**
+ * Where a file listens, from the type of what it passed: in servers when
+ * it says nothing, every place it may be when it is only known to be one.
+ */
+type WhereOf<Options> = 'where' extends keyof Options
+  ? [Exclude<Options['where'], undefined>] extends [never]
+    ? 'guild'
+    : Exclude<Options['where'], undefined>
+  : 'guild';
+
+/** A message of a server: its author is a member unless bots are let in. */
+type ServerMessage<Options> =
+  IsOn<Options, 'bots'> extends true ? GuildMessage : MemberMessage;
+
+/** The message a file receives: what its options let through. */
+type MessageFor<Options, Where = WhereOf<Options>> = Where extends 'guild'
+  ? ServerMessage<Options>
+  : Where extends 'dm'
+    ? DmMessage
+    : ServerMessage<Options> | PrivateMessage;
+
+type Deleted = Omit<
+  EventContexts['messageDelete'],
+  'guildId' | 'guild' | 'channel' | 'message'
+>;
+
+/** A message deleted in a server. */
+interface DeletedInGuild extends Deleted {
+  /** The id of the server. */
+  guildId: Snowflake;
+  /** The server the message was in. */
+  guild: Guild;
+  /** The channel the message was in. */
+  channel: GuildTextBasedChannel;
+  /** The message as it was, when the bot remembered it. */
+  message: GuildMessage | null;
+}
+
+/** A private message deleted, for a file that receives both kinds. */
+interface DeletedInPrivate extends Deleted {
+  guildId: null;
+  guild: null;
+  /** The private conversation, when the bot knows it. */
+  channel: DMChannel | null;
+  /** The message as it was, when the bot remembered it. */
+  message: PrivateMessage | null;
+}
+
+/** A private message deleted, for a file that only receives those. */
+interface DeletedInDm extends Deleted {
+  /** The private conversation, when the bot knows it. */
+  channel: DMChannel | null;
+  /** The message as it was, when the bot remembered it. */
+  message: DmMessage | null;
+}
+
+type DeletedFor<Where> = Where extends 'guild'
+  ? DeletedInGuild
+  : Where extends 'dm'
+    ? DeletedInDm
+    : DeletedInGuild | DeletedInPrivate;
+
+/**
+ * The events whose handler receives something more precise than
+ * `EventContexts`, following where its file listens.
+ */
+interface NarrowedContexts<Options> {
+  messageCreate: { message: MessageFor<Options> };
+  messageUpdate: { message: MessageFor<Options> };
+  messageDelete: DeletedFor<WhereOf<Options>>;
+}
+
+/**
+ * What the handler of an event receives, given the options its file passed
+ * to `event()`. `EventContexts` is the widest form: every option on.
+ */
+export type ContextOf<
+  Name extends EventName,
+  Options = object,
+> = Name extends keyof NarrowedContexts<Options>
+  ? NarrowedContexts<Options>[Name]
+  : EventContexts[Name];
 
 /** The options of an event; nothing for an event without options. */
 export type OptionsOf<Name extends EventName> = Name extends keyof EventOptions
@@ -124,6 +247,15 @@ interface Source<Name extends EventName, E extends GatewayDispatchEventName> {
    */
   before?: (ctx: Context, data: GatewayDispatchEvents[E]) => unknown;
   /**
+   * Gets from Discord what the handlers are promised and the bot does not
+   * know yet, before they run. Returns nothing when there is nothing to
+   * get, which is nearly always: the event is then delivered at once.
+   */
+  prepare?: (
+    ctx: Context,
+    data: GatewayDispatchEvents[E]
+  ) => Promise<unknown> | undefined;
+  /**
    * Builds what the handler receives, once the cache reflects the event.
    * `null` means the event does not happen (a server the bot was already
    * in sending its data is not a server it joined, for example).
@@ -136,13 +268,24 @@ interface Source<Name extends EventName, E extends GatewayDispatchEventName> {
 }
 
 export interface EventDefinition<Name extends EventName = EventName> {
-  /** The intents that make Discord send this event. */
-  intents: number;
+  /**
+   * The intents that make Discord send this event; from the options of a
+   * file when they depend on them, so that nothing is asked to Discord for
+   * what no file wants.
+   */
+  intents: number | ((options: OptionsOf<Name>) => number);
+  /**
+   * What the bot must remember for this event to give all it can, when it
+   * is more than the default: nothing is kept for what no file uses.
+   */
+  remembers?: Partial<CacheLimits>;
   /**
    * The options a file can pass to `event()`, with the type of each. An
    * event without this has no options.
    */
-  options?: { [Key in keyof OptionsOf<Name>]-?: 'boolean' };
+  options?: {
+    [Key in keyof OptionsOf<Name>]-?: 'boolean' | readonly string[];
+  };
   /**
    * Whether a file wants this occurrence of the event, given its options.
    * Decided per file: two files of the same folder can differ.
@@ -177,18 +320,75 @@ const deletedChannel = (
     before ? { channel: before as Channel } : null,
 });
 
-/** Bots and webhooks only reach the files that asked for them. */
-const fromPersonUnlessAsked = (
-  context: { message: Message },
+/** The channels being asked to Discord, for each bot. */
+const asking = new WeakMap<Context, Map<Snowflake, Promise<unknown>>>();
+
+/**
+ * The channel of what happened in a server, asked to Discord when the bot
+ * does not know it (a thread it never saw, for example): one request, then
+ * it is remembered.
+ *
+ * Everything that happens in that channel meanwhile waits for the same
+ * answer, so it costs one request and is delivered in the order it
+ * happened: a message is never deleted before it was sent.
+ */
+const channelOf = (
+  ctx: Context,
+  data: { channel_id: Snowflake; guild_id?: Snowflake }
+): Promise<unknown> | undefined => {
+  const guildId = data.guild_id;
+  const id = data.channel_id;
+  if (!guildId || ctx.cache.channels.has(id)) return undefined;
+  let pending = asking.get(ctx);
+  if (!pending) asking.set(ctx, (pending = new Map()));
+  const running = pending.get(id);
+  if (running) return running;
+  const answer = ctx.rest
+    .request(GetChannel, [id])
+    .then(raw => ctx.entities.channel(raw, guildId))
+    .finally(() => pending.delete(id));
+  pending.set(id, answer);
+  return answer;
+};
+
+/**
+ * Private messages, bots and webhooks only reach the files that asked for
+ * them. This is also what makes the types true: in a server, the server
+ * and the channel are there, and without `bots` so is the member who wrote.
+ */
+/** Whether a file listens where something happened. */
+const listensThere = (
+  where: EventWhere | undefined,
+  inGuild: boolean
+): boolean => (inGuild ? where !== 'dm' : where === 'dm' || where === 'both');
+
+/** The intents of messages, for where a file listens. */
+const messagesIn = (where: EventWhere | undefined): number =>
+  (where === 'dm' ? 0 : I.GuildMessages) |
+  (where === 'dm' || where === 'both' ? I.DirectMessages : 0);
+
+const PLACES = ['guild', 'dm', 'both'] as const;
+
+const wantedMessage = (
+  { message }: { message: Message },
   options: MessageEventOptions
-): boolean =>
-  options.bots === true ||
-  (!context.message.author.bot && context.message.webhookId === null);
+): boolean => {
+  const inGuild = message.guildId !== null;
+  if (!listensThere(options.where, inGuild)) return false;
+  // In a server, the server and the channel are promised.
+  if (inGuild && (message.guild === null || message.channel === null)) {
+    return false;
+  }
+  if (options.bots === true) return true;
+  if (message.author.bot || message.webhookId !== null) return false;
+  return !inGuild || message.member !== null;
+};
 
 const message = (
   on: 'MESSAGE_CREATE' | 'MESSAGE_UPDATE'
 ): Source<'messageCreate' | 'messageUpdate', typeof on> => ({
   on,
+  prepare: channelOf,
   build: (ctx, data) => ({
     message: ctx.entities.message(data, data.guild_id),
   }),
@@ -200,8 +400,14 @@ const member = (
   on,
   build: (ctx, data) => {
     const guild = guildOf(ctx, data.guild_id);
-    const found = guild?.members.get(data.user!.id);
-    return guild && found ? { member: found, guild } : null;
+    if (!guild) return null;
+    const { guild_id: guildId, ...raw } = data;
+    // The member comes with the event: it is there whatever the bot
+    // remembers of the members of the server.
+    const member =
+      guild.members.get(data.user!.id) ??
+      ctx.entities.member(guildId, raw as RawGuildMember);
+    return { member, guild };
   },
 });
 
@@ -225,22 +431,28 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
 
   messageCreate: {
     // Without Message Content, the messages of others come empty.
-    intents: I.GuildMessages | I.DirectMessages | I.MessageContent,
-    options: { bots: 'boolean' },
-    accepts: fromPersonUnlessAsked,
+    intents: ({ where }) => messagesIn(where) | I.MessageContent,
+    options: { bots: 'boolean', where: PLACES },
+    accepts: wantedMessage,
     sources: [message('MESSAGE_CREATE')],
   },
   messageUpdate: {
-    intents: I.GuildMessages | I.DirectMessages | I.MessageContent,
-    options: { bots: 'boolean' },
-    accepts: fromPersonUnlessAsked,
+    intents: ({ where }) => messagesIn(where) | I.MessageContent,
+    options: { bots: 'boolean', where: PLACES },
+    accepts: wantedMessage,
     sources: [message('MESSAGE_UPDATE')],
   },
   messageDelete: {
-    intents: I.GuildMessages | I.DirectMessages,
+    intents: ({ where }) => messagesIn(where),
+    options: { where: PLACES },
+    accepts: ({ guildId, guild, channel }, options) =>
+      listensThere(options.where, guildId !== null) &&
+      // In a server, the server and the channel are promised.
+      (guildId === null || (guild !== null && channel !== null)),
     sources: [
       {
         on: 'MESSAGE_DELETE',
+        prepare: channelOf,
         before: (ctx, data) => {
           const found = ctx.cache.channels.get(data.channel_id);
           return found?.isTextBased()
@@ -249,10 +461,12 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
         },
         build: (ctx, data, { before }) => {
           const found = ctx.cache.channels.get(data.channel_id);
+          const guildId = data.guild_id ?? found?.guildId ?? null;
           return {
             messageId: data.id,
             channelId: data.channel_id,
-            guildId: data.guild_id ?? found?.guildId ?? null,
+            guildId,
+            guild: guildId ? (ctx.cache.guilds.get(guildId) ?? null) : null,
             channel: found?.isTextBased() ? found : null,
             message: before as Message | null,
           };
@@ -271,6 +485,8 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   },
   memberLeave: {
     intents: I.GuildMembers,
+    // "The member as it was" is a member the bot remembered.
+    remembers: { members: 1000 },
     sources: [
       {
         on: 'GUILD_MEMBER_REMOVE',
@@ -341,12 +557,9 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
           guildOf(ctx, data.guild_id)?.roles.get(data.role_id) ?? null,
         build: (ctx, data, { before }) => {
           const guild = guildOf(ctx, data.guild_id);
-          if (!guild) return null;
-          return {
-            roleId: data.role_id,
-            guild,
-            role: before as Role | null,
-          };
+          // Every role of a server is known: one that is not never was.
+          if (!guild || !before) return null;
+          return { roleId: data.role_id, guild, role: before as Role };
         },
       },
     ],

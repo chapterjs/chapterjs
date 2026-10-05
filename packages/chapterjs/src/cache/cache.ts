@@ -15,7 +15,10 @@ import {
 export interface CacheLimits {
   /** Users, across every server. */
   users: number;
-  /** Members, per server. */
+  /**
+   * Members, per server: the ones seen the most recently. The bot itself
+   * is always kept, apart from this.
+   */
   members: number;
   /** Messages, per channel. */
   messages: number;
@@ -28,7 +31,13 @@ export interface CacheLimits {
  */
 export const DEFAULT_CACHE_LIMITS: CacheLimits = {
   users: Infinity,
-  members: Infinity,
+  // A server can have millions of members, and Discord recommends keeping
+  // only what the app needs: what an event comes with (the author of a
+  // message, who used a command) is kept by the event itself, whatever this
+  // limit. A feature that needs more members remembered asks for it (see
+  // `remembers` in the events).
+  // https://docs.discord.com/developers/events/gateway#tracking-state
+  members: 100,
   messages: 0,
 };
 
@@ -44,7 +53,8 @@ export interface CacheOptions {
  * (roles, members, emojis...): forgetting a server forgets it all.
  */
 export class Cache {
-  readonly limits: Readonly<CacheLimits>;
+  #configured: Readonly<CacheLimits>;
+  #limits: CacheLimits;
   readonly createStore: CacheStoreFactory;
   readonly users: CacheStore<Snowflake, User>;
   readonly guilds: CacheStore<Snowflake, Guild>;
@@ -52,11 +62,51 @@ export class Cache {
   readonly channels: CacheStore<Snowflake, Channel>;
 
   constructor(options: CacheOptions = {}) {
-    this.limits = Object.freeze({ ...DEFAULT_CACHE_LIMITS, ...options.limits });
+    this.#configured = Object.freeze({
+      ...DEFAULT_CACHE_LIMITS,
+      ...options.limits,
+    });
+    this.#limits = { ...this.#configured };
     this.createStore = options.store ?? memoryStore;
     this.users = this.createStore({ limit: this.limits.users });
     this.guilds = this.createStore();
     this.channels = this.createStore();
+  }
+
+  /** How many of each kind are kept when memory is not a concern. */
+  get configured(): Readonly<CacheLimits> {
+    return this.#configured;
+  }
+
+  /**
+   * Changes what is kept when memory is not a concern (the files of the
+   * project changed and need more, or less). What holds right now follows,
+   * except what memory made lower: that stays as low as it is.
+   */
+  configure(limits: Partial<CacheLimits>): void {
+    const next = Object.freeze({ ...this.#configured, ...limits });
+    const now = { ...this.#limits };
+    for (const kind of Object.keys(next) as (keyof CacheLimits)[]) {
+      now[kind] =
+        this.#limits[kind] === this.#configured[kind]
+          ? next[kind]
+          : Math.min(this.#limits[kind], next[kind]);
+    }
+    this.#configured = next;
+    this.#limits = now;
+  }
+
+  /**
+   * How many of each kind are kept right now: what was configured, or less
+   * while memory is short (see `core/memory.ts`). New stores follow it.
+   */
+  get limits(): Readonly<CacheLimits> {
+    return this.#limits;
+  }
+
+  /** Changes the limits new stores follow; existing ones are resized apart. */
+  setLimits(limits: Partial<CacheLimits>): void {
+    this.#limits = { ...this.#limits, ...limits };
   }
 
   /** Forgets everything (the session was lost and starts over). */

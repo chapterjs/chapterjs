@@ -66,6 +66,9 @@ describe.skipIf(process.platform === 'win32')('create-chapter CLI', () => {
       expect(existsSync(join(dir, '_gitignore'))).toBe(false);
       expect(installedBy(dir)).toBe('pnpm');
       expect(output).toContain('Using the default template');
+      // Its first example files are there.
+      expect(existsSync(join(dir, 'src/commands/ping.ts'))).toBe(true);
+      expect(existsSync(join(dir, 'src/events/ready/online.ts'))).toBe(true);
       expect(output).toContain(`Project created in ${dir}`);
       expect(output).toContain('Dependencies installed with pnpm');
       expect(nextSteps(output)).toEqual([
@@ -358,8 +361,45 @@ describe.skipIf(process.platform === 'win32')('create-chapter CLI', () => {
           `Using ${pm}, the only package manager installed`
         );
         expect(installedBy(join(cwd, 'bot'))).toBe(pm);
+        // What only pnpm needs is only written for pnpm: without it, pnpm
+        // refuses to install a project whose framework comes with esbuild.
+        const settings = join(cwd, 'bot/pnpm-workspace.yaml');
+        if (pm === 'pnpm') {
+          expect(readFileSync(settings, 'utf8')).toBe(
+            '# esbuild works without its install script: pnpm is told not to run it.\nallowBuilds:\n  esbuild: false\nignoredBuiltDependencies:\n  - esbuild\n'
+          );
+        } else {
+          expect(existsSync(settings)).toBe(false);
+        }
       }
     );
+
+    it('creates a project with the scripts to build and start it', async () => {
+      const cwd = tempDir();
+      const cli = runCreate({
+        cwd,
+        args: ['bot'],
+        path: fakePackageManagers({ pnpm: { version: '10.0.0' } }),
+      });
+      expect((await cli.exited).code).toBe(0);
+      const pkg = JSON.parse(
+        readFileSync(join(cwd, 'bot/package.json'), 'utf8')
+      ) as {
+        scripts: Record<string, string>;
+        devDependencies: Record<string, string>;
+      };
+      expect(pkg.scripts).toMatchObject({
+        dev: 'chapterjs dev',
+        build: 'chapterjs build',
+        start: 'chapterjs start',
+      });
+      // What compiles the bot comes with the framework: the project only
+      // has what checks its types.
+      expect(Object.keys(pkg.devDependencies).sort()).toEqual([
+        '@types/node',
+        'typescript',
+      ]);
+    });
 
     it('stops before creating anything when no manager is installed', async () => {
       const cwd = tempDir();
