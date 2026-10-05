@@ -1,0 +1,182 @@
+---
+title: 'Message'
+description: 'A message sent in a channel: reply, edit, react, pin'
+---
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function onPing(message: Message) {
+  if (!message.isFromUser) return; // ignore bots, webhooks and system messages
+  if (message.content !== '!ping') return;
+
+  const reply = await message.reply('Pong!');
+  await reply.react('🏓');
+}
+```
+
+<Warning>
+  `message.content`, `embeds` and `attachments` are empty for messages of other people unless the **Message Content** intent is enabled for your bot. Messages that mention the bot, and private messages, always have their content.
+</Warning>
+
+## Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | The unique id Discord gave it. |
+| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
+| `author` | `User` | Who wrote the message. |
+| `mentions` | `readonly User[]` | The users mentioned in the message. |
+| `channelId` | `Snowflake` | The id of the channel of the message. |
+| `guildId` | `Snowflake \| null` | The id of the server; `null` for a private message. |
+| `channel` | `TextBasedChannel \| null` | The channel of the message, when it is known. |
+| `guild` | `Guild \| null` | The server of the message, when there is one and it is known. |
+| `member` | `GuildMember \| null` | The author as a member of the server, when it is known. |
+| `content` | `string` | The text of the message. Empty when the bot is not allowed to read it: reading the messages of others needs the Message Content intent. |
+| `type` | `MessageType` | The kind of message, as a value of `MessageType` (a regular one, a reply, a join notice...). |
+| `editedAt` | `Date \| null` | When the message was last edited; `null` when it never was. |
+| `pinned` | `boolean` | Whether the message is pinned. |
+| `tts` | `boolean` | Whether the message was read aloud. |
+| `embeds` | `Embed[]` | The embeds of the message. |
+| `attachments` | `Attachment[]` | The files attached to the message. |
+| `reactions` | `Reaction[]` | The reactions on the message, one entry per emoji. |
+| `mentionsEveryone` | `boolean` | Whether the message mentions @everyone or @here. |
+| `mentionedRoleIds` | `readonly Snowflake[]` | The ids of the roles mentioned in the message. |
+| `flags` | `MessageFlagName[]` | The flags of the message, by name (`Ephemeral`, `SuppressEmbeds`...). |
+| `webhookId` | `Snowflake \| null` | The id of the webhook that sent the message, when one did. |
+| `repliedMessageId` | `Snowflake \| null` | The id of the message this one replies to, when it is a reply. |
+| `isFromUser` | `boolean` | Whether a person wrote it: not a bot, a webhook or Discord itself. |
+| `url` | `string` | The link that opens the message in Discord. |
+
+## Reading from Discord
+
+### fetch()
+
+```ts
+fetch(): Promise<Message>
+```
+
+Asks Discord for the latest version of the message.
+
+### fetchReactionUsers()
+
+```ts
+fetchReactionUsers(emoji: EmojiInput, options?: { limit?: number; after?: Snowflake }): Promise<User[]>
+```
+
+The users who reacted with an emoji (100 at most per call).
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#get-reactions)
+
+## Actions
+
+### reply()
+
+```ts
+reply(message: MessageInput): Promise<Message>
+```
+
+Answers the message, in the same channel.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#create-message)
+
+### edit()
+
+```ts
+edit(message: string | MessageEditOptions): Promise<Message>
+```
+
+Changes the message. Only the content, embeds, components and files of a message the bot wrote can change.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#edit-message)
+
+### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Deletes the message.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#delete-message)
+
+### react()
+
+```ts
+react(emoji: EmojiInput): Promise<void>
+```
+
+Adds a reaction of the bot to the message.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#create-reaction)
+
+### removeReaction()
+
+```ts
+removeReaction(emoji: EmojiInput, user?: Snowflake | { id: Snowflake }): Promise<void>
+```
+
+Removes a reaction: of the bot, or of the given user.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#delete-user-reaction)
+
+### clearReactions()
+
+```ts
+clearReactions(emoji?: EmojiInput): Promise<void>
+```
+
+Removes every reaction of the message, or every reaction of one emoji.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#delete-all-reactions)
+
+### pin()
+
+```ts
+pin(reason?: string): Promise<void>
+```
+
+Pins the message in its channel.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#pin-message)
+
+### unpin()
+
+```ts
+unpin(reason?: string): Promise<void>
+```
+
+Unpins the message.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#unpin-message)
+
+### crosspost()
+
+```ts
+crosspost(): Promise<Message>
+```
+
+Publishes a message of an announcement channel to the servers that follow it.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#crosspost-message)
+
+### startThread()
+
+```ts
+startThread(options: Camelize<StartThreadFromMessageJSONParams>, reason?: string): Promise<ThreadChannel>
+```
+
+Starts a thread from the message.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-from-message)
+
+
+## Emojis in reactions
+
+Methods that take an emoji accept:
+
+- a standard emoji: `'👍'`
+- a custom emoji as Discord writes it: `'<:name:123456789012345678>'`
+- a custom emoji as an object: `{ id: '123456789012345678', name: 'name' }`, or a `GuildEmoji`
+
+See [Sending messages](/reference/sending-messages) for everything `reply()` and `edit()` accept, and [Data](/reference/data) for the fields of `embeds`, `attachments` and `reactions`.

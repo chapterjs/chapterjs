@@ -1,0 +1,72 @@
+---
+title: 'Errors'
+description: 'What is thrown when Discord refuses an action or cannot be reached'
+---
+
+An action that fails throws an error. There are three kinds, all exported by `chapterjs`.
+
+```ts
+import { DiscordApiError, type GuildMember } from 'chapterjs';
+
+async function warn(member: GuildMember, text: string) {
+  try {
+    await member.send(text);
+    return true;
+  } catch (error) {
+    // 50007: this user does not accept private messages.
+    if (error instanceof DiscordApiError && error.code === 50007) return false;
+    throw error; // anything else is a real problem
+  }
+}
+```
+
+## DiscordApiError
+
+Discord answered, and refused: a missing permission, something that no longer exists, an invalid value...
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `message` | `string` | What happened, with the reason Discord gave and the fields it refused. |
+| `status` | `number` | The HTTP status of the response (403, 404...). |
+| `code` | `number` | The JSON error code of Discord (50013 for "Missing Permissions"...), or 0 when the response had none. |
+| `fieldErrors` | `readonly DiscordFieldError[]` | The fields of the request Discord refused, when it says which. |
+| `method` | `HttpMethod` | The HTTP method of the request that failed. |
+| `route` | `string` | The path of the endpoint as written in the documentation. |
+
+### DiscordFieldError
+
+One problem Discord found in a field of the request.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `path` | `string` | Where the problem is: `embeds[0].title`, or `` for the whole request. |
+| `code` | `string` | The kind of problem, as Discord names it (`BASE_TYPE_MAX_LENGTH`). |
+| `message` | `string` | What is wrong, in English. |
+
+
+### Codes you will meet
+
+| Code | Meaning |
+| --- | --- |
+| `10003` | Unknown channel: it was deleted |
+| `10007` | Unknown member: they left the server |
+| `10008` | Unknown message: it was deleted |
+| `10026` | Unknown ban: the user is not banned |
+| `50001` | Missing access: the bot can't see this |
+| `50007` | Cannot send messages to this user |
+| `50013` | Missing permissions: the bot lacks a permission, or its role is too low |
+| `50035` | Invalid form body: a value was refused, see `fieldErrors` |
+
+The full list is in the [Discord documentation](https://docs.discord.com/developers/topics/opcodes-and-status-codes#json-json-error-codes).
+
+## DiscordUnavailableError
+
+Discord could not be reached, or kept failing: no internet connection, an outage of Discord, a request that took too long. The framework already tried several times before throwing it.
+
+## InvalidTokenError
+
+Discord refused the bot token. Nothing can work until `BOT_TOKEN` is fixed in your `.env` file, so the framework stops sending requests.
+
+## What never throws
+
+Rate limits are not errors: when the bot goes too fast, requests wait for their turn and then succeed.

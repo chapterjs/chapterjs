@@ -1,0 +1,175 @@
+---
+title: 'Permissions'
+description: 'Read, check and write permissions by name'
+---
+
+Permissions are always written by name, like `'BanMembers'`: your editor completes them and refuses a typo.
+
+```ts
+import type { GuildChannel, GuildMember } from 'chapterjs';
+
+function canPost(member: GuildMember, channel: GuildChannel) {
+  // In the whole server...
+  if (member.permissions.has('Administrator')) return true;
+
+  // ...or in one channel, where overwrites may change them.
+  const permissions = member.permissionsIn(channel);
+  const missing = permissions.missing(['SendMessages', 'AttachFiles']);
+  if (missing.length > 0) console.log(`Missing: ${missing.join(', ')}`);
+  return missing.length === 0;
+}
+```
+
+## Where permissions come from
+
+- `member.permissions`: what the member can do in the server, from the roles they have. The owner and administrators can do everything.
+- `member.permissionsIn(channel)` or `channel.permissionsFor(member)`: the same, changed by what the channel allows or denies to their roles and to them. A member who can't see a channel can't do anything in it, and a timed out member can only read.
+- `role.permissions`: what a role gives.
+
+These are computed from what the bot knows, exactly as [Discord documents it](https://docs.discord.com/developers/topics/permissions#permission-overwrites): they never send a request.
+
+## The Permissions set
+
+A `Permissions` value never changes: `add()` and `remove()` return a new one.
+
+```ts
+import { Permissions } from 'chapterjs';
+
+const moderator = new Permissions(['KickMembers', 'BanMembers']);
+moderator.has('KickMembers'); // true
+moderator.add('ModerateMembers').toArray(); // ['KickMembers', 'BanMembers', 'ModerateMembers']
+```
+
+### Permissions properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `bits` | `bigint` | The permissions as one number, each bit being a permission. |
+
+### Permissions methods
+
+#### has()
+
+```ts
+has(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boolean
+```
+
+Whether every given permission is in the set. An administrator has every permission, unless `{ checkAdmin: false }` is passed.
+
+#### any()
+
+```ts
+any(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boolean
+```
+
+Whether at least one of the given permissions is in the set.
+
+#### missing()
+
+```ts
+missing(permission: PermissionResolvable): PermissionName[]
+```
+
+The given permissions that are not in the set, by name.
+
+#### add()
+
+```ts
+add(permission: PermissionResolvable): Permissions
+```
+
+A new set with the given permissions added.
+
+#### remove()
+
+```ts
+remove(permission: PermissionResolvable): Permissions
+```
+
+A new set without the given permissions.
+
+#### toArray()
+
+```ts
+toArray(): PermissionName[]
+```
+
+The names of the permissions in the set, in the order of the docs.
+
+#### toString()
+
+```ts
+toString(): string
+```
+
+The text Discord expects in a request.
+
+
+Wherever permissions are expected you can pass a name, a list of names, or a `Permissions` set.
+
+<Info>
+  `has()` and `any()` answer `true` for an administrator, whatever is asked. Pass `{ checkAdmin: false }` to check the exact permission.
+</Info>
+
+## Every permission
+
+| Name | Value |
+| --- | --- |
+| `CreateInstantInvite` | `1n << 0n` |
+| `KickMembers` | `1n << 1n` |
+| `BanMembers` | `1n << 2n` |
+| `Administrator` | `1n << 3n` |
+| `ManageChannels` | `1n << 4n` |
+| `ManageGuild` | `1n << 5n` |
+| `AddReactions` | `1n << 6n` |
+| `ViewAuditLog` | `1n << 7n` |
+| `PrioritySpeaker` | `1n << 8n` |
+| `Stream` | `1n << 9n` |
+| `ViewChannel` | `1n << 10n` |
+| `SendMessages` | `1n << 11n` |
+| `SendTtsMessages` | `1n << 12n` |
+| `ManageMessages` | `1n << 13n` |
+| `EmbedLinks` | `1n << 14n` |
+| `AttachFiles` | `1n << 15n` |
+| `ReadMessageHistory` | `1n << 16n` |
+| `MentionEveryone` | `1n << 17n` |
+| `UseExternalEmojis` | `1n << 18n` |
+| `ViewGuildInsights` | `1n << 19n` |
+| `Connect` | `1n << 20n` |
+| `Speak` | `1n << 21n` |
+| `MuteMembers` | `1n << 22n` |
+| `DeafenMembers` | `1n << 23n` |
+| `MoveMembers` | `1n << 24n` |
+| `UseVad` | `1n << 25n` |
+| `ChangeNickname` | `1n << 26n` |
+| `ManageNicknames` | `1n << 27n` |
+| `ManageRoles` | `1n << 28n` |
+| `ManageWebhooks` | `1n << 29n` |
+| `ManageGuildExpressions` | `1n << 30n` |
+| `UseApplicationCommands` | `1n << 31n` |
+| `RequestToSpeak` | `1n << 32n` |
+| `ManageEvents` | `1n << 33n` |
+| `ManageThreads` | `1n << 34n` |
+| `CreatePublicThreads` | `1n << 35n` |
+| `CreatePrivateThreads` | `1n << 36n` |
+| `UseExternalStickers` | `1n << 37n` |
+| `SendMessagesInThreads` | `1n << 38n` |
+| `UseEmbeddedActivities` | `1n << 39n` |
+| `ModerateMembers` | `1n << 40n` |
+| `ViewCreatorMonetizationAnalytics` | `1n << 41n` |
+| `UseSoundboard` | `1n << 42n` |
+| `CreateGuildExpressions` | `1n << 43n` |
+| `CreateEvents` | `1n << 44n` |
+| `UseExternalSounds` | `1n << 45n` |
+| `SendVoiceMessages` | `1n << 46n` |
+| `SetVoiceChannelStatus` | `1n << 48n` |
+| `SendPolls` | `1n << 49n` |
+| `UseExternalApps` | `1n << 50n` |
+| `PinMessages` | `1n << 51n` |
+| `BypassSlowmode` | `1n << 52n` |
+
+[Discord documentation](https://docs.discord.com/developers/topics/permissions#permissions-bitwise-permission-flags)
+
+## The hierarchy
+
+Having a permission is not always enough: a member can only kick, ban, rename or give roles to members whose highest role is below their own. `member.isHigherThan(other)` and `role.isHigherThan(other)` answer that. The same applies to your bot: its highest role must be above the member it moderates.

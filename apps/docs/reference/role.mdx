@@ -1,0 +1,92 @@
+---
+title: 'Role'
+description: 'A role of a server: its permissions, position and members'
+---
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function createModerators(guild: Guild) {
+  const role = await guild.createRole({
+    name: 'Moderators',
+    permissions: ['KickMembers', 'BanMembers', 'ModerateMembers'],
+    hoist: true,
+  });
+  return `${role} was created.`; // "<@&id> was created."
+}
+```
+
+Every server has an `@everyone` role that every member has. Its id is the id of the server: `guild.everyoneRole`.
+
+## Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | The unique id Discord gave it. |
+| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
+| `guildId` | `Snowflake` | The id of the server of the role. |
+| `guild` | `Guild \| null` | The server of the role, when it is known. |
+| `name` | `string` | The name of the role. |
+| `color` | `number` | The color as a number (`0xff0000`); `0` means no color. |
+| `hoist` | `boolean` | Whether members with this role are shown apart in the member list. |
+| `position` | `number` | Where the role is in the hierarchy: the higher, the more powerful. |
+| `permissions` | `Permissions` | What the role allows in the server. |
+| `managed` | `boolean` | Whether the role belongs to an integration (a bot, boosters...). |
+| `mentionable` | `boolean` | Whether everyone can mention the role. |
+| `unicodeEmoji` | `string \| null` | The standard emoji shown next to the role, when it has one. |
+| `isEveryone` | `boolean` | Whether this is the @everyone role, which every member has. |
+| `members` | `GuildMember[]` | The members that have this role, among the ones the bot knows. |
+
+## Helpers
+
+These read what the bot already knows: they never send a request.
+
+### iconURL()
+
+```ts
+iconURL(options?: ImageOptions): string | null
+```
+
+The URL of the icon of the role, when it has one.
+
+### isHigherThan()
+
+```ts
+isHigherThan(other: Role): boolean
+```
+
+Whether this role is above another one in the hierarchy. With the same position, the oldest role is above.
+
+[Discord documentation](https://docs.discord.com/developers/topics/permissions#permission-hierarchy)
+
+### toString()
+
+```ts
+toString(): string
+```
+
+`<@&id>`: mentions the role when put in a message.
+
+## Actions
+
+### edit()
+
+```ts
+edit(options: RoleEditOptions, reason?: string): Promise<Role>
+```
+
+Changes the role.
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild#modify-guild-role)
+
+### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Deletes the role.
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild#delete-guild-role)
+
+See [Options](/reference/options#role-options) for what `edit()` accepts, and [Permissions](/reference/permissions) for how to read and write permissions.

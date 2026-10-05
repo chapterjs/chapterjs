@@ -1,0 +1,279 @@
+---
+title: 'Options'
+description: 'What the methods that create and edit things accept'
+---
+
+The fields accepted by the methods that create or edit something. They are the ones of the Discord API, with camelCase names.
+
+A `?` after a name means the field can be left out. When editing, only what you pass changes; `null` removes a value where the type allows it.
+
+## Server options
+
+### GuildEditOptions
+
+Accepted by `guild.edit()`. Images are data URIs: `data:image/png;base64,...`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name?` | `string` | Guild name |
+| `region?` | `string \| null` | Guild voice region id (deprecated) |
+| `verificationLevel?` | `VerificationLevel \| null` | Verification level |
+| `defaultMessageNotifications?` | `DefaultMessageNotificationLevel \| null` | Default message notification level |
+| `explicitContentFilter?` | `ExplicitContentFilterLevel \| null` | Explicit content filter level |
+| `afkChannelId?` | `Snowflake \| null` | Id for afk channel |
+| `afkTimeout?` | `number` | Afk timeout in seconds, can be set to: 60, 300, 900, 1800, 3600 |
+| `icon?` | `ImageData \| null` | Base64 1024x1024 png/jpeg/gif image for the guild icon (can be animated gif when the server has the `ANIMATED_ICON` feature) |
+| `splash?` | `ImageData \| null` | Base64 16:9 png/jpeg image for the guild splash (when the server has the `INVITE_SPLASH` feature) |
+| `discoverySplash?` | `ImageData \| null` | Base64 16:9 png/jpeg image for the guild discovery splash (when the server has the `DISCOVERABLE` feature) |
+| `banner?` | `ImageData \| null` | Base64 16:9 png/jpeg image for the guild banner (when the server has the `BANNER` feature; can be animated gif when the server has the `ANIMATED_BANNER` feature) |
+| `systemChannelId?` | `Snowflake \| null` | The id of the channel where guild notices such as welcome messages and boost events are posted |
+| `systemChannelFlags?` | `number` | System channel flags |
+| `rulesChannelId?` | `Snowflake \| null` | The id of the channel where Community guilds display rules and/or guidelines |
+| `publicUpdatesChannelId?` | `Snowflake \| null` | The id of the channel where admins and moderators of Community guilds receive notices from Discord |
+| `preferredLocale?` | `Locale \| null` | The preferred locale of a Community guild used in server discovery and notices from Discord; defaults to "en-US" |
+| `features?` | `GuildFeature[]` | Enabled guild features |
+| `description?` | `string \| null` | The description for the guild |
+| `premiumProgressBarEnabled?` | `boolean` | Whether the guild's boost progress bar should be enabled |
+| `safetyAlertsChannelId?` | `Snowflake \| null` | The id of the channel where admins and moderators of Community guilds receive safety alerts from Discord |
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild#modify-guild-json-params)
+
+### Scheduled event options
+
+Accepted by `guild.createScheduledEvent()`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `channelId?` | `Snowflake` | The channel id of the scheduled event. |
+| `entityMetadata?` | `GuildScheduledEventEntityMetadata` | The entity metadata of the scheduled event |
+| `name` | `string` | The name of the scheduled event |
+| `privacyLevel` | `GuildScheduledEventPrivacyLevel` | The privacy level of the scheduled event |
+| `scheduledStartTime` | `ISO8601Timestamp` | The time to schedule the scheduled event |
+| `scheduledEndTime?` | `ISO8601Timestamp` | The time when the scheduled event is scheduled to end |
+| `description?` | `string` | The description of the scheduled event |
+| `entityType` | `GuildScheduledEventEntityType` | The entity type of the scheduled event |
+| `image?` | `ImageData` | The cover image of the scheduled event |
+| `recurrenceRule?` | `GuildScheduledEventRecurrenceRule` | The definition for how often this event should recur |
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild-scheduled-event#create-guild-scheduled-event-json-params)
+
+### Audit log filters
+
+Accepted by `guild.fetchAuditLog()`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `userId?` | `Snowflake` | Entries from a specific user ID |
+| `actionType?` | `AuditLogEvent` | Entries for a specific audit log event |
+| `before?` | `Snowflake` | Entries with ID less than a specific audit log entry ID |
+| `after?` | `Snowflake` | Entries with ID greater than a specific audit log entry ID |
+| `limit?` | `number` | Maximum number of entries (between 1-100) to return, defaults to 50 |
+
+[Discord documentation](https://docs.discord.com/developers/resources/audit-log#get-guild-audit-log-query-string-params)
+
+## Channel options
+
+### ChannelCreateOptions
+
+Accepted by `guild.createChannel()`. Only `name` is required; which other fields apply depends on the `type`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Channel name (1-100 characters) |
+| `type?` | `ChannelType \| null` | The type of channel |
+| `topic?` | `string \| null` | Channel topic (0-1024 characters) |
+| `bitrate?` | `number \| null` | The bitrate (in bits per second) of the voice or stage channel; min 8000 |
+| `userLimit?` | `number \| null` | The user limit of the voice channel |
+| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600); bots, as well as users with the permission `BYPASS_SLOWMODE`, are unaffected |
+| `position?` | `number \| null` | Sorting position of the channel (channels with the same position are sorted by id) |
+| `permissionOverwrites?` | `Partial<PermissionOverwrite>[] \| null` | The channel's permission overwrites |
+| `parentId?` | `Snowflake \| null` | Id of the parent category for a channel |
+| `nsfw?` | `boolean \| null` | Whether the channel is age-restricted |
+| `rtcRegion?` | `string \| null` | Channel voice region id of the voice or stage channel, automatic when set to null |
+| `videoQualityMode?` | `VideoQualityMode \| null` | The camera video quality mode of the voice channel |
+| `defaultAutoArchiveDuration?` | `number \| null` | The default duration that the clients use (not the API) for newly created threads in the channel, in minutes, to automatically archive the thread after recent activity |
+| `defaultReactionEmoji?` | `DefaultReaction \| null` | Emoji to show in the add reaction button on a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel |
+| `availableTags?` | `ForumTag[] \| null` | Set of tags that can be used in a `GUILD_FORUM` or a `GUILD_MEDIA` channel |
+| `defaultSortOrder?` | `ForumSortOrderType \| null` | The default sort order type used to order posts in `GUILD_FORUM` and `GUILD_MEDIA` channels |
+| `defaultForumLayout?` | `ForumLayoutType \| null` | The default forum layout view used to display posts in `GUILD_FORUM` channels |
+| `defaultThreadRateLimitPerUser?` | `number \| null` | The initial `rate_limit_per_user` to set on newly created threads in a channel. this field is copied to the thread at creation time and does not live update. |
+| `flags?` | `number \| null` | Channel flags combined as a bitfield. |
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild#create-guild-channel-json-params)
+
+### GuildChannelEditOptions
+
+Accepted by `channel.edit()` on a channel of a server.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name?` | `string` | 1-100 character channel name |
+| `type?` | `ChannelType` | The type of channel; only conversion between text and announcement is supported and only in guilds with the "NEWS" feature |
+| `position?` | `number \| null` | The position of the channel in the left-hand listing (channels with the same position are sorted by id) |
+| `topic?` | `string \| null` | 0-1024 character channel topic (0-4096 characters for `GUILD_FORUM` and `GUILD_MEDIA` channels) |
+| `nsfw?` | `boolean \| null` | Whether the channel is age-restricted |
+| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600); bots, as well as users with the permission `BYPASS_SLOWMODE`, are unaffected |
+| `bitrate?` | `number \| null` | The bitrate (in bits per second) of the voice or stage channel; min 8000 |
+| `userLimit?` | `number \| null` | The user limit of the voice or stage channel, max 99 for voice channels and 10,000 for stage channels (0 refers to no limit) |
+| `permissionOverwrites?` | `Partial<PermissionOverwrite>[] \| null` | Channel or category-specific permissions |
+| `parentId?` | `Snowflake \| null` | Id of the new parent category for a channel |
+| `rtcRegion?` | `string \| null` | Channel voice region id, automatic when set to null |
+| `videoQualityMode?` | `VideoQualityMode \| null` | The camera video quality mode of the voice channel |
+| `defaultAutoArchiveDuration?` | `number \| null` | The default duration that the clients use (not the API) for newly created threads in the channel, in minutes, to automatically archive the thread after recent activity |
+| `flags?` | `number` | Channel flags combined as a bitfield. |
+| `availableTags?` | `ForumTag[]` | The set of tags that can be used in a `GUILD_FORUM` or a `GUILD_MEDIA` channel; limited to 20 |
+| `defaultReactionEmoji?` | `DefaultReaction \| null` | The emoji to show in the add reaction button on a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel |
+| `defaultThreadRateLimitPerUser?` | `number` | The initial `rate_limit_per_user` to set on newly created threads in a channel. this field is copied to the thread at creation time and does not live update. |
+| `defaultSortOrder?` | `ForumSortOrderType \| null` | The default sort order type used to order posts in `GUILD_FORUM` and `GUILD_MEDIA` channels |
+| `defaultForumLayout?` | `ForumLayoutType` | The default forum layout type used to display posts in `GUILD_FORUM` channels |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#modify-channel-json-params-guild-channel)
+
+### InviteCreateOptions
+
+Accepted by `channel.createInvite()`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `maxAge?` | `number` | Duration of invite in seconds before expiry, or 0 for never. between 0 and 604800 (7 days) |
+| `maxUses?` | `number` | Max number of uses or 0 for unlimited. between 0 and 100 |
+| `temporary?` | `boolean` | Whether this invite only grants temporary membership |
+| `unique?` | `boolean` | If true, don't try to reuse a similar invite (useful for creating many unique one time use invites) |
+| `targetType?` | `InviteTargetType` | The type of target for this voice channel invite |
+| `targetUserId?` | `Snowflake` | The id of the user whose stream to display for this invite, required if `target_type` is 1, the user must be streaming in the channel |
+| `targetApplicationId?` | `Snowflake` | The id of the embedded application to open for this invite, required if `target_type` is 2, the application must have the `EMBEDDED` flag |
+| `targetUserIds?` | `Snowflake[]` | An array of IDs of all users able to see and accept this invite. Max of 1000 IDs |
+| `roleIds?` | `Snowflake[]` | The role ID(s) for roles in the guild given to the users that accept this invite |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#create-channel-invite-jsonform-params)
+
+### Webhook options
+
+Accepted by `channel.createWebhook()`. `webhook.edit()` accepts the same fields, all optional, plus `channelId` to move it.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Name of the webhook (1-80 characters) |
+| `avatar?` | `ImageData \| null` | Image for the default webhook avatar |
+
+[Discord documentation](https://docs.discord.com/developers/resources/webhook#create-webhook-json-params)
+
+## Thread options
+
+### ThreadCreateOptions
+
+Accepted by `channel.startThread()`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | 1-100 character channel name |
+| `autoArchiveDuration?` | `number` | The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity, can be set to: 60, 1440, 4320, 10080 |
+| `type?` | `ChannelType` | The type of thread to create |
+| `invitable?` | `boolean` | Whether non-moderators can add other non-moderators to a thread; only available when creating a private thread |
+| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600) |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-without-message-json-params)
+
+### Thread from a message
+
+Accepted by `message.startThread()`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | 1-100 character channel name |
+| `autoArchiveDuration?` | `number` | The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity, can be set to: 60, 1440, 4320, 10080 |
+| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600) |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-from-message-json-params)
+
+### ThreadEditOptions
+
+Accepted by `thread.edit()`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name?` | `string` | 1-100 character channel name |
+| `archived?` | `boolean` | Whether the thread is archived |
+| `autoArchiveDuration?` | `number` | The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity, can be set to: 60, 1440, 4320, 10080 |
+| `locked?` | `boolean` | Whether the thread is locked; when a thread is locked, only users with MANAGE_THREADS can unarchive it |
+| `invitable?` | `boolean` | Whether non-moderators can add other non-moderators to a thread; only available on private threads |
+| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600); bots, as well as users with the permission `BYPASS_SLOWMODE`, are unaffected |
+| `flags?` | `number` | Channel flags combined as a bitfield; `PINNED` can only be set for threads in forum and media channels |
+| `appliedTags?` | `Snowflake[]` | The IDs of the set of tags that have been applied to a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel; limited to 5 |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#modify-channel-json-params-thread)
+
+## Role options
+
+### RoleCreateOptions
+
+Accepted by `guild.createRole()`. Every field is optional.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `name?` | `string` | Name of the role, max 100 characters |
+| `color?` | `number` | **Deprecated** RGB color value |
+| `colors?` | `RoleColors` | The role's colors |
+| `hoist?` | `boolean` | Whether the role should be displayed separately in the sidebar |
+| `icon?` | `ImageData \| null` | The role's icon image (if the guild has the `ROLE_ICONS` feature) |
+| `unicodeEmoji?` | `string \| null` | The role's unicode emoji as a standard emoji (if the guild has the `ROLE_ICONS` feature) |
+| `mentionable?` | `boolean` | Whether the role should be mentionable |
+| `permissions?` | `PermissionResolvable` | What the role allows: a name, a list of names or a `Permissions` set. |
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild#create-guild-role-json-params)
+
+`role.edit()` accepts the same fields.
+
+### colors
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `primaryColor` | `number` | The primary color for the role |
+| `secondaryColor` | `number \| null` | The secondary color for the role, this will make the role a gradient between the other provided colors |
+| `tertiaryColor` | `number \| null` | The tertiary color for the role, this will turn the gradient into a holographic style |
+
+[Discord documentation](https://docs.discord.com/developers/topics/permissions#role-object-role-colors-object)
+
+## Shared objects
+
+### permissionOverwrites
+
+`type` is `0` for a role and `1` for a member; `allow` and `deny` are permissions as text: `new Permissions([...]).toString()`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | Role or user id |
+| `type` | `PermissionOverwriteType` | Either 0 (role) or 1 (member) |
+| `allow` | `string` | Permission bit set |
+| `deny` | `string` | Permission bit set |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#overwrite-object-overwrite-structure)
+
+### availableTags
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | The id of the tag |
+| `name` | `string` | The name of the tag (0-20 characters) |
+| `moderated` | `boolean` | Whether this tag can only be added to or removed from threads by a member with the `MANAGE_THREADS` permission |
+| `emojiId` | `Snowflake \| null` | The id of a guild's custom emoji * |
+| `emojiName` | `string \| null` | The unicode character of the emoji * |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#forum-tag-object-forum-tag-structure)
+
+### defaultReactionEmoji
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `emojiId` | `Snowflake \| null` | The id of a guild's custom emoji |
+| `emojiName` | `string \| null` | The unicode character of the emoji |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#default-reaction-object-default-reaction-structure)
+
+### entityMetadata
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `location?` | `string` | Location of the event (1-100 characters) |
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild-scheduled-event#guild-scheduled-event-object-guild-scheduled-event-entity-metadata)
