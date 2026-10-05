@@ -25,6 +25,8 @@ export interface DispatchInfo {
    * connecting, or after an outage).
    */
   joined: boolean;
+  /** What `beforeDispatch` returned for this event. */
+  before: unknown;
 }
 
 export type BotEvent =
@@ -49,7 +51,23 @@ export interface BotOptions {
     data: GatewayDispatchEvents[E],
     info: DispatchInfo
   ) => void;
+  /**
+   * Called for every event before the cache reflects it: the last moment
+   * to read what the event removes. What it returns is given back to
+   * `onDispatch`.
+   */
+  beforeDispatch?: <E extends GatewayDispatchEventName>(
+    event: E,
+    data: GatewayDispatchEvents[E]
+  ) => unknown;
   onEvent?: (event: BotEvent) => void;
+  /**
+   * The servers the bot pays attention to. Events of the others are dropped
+   * before anything else, as if the bot was not in them: this is how a dev
+   * bot only sees its dev server. Events that belong to no server (private
+   * messages...) always pass.
+   */
+  guildFilter?: (guildId: Snowflake) => boolean;
   /**
    * How long to wait for the data of every server after connecting, in
    * milliseconds, before going on without the ones that did not come
@@ -71,6 +89,23 @@ export interface Bot {
   connect(): Promise<void>;
   /** Disconnects cleanly: the bot goes offline right away. */
   close(): Promise<void>;
+}
+
+/** The server a gateway event belongs to, when it belongs to one. */
+function guildIdOf(
+  event: GatewayDispatchEventName,
+  data: unknown
+): Snowflake | undefined {
+  if (typeof data !== 'object' || data === null) return undefined;
+  const fields = data as { id?: unknown; guild_id?: unknown };
+  // The events about a server itself carry its id as `id`.
+  const id =
+    event === 'GUILD_CREATE' ||
+    event === 'GUILD_UPDATE' ||
+    event === 'GUILD_DELETE'
+      ? fields.id
+      : fields.guild_id;
+  return typeof id === 'string' ? id : undefined;
 }
 
 export function createBot(options: BotOptions): Bot {
@@ -114,14 +149,39 @@ export function createBot(options: BotOptions): Bot {
     onDispatch(event, data, shardId) {
       let joined = false;
       let awaited = false;
+      const filter = options.guildFilter;
       if (event === 'READY') {
         const ready = data as GatewayDispatchEvents['READY'];
-        pending.set(shardId, new Set(ready.guilds.map(guild => guild.id)));
-      } else if (event === 'GUILD_CREATE' || event === 'GUILD_DELETE') {
+        if (filter) {
+          // The cache and the wait for servers only know the allowed ones.
+          data = {
+            ...ready,
+            guilds: ready.guilds.filter(guild => filter(guild.id)),
+          } as typeof data;
+        }
+        pending.set(
+          shardId,
+          new Set(
+            (data as GatewayDispatchEvents['READY']).guilds.map(
+              guild => guild.id
+            )
+          )
+        );
+      } else if (filter) {
+        const guildId = guildIdOf(event, data);
+        if (guildId !== undefined && !filter(guildId)) return;
+      }
+      if (event === 'GUILD_CREATE' || event === 'GUILD_DELETE') {
         const { id } = data as GatewayDispatchEvents['GUILD_DELETE'];
         awaited = pending.get(shardId)?.delete(id) ?? false;
         joined =
           event === 'GUILD_CREATE' && !awaited && !ctx.cache.guilds.has(id);
+      }
+      let before: unknown;
+      try {
+        before = options.beforeDispatch?.(event, data);
+      } catch (error) {
+        options.onEvent?.({ type: 'stateError', event, error });
       }
       try {
         applyDispatch(ctx, event, data, {
@@ -131,7 +191,7 @@ export function createBot(options: BotOptions): Bot {
       } catch (error) {
         options.onEvent?.({ type: 'stateError', event, error });
       }
-      options.onDispatch?.(event, data, { shardId, joined });
+      options.onDispatch?.(event, data, { shardId, joined, before });
       if (awaited) checkGuilds();
     },
   });

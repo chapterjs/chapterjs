@@ -28,6 +28,13 @@
         ]
       },
       {
+        "group": "Essentials",
+        "pages": [
+          "dev",
+          "events"
+        ]
+      },
+      {
         "group": "Reference",
         "pages": [
           "reference/overview",

@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
@@ -11,5 +11,10 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src"]
+  "files": [],
+  "references": [
+    {
+      "path": "./.chapterjs"
+    }
+  ]
 }

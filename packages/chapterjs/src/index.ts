@@ -1,7 +1,23 @@
+// The public types of ChapterJS, and everything in its API that is the same
+// wherever it is imported. What depends on the folder of the importing file
+// (`event`...) is exported at runtime by `main.ts`, and typed for each
+// folder of a project by the generated `.chapterjs/` (see
+// `loader/generated.ts`): declaring it here too would make editors offer
+// two imports of the same name.
+//
 // The public API of ChapterJS. User code gets structures from the framework
 // (in events, commands...) and never creates them: classes are exported as
 // types only, and nothing here lets user code connect to Discord or send
 // requests by itself.
+
+// What the functions of src/events/ receive, by event.
+export type {
+  EventContexts,
+  EventFile,
+  EventName,
+  EventOptions,
+  MessageEventOptions,
+} from './events/registry.js';
 
 // What handlers receive.
 export type {

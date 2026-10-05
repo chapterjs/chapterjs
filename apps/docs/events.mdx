@@ -1,0 +1,160 @@
+---
+title: 'Events'
+description: 'React to what happens on Discord: a message, a new member, a deleted channel'
+---
+
+An event is something that happens on Discord. To react to one, create a folder named after it in `src/events/`, and put a file in it:
+
+```ts src/events/memberJoin/welcome.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  await member.send(`Welcome to ${guild.name}, ${member.displayName}!`);
+});
+```
+
+That is all: no list to keep up to date, nothing to register. `chapterjs dev` finds the file, and runs your function every time someone joins.
+
+## How it works
+
+```text
+src/events/
+├── memberJoin/
+│   ├── welcome.ts
+│   └── log.ts
+├── messageCreate/
+│   └── ping.ts
+└── ready/
+    └── online.ts
+```
+
+- **The folder is the event.** Its name is one of the [events below](#the-events); a folder with another name is reported.
+- **Each file is one reaction.** Its name is yours to choose, and a folder can hold as many files as you want: they all run.
+- A file **exports by default** what `event()` returns, and gives it the function to run.
+- The function receives one object. **You never write its type**: `event` knows which folder the file is in, so your editor knows exactly what the event of *this* folder gives you. The import line is the same in every file.
+
+```ts src/events/messageCreate/ping.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  if (message.content === '!ping') await message.reply('Pong!');
+});
+```
+
+<Info>
+  This works thanks to the `.chapterjs/` folder of your project, where ChapterJS writes the types of each folder. It is written when you install your project and every time `chapterjs dev` starts. If your editor says that `event` does not exist, run `chapterjs sync`.
+</Info>
+
+### Several files for one event
+
+The files of a folder all run when the event happens, **at the same time and in no particular order**. One file never waits for another, and a file that fails does not stop the others.
+
+Use one file per thing your bot does: `moderation.ts`, `xp.ts`, `replies.ts`... When two steps must happen one after the other (delete a message, *then* warn its author), put them in the same file:
+
+```ts src/events/messageCreate/moderation.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  if (!message.content.includes('discord.gg/')) return;
+  await message.delete('Invite link');
+  await message.author.send('Invite links are not allowed here.');
+});
+```
+
+### Let your editor write the import
+
+Type `event(` in a new file and accept the suggestion: your editor adds `import { event } from 'chapterjs'` for you.
+
+`event` only exists in the folders of `src/events/`: anywhere else, your editor underlines the import.
+
+<Tip>
+  Code shared by several files goes in other folders, like `src/lib/`, and is imported like anywhere else: `import { greet } from '../../lib/greet'`. Files can also be grouped in subfolders of an event folder.
+</Tip>
+
+## The events
+
+Each event gives your function what it is about, as [structures](/reference/overview) you can read and act on.
+
+| Event | When | What your function receives |
+| --- | --- | --- |
+| `ready` | Once, when the bot is connected and knows its servers | `user` (the bot), `guilds` |
+| `messageCreate` | A message is sent by a person, in a server or in private ([bots are ignored by default](#bots-are-ignored-by-default)) | `message` |
+| `messageUpdate` | A message of a person is edited | `message` |
+| `messageDelete` | A message is deleted | `messageId`, `channelId`, `guildId`, `channel`, `message` |
+| `memberJoin` | Someone joins a server | `member`, `guild` |
+| `memberLeave` | Someone leaves a server, or is kicked or banned | `user`, `guild`, `member` |
+| `memberUpdate` | A member changes: nickname, roles, timeout... | `member`, `guild` |
+| `guildJoin` | The bot is added to a server | `guild` |
+| `guildLeave` | The bot is removed from a server | `guild` |
+| `channelCreate` | A channel or a thread is created | `channel` |
+| `channelUpdate` | A channel or a thread changes | `channel` |
+| `channelDelete` | A channel or a thread is deleted | `channel` |
+| `roleCreate` | A role is created | `role`, `guild` |
+| `roleUpdate` | A role changes | `role`, `guild` |
+| `roleDelete` | A role is deleted | `roleId`, `guild`, `role` |
+
+### What was deleted
+
+Events about something that no longer exists give you its id, and the thing itself **as it was** when the bot knew it:
+
+- `messageDelete`: `message` is the deleted message when the bot remembered it. For now the bot keeps no message in memory, so it is always `null`: use `messageId`. `channel` is `null` when the bot does not know the channel.
+- `memberLeave`: `member` is `null` when the bot never saw that member. `user` is always there.
+- `roleDelete`: `role` is `null` when the bot did not know the role.
+
+```ts src/events/memberLeave/goodbye.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ user, guild, member }) => {
+  const channel = guild.channels.get(guild.systemChannelId ?? '');
+  if (!channel?.isTextBased()) return;
+  const name = member?.displayName ?? user.displayName;
+  await channel.send(`${name} left. We are now ${guild.memberCount}.`);
+});
+```
+
+## Bots are ignored by default
+
+The files of `messageCreate` and `messageUpdate` only run for messages written by **people**. Messages written by bots (yours included) and by webhooks are ignored: you never need `if (message.author.bot) return;`, and your bot can't end up answering itself or another bot in a loop.
+
+To receive them too, pass `{ bots: true }` as the second argument:
+
+```ts src/events/messageCreate/relay.ts
+import { event } from 'chapterjs';
+
+export default event(
+  async ({ message }) => {
+    // Also runs for bots and webhooks: make sure it can't answer itself.
+    if (message.webhookId) console.log(`A webhook posted: ${message.content}`);
+  },
+  { bots: true }
+);
+```
+
+Each file decides for itself: in the same folder, one file can receive bots and another not. Your editor only offers this option in the folders where it exists.
+
+## Intents: nothing to list
+
+Discord only sends a bot the events it asked for, through "intents". You never write them: ChapterJS works them out from the folders of `src/events/`.
+
+Three of them are **privileged**: you have to enable them yourself for your bot.
+
+| Folders | Option to enable |
+| --- | --- |
+| `messageCreate`, `messageUpdate` | **Message Content Intent**: without it, the messages of other people come without their text |
+| `memberJoin`, `memberLeave`, `memberUpdate` | **Server Members Intent** |
+
+When one is missing, `chapterjs dev` tells you which files need it and gives you the link to the right page of the Developer Portal. It then waits: enable the option, save, and your bot starts.
+
+## When your function fails
+
+An error in one of your functions never stops the bot, nor the other files. It is shown in your terminal with the file and the line:
+
+```text
+✗ src/events/messageCreate/ping.ts:5 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+```
+
+To handle a failure yourself, use `try` / `catch`: see [Errors](/reference/errors).
+
+<Info>
+  What your function receives can be read, not replaced: `context.message = ...` throws. Every file of a folder gets the same thing.
+</Info>
