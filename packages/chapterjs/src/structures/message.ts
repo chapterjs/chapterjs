@@ -26,8 +26,14 @@ import {
 } from '../discord/types/message.js';
 import { toCamelCase, toSnakeCase, type Camelize } from '../util/case.js';
 import { ctxOf, dataOf, idOf, IdStructure, toDate } from './base.js';
-import type { TextBasedChannel, ThreadChannel } from './channel.js';
+import type {
+  DMChannel,
+  GuildTextBasedChannel,
+  TextBasedChannel,
+  ThreadChannel,
+} from './channel.js';
 import type { Context } from './context.js';
+import { findGuild, knownChannel, knownMember } from './known.js';
 import type { Guild } from './guild.js';
 import type { GuildMember } from './member.js';
 import {
@@ -99,19 +105,19 @@ export class Message extends IdStructure<MessageData> {
 
   /** The channel of the message, when it is known. */
   get channel(): TextBasedChannel | null {
-    const channel = ctxOf(this).cache.channels.get(this.channelId);
+    const channel =
+      ctxOf(this).cache.channels.get(this.channelId) ?? knownChannel(this);
     return channel?.isTextBased() ? channel : null;
   }
 
-  /** The server of the message, when there is one and it is known. */
+  /** The server of the message; `null` for a private message. */
   get guild(): Guild | null {
-    const id = this.guildId;
-    return id ? (ctxOf(this).cache.guilds.get(id) ?? null) : null;
+    return findGuild(this, this.guildId);
   }
 
   /** The author as a member of the server, when it is known. */
   get member(): GuildMember | null {
-    return this.guild?.members.get(this.author.id) ?? null;
+    return this.guild?.members.get(this.author.id) ?? knownMember(this) ?? null;
   }
 
   /**
@@ -372,4 +378,52 @@ export async function sendMessage(
     files,
   });
   return ctx.entities.message(raw, guildId);
+}
+
+/**
+ * A message of a server: its server is known. It is what the events about
+ * messages give for what happens in a server.
+ */
+export interface GuildMessage extends Message {
+  /** The id of the server. */
+  readonly guildId: Snowflake;
+  /** The server of the message. */
+  readonly guild: Guild;
+  /** The channel of the message. */
+  readonly channel: GuildTextBasedChannel;
+}
+
+/**
+ * A message written in a server by one of its members: neither a private
+ * message nor the message of a webhook. It is what the events about
+ * messages give by default.
+ */
+export interface MemberMessage extends GuildMessage {
+  /** The author as a member of the server. */
+  readonly member: GuildMember;
+}
+
+/**
+ * A private message, for a file that receives both kinds
+ * (`{ where: 'both' }`): there is no server, which is how it is told apart
+ * from a `GuildMessage`.
+ */
+export interface PrivateMessage extends Message {
+  readonly guildId: null;
+  readonly guild: null;
+  readonly member: null;
+  /** The private conversation, when the bot knows it. */
+  readonly channel: DMChannel | null;
+}
+
+/**
+ * A private message, for a file that only receives those
+ * (`{ where: 'dm' }`): nothing about a server exists on it.
+ */
+export interface DmMessage extends Omit<
+  Message,
+  'guildId' | 'guild' | 'member' | 'channel'
+> {
+  /** The private conversation, when the bot knows it. */
+  readonly channel: DMChannel | null;
 }

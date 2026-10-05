@@ -20,7 +20,10 @@ import {
   ThreadChannel,
   VoiceChannel,
 } from '../src/structures/channel.js';
+import { originOf } from '../src/structures/base.js';
 import { createContext } from '../src/structures/entities.js';
+import { storesOf } from '../src/structures/guild.js';
+import { remember } from '../src/structures/known.js';
 import { buildMessage } from '../src/structures/payload.js';
 
 // Ids are real-looking snowflakes: some code reads their creation date.
@@ -1578,5 +1581,170 @@ describe('building a message', () => {
         .flags
     ).toBe(4096 | 4);
     expect(buildMessage({ content: 'a', tts: true }).body.tts).toBe(true);
+  });
+});
+
+describe('what can not be missing in a server', () => {
+  it('is always there: the server of a member, a role and a channel', async () => {
+    const { ctx, guild, general } = await setup();
+    const alice = guild.members.get(ALICE)!;
+    const mod = guild.roles.get(MOD_ROLE)!;
+    const thread = guild.channels.get(THREAD) as ThreadChannel;
+    expect(alice.guild).toBe(guild);
+    expect(mod.guild).toBe(guild);
+    expect(general.guild).toBe(guild);
+    expect(thread.guild).toBe(guild);
+    expect(thread.parentId).toBe(GENERAL);
+    expect(thread.parent).toBe(general);
+    expect(guild.everyoneRole.name).toBe('@everyone');
+    expect(guild.me.id).toBe(BOT);
+    expect(guild.memberCount).toBe(3);
+
+    // The bot is removed from the server while code still holds them: what
+    // was there stays there.
+    ctx.entities.removeGuild(GUILD);
+    expect(ctx.cache.guilds.get(GUILD)).toBeUndefined();
+    expect(alice.guild).toBe(guild);
+    expect(mod.guild).toBe(guild);
+    expect(general.guild).toBe(guild);
+    expect(thread.guild).toBe(guild);
+    expect(alice.roles.map(role => role.name)).toEqual(['Muted', '@everyone']);
+
+    // So does everything after the session started over.
+    ctx.cache.clear();
+    expect(alice.guild).toBe(guild);
+    expect(alice.highestRole.name).toBe('Muted');
+  });
+
+  it('costs one reference: what belongs to a server keeps the server itself', async () => {
+    const { ctx, guild, general } = await setup();
+    // Members, roles and channels can be millions: nothing is allocated.
+    expect(originOf(guild.members.get(ALICE)!)).toBe(guild);
+    expect(originOf(guild.roles.get(MOD_ROLE)!)).toBe(guild);
+    expect(originOf(general)).toBe(guild);
+    // What needs no server keeps nothing at all.
+    expect(originOf(guild.members.get(ALICE)!.user)).toBeUndefined();
+    // A server keeps the bot itself, whatever the cache keeps of members.
+    expect(originOf(guild)).toEqual({ member: guild.me });
+    // A message comes with more: its server, its author, its channel.
+    const message = ctx.entities.message(
+      {
+        ...rawMessage('100000000000000063'),
+        member: { ...rawMember(ALICE), user: undefined } as never,
+      },
+      GUILD
+    );
+    expect(originOf(message)).toEqual({
+      guild,
+      member: guild.members.get(ALICE),
+      channel: general,
+    });
+    // Updating a member again keeps its server, and adds nothing.
+    ctx.entities.member(GUILD, rawMember(ALICE, { nick: 'A' }));
+    expect(originOf(guild.members.get(ALICE)!)).toBe(guild);
+    // What is not given again is left as it was.
+    remember(guild.members.get(ALICE)!, {});
+    expect(originOf(guild.members.get(ALICE)!)).toBe(guild);
+    remember(message, { channel: general });
+    expect(originOf(message)).toEqual({
+      guild,
+      member: guild.members.get(ALICE),
+      channel: general,
+    });
+  });
+
+  it('never forgets the bot itself, even when few members are remembered', async () => {
+    const { guild } = await setup({ limits: { members: 1 } });
+    // Only the last member is kept: the bot came before.
+    expect([...guild.members.keys()]).toEqual([ALICE]);
+    expect(guild.me.id).toBe(BOT);
+    expect(guild.me.roles.map(role => role.name)).toEqual(['Mod', '@everyone']);
+    expect(guild.me.guild).toBe(guild);
+  });
+
+  it('gives a member without role @everyone as highest role', async () => {
+    const { guild } = await setup();
+    const owner = guild.members.get(OWNER)!;
+    expect(owner.roleIds).toEqual([]);
+    expect(owner.highestRole).toBe(guild.everyoneRole);
+  });
+
+  it('keeps the server, the member and the channel a message came with', async () => {
+    const { ctx, guild, general } = await setup();
+    const message = ctx.entities.message(
+      {
+        ...rawMessage('100000000000000060'),
+        member: { ...rawMember(ALICE), user: undefined } as never,
+      },
+      GUILD
+    );
+    const alice = guild.members.get(ALICE)!;
+    expect(message.guild).toBe(guild);
+    expect(message.member).toBe(alice);
+    expect(message.channel).toBe(general);
+
+    // The member leaves: who wrote the message is still who wrote it.
+    storesOf(guild).members.delete(ALICE);
+    expect(guild.members.get(ALICE)).toBeUndefined();
+    expect(message.member).toBe(alice);
+    // The channel is deleted, the bot is removed.
+    ctx.entities.removeChannel(GENERAL);
+    ctx.entities.removeGuild(GUILD);
+    expect(message.guild).toBe(guild);
+    expect(message.member).toBe(alice);
+    expect(message.channel).toBe(general);
+  });
+
+  it('prefers what the bot knows now to what it remembered', async () => {
+    const { ctx, guild } = await setup();
+    const message = ctx.entities.message(
+      rawMessage('100000000000000061'),
+      GUILD
+    );
+    // Nothing came with it, but the cache knows the author.
+    expect(message.member).toBe(guild.members.get(ALICE));
+    const private_ = ctx.entities.message({
+      ...rawMessage('100000000000000062'),
+      channel_id: DM,
+    });
+    expect(private_.guild).toBeNull();
+    expect(private_.member).toBeNull();
+    expect(private_.channel).toBeNull();
+  });
+
+  it('refuses loudly what belongs to a server the bot is not in', async () => {
+    const { ctx } = await setup();
+    const stranger = ctx.entities.role('100000000000000900', rawRole('1'));
+    expect(() => stranger.guild).toThrow(
+      "The server 100000000000000900 is not one the bot is in, so what belongs to it can't be read."
+    );
+    const member = ctx.entities.member('100000000000000900', rawMember(ALICE));
+    expect(() => member.guild).toThrow(
+      /100000000000000900 is not one the bot is in/
+    );
+  });
+
+  it('says what Discord has not sent, instead of answering null', async () => {
+    const { ctx } = await setup();
+    const bare = ctx.entities.guild({
+      ...rawGuild({ id: '100000000000000901' }),
+      roles: [],
+    });
+    expect(() => bare.everyoneRole).toThrow(
+      'Discord has not sent the roles of the server 100000000000000901.'
+    );
+    expect(() => bare.me).toThrow(
+      'Discord has not sent the members of the server 100000000000000901.'
+    );
+    // Not said by Discord: nothing is made up.
+    expect(bare.memberCount).toBeNull();
+    const down = ctx.entities.guild({
+      ...rawGuild({ id: '100000000000000902' }),
+      roles: [],
+      unavailable: true,
+    } as never);
+    expect(() => down.me).toThrow(
+      'Discord has not sent the members of the server 100000000000000902, which is unavailable (an outage on their side).'
+    );
   });
 });

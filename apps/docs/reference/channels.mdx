@@ -18,7 +18,7 @@ A channel you get from `guild.channels` or `message.channel` can be of any kind.
 | `isThread()` | A thread, or a post of a forum | `ThreadChannel` |
 | `isDM()` | A private conversation | `DMChannel` |
 | `isGuildChannel()` | Any channel of a server that is not a thread | `GuildChannel` |
-| `isTextBased()` | Any channel messages can be sent in | `TextBasedChannel` |
+| `isTextBased()` | Any channel messages can be sent in | `TextBasedChannel` (in a server: `GuildTextBasedChannel`, the same without `DMChannel`) |
 
 ```ts
 import type { Channel } from 'chapterjs';
@@ -43,7 +43,7 @@ What every channel has.
 | `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
 | `type` | `ChannelType` | The kind of channel, as a value of `ChannelType`. |
 | `guildId` | `Snowflake \| null` | The id of the server of the channel; `null` for a private one. |
-| `guild` | `Guild \| null` | The server of the channel, when there is one and it is known. |
+| `guild` | `Guild \| null` | The server of the channel; `null` for a private one. |
 
 ### Channel methods
 
@@ -184,6 +184,7 @@ A channel of a server that is not a thread. `TextChannel`, `VoiceChannel`, `Cate
 | Property | Type | Description |
 | --- | --- | --- |
 | `guildId` | `Snowflake` | The id of the server of the channel. |
+| `guild` | `Guild` | The server of the channel. |
 | `name` | `string` | The name of the channel. |
 | `position` | `number` | Where the channel is in the list. |
 | `parentId` | `Snowflake \| null` | The id of the category of the channel, when it is in one. |
@@ -289,8 +290,7 @@ What a role or a member is allowed or denied in one channel.
 import type { TextChannel } from 'chapterjs';
 
 async function lock(channel: TextChannel) {
-  const everyone = channel.guild?.everyoneRole;
-  if (!everyone) return;
+  const everyone = channel.guild.everyoneRole;
   // Nobody can write any more, but everyone still reads.
   await channel.setPermissions(everyone, { deny: ['SendMessages'] }, 'Channel locked');
 }
@@ -423,9 +423,10 @@ A thread, or a post of a forum. Has everything of `Channel` and of [channels wit
 | Property | Type | Description |
 | --- | --- | --- |
 | `guildId` | `Snowflake` | The id of the server of the thread. |
+| `guild` | `Guild` | The server of the thread. |
 | `name` | `string` | The name of the thread. |
-| `parentId` | `Snowflake \| null` | The id of the channel the thread was created in. |
-| `parent` | `TextChannel \| ForumChannel \| null` | The channel the thread was created in, when it is known. |
+| `parentId` | `Snowflake` | The id of the channel the thread was created in. |
+| `parent` | `TextChannel \| ForumChannel \| null` | The channel the thread was created in; `null` when it is of a kind this version does not know. |
 | `ownerId` | `Snowflake \| null` | The id of the user who created the thread. |
 | `archived` | `boolean` | Whether the thread is archived. |
 | `locked` | `boolean` | Whether only moderators can unarchive it. |

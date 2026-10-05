@@ -18,6 +18,7 @@ import {
 import { DiscordApiError } from '../rest/errors.js';
 import type { Context } from '../structures/context.js';
 import { CommandInteraction } from '../structures/interaction.js';
+import { remember } from '../structures/known.js';
 import { toCamelCase } from '../util/case.js';
 import type { CommandContext } from './command.js';
 import { commandName, type CommandEntry } from './tree.js';
@@ -87,6 +88,7 @@ export class CommandRouter {
     }
     const { command, file } = entry;
 
+    // In a server Discord sends the member, in a private message the user.
     const guild = raw.guild_id
       ? (ctx.cache.guilds.get(raw.guild_id) ?? null)
       : null;
@@ -94,8 +96,18 @@ export class CommandRouter {
       raw.guild_id && rawMember
         ? ctx.entities.member(raw.guild_id, rawMember)
         : null;
-    if (!command.dm && (!guild || !member)) {
+    const inGuild = guild !== null && member !== null;
+    if (command.where === 'guild' && !inGuild) {
       refuse('This command can only be used in a server.');
+      return;
+    }
+    if (command.where === 'dm' && raw.guild_id) {
+      refuse('This command can only be used in a private message with me.');
+      return;
+    }
+    if (raw.guild_id && !inGuild) {
+      // A server the bot is not in: nothing of it is known.
+      refuse('This command can not be used here.');
       return;
     }
     // What the member can do where the command was used, overwrites
@@ -120,19 +132,33 @@ export class CommandRouter {
       refuse('Something went wrong while running this command.');
       return;
     }
-    const channel = raw.channel_id
-      ? (ctx.cache.channels.get(raw.channel_id) ??
-        (raw.channel?.id
-          ? ctx.entities.channel(raw.channel as RawChannel, raw.guild_id)
-          : null))
-      : null;
+    // Discord sends the channel with the interaction: known without asking.
+    const channel =
+      (raw.channel_id ? ctx.cache.channels.get(raw.channel_id) : undefined) ??
+      (raw.channel?.id
+        ? ctx.entities.channel(raw.channel as RawChannel, raw.guild_id)
+        : undefined);
+    if (!channel?.isTextBased() || (!inGuild && !channel.isDM())) {
+      this.#options.onWarning(
+        file,
+        `${commandName(path)} was used in a channel the bot can't answer in (${channel ? `type ${channel.type}` : 'Discord did not say which'}): it did not run.`
+      );
+      refuse('This command can not be used here.');
+      return;
+    }
+    remember(interaction, {
+      guild: guild ?? undefined,
+      member: member ?? undefined,
+      channel,
+    });
+    // What a command receives follows where it works: nothing about a
+    // server exists for a command of private messages.
     const context = Object.freeze({
       interaction,
       options: Object.freeze(options),
       user,
-      guild,
-      member,
       channel,
+      ...(command.where === 'dm' ? {} : { guild, member }),
     }) as unknown as CommandContext;
 
     // Discord wants an answer within 3 seconds: when `run` takes longer,

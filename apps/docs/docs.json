@@ -31,8 +31,10 @@
         "group": "Essentials",
         "pages": [
           "dev",
+          "start",
           "commands",
-          "events"
+          "events",
+          "memory"
         ]
       },
       {

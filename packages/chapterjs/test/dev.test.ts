@@ -39,6 +39,7 @@ import {
   rawMessage,
   runDev,
   world,
+  runProduction,
 } from './dev-helpers.js';
 
 const PING = `import { event } from 'chapterjs';
@@ -84,7 +85,7 @@ export default event(({ user, guilds }) => {
     const cli = runDev(cwd, fake);
     await cli.waitFor('✓ Connected to Dev Server as test-bot');
     await cli.waitFor(
-      'ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, DIRECT_MESSAGES, MESSAGE_CONTENT'
+      'ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT'
     );
     await cli.waitFor('✓ 2 events loaded');
     // The dev bot only knows its dev server.
@@ -97,7 +98,6 @@ export default event(({ user, guilds }) => {
     expect(identify.intents).toBe(
       GatewayIntent.Guilds |
         GatewayIntent.GuildMessages |
-        GatewayIntent.DirectMessages |
         GatewayIntent.MessageContent
     );
 
@@ -444,7 +444,7 @@ export default event(({ user, member, guild }) => {
 `,
       'src/events/roleDelete/role.ts': `import { event } from 'chapterjs';
 export default event(({ role, roleId }) => {
-  console.log(\`role deleted: \${role?.name} \${roleId}\`);
+  console.log(\`role deleted: \${role.name} \${roleId} of \${role.guild.name}\`);
 });
 `,
       'src/events/guildJoin/guild.ts': `import { event } from 'chapterjs';
@@ -493,14 +493,17 @@ export default event((context) => {
       guild_id: GUILD,
       role_id: '100000000000000010',
     });
-    await cli.waitFor('role deleted: Mod 100000000000000010');
+    await cli.waitFor('role deleted: Mod 100000000000000010 of Dev Server');
     // The dev server sending its data again is not the bot joining it.
     connection.dispatch('GUILD_CREATE', rawGuild());
     connection.dispatch('GUILD_ROLE_DELETE', {
       guild_id: GUILD,
       role_id: '100000000000000099',
     });
-    await cli.waitFor('role deleted: undefined 100000000000000099');
+    // A role the bot never knew can't be given "as it was": nothing runs.
+    await new Promise(resolve => setTimeout(resolve, 150));
+    expect(cli.output).not.toContain('100000000000000099');
+    expect(cli.output).not.toMatch(/✗ src\/events\/roleDelete/);
     expect(cli.output).not.toContain('joined:');
   });
 
@@ -667,17 +670,29 @@ describe.skipIf(process.platform === 'win32')(
 
     it.each([
       [
-        ['start'],
-        /✗ "chapterjs start" is not available yet in this version\.\n  Use "chapterjs dev"/,
+        ['build'],
+        /✗ "chapterjs build" is not available yet in this version\.\n  Use "chapterjs dev"/,
         1,
       ],
-      [['build'], /"chapterjs build" is not available yet/, 1],
+      [
+        ['start', '--processes'],
+        /✗ chapterjs start takes one option: --processes followed by a number, like "chapterjs start --processes 4"\. Got "--processes"\./,
+        1,
+      ],
+      [['start', '--processes', '0'], /takes one option: --processes/, 1],
+      [['start', '--processes=two'], /Got "--processes=two"\./, 1],
+      [['start', '--processes', '2', 'now'], /takes one option/, 1],
+      [['start', '--fast'], /Got "--fast"\./, 1],
       [
         ['deploy'],
         /✗ "deploy" is not a command\.\n  Usage: chapterjs <command>/,
         1,
       ],
-      [[], /^Usage: chapterjs <command>\n\nCommands:\n  dev /, 0],
+      [
+        [],
+        /^Usage: chapterjs <command>\n\nCommands:\n  dev .+\n  start .+\n  sync .+\n\nOptions of start:\n  --processes <n> /,
+        0,
+      ],
       [['--help'], /^Usage: chapterjs <command>/, 0],
       [['--version'], /^\d+\.\d+\.\d+\n$/, 0],
     ])('answers "chapterjs %s"', async (args, message, code) => {
@@ -996,8 +1011,12 @@ export default event(({ guild }) => { const same: Guild = guild; return same; })
       'src/events/messageCreate/wrong.ts': `import { event } from 'chapterjs';
 export default event(({ member }) => member);
 `,
-      'src/events/roleDelete/wrong.ts': `import { event } from 'chapterjs';
-export default event(({ role }) => role.name);
+      'src/events/memberLeave/wrong.ts': `import { event } from 'chapterjs';
+export default event(({ member }) => member.id);
+`,
+      // What can't be missing in a server is not nullable.
+      'src/events/roleDelete/ok.ts': `import { event } from 'chapterjs';
+export default event(({ role, guild }) => role.name + role.guild.name + guild.everyoneRole.id + guild.me.displayName);
 `,
       'src/lib/wrong.ts': `export const count: number = 'three';\n`,
     });
@@ -1022,16 +1041,608 @@ export default event(({ role }) => role.name);
       .sort();
     expect(errors).toHaveLength(3);
     expect(errors[0]).toMatch(
-      /src\/events\/messageCreate\/wrong\.ts\(2,\d+\): error TS2339: Property 'member' does not exist/
+      /src\/events\/memberLeave\/wrong\.ts\(2,\d+\): error TS18047: 'member' is possibly 'null'/
     );
     expect(errors[1]).toMatch(
-      /src\/events\/roleDelete\/wrong\.ts\(2,\d+\): error TS18047: 'role' is possibly 'null'/
+      /src\/events\/messageCreate\/wrong\.ts\(2,\d+\): error TS2339: Property 'member' does not exist/
     );
     // Files outside the event folders are checked too.
     expect(errors[2]).toMatch(/src\/lib\/wrong\.ts\(1,\d+\): error TS2322/);
     expect(result.status).not.toBe(0);
   });
 });
+
+describe.skipIf(process.platform === 'win32')('private messages', () => {
+  const PRIVATE = '100000000000000090';
+  const log = (
+    label: string,
+    options = ''
+  ) => `import { event } from 'chapterjs';
+export default event(({ message }) => {
+  console.log(\`${label}: \${message.content} in \${message.guild?.name ?? 'private'} by \${message.member?.displayName ?? 'no member'}\`);
+}${options});
+`;
+  const gone = (
+    label: string,
+    options = ''
+  ) => `import { event } from 'chapterjs';
+export default event(({ messageId, guildId }) => {
+  console.log(\`${label}: \${messageId} of \${guildId}\`);
+}${options});
+`;
+  /** A message as Discord sends it in a private conversation. */
+  const privateMessage = (id: string, content: string, extra = {}) => {
+    const {
+      guild_id: _guild,
+      member: _member,
+      ...rest
+    } = rawMessage(id, content);
+    return { ...rest, channel_id: PRIVATE, ...extra };
+  };
+  const seenBy = (output: string, label: string) =>
+    output
+      .split('\n')
+      .filter(line => line.startsWith(`${label}: `))
+      .map(line => line.slice(label.length + 2));
+
+  it('only reach the files that asked for them, so the others always have a server', async () => {
+    const fake = await world();
+    const cli = runProduction(
+      project({
+        'src/events/messageCreate/servers.ts': log('servers'),
+        'src/events/messageCreate/off.ts': log('off', ", { where: 'guild' }"),
+        'src/events/messageCreate/all.ts': log('all', ", { where: 'both' }"),
+        'src/events/messageCreate/only.ts': log('only', ", { where: 'dm' }"),
+        'src/events/messageDelete/only.ts': gone(
+          'only deleted',
+          ", { where: 'dm' }"
+        ),
+        'src/events/messageCreate/bots.ts': log('bots', ', { bots: true }'),
+        'src/events/messageCreate/any.ts': log(
+          'any',
+          ", { where: 'both', bots: true }"
+        ),
+        'src/events/messageUpdate/servers.ts': log('edit'),
+        'src/events/messageUpdate/all.ts': log(
+          'any edit',
+          ", { where: 'both' }"
+        ),
+        'src/events/messageDelete/servers.ts': gone('deleted'),
+        'src/events/messageDelete/all.ts': gone(
+          'any deleted',
+          ", { where: 'both' }"
+        ),
+      }),
+      fake
+    );
+    await cli.waitFor('✓ 11 events loaded');
+    const connection = await connected(fake);
+    const bot = {
+      id: '100000000000000555',
+      username: 'other-bot',
+      discriminator: '0',
+      bot: true,
+    };
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      privateMessage('100000000000000091', 'psst')
+    );
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      privateMessage('100000000000000092', 'beep', { author: bot })
+    );
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000093', 'hello')
+    );
+    // A webhook writes in a server, but is not one of its members.
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000094', 'hook', {
+        webhook_id: '100000000000000777',
+        author: {
+          id: '100000000000000777',
+          username: 'hook',
+          discriminator: '0',
+          bot: true,
+        },
+        member: undefined,
+      })
+    );
+    connection.dispatch(
+      'MESSAGE_UPDATE',
+      privateMessage('100000000000000091', 'psst!')
+    );
+    connection.dispatch(
+      'MESSAGE_UPDATE',
+      rawMessage('100000000000000093', 'hello!')
+    );
+    connection.dispatch('MESSAGE_DELETE', {
+      id: '100000000000000091',
+      channel_id: PRIVATE,
+    });
+    connection.dispatch('MESSAGE_DELETE', {
+      id: '100000000000000093',
+      channel_id: GENERAL,
+      guild_id: GUILD,
+    });
+    await cli.waitFor(`any deleted: 100000000000000093 of ${GUILD}`);
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const { output } = cli;
+    expect(seenBy(output, 'servers')).toEqual(['hello in Dev Server by alice']);
+    expect(seenBy(output, 'off')).toEqual(['hello in Dev Server by alice']);
+    expect(seenBy(output, 'all')).toEqual([
+      'psst in private by no member',
+      'hello in Dev Server by alice',
+    ]);
+    expect(seenBy(output, 'bots')).toEqual([
+      'hello in Dev Server by alice',
+      'hook in Dev Server by no member',
+    ]);
+    // Private messages only: nothing of a server arrives.
+    expect(seenBy(output, 'only')).toEqual(['psst in private by no member']);
+    expect(seenBy(output, 'only deleted')).toEqual([
+      '100000000000000091 of null',
+    ]);
+    expect(seenBy(output, 'any')).toEqual([
+      'psst in private by no member',
+      'beep in private by no member',
+      'hello in Dev Server by alice',
+      'hook in Dev Server by no member',
+    ]);
+    expect(seenBy(output, 'edit')).toEqual(['hello! in Dev Server by alice']);
+    expect(seenBy(output, 'any edit')).toEqual([
+      'psst! in private by no member',
+      'hello! in Dev Server by alice',
+    ]);
+    expect(seenBy(output, 'deleted')).toEqual([
+      `100000000000000093 of ${GUILD}`,
+    ]);
+    expect(seenBy(output, 'any deleted')).toEqual([
+      '100000000000000091 of null',
+      `100000000000000093 of ${GUILD}`,
+    ]);
+    expect(output).not.toMatch(/[✗⚠]/);
+  });
+
+  it('keeps what the types promise: no member, no delivery by default', async () => {
+    const fake = await world();
+    const cli = runDev(
+      project({
+        'src/events/messageCreate/servers.ts': log('servers'),
+        'src/events/messageCreate/bots.ts': log('bots', ', { bots: true }'),
+      }),
+      fake
+    );
+    await cli.waitFor('✓ 2 events loaded');
+    const connection = await connected(fake);
+    // Discord always sends the member; if it ever does not, a file that was
+    // promised one must not run without it.
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000095', 'ghost', {
+        author: {
+          id: '100000000000000556',
+          username: 'bob',
+          discriminator: '0',
+        },
+        member: undefined,
+      })
+    );
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000096', 'hello')
+    );
+    await cli.waitFor('bots: hello in Dev Server by alice');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(seenBy(cli.output, 'servers')).toEqual([
+      'hello in Dev Server by alice',
+    ]);
+    expect(seenBy(cli.output, 'bots')).toEqual([
+      'ghost in Dev Server by no member',
+      'hello in Dev Server by alice',
+    ]);
+  });
+
+  it.each([
+    [
+      'messageCreate',
+      log('x', ", { where: 'both' }"),
+      'GUILDS, GUILD_MESSAGES, DIRECT_MESSAGES, MESSAGE_CONTENT',
+    ],
+    [
+      'messageUpdate',
+      log('x', ", { where: 'both' }"),
+      'GUILDS, GUILD_MESSAGES, DIRECT_MESSAGES, MESSAGE_CONTENT',
+    ],
+    [
+      'messageDelete',
+      gone('x', ", { where: 'both' }"),
+      'GUILDS, GUILD_MESSAGES, DIRECT_MESSAGES',
+    ],
+    ['messageDelete', gone('x'), 'GUILDS, GUILD_MESSAGES'],
+    [
+      'messageDelete',
+      gone('x', ", { where: 'guild' }"),
+      'GUILDS, GUILD_MESSAGES',
+    ],
+    // Private messages only: the messages of servers are not asked for.
+    [
+      'messageCreate',
+      log('x', ", { where: 'dm' }"),
+      'GUILDS, DIRECT_MESSAGES, MESSAGE_CONTENT',
+    ],
+    [
+      'messageDelete',
+      gone('x', ", { where: 'dm' }"),
+      'GUILDS, DIRECT_MESSAGES',
+    ],
+    [
+      'messageCreate',
+      log('x', ', { bots: true }'),
+      'GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT',
+    ],
+  ])(
+    'are only asked to Discord when a file wants them: %s %#',
+    async (folder, content, intents) => {
+      const fake = await world();
+      const cli = runProduction(
+        project({ [`src/events/${folder}/file.ts`]: content }),
+        fake
+      );
+      await cli.waitFor('✓ 1 event loaded');
+      expect(cli.output).toContain(
+        `ℹ Intents computed from your files: ${intents}\n`
+      );
+    }
+  );
+
+  it('are left to production by chapterjs dev, which only runs the dev server', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/events/messageCreate/both.ts': log('both', ", { where: 'both' }"),
+      'src/events/messageCreate/only.ts': log('only', ", { where: 'dm' }"),
+      'src/events/messageDelete/only.ts': gone('gone', ", { where: 'dm' }"),
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 3 events loaded');
+    await cli.waitFor(/src\/events\/messageDelete\/only\.ts .* Try it with/);
+    // Nothing is asked to Discord for what dev does not listen to.
+    expect(cli.output).toContain(
+      'ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT\n'
+    );
+    const connection = await connected(fake);
+    const identify = connection.received.find(payload => payload.op === 2)!
+      .d as { intents: number };
+    expect(identify.intents & GatewayIntent.DirectMessages).toBe(0);
+    // Said once for each file that can only be tried in production.
+    for (const [file, what] of [
+      ['src/events/messageCreate/only.ts', 'this messageCreate file'],
+      ['src/events/messageDelete/only.ts', 'this messageDelete file'],
+    ]) {
+      expect(cli.output).toContain(
+        `ℹ ${file} ${what} only works in private messages, and chapterjs dev only runs your bot in Dev Server. Try it with chapterjs start.`
+      );
+    }
+    expect(cli.output.match(/only works in private messages/g)).toHaveLength(2);
+
+    // A private message is answered by the bot in production, not here.
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      privateMessage('100000000000000097', 'psst')
+    );
+    connection.dispatch('MESSAGE_DELETE', {
+      id: '100000000000000097',
+      channel_id: PRIVATE,
+    });
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000098', 'hello')
+    );
+    await cli.waitFor('both: hello in Dev Server by alice');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(cli.output).not.toContain('psst');
+    expect(cli.output).not.toContain('gone:');
+
+    // Asking for them later changes nothing to the connection either.
+    writeFileSync(
+      join(cwd, 'src/events/messageCreate/both.ts'),
+      log('both', ", { where: 'dm' }")
+    );
+    await cli.waitFor(/↻ Reloaded in \d+ ms, 3 events loaded/);
+    expect(cli.output).not.toContain('reconnecting');
+  });
+
+  it('are typed: the server and the member are there unless an option says otherwise', async () => {
+    const fake = await world();
+    const file = (body: string, options = '') =>
+      `import { event } from 'chapterjs';\nexport default event(({ message }) => ${body}${options});\n`;
+    const cwd = project({
+      'src/events/messageCreate/servers.ts': file(
+        'message.guild.name + message.guildId.length + message.member.displayName + message.channel.name + message.member.guild.name + message.member.highestRole.name'
+      ),
+      'src/events/messageCreate/dm-channel.ts': file(
+        'message.channel.id',
+        ", { where: 'both' }"
+      ),
+      'src/events/messageCreate/off.ts': file(
+        'message.guild.name + message.member.displayName',
+        ", { where: 'guild', bots: false }"
+      ),
+      'src/events/messageCreate/bots-ok.ts': file(
+        'message.guild.name + message.member?.displayName',
+        ', { bots: true }'
+      ),
+      'src/events/messageCreate/bots.ts': file(
+        'message.member.displayName',
+        ', { bots: true }'
+      ),
+      'src/events/messageCreate/dm-ok.ts': file(
+        'message.guild?.name ?? message.guildId ?? message.member',
+        ", { where: 'both' }"
+      ),
+      'src/events/messageCreate/dm.ts': file(
+        'message.guild.name',
+        ", { where: 'both' }"
+      ),
+      'src/events/messageUpdate/dm-member.ts': file(
+        'message.member.displayName',
+        ", { where: 'both' }"
+      ),
+      // Not known to be off: it may be on.
+      'src/events/messageCreate/maybe.ts': `import { event } from 'chapterjs';
+const where: 'guild' | 'both' = process.env.DM === 'yes' ? 'both' : 'guild';
+export default event(({ message }) => message.guild.name, { where });
+`,
+      'src/events/messageCreate/typo.ts': file(
+        'message.id',
+        ", { where: 'both', wher: true }"
+      ),
+      'src/events/messageDelete/servers.ts': `import { event } from 'chapterjs';
+export default event(({ guildId, message, channel }) => guildId.length + (message?.guild.name ?? '') + channel.name);
+`,
+      // One check tells the place, for everything at once.
+      'src/events/messageCreate/both-ok.ts': `import { event } from 'chapterjs';
+export default event(({ message }) => {
+  if (message.guild) return message.member.displayName + message.channel.name;
+  return message.channel?.recipientId;
+}, { where: 'both' });
+`,
+      'src/events/messageDelete/both-ok.ts': `import { event } from 'chapterjs';
+export default event(({ guild, channel }) => {
+  if (guild) return guild.name + channel.name;
+  return channel?.recipientId;
+}, { where: 'both' });
+`,
+      // Only private messages: nothing about a server exists.
+      'src/events/messageCreate/only-ok.ts': file(
+        'message.content + message.channel?.recipientId',
+        ", { where: 'dm' }"
+      ),
+      'src/events/messageCreate/only.ts': file(
+        'message.guild',
+        ", { where: 'dm' }"
+      ),
+      'src/events/messageDelete/only.ts': `import { event } from 'chapterjs';
+export default event(context => context.guildId, { where: 'dm' });
+`,
+      'src/events/messageCreate/place.ts': file(
+        'message.id',
+        ", { where: 'server' }"
+      ),
+      'src/events/messageDelete/dm.ts': `import { event } from 'chapterjs';
+export default event(({ guildId }) => guildId.length, { where: 'both' });
+`,
+    });
+    cpSync(
+      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(cwd, 'tsconfig.json')
+    );
+    symlinkSync(
+      join(packageDir, 'node_modules/@types'),
+      join(cwd, 'node_modules/@types'),
+      'dir'
+    );
+    await runDev(cwd, fake, ['sync']).exited;
+    const result = spawnSync(
+      join(packageDir, 'node_modules/.bin/tsc'),
+      ['-b'],
+      {
+        cwd,
+        encoding: 'utf8',
+      }
+    );
+    const errors = result.stdout
+      .split('\n')
+      .filter(line => line.includes('error TS'))
+      .map(line => line.replace(/\(\d+,\d+\): error TS\d+/, ''))
+      .sort();
+    expect(errors).toEqual([
+      "src/events/messageCreate/bots.ts: 'message.member' is possibly 'null'.",
+      "src/events/messageCreate/dm-channel.ts: 'message.channel' is possibly 'null'.",
+      "src/events/messageCreate/dm.ts: 'message.guild' is possibly 'null'.",
+      "src/events/messageCreate/maybe.ts: 'message.guild' is possibly 'null'.",
+      "src/events/messageCreate/only.ts: Property 'guild' does not exist on type 'DmMessage'.",
+      `src/events/messageCreate/place.ts: Type '"server"' is not assignable to type 'EventWhere | undefined'.`,
+      "src/events/messageCreate/typo.ts: Type 'true' is not assignable to type 'never'.",
+      "src/events/messageDelete/dm.ts: 'guildId' is possibly 'null'.",
+      "src/events/messageDelete/only.ts: Property 'guildId' does not exist on type 'DeletedInDm'.",
+      "src/events/messageUpdate/dm-member.ts: 'message.member' is possibly 'null'.",
+    ]);
+  });
+});
+
+describe.skipIf(process.platform === 'win32')(
+  'the channel of what happens in a server',
+  () => {
+    const THREAD = '100000000000000300';
+    const HIDDEN = '100000000000000301';
+    const PRIVATE = '100000000000000302';
+    const files = {
+      'src/events/messageCreate/log.ts': `import { event } from 'chapterjs';
+export default event(({ message }) => {
+  console.log(\`said: \${message.content} in #\${message.channel.name} of \${message.channel.guild.name}\`);
+});
+`,
+      'src/events/messageCreate/any.ts': `import { event } from 'chapterjs';
+export default event(({ message }) => {
+  console.log(\`any: \${message.content} in \${message.channel?.id ?? 'no channel'}\`);
+}, { where: 'both' });
+`,
+      'src/events/messageDelete/log.ts': `import { event } from 'chapterjs';
+export default event(({ messageId, channel }) => {
+  console.log(\`deleted: \${messageId} in #\${channel.name}\`);
+});
+`,
+    };
+    const thread = {
+      id: THREAD,
+      type: 11,
+      name: 'old-thread',
+      guild_id: GUILD,
+      parent_id: GENERAL,
+      thread_metadata: {
+        archived: false,
+        auto_archive_duration: 60,
+        archive_timestamp: '2024-01-01T00:00:00Z',
+        locked: false,
+      },
+    };
+
+    it('is asked to Discord once when the bot does not know it', async () => {
+      const fake = await world();
+      fake.discord.on('GET', `/channels/${THREAD}`, { body: thread });
+      const cli = runDev(project(files), fake);
+      await cli.waitFor('✓ 3 events loaded');
+      const connection = await connected(fake);
+      // A channel the bot knows costs nothing.
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000310', 'hi')
+      );
+      await cli.waitFor('said: hi in #general of Dev Server');
+      expect(fake.discord.requestsTo('GET', `/channels/${GENERAL}`)).toEqual(
+        []
+      );
+
+      // A thread it never saw is read first, then remembered. What happens
+      // there meanwhile waits for the same answer, in order.
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000311', 'first', { channel_id: THREAD })
+      );
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000312', 'second', { channel_id: THREAD })
+      );
+      connection.dispatch('MESSAGE_DELETE', {
+        id: '100000000000000311',
+        channel_id: THREAD,
+        guild_id: GUILD,
+      });
+      await cli.waitFor('deleted: 100000000000000311 in #old-thread');
+      const thenOrder = [
+        'said: first in #old-thread of Dev Server',
+        'said: second in #old-thread of Dev Server',
+        'deleted: 100000000000000311 in #old-thread',
+      ].map(line => cli.output.indexOf(line));
+      expect(thenOrder.every(index => index !== -1)).toBe(true);
+      expect(thenOrder).toEqual([...thenOrder].sort((x, y) => x - y));
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000313', 'third', { channel_id: THREAD })
+      );
+      await cli.waitFor('said: third in #old-thread of Dev Server');
+      // One request for the three, and none once it is known.
+      expect(
+        fake.discord.requestsTo('GET', `/channels/${THREAD}`)
+      ).toHaveLength(1);
+      expect(cli.output).not.toMatch(/[✗⚠]/);
+    });
+
+    it('is not asked for a private message, whose file handles its absence', async () => {
+      const fake = await world();
+      const cli = runProduction(project(files), fake);
+      await cli.waitFor('✓ 3 events loaded');
+      const connection = await connected(fake);
+      const {
+        guild_id: _guild,
+        member: _member,
+        ...privateMessage
+      } = rawMessage('100000000000000320', 'psst', { channel_id: PRIVATE });
+      connection.dispatch('MESSAGE_CREATE', privateMessage);
+      await cli.waitFor(`any: psst in no channel`);
+      expect(fake.discord.requestsTo('GET', `/channels/${PRIVATE}`)).toEqual(
+        []
+      );
+    });
+
+    it('says so when Discord refuses it, and runs nothing with a channel missing', async () => {
+      const fake = await world();
+      fake.discord.on('GET', `/channels/${HIDDEN}`, {
+        status: 403,
+        body: { message: 'Missing Access', code: 50001 },
+      });
+      const cli = runDev(project(files), fake);
+      await cli.waitFor('✓ 3 events loaded');
+      const connection = await connected(fake);
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000330', 'secret', { channel_id: HIDDEN })
+      );
+      await cli.waitFor(
+        /⚠ A messageCreate event was not given to your files: Discord did not let the bot read the channel it happened in \(.*Missing Access.*\)\./
+      );
+      connection.dispatch('MESSAGE_DELETE', {
+        id: '100000000000000330',
+        channel_id: HIDDEN,
+        guild_id: GUILD,
+      });
+      await cli.waitFor(/⚠ A messageDelete event was not given to your files/);
+      // Refused once is not refused forever: the bot asks again when
+      // something else happens there.
+      fake.discord.on('GET', `/channels/${HIDDEN}`, {
+        body: { ...thread, id: HIDDEN, name: 'now-visible' },
+      });
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000334', 'allowed', { channel_id: HIDDEN })
+      );
+      await cli.waitFor('said: allowed in #now-visible of Dev Server');
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000331', 'still here')
+      );
+      await cli.waitFor('said: still here in #general of Dev Server');
+      expect(cli.output).not.toContain('secret');
+
+      // A kind of channel nobody can write in, should Discord ever say so:
+      // a message of a server is promised its channel, so no file runs.
+      fake.discord.on('GET', `/channels/${THREAD}`, {
+        body: { id: THREAD, type: 4, name: 'odd', guild_id: GUILD },
+      });
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000332', 'odd one', { channel_id: THREAD })
+      );
+      connection.dispatch('MESSAGE_DELETE', {
+        id: '100000000000000332',
+        channel_id: THREAD,
+        guild_id: GUILD,
+      });
+      connection.dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000333', 'the end')
+      );
+      await cli.waitFor('said: the end in #general of Dev Server');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(cli.output).not.toContain('odd one');
+      expect(cli.output).not.toContain('deleted: 100000000000000332');
+      expect(cli.output).not.toContain('✗');
+    });
+  }
+);
 
 describe.skipIf(process.platform === 'win32')(
   'messages of bots and webhooks',
@@ -1130,7 +1741,7 @@ export default event(({ message }) => {
       [
         'messageCreate',
         '{ bot: true }',
-        /✗ src\/events\/messageCreate\/bad\.ts "bot" is not an option of messageCreate\. Options of messageCreate are: bots\./,
+        /✗ src\/events\/messageCreate\/bad\.ts "bot" is not an option of messageCreate\. Options of messageCreate are: bots, where\./,
       ],
       [
         'messageCreate',
@@ -1140,12 +1751,37 @@ export default event(({ message }) => {
       [
         'messageUpdate',
         "'bots'",
-        /✗ src\/events\/messageUpdate\/bad\.ts The second argument of event\(\) is its options, like \{ bots: true \}\. Options of messageUpdate are: bots\./,
+        /✗ src\/events\/messageUpdate\/bad\.ts The second argument of event\(\) is its options, like \{ bots: true \}\. Options of messageUpdate are: bots, where\./,
       ],
       [
         'messageCreate',
         'null',
         /The second argument of event\(\) is its options/,
+      ],
+      [
+        'messageDelete',
+        '{ bots: true }',
+        /✗ src\/events\/messageDelete\/bad\.ts "bots" is not an option of messageDelete\. Options of messageDelete are: where\./,
+      ],
+      [
+        'messageDelete',
+        "{ where: 'server' }",
+        /✗ src\/events\/messageDelete\/bad\.ts The option where of messageDelete is 'guild', 'dm' or 'both', got "server"\./,
+      ],
+      [
+        'messageCreate',
+        '{ where: true }',
+        /✗ src\/events\/messageCreate\/bad\.ts The option where of messageCreate is 'guild', 'dm' or 'both', got true\./,
+      ],
+      [
+        'messageDelete',
+        "'both'",
+        /✗ src\/events\/messageDelete\/bad\.ts The second argument of event\(\) is its options, like \{ where: 'both' \}\. Options of messageDelete are: where\./,
+      ],
+      [
+        'messageCreate',
+        '{ dm: true }',
+        /✗ src\/events\/messageCreate\/bad\.ts "dm" is not an option of messageCreate\./,
       ],
       [
         'ready',
@@ -1196,13 +1832,15 @@ export default event(({ member }) => member.id, { bots: true });
         'dir'
       );
       await runDev(cwd, fake, ['sync']).exited;
-      expect(
-        readFileSync(
-          join(cwd, '.chapterjs/types/events.messageCreate.d.ts'),
-          'utf8'
-        )
-      ).toContain(
-        "  handler: (context: EventContexts['messageCreate']) => unknown,\n  options?: EventOptions['messageCreate']\n): EventFile;"
+      const types = readFileSync(
+        join(cwd, '.chapterjs/types/events.messageCreate.d.ts'),
+        'utf8'
+      );
+      expect(types).toContain(
+        "const Options extends EventOptions['messageCreate'] = {},"
+      );
+      expect(types).toContain(
+        "handler: (context: ContextOf<'messageCreate', Options>) => unknown,"
       );
       const result = spawnSync(
         join(packageDir, 'node_modules/.bin/tsc'),

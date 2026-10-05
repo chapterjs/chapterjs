@@ -13,6 +13,7 @@ import {
   type CommandConfig,
   type CommandContext,
   type CommandOption,
+  type CommandWhere,
 } from './command.js';
 
 /** A name or a description in other languages, as Discord takes them. */
@@ -40,7 +41,8 @@ export interface LoadedCommand {
   readonly options: readonly (CommandOption & { name: string })[];
   /** The permissions needed, as bits. */
   readonly permissions: bigint;
-  readonly dm: boolean;
+  /** Where it can be used; in servers when the file does not say. */
+  readonly where: CommandWhere;
   readonly nsfw: boolean;
   readonly ephemeral: boolean;
   readonly run: (context: CommandContext) => unknown;
@@ -84,7 +86,7 @@ const COMMAND_KEYS = [
   'options',
   'locales',
   'permissions',
-  'dm',
+  'where',
   'nsfw',
   'ephemeral',
   'run',
@@ -131,6 +133,18 @@ function checkBoolean(what: string, value: unknown): boolean {
     return fail(`${what} is true or false, got ${JSON.stringify(value)}.`);
   }
   return value;
+}
+
+const PLACES: readonly CommandWhere[] = ['guild', 'dm', 'both'];
+
+function checkWhere(value: unknown): CommandWhere {
+  if (value === undefined) return 'guild';
+  if (!PLACES.includes(value as CommandWhere)) {
+    return fail(
+      `"where" says where the command can be used: 'guild' (in servers, which is the default), 'dm' (in private messages with the bot) or 'both'. Got ${JSON.stringify(value) ?? typeof value}.`
+    );
+  }
+  return value as CommandWhere;
 }
 
 function checkOption(
@@ -509,7 +523,7 @@ export const commandsConvention: Convention<LoadedCommand> = {
       description,
       options: Object.freeze(options),
       permissions: checkPermissions(config.permissions),
-      dm: checkBoolean('"dm"', config.dm),
+      where: checkWhere(config.where),
       nsfw: checkBoolean('"nsfw"', config.nsfw),
       ephemeral: checkBoolean('"ephemeral"', config.ephemeral),
       run: config.run as LoadedCommand['run'],

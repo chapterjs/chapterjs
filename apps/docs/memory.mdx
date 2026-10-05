@@ -1,0 +1,89 @@
+---
+title: 'Memory'
+description: 'What your bot remembers, why reading it is free, and how it adapts to the memory it has'
+---
+
+Your bot remembers what Discord tells it, so that reading it never costs a request: `guild.name`, `member.roles` or `message.channel` answer at once. You have nothing to set up, and nothing to clean.
+
+It only remembers what your project uses, which is what [Discord recommends](https://docs.discord.com/developers/events/gateway#tracking-state): like intents, it is worked out from your files.
+
+Everything lives in the memory of the process that runs your bot. Nothing is written on disk, and there is no database to install.
+
+## What your bot remembers
+
+| What | How much | Why |
+| --- | --- | --- |
+| Servers, channels, threads, roles, emojis | All of them | Discord announces them when the bot connects, then every change |
+| Your bot as a member of each server | Always | `guild.me` is never missing |
+| Members | The 100 seen the most recently in each server; 1000 when a file of `src/events/memberLeave/` needs them. Fewer [when memory is short](#your-bot-adapts-to-the-memory-it-has) | A server can have millions of members, and a bot rarely needs the silent ones |
+| Users | The ones it met | They come with members and messages |
+| Messages | None | They are by far what a bot receives the most |
+
+"Seen" means Discord just sent that member: they wrote a message, used a command, joined, or changed. Active members stay; the ones that left the longest ago make room.
+
+## What it means for your code
+
+**What comes with an event is always there.** The author of a message, who used a command, the channel it happened in: your function receives them whatever the bot remembers, and they stay there while it runs.
+
+```ts src/events/messageCreate/hello.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  // Always there, even in a server of a million members.
+  await message.channel.send(`Hello ${message.member.displayName}!`);
+});
+```
+
+**`guild.members` is what the bot knows, not everyone.** To get one precise member, ask for it: the bot answers from its memory when it can, and asks Discord otherwise.
+
+```ts src/commands/joined.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Says when someone joined',
+  options: {
+    who: { type: 'user', description: 'Who', required: true },
+  },
+  async run({ interaction, guild, options }) {
+    const member = await guild.fetchMember(options.who.id);
+    await interaction.reply(`${member.displayName} joined on ${member.joinedAt?.toDateString()}.`);
+  },
+});
+```
+
+## Your bot adapts to the memory it has
+
+A bot in many servers can end up filling its memory. ChapterJS watches it and adapts what it remembers, before memory is full:
+
+1. When memory stays high (80%), the bot remembers **half as much**: 50 members per server instead of 100, and half of the users. The ones it had not seen for the longest leave. It tells you:
+
+   ```text
+   ℹ Memory was getting full (1638 MB of 2048 MB): the bot now remembers 50 members per server at most, and forgot 412000 members and users it had not seen for the longest. Nothing changes for your code.
+   ```
+
+2. If memory is still high, it halves again: 25, 12... Servers, channels and roles are never forgotten.
+
+3. When memory is comfortable again (under 50%), it remembers more, step by step, up to 100 again:
+
+   ```text
+   ℹ Memory is fine again: the bot remembers up to 100 members per server again.
+   ```
+
+4. Only when it already remembers as little as it can does it ask you for something:
+
+   ```text
+   ⚠ The bot uses 1990 MB of the 2048 MB of memory it can use, and already remembers as little as it can: 1840 servers and 61200 channels, which it needs. Remembering less freed 35 MB. If your own code keeps things that only grow (a list, a Map), that is what fills it: look there first. Otherwise give the bot more memory: set NODE_OPTIONS=--max-old-space-size=4096 (in MB) on a machine that has that much.
+   ```
+
+The first two messages need nothing from you. The last one tells you how much memory remembering less gave back:
+
+- **Little** (like above): the memory is not used by what the bot remembers. Look in your own code for something that only grows, like a list or a `Map` you add to and never empty.
+- **A lot**, and it is still full: your bot is simply large. `NODE_OPTIONS=--max-old-space-size=4096` lets it use 4 GB, if your machine has them.
+
+<Note>
+  Whatever the bot remembers, your code works the same: what comes with an event is always there. Remembering less only means `guild.members` holds fewer members.
+</Note>
+
+## Large bots
+
+A large bot is spread over [several processes](/start#large-bots). Each one has its own memory: it remembers the servers it runs, and looks after its own memory as described here.

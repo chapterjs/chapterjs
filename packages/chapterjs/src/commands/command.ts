@@ -4,9 +4,17 @@
 import type { PermissionName } from '../discord/permissions.js';
 import type { ChannelType } from '../discord/types/channel.js';
 import type { Locale } from '../discord/types/common.js';
-import type { Channel } from '../structures/channel.js';
+import type {
+  Channel,
+  DMChannel,
+  GuildTextBasedChannel,
+} from '../structures/channel.js';
 import type { Guild } from '../structures/guild.js';
-import type { CommandInteraction } from '../structures/interaction.js';
+import type {
+  DmCommandInteraction,
+  GuildCommandInteraction,
+  PrivateCommandInteraction,
+} from '../structures/interaction.js';
 import type { GuildMember } from '../structures/member.js';
 import type { Attachment } from '../structures/message.js';
 import type { Role } from '../structures/role.js';
@@ -134,28 +142,69 @@ export type CommandLocales<Options extends CommandOptions = CommandOptions> = {
   readonly [Language in Locale]?: CommandTranslation<Options>;
 };
 
-/** What the `run` function of a command receives. */
-export interface CommandContext<
-  Options extends CommandOptions = CommandOptions,
-  Dm extends boolean = false,
-> {
+/**
+ * Where a command can be used: in servers (`'guild'`), in private messages
+ * with the bot (`'dm'`), or in both.
+ * @see https://docs.discord.com/developers/interactions/application-commands#interaction-contexts
+ */
+export type CommandWhere = 'guild' | 'dm' | 'both';
+
+/** What a command used in a server receives about where it was used. */
+export interface CommandInGuild {
   /** The use of the command: what to answer with. */
-  interaction: CommandInteraction;
+  interaction: GuildCommandInteraction;
+  /** The server the command was used in. */
+  guild: Guild;
+  /** Who used the command, as a member of the server. */
+  member: GuildMember;
+  /** The channel the command was used in. */
+  channel: GuildTextBasedChannel;
+}
+
+/**
+ * What a command that works in both places receives when it is used in a
+ * private message: `guild` is `null`, and checking it tells the rest.
+ */
+export interface CommandInPrivate {
+  /** The use of the command: what to answer with. */
+  interaction: PrivateCommandInteraction;
+  guild: null;
+  member: null;
+  /** The private conversation the command was used in. */
+  channel: DMChannel;
+}
+
+/** What a command only used in private messages receives: no server. */
+export interface CommandInDm {
+  /** The use of the command: what to answer with. */
+  interaction: DmCommandInteraction;
+  /** The private conversation the command was used in. */
+  channel: DMChannel;
+}
+
+/**
+ * What the `run` function of a command receives. It follows `where`: in a
+ * server, the server, the member and the channel are there; in private
+ * messages they do not exist; in both, `if (guild)` tells which one it is,
+ * for everything at once.
+ */
+export type CommandContext<
+  Options extends CommandOptions = CommandOptions,
+  Where extends CommandWhere = 'guild',
+> = {
   /** What the user filled in. */
   options: OptionValuesOf<Options>;
   /** Who used the command. */
   user: User;
-  /** The server the command was used in. `null` in a private message. */
-  guild: Dm extends true ? Guild | null : Guild;
-  /** Who used the command, as a member of the server. */
-  member: Dm extends true ? GuildMember | null : GuildMember;
-  /** The channel the command was used in, when the bot knows it. */
-  channel: Channel | null;
-}
+} & (Where extends 'guild'
+  ? CommandInGuild
+  : Where extends 'dm'
+    ? CommandInDm
+    : CommandInGuild | CommandInPrivate);
 
 export interface CommandConfig<
   Options extends CommandOptions = CommandOptions,
-  Dm extends boolean = false,
+  Where extends CommandWhere = 'guild',
 > {
   /** What the command does, shown under its name (1-100 characters). */
   description: string;
@@ -173,14 +222,18 @@ export interface CommandConfig<
    * change who sees it in the server settings.
    */
   permissions?: readonly PermissionName[];
-  /** Also offer the command in private messages with the bot. */
-  dm?: Dm;
+  /**
+   * Where the command can be used: `'guild'` (in servers, the default),
+   * `'dm'` (in private messages with the bot) or `'both'`. What `run`
+   * receives follows it.
+   */
+  where?: Where;
   /** Only show the command in age-restricted channels. */
   nsfw?: boolean;
   /** Make the answers of the command only visible to who used it. */
   ephemeral?: boolean;
   /** What to do when someone uses the command. */
-  run: (context: CommandContext<Options, Dm>) => unknown;
+  run: (context: CommandContext<Options, Where>) => unknown;
 }
 
 /** What `command()` returns: the default export of a command file. */
@@ -209,8 +262,8 @@ const BRAND = Symbol.for('chapterjs.command');
  */
 export function command<
   const Options extends CommandOptions = {},
-  const Dm extends boolean = false,
->(config: CommandConfig<Options, Dm>): CommandFile {
+  const Where extends CommandWhere = 'guild',
+>(config: CommandConfig<Options, Where>): CommandFile {
   return Object.freeze({ [BRAND]: true, config });
 }
 

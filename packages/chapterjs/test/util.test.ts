@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryStore, memoryStore } from '../src/cache/store.js';
+import { MemoryStore, memoryStore, trimStore } from '../src/cache/store.js';
 import { Permissions } from '../src/discord/permissions.js';
 import { toCamelCase, toSnakeCase } from '../src/util/case.js';
 
@@ -114,16 +114,68 @@ describe('MemoryStore', () => {
     expect(store.size).toBe(0);
   });
 
-  it('drops the oldest entry when full', () => {
+  it('drops the entry written the longest ago when full', () => {
     const store = new MemoryStore<string, number>({ limit: 2 });
     store.set('a', 1).set('b', 2).set('c', 3);
     expect([...store.keys()]).toEqual(['b', 'c']);
-    // Updating an entry that is already there evicts nothing.
+    // Written again, an entry is the most recent: it evicts nothing, and
+    // it is the other one that leaves next.
     store.set('b', 20);
     expect([...store.entries()]).toEqual([
-      ['b', 20],
       ['c', 3],
+      ['b', 20],
     ]);
+    store.set('d', 4);
+    expect([...store.keys()]).toEqual(['b', 'd']);
+  });
+
+  it('keeps its order when it has no limit: nothing to move', () => {
+    const store = new MemoryStore<string, number>();
+    store.set('a', 1).set('b', 2).set('a', 10);
+    expect([...store.entries()]).toEqual([
+      ['a', 10],
+      ['b', 2],
+    ]);
+  });
+
+  it.each([
+    [5, 2, 3, ['d', 'e']],
+    [5, 0, 5, []],
+    [5, 5, 0, ['a', 'b', 'c', 'd', 'e']],
+    [5, 9, 0, ['a', 'b', 'c', 'd', 'e']],
+    [5, -1, 5, []],
+    [0, 3, 0, []],
+  ])(
+    'forgets its oldest entries on demand: %i entries, keep %i',
+    (size, keep, forgotten, left) => {
+      const store = new MemoryStore<string, number>();
+      for (const key of ['a', 'b', 'c', 'd', 'e'].slice(0, size)) {
+        store.set(key, 1);
+      }
+      expect(trimStore(store, keep)).toBe(forgotten);
+      expect([...store.keys()]).toEqual(left);
+    }
+  );
+
+  it('can be given another limit: lowered, the oldest leave at once', () => {
+    const store = new MemoryStore<string, number>({ limit: 4 });
+    for (const key of ['a', 'b', 'c', 'd']) store.set(key, 1);
+    expect(store.limit).toBe(4);
+    expect(store.resize(2)).toBe(2);
+    expect(store.limit).toBe(2);
+    expect([...store.keys()]).toEqual(['c', 'd']);
+    store.set('e', 1);
+    expect([...store.keys()]).toEqual(['d', 'e']);
+    // Raised, nothing leaves and there is room again.
+    expect(store.resize(Infinity)).toBe(0);
+    store.set('f', 1).set('g', 1);
+    expect(store.size).toBe(4);
+    expect(new MemoryStore().limit).toBe(Infinity);
+    expect(store.resize(0)).toBe(4);
+    store.set('h', 1);
+    expect(store.size).toBe(0);
+    expect(() => store.resize(-1)).toThrow(/0 or more/);
+    expect(() => store.resize(NaN)).toThrow(/0 or more/);
   });
 
   it('keeps nothing with a limit of 0', () => {

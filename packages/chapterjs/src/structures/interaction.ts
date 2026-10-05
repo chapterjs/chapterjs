@@ -13,8 +13,13 @@ import {
 import { MessageFlags } from '../discord/types/message.js';
 import type { Camelize } from '../util/case.js';
 import { ctxOf, dataOf, IdStructure } from './base.js';
-import type { Channel } from './channel.js';
+import type {
+  DMChannel,
+  GuildTextBasedChannel,
+  TextBasedChannel,
+} from './channel.js';
 import type { Context } from './context.js';
+import { findGuild, knownChannel, knownMember } from './known.js';
 import type { Guild } from './guild.js';
 import type { GuildMember } from './member.js';
 import type { Message } from './message.js';
@@ -71,30 +76,37 @@ export class Interaction extends IdStructure<InteractionData> {
     return dataOf(this).guild_id ?? null;
   }
 
-  get channelId(): Snowflake | null {
-    return dataOf(this).channel_id ?? null;
+  /** The id of the channel it happened in. */
+  get channelId(): Snowflake {
+    return dataOf(this).channel_id ?? this.channel.id;
   }
 
-  /** The server it happened in, when there is one and it is known. */
+  /** The server it happened in; `null` in a private message. */
   get guild(): Guild | null {
-    const id = this.guildId;
-    return id ? (ctxOf(this).cache.guilds.get(id) ?? null) : null;
+    return findGuild(this, this.guildId);
   }
 
-  /** The channel it happened in, when it is known. */
-  get channel(): Channel | null {
-    const id = this.channelId;
-    return id ? (ctxOf(this).cache.channels.get(id) ?? null) : null;
+  /** The channel it happened in: Discord sends it with the interaction. */
+  get channel(): TextBasedChannel {
+    const id = dataOf(this).channel_id;
+    const channel =
+      (id ? ctxOf(this).cache.channels.get(id) : undefined) ??
+      knownChannel(this);
+    if (!channel?.isTextBased()) {
+      throw new Error('This interaction came without its channel.');
+    }
+    return channel;
   }
 
-  /** Who did it, as a member of the server, when it is known. */
+  /** Who did it, as a member of the server; `null` in a private message. */
   get member(): GuildMember | null {
-    return this.guild?.members.get(this.user.id) ?? null;
+    return this.guild?.members.get(this.user.id) ?? knownMember(this) ?? null;
   }
 
   /** The language of the person: use it to answer in their language. */
-  get locale(): Locale | null {
-    return dataOf(this).locale ?? null;
+  get locale(): Locale {
+    // Discord sends it with everything a person does (all but pings).
+    return dataOf(this).locale!;
   }
 
   /** Whether an answer was sent, or promised with `defer()`. */
@@ -293,4 +305,45 @@ export class CommandInteraction extends Interaction {
     super(ctx, data, user, options);
     this.commandName = options.commandName;
   }
+}
+
+/**
+ * A slash command used in a server: what a command receives by default.
+ * Discord sends the server, the member and the channel with it.
+ * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-interaction-structure
+ */
+export interface GuildCommandInteraction extends CommandInteraction {
+  /** The id of the server. */
+  readonly guildId: Snowflake;
+  /** The server it happened in. */
+  readonly guild: Guild;
+  /** Who did it, as a member of the server. */
+  readonly member: GuildMember;
+  /** The channel it happened in. */
+  readonly channel: GuildTextBasedChannel;
+}
+
+/**
+ * A slash command used in a private message with the bot, for a command
+ * that works in both places (`where: 'both'`): there is no server, which is
+ * how it is told apart from `GuildCommandInteraction`.
+ */
+export interface PrivateCommandInteraction extends CommandInteraction {
+  readonly guildId: null;
+  readonly guild: null;
+  readonly member: null;
+  /** The private conversation it happened in. */
+  readonly channel: DMChannel;
+}
+
+/**
+ * A slash command that is only used in private messages with the bot
+ * (`where: 'dm'`): nothing about a server exists on it.
+ */
+export interface DmCommandInteraction extends Omit<
+  CommandInteraction,
+  'guildId' | 'guild' | 'member' | 'channel'
+> {
+  /** The private conversation it happened in. */
+  readonly channel: DMChannel;
 }

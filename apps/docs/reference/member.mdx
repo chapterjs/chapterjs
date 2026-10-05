@@ -24,12 +24,12 @@ async function mute(member: GuildMember, moderator: GuildMember) {
 | `guildId` | `Snowflake` | The id of the server. |
 | `user` | `User` | The account of the member. |
 | `id` | `Snowflake` | The id of the user. |
-| `guild` | `Guild \| null` | The server, when it is known. |
+| `guild` | `Guild` | The server the member is in. |
 | `nick` | `string \| null` | The nickname of the member in this server, when they have one. |
 | `displayName` | `string` | The name to show: nickname, or display name, or username. |
 | `roleIds` | `readonly Snowflake[]` | The ids of the roles of the member (@everyone is not listed). |
 | `roles` | `Role[]` | The roles of the member, @everyone included, highest first. |
-| `highestRole` | `Role \| null` | The highest role of the member in the hierarchy. |
+| `highestRole` | `Role` | The highest role of the member in the hierarchy; @everyone at least. |
 | `joinedAt` | `Date \| null` | When the member joined the server. |
 | `boostingSince` | `Date \| null` | Since when the member boosts the server. |
 | `pending` | `boolean` | Whether the member has not passed the membership screening yet. |

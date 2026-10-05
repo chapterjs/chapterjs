@@ -1,5 +1,6 @@
 // Delivers gateway events to the handlers of the project.
 
+import { DEFAULT_CACHE_LIMITS, type CacheLimits } from '../cache/cache.js';
 import { GatewayIntent } from '../discord/intents.js';
 import type {
   GatewayDispatchEventName,
@@ -17,17 +18,42 @@ export interface LoadedEvent {
 
 /**
  * The intents the bot needs: Guilds, which keeps the cache of servers,
- * roles and channels up to date, plus the ones of the events listened to.
+ * roles and channels up to date, plus the ones of the events listened to
+ * and of the options their files turned on.
  */
 export function intentsFor(events: Iterable<LoadedEvent>): number {
   let intents: number = GatewayIntent.Guilds;
-  for (const { event } of events) intents |= EVENTS[event.name].intents;
+  for (const { event } of events) intents |= intentsOf(event);
   return intents;
+}
+
+/**
+ * How much the bot remembers for a set of files: the default, raised by
+ * the events that need more to give all they can.
+ */
+export function limitsFor(events: Iterable<LoadedEvent>): CacheLimits {
+  const limits = { ...DEFAULT_CACHE_LIMITS };
+  for (const { event } of events) {
+    const needed = EVENTS[event.name].remembers ?? {};
+    for (const kind of Object.keys(needed) as (keyof CacheLimits)[]) {
+      limits[kind] = Math.max(limits[kind], needed[kind]!);
+    }
+  }
+  return limits;
+}
+
+/** The intents one file needs, given the options it passed. */
+export function intentsOf(event: EventHandler): number {
+  const { intents } = EVENTS[event.name];
+  return typeof intents === 'function'
+    ? (intents as (options: object) => number)(event.options)
+    : intents;
 }
 
 type AnySource = {
   name: EventName;
   before?: (ctx: Context, data: never) => unknown;
+  prepare?: (ctx: Context, data: never) => Promise<unknown> | undefined;
   build: (
     ctx: Context,
     data: never,
@@ -48,9 +74,18 @@ for (const [name, definition] of Object.entries(EVENTS)) {
 export class EventRouter {
   #handlers = new Map<EventName, LoadedEvent[]>();
   readonly #onError: (file: string, error: unknown) => void;
+  readonly #onSkipped: (event: EventName, error: unknown) => void;
 
-  constructor(onError: (file: string, error: unknown) => void) {
+  /**
+   * `onError`: a handler threw. `onSkipped`: an event could not be given
+   * to its handlers, because Discord refused what they are promised.
+   */
+  constructor(
+    onError: (file: string, error: unknown) => void,
+    onSkipped: (event: EventName, error: unknown) => void = () => {}
+  ) {
     this.#onError = onError;
+    this.#onSkipped = onSkipped;
   }
 
   /** Replaces every handler (after a load or a reload). */
@@ -93,11 +128,18 @@ export class EventRouter {
     if (!sources) return;
     sources.forEach((source, index) => {
       if (!this.#handlers.has(source.name)) return;
-      const context = source.build(ctx, data as never, {
-        joined: extra.joined,
-        before: extra.before?.[index],
-      });
-      if (context) this.emit(source.name, context as never);
+      const deliver = (): void => {
+        const context = source.build(ctx, data as never, {
+          joined: extra.joined,
+          before: extra.before?.[index],
+        });
+        if (context) this.emit(source.name, context as never);
+      };
+      const preparing = source.prepare?.(ctx, data as never);
+      if (!preparing) return deliver();
+      preparing.then(deliver, (error: unknown) =>
+        this.#onSkipped(source.name, error)
+      );
     });
   }
 

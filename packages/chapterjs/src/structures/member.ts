@@ -18,6 +18,7 @@ import type { RawGuildMember } from '../discord/types/guild.js';
 import { ctxOf, dataOf, idOf, Structure, toDate } from './base.js';
 import type { GuildChannel } from './channel.js';
 import type { Context } from './context.js';
+import { guildOf } from './known.js';
 import type { Guild } from './guild.js';
 import type { Message } from './message.js';
 import type { MessageInput } from './payload.js';
@@ -73,9 +74,9 @@ export class GuildMember extends Structure<MemberData> {
     return this.user.id;
   }
 
-  /** The server, when it is known. */
-  get guild(): Guild | null {
-    return ctxOf(this).cache.guilds.get(this.guildId) ?? null;
+  /** The server the member is in. */
+  get guild(): Guild {
+    return guildOf(this, this.guildId);
   }
 
   /** The nickname of the member in this server, when they have one. */
@@ -96,7 +97,6 @@ export class GuildMember extends Structure<MemberData> {
   /** The roles of the member, @everyone included, highest first. */
   get roles(): Role[] {
     const guild = this.guild;
-    if (!guild) return [];
     const roles: Role[] = [];
     for (const id of [...this.roleIds, this.guildId]) {
       const role = guild.roles.get(id);
@@ -105,9 +105,9 @@ export class GuildMember extends Structure<MemberData> {
     return roles.sort((a, b) => (a.isHigherThan(b) ? -1 : 1));
   }
 
-  /** The highest role of the member in the hierarchy. */
-  get highestRole(): Role | null {
-    return this.roles[0] ?? null;
+  /** The highest role of the member in the hierarchy; @everyone at least. */
+  get highestRole(): Role {
+    return this.roles[0] ?? this.guild.everyoneRole;
   }
 
   /** When the member joined the server. */

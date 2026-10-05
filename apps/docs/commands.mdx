@@ -154,12 +154,12 @@ export default command({
 
 | Name | What it is |
 | --- | --- |
-| `interaction` | The use of the command: what you answer with |
+| `interaction` | The use of the command: what you answer with. It also knows `interaction.guild`, `interaction.member`, `interaction.channel` and `interaction.locale` (the language of the person) |
 | `options` | What the person filled in |
 | `user` | Who used the command |
 | `member` | Who used the command, as a [member](/reference/member) of the server |
 | `guild` | The [server](/reference/guild) the command was used in |
-| `channel` | The channel the command was used in; `null` if the bot does not know it |
+| `channel` | The [channel](/reference/channels) the command was used in: always there, you can `channel.send()` right away |
 
 ## Answering
 
@@ -226,7 +226,6 @@ export default command({
     count: { type: 'integer', description: 'How many', min: 2, max: 100, required: true },
   },
   async run({ interaction, options, channel }) {
-    if (!channel?.isTextBased()) return interaction.reply('Not in this channel.');
     const messages = await channel.fetchMessages({ limit: options.count });
     const deleted = await channel.bulkDelete(messages);
     await interaction.reply({ content: `Deleted ${deleted} messages.`, ephemeral: true });
@@ -240,9 +239,42 @@ Other settings of a command:
 
 | Field | Meaning |
 | --- | --- |
-| `dm: true` | Also offer the command in private messages with the bot. `guild` and `member` can then be `null`, and your editor makes you handle it |
+| `where` | Where the command can be used: see [Servers and private messages](#servers-and-private-messages) |
 | `nsfw: true` | Only show the command in age-restricted channels |
 | `ephemeral: true` | Make the answers of the command only visible to who used it |
+
+## Servers and private messages
+
+A command works in servers. `where` changes it, and what `run` receives follows:
+
+| `where` | The command is offered | `guild`, `member` |
+| --- | --- | --- |
+| `'guild'` (default) | In servers | Always there |
+| `'dm'` | In private messages with your bot | Do not exist: your editor does not even offer them |
+| `'both'` | In both | There or not: one `if (guild)` tells you, for everything at once |
+
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Says hello',
+  where: 'both',
+  async run({ interaction, guild, member, channel }) {
+    if (guild) {
+      // In a server: the member and the channel are the ones of a server.
+      await interaction.reply(`Hello ${member.displayName}, in #${channel.name}!`);
+    } else {
+      await interaction.reply('Hello! We are in private here.');
+    }
+  },
+});
+```
+
+The same goes for `interaction.guild`, `interaction.member` and `interaction.channel`.
+
+<Note>
+  With `chapterjs dev`, your bot only runs in your test server. A command with `where: 'dm'` can't be tried there (ChapterJS tells you so), and one with `where: 'both'` can only be tried in the server. To try them in private messages, run [`chapterjs start`](/start).
+</Note>
 
 ## Translations
 

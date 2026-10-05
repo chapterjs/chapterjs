@@ -23,8 +23,15 @@ function readOptions(
   options: unknown
 ): Readonly<Record<string, unknown>> {
   if (options === undefined) return Object.freeze({});
-  const allowed: Record<string, string> = EVENTS[name].options ?? {};
+  const allowed: Record<string, 'boolean' | readonly string[]> =
+    EVENTS[name].options ?? {};
   const names = Object.keys(allowed);
+  const first = names[0];
+  const kind = first === undefined ? undefined : allowed[first];
+  const example =
+    first === undefined
+      ? 'option: true'
+      : `${first}: ${kind === 'boolean' || !kind ? 'true' : `'${kind.at(-1)}'`}`;
   const list =
     names.length === 0
       ? `${name} has no options: remove the second argument of event().`
@@ -35,16 +42,27 @@ function readOptions(
     Array.isArray(options)
   ) {
     throw new TypeError(
-      `The second argument of event() is its options, like { ${names[0] ?? 'option'}: true }. ${list}`
+      `The second argument of event() is its options, like { ${example} }. ${list}`
     );
   }
   for (const [key, value] of Object.entries(options)) {
     if (!Object.hasOwn(allowed, key)) {
       throw new TypeError(`"${key}" is not an option of ${name}. ${list}`);
     }
-    if (typeof value !== allowed[key]) {
+    const kind = allowed[key]!;
+    const got = JSON.stringify(value) ?? typeof value;
+    if (kind === 'boolean') {
+      if (typeof value !== 'boolean') {
+        throw new TypeError(
+          `The option ${key} of ${name} is true or false, got ${got}.`
+        );
+      }
+    } else if (!kind.includes(value as string)) {
       throw new TypeError(
-        `The option ${key} of ${name} is true or false, got ${JSON.stringify(value) ?? typeof value}.`
+        `The option ${key} of ${name} is ${kind
+          .map(word => `'${word}'`)
+          .join(', ')
+          .replace(/, ([^,]*)$/, ' or $1')}, got ${got}.`
       );
     }
   }

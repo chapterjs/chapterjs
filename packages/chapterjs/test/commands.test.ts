@@ -14,6 +14,7 @@ import {
   runDev,
   world,
   type FakeWorld,
+  runProduction,
 } from './dev-helpers.js';
 
 const PING = `import { command } from 'chapterjs';
@@ -790,8 +791,18 @@ export default command({
     ],
     [
       'src/commands/bad.ts',
+      `import { command } from 'chapterjs';\nexport default command({ description: 'd', where: 'server', run() {} } as never);\n`,
+      /"where" says where the command can be used: 'guild' \(in servers, which is the default\), 'dm' \(in private messages with the bot\) or 'both'\. Got "server"\./,
+    ],
+    [
+      'src/commands/bad.ts',
+      `import { command } from 'chapterjs';\nexport default command({ description: 'd', dm: true, run() {} } as never);\n`,
+      /"dm" is not something a command has\./,
+    ],
+    [
+      'src/commands/bad.ts',
       `import { command } from 'chapterjs';\nexport default command({ description: 'd', name: 'other', run() {} } as never);\n`,
-      /"name" is not something a command has\. It can have: description, options, locales, permissions, dm, nsfw, ephemeral, run\./,
+      /"name" is not something a command has\. It can have: description, options, locales, permissions, where, nsfw, ephemeral, run\./,
     ],
     [
       'src/commands/bad.ts',
@@ -934,6 +945,485 @@ export default command({
     await waitUntil(() => ping.callbacks().length === 1, 'the answer to /ping');
   });
 
+  it('give an interaction that knows its server and its member', async () => {
+    const fake = await world();
+    const cli = runDev(
+      project({
+        'src/commands/where.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  async run({ interaction, guild, member }) {
+    await interaction.reply([
+      interaction.guild.name,
+      interaction.guildId,
+      interaction.member.displayName,
+      interaction.guild === guild,
+      interaction.member === member,
+    ].join(' '));
+  },
+});
+`,
+      }),
+      fake
+    );
+    await cli.waitFor('✓ Commands updated on Dev Server');
+    const connection = await connected(fake);
+    const sent = answers(fake, '100000000000000771');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      use('100000000000000771', 'where')
+    );
+    await waitUntil(() => sent.callbacks().length === 1, 'the answer');
+    expect(
+      (sent.callbacks()[0]!.body as { data: { content: string } }).data.content
+    ).toBe(`Dev Server ${GUILD} alice true true`);
+  });
+
+  it('always know the channel they were used in, without asking Discord', async () => {
+    const fake = await world();
+    const THREAD = '100000000000000400';
+    const PRIVATE = '100000000000000401';
+    const where = (dm: boolean) => `import { command } from 'chapterjs';
+export default command({
+  description: 'd',${dm ? "\n  where: 'both'," : ''}
+  async run({ interaction, channel }) {
+    await interaction.reply([
+      channel.id,
+      channel.isThread() ? channel.name : channel.isDM() ? 'private' : 'other',
+      interaction.channel === channel,
+      interaction.channelId,
+      interaction.locale,
+    ].join(' '));
+  },
+});
+`;
+    const cli = runProduction(
+      project({
+        'src/commands/where.ts': where(false),
+        'src/commands/anywhere.ts': where(true),
+      }),
+      fake
+    );
+    await cli.waitFor('✓ Commands updated for everyone');
+    const connection = await connected(fake);
+    const content = async (id: string, interaction: object) => {
+      const sent = answers(fake, id);
+      connection.dispatch('INTERACTION_CREATE', interaction);
+      await waitUntil(() => sent.callbacks().length === 1, `the answer ${id}`);
+      return (sent.callbacks()[0]!.body as { data: { content: string } }).data
+        .content;
+    };
+    // A thread the bot never saw: Discord sends it with the interaction.
+    const thread = {
+      id: THREAD,
+      type: 11,
+      name: 'old-thread',
+      guild_id: GUILD,
+      parent_id: GENERAL,
+    };
+    expect(
+      await content(
+        '100000000000000781',
+        use('100000000000000781', 'where', {
+          channel_id: THREAD,
+          channel: thread,
+        })
+      )
+    ).toBe(`${THREAD} old-thread true ${THREAD} fr`);
+    // In private, with a command that accepts it.
+    const {
+      guild_id: _guild,
+      member,
+      ...inPrivate
+    } = use('100000000000000782', 'anywhere', {
+      channel_id: PRIVATE,
+      channel: { id: PRIVATE, type: 1 },
+      locale: 'de',
+    });
+    expect(
+      await content('100000000000000782', { ...inPrivate, user: member.user })
+    ).toBe(`${PRIVATE} private true ${PRIVATE} de`);
+    expect(fake.discord.requestsTo('GET', `/channels/${THREAD}`)).toEqual([]);
+    expect(fake.discord.requestsTo('GET', `/channels/${PRIVATE}`)).toEqual([]);
+    expect(cli.output).not.toMatch(/[✗⚠]/);
+
+    // Discord not saying where: nothing runs with a channel missing.
+    expect(
+      await content(
+        '100000000000000783',
+        use('100000000000000783', 'where', {
+          channel_id: '100000000000000402',
+        })
+      )
+    ).toBe('This command can not be used here.');
+    await cli.waitFor(
+      "⚠ src/commands/where.ts /where was used in a channel the bot can't answer in (Discord did not say which): it did not run."
+    );
+    // A kind of channel nobody can write in.
+    expect(
+      await content(
+        '100000000000000784',
+        use('100000000000000784', 'where', {
+          channel_id: '100000000000000403',
+          channel: { id: '100000000000000403', type: 4, guild_id: GUILD },
+        })
+      )
+    ).toBe('This command can not be used here.');
+    await cli.waitFor(
+      /\/where was used in a channel the bot can't answer in \(type 4\)/
+    );
+  });
+
+  it('keep who, where and in which server while they run, whatever happens meanwhile', async () => {
+    const fake = await world();
+    const THREAD = '100000000000000410';
+    const cli = runDev(
+      project({
+        'src/commands/later.ts': `import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+export default command({
+  description: 'd',
+  async run({ interaction }) {
+    console.log('running');
+    await sleep(400);
+    await interaction.reply([
+      interaction.channel.id,
+      interaction.member.displayName,
+      interaction.guild.name,
+      interaction.member.guild.name,
+    ].join(' '));
+  },
+});
+`,
+      }),
+      fake
+    );
+    await cli.waitFor('✓ Commands updated on Dev Server');
+    const connection = await connected(fake);
+    const sent = answers(fake, '100000000000000791');
+    const thread = {
+      id: THREAD,
+      type: 11,
+      name: 'old-thread',
+      guild_id: GUILD,
+      parent_id: GENERAL,
+    };
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      use('100000000000000791', 'later', {
+        channel_id: THREAD,
+        channel: thread,
+      })
+    );
+    await cli.waitFor('running');
+    // While it runs: the thread is deleted and the person leaves.
+    connection.dispatch('THREAD_DELETE', thread);
+    connection.dispatch('GUILD_MEMBER_REMOVE', {
+      guild_id: GUILD,
+      user: { id: ALICE, username: 'alice', discriminator: '0' },
+    });
+    await waitUntil(() => sent.callbacks().length === 1, 'the answer');
+    expect(
+      (sent.callbacks()[0]!.body as { data: { content: string } }).data.content
+    ).toBe(`${THREAD} alice Dev Server Dev Server`);
+    expect(cli.output).not.toMatch(/[✗⚠]/);
+  });
+
+  it('are not shown twice in the dev server when production has them for everyone', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/commands/ping.ts': PING,
+      'src/commands/poll.ts': PING.replace(
+        'Replies with Pong!',
+        'Starts a poll'
+      ),
+      'src/commands/new.ts': PING.replace('Replies with Pong!', 'Brand new'),
+    });
+    // What a bot in production registered with the same token.
+    fake.discord.on('GET', `/applications/${BOT}/commands`, {
+      body: [
+        {
+          id: '100000000000000601',
+          application_id: BOT,
+          version: '1',
+          type: 1,
+          name: 'ping',
+          description: 'Replies with Pong!',
+          default_member_permissions: null,
+          dm_permission: true,
+          contexts: [0],
+          integration_types: [0],
+          nsfw: false,
+          name_localizations: null,
+          description_localizations: null,
+        },
+        {
+          id: '100000000000000602',
+          application_id: BOT,
+          version: '1',
+          type: 1,
+          name: 'poll',
+          description: 'The poll of last month',
+          default_member_permissions: null,
+          contexts: [0],
+          integration_types: [0],
+        },
+      ],
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ Commands updated on Dev Server');
+    // /ping is already there for everyone, as it is here: not given again.
+    expect(registered(fake)[0]!.map(command => command.name)).toEqual([
+      'new',
+      'poll',
+    ]);
+    expect(
+      fake.discord.requestsTo('GET', `/applications/${BOT}/commands`)[0]!.query
+    ).toEqual({ with_localizations: ['true'] });
+    // /poll changed: its new form has to be there to be tried. Said once.
+    expect(cli.output).toContain(
+      'ℹ /poll is not the same here as in production, so Dev Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.'
+    );
+    expect(cli.output).not.toContain('/ping is not the same');
+    expect(cli.output).not.toContain('/new is not the same');
+
+    // Used in the dev server, the one for everyone runs the code of dev.
+    const connection = await connected(fake);
+    const sent = answers(fake, '100000000000000830');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      use('100000000000000830', 'ping')
+    );
+    await waitUntil(() => sent.callbacks().length === 1, 'the answer to /ping');
+    expect(
+      (sent.callbacks()[0]!.body as { data: { content: string } }).data.content
+    ).toBe('Pong!');
+
+    // Changing /ping makes it differ: it is given, and said, from then on.
+    writeFileSync(
+      join(cwd, 'src/commands/ping.ts'),
+      PING.replace('Replies with Pong!', 'Answers')
+    );
+    await cli.waitFor('↻ Commands updated on Discord');
+    expect(registered(fake)[1]!.map(command => command.name)).toEqual([
+      'new',
+      'ping',
+      'poll',
+    ]);
+    expect(cli.output).toContain(
+      'ℹ /ping is not the same here as in production'
+    );
+    expect(cli.output.match(/\/poll is not the same/g)).toHaveLength(1);
+    // The list of production is asked once, not at every save.
+    expect(
+      fake.discord.requestsTo('GET', `/applications/${BOT}/commands`)
+    ).toHaveLength(1);
+  });
+
+  it('give the dev server everything when Discord does not say what everyone has', async () => {
+    const fake = await world();
+    fake.discord.on('GET', `/applications/${BOT}/commands`, {
+      status: 500,
+      body: { message: 'Internal Server Error' },
+    });
+    const cli = runDev(project({ 'src/commands/ping.ts': PING }), fake);
+    await cli.waitFor('✓ Commands updated on Dev Server');
+    expect(registered(fake)[0]!.map(command => command.name)).toEqual(['ping']);
+    expect(cli.output).not.toContain('✗');
+  });
+
+  it('leave to production what only works in private messages', async () => {
+    const fake = await world();
+    const place = (where: string) =>
+      `import { command } from 'chapterjs';\nexport default command({ description: 'd', where: '${where}', async run({ interaction }) { await interaction.reply('ok'); } });\n`;
+    const cwd = project({
+      'src/commands/server.ts': place('guild'),
+      'src/commands/private.ts': place('dm'),
+      'src/commands/anywhere.ts': place('both'),
+      'src/commands/mixed/a.ts': place('dm'),
+      'src/commands/mixed/b.ts': place('both'),
+      'src/commands/secret/only.ts': place('dm'),
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ Commands updated on Dev Server');
+    // Discord never offers the commands of a server in private messages:
+    // what only works there is not sent, and the developer is told once.
+    expect(registered(fake)[0]!.map(command => command.name)).toEqual([
+      'anywhere',
+      'mixed',
+      'server',
+    ]);
+    expect(
+      (registered(fake)[0]![1]!.options as { name: string }[]).map(
+        option => option.name
+      )
+    ).toEqual(['b']);
+    for (const [file, name] of [
+      ['src/commands/private.ts', '/private'],
+      ['src/commands/mixed/a.ts', '/mixed a'],
+      ['src/commands/secret/only.ts', '/secret only'],
+    ]) {
+      expect(cli.output).toContain(
+        `ℹ ${file} ${name} only works in private messages, and chapterjs dev only runs your bot in Dev Server. Try it with chapterjs start.`
+      );
+    }
+    expect(cli.output.match(/only works in private messages/g)).toHaveLength(3);
+    // Said once per file, not at every save.
+    writeFileSync(
+      join(cwd, 'src/commands/server.ts'),
+      place('guild').replace("'d'", "'changed'")
+    );
+    await cli.waitFor('↻ Commands updated on Discord');
+    expect(cli.output.match(/only works in private messages/g)).toHaveLength(3);
+
+    // Used in private all the same (the bot in production offers it):
+    // the dev bot is not the one that answers.
+    const connection = await connected(fake);
+    const sent = answers(fake, '100000000000000820');
+    const {
+      guild_id: _guild,
+      member,
+      ...inPrivate
+    } = use('100000000000000820', 'anywhere', {
+      channel_id: '100000000000000421',
+      channel: { id: '100000000000000421', type: 1 },
+    });
+    connection.dispatch('INTERACTION_CREATE', {
+      ...inPrivate,
+      user: member.user,
+    });
+    const inServer = answers(fake, '100000000000000821');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      use('100000000000000821', 'anywhere')
+    );
+    await waitUntil(
+      () => inServer.callbacks().length === 1,
+      'the answer in the server'
+    );
+    expect(sent.callbacks()).toEqual([]);
+  });
+
+  it('only run where they say they work, and receive what that place has', async () => {
+    const fake = await world();
+    const PRIVATE = '100000000000000420';
+    const place = (where: string) => `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  where: '${where}',
+  async run(context) {
+    await context.interaction.reply([
+      'guild' in context ? String((context as { guild: { name: string } | null }).guild?.name ?? null) : 'no guild key',
+      'member' in context ? 'member key' : 'no member key',
+      context.channel.isDM() ? 'private' : 'server channel',
+    ].join(', '));
+  },
+});
+`;
+    const cwd = project({
+      'src/commands/server.ts': place('guild'),
+      'src/commands/private.ts': place('dm'),
+      'src/commands/anywhere.ts': place('both'),
+      'src/commands/mixed/a.ts': place('dm'),
+      'src/commands/mixed/b.ts': place('both'),
+      'src/commands/secret/only.ts': place('dm'),
+    });
+    // For everyone: Discord is told where each command works.
+    const cli = runProduction(cwd, fake);
+    await cli.waitFor('✓ Commands updated for everyone');
+    const everyone = fake.discord
+      .requestsTo('PUT', `/applications/${BOT}/commands`)
+      .map(request => request.body as { name: string; contexts: number[] }[]);
+    expect(everyone).toHaveLength(1);
+    expect(everyone[0]!.map(({ name, contexts }) => [name, contexts])).toEqual([
+      ['anywhere', [0, 1]],
+      ['mixed', [0, 1]],
+      ['private', [1]],
+      ['secret', [1]],
+      ['server', [0]],
+    ]);
+
+    const connection = await connected(fake);
+    const content = async (id: string, interaction: object) => {
+      const sent = answers(fake, id);
+      connection.dispatch('INTERACTION_CREATE', interaction);
+      await waitUntil(() => sent.callbacks().length === 1, `the answer ${id}`);
+      return (sent.callbacks()[0]!.body as { data: { content: string } }).data
+        .content;
+    };
+    const inPrivate = (id: string, name: string, data = {}) => {
+      const {
+        guild_id: _guild,
+        member,
+        ...rest
+      } = use(
+        id,
+        name,
+        { channel_id: PRIVATE, channel: { id: PRIVATE, type: 1 } },
+        data
+      );
+      return { ...rest, user: member.user };
+    };
+    const sub = (name: string) => ({ options: [{ name, type: 1 }] });
+
+    // In the server.
+    expect(
+      await content('100000000000000801', use('100000000000000801', 'server'))
+    ).toBe('Dev Server, member key, server channel');
+    expect(
+      await content('100000000000000802', use('100000000000000802', 'anywhere'))
+    ).toBe('Dev Server, member key, server channel');
+    expect(
+      await content('100000000000000803', use('100000000000000803', 'private'))
+    ).toBe('This command can only be used in a private message with me.');
+    expect(
+      await content(
+        '100000000000000804',
+        use('100000000000000804', 'mixed', {}, sub('a'))
+      )
+    ).toBe('This command can only be used in a private message with me.');
+    // In a private message.
+    expect(
+      await content(
+        '100000000000000805',
+        inPrivate('100000000000000805', 'private')
+      )
+    ).toBe('no guild key, no member key, private');
+    expect(
+      await content(
+        '100000000000000806',
+        inPrivate('100000000000000806', 'anywhere')
+      )
+    ).toBe('null, member key, private');
+    expect(
+      await content(
+        '100000000000000807',
+        inPrivate('100000000000000807', 'server')
+      )
+    ).toBe('This command can only be used in a server.');
+    expect(
+      await content(
+        '100000000000000808',
+        inPrivate('100000000000000808', 'mixed', sub('b'))
+      )
+    ).toBe('null, member key, private');
+    expect(cli.output).not.toMatch(/[✗⚠]/);
+
+    // A private message always comes from a private conversation: anything
+    // else is not something a command of private messages can be given.
+    const odd = inPrivate('100000000000000810', 'anywhere');
+    expect(
+      await content('100000000000000810', {
+        ...odd,
+        channel: { id: PRIVATE + '1', type: 0 },
+        channel_id: PRIVATE + '1',
+      })
+    ).toBe('This command can not be used here.');
+    await cli.waitFor(
+      /\/anywhere was used in a channel the bot can't answer in \(type 0\)/
+    );
+  });
+
   it('are typed from their own declaration', async () => {
     const fake = await world();
     const cwd = project({
@@ -946,13 +1436,21 @@ export default command({
     reason: { type: 'string', description: 'd', choices: ['spam', 'raid'], required: true },
     level: { type: 'number', description: 'd', choices: { Low: 1, High: 2 } },
   },
-  async run({ options, guild, member, interaction }) {
+  async run({ options, guild, member, interaction, channel }) {
     const target: User = options.target;
     const days: number | undefined = options.days;
     const reason: 'spam' | 'raid' = options.reason;
     const level: 1 | 2 | undefined = options.level;
     const where: Guild = guild;
     const who: GuildMember = member;
+    // The interaction says the same as the context: used in a server.
+    const sameWhere: Guild = interaction.guild;
+    const sameWho: GuildMember = interaction.member;
+    const id: string = interaction.guildId;
+    // Where it was used is always known, and so is the language.
+    const channelName: string = channel.name + interaction.channel.name;
+    const language: string = interaction.locale + interaction.channelId;
+    void [sameWhere, sameWho, id, channelName, language, channel.guild.name];
     await interaction.reply({ content: [target, days, reason, level, where, who].join(), ephemeral: true });
   },
 });
@@ -960,9 +1458,41 @@ export default command({
       'src/commands/dm.ts': `import { command, type Guild } from 'chapterjs';
 export default command({
   description: 'd',
-  dm: true,
+  where: 'both',
   run({ guild }) { const where: Guild = guild; return where; },
 });
+`,
+      'src/commands/dm-interaction.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  where: 'both',
+  run({ interaction }) { return [interaction.guild?.name, interaction.member?.id, interaction.guild.name]; },
+});
+`,
+      // One check tells the place, for everything at once.
+      'src/commands/both-ok.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  where: 'both',
+  async run({ guild, member, channel, interaction }) {
+    if (guild) return interaction.reply(member.displayName + channel.name + interaction.member.id);
+    await interaction.reply(String(channel.recipientId) + String(interaction.guild satisfies null));
+  },
+});
+`,
+      // Only private messages: nothing about a server exists.
+      'src/commands/only-dm.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  where: 'dm',
+  async run(context) {
+    await context.interaction.reply(String(context.channel.recipientId));
+    return context.guild;
+  },
+});
+`,
+      'src/commands/place.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', where: 'server', run() {} });
 `,
       'src/commands/wrong.ts': `import { command } from 'chapterjs';
 export default command({
@@ -995,19 +1525,27 @@ export default command({ description: 'd', options: { a: { type: 'strin', descri
       .filter(line => line.includes('error TS'))
       .sort();
     expect(errors.map(error => error.replace(/\(\d+,\d+\).*/, ''))).toEqual([
+      'src/commands/dm-interaction.ts',
       'src/commands/dm.ts',
+      'src/commands/only-dm.ts',
+      'src/commands/place.ts',
       'src/commands/typo.ts',
       'src/commands/wrong.ts',
       'src/commands/wrong.ts',
     ]);
-    expect(errors[0]).toMatch(
+    expect(errors[0]).toMatch(/'interaction\.guild' is possibly 'null'/);
+    expect(errors[1]).toMatch(
       /Type 'Guild \| null' is not assignable to type 'Guild'/
     );
-    expect(errors[1]).toMatch(/'"strin"' is not assignable/);
-    expect(errors[2]).toMatch(
+    expect(errors[2]).toMatch(/Property 'guild' does not exist on type/);
+    expect(errors[3]).toMatch(
+      /'"server"' is not assignable to type 'CommandWhere/
+    );
+    expect(errors[4]).toMatch(/'"strin"' is not assignable/);
+    expect(errors[5]).toMatch(
       /Type 'number \| undefined' is not assignable to type 'number'/
     );
-    expect(errors[3]).toMatch(/Property 'nope' does not exist/);
+    expect(errors[6]).toMatch(/Property 'nope' does not exist/);
   });
 });
 
@@ -1525,7 +2063,7 @@ import { label } from '../../../_helpers';
 export default event(({ user }) => console.log(label, user.username));
 `,
       'src/events/(logs)/(roles)/roleDelete/log.ts': `import { event } from 'chapterjs';
-export default event(({ roleId, role }) => console.log('role gone', roleId, role?.name));
+export default event(({ roleId, role }) => console.log('role gone', roleId, role.name));
 `,
       'src/events/(logs)/typo.ts': `import { event } from 'chapterjs';\nexport default event(() => {});\n`,
       'src/events/(logs)/roleDelete/wrong.ts': `import { event } from 'chapterjs';
@@ -1549,11 +2087,21 @@ export default event(({ member }) => member);
     await cli.waitFor('✓ 3 events loaded');
     await cli.waitFor('online test-bot');
     expect(cli.output).not.toContain('private event file ran');
-    (await connected(fake)).dispatch('GUILD_ROLE_DELETE', {
+    const connection = await connected(fake);
+    connection.dispatch('GUILD_ROLE_CREATE', {
+      guild_id: GUILD,
+      role: {
+        id: '100000000000000010',
+        name: 'Mod',
+        permissions: '0',
+        position: 1,
+      },
+    });
+    connection.dispatch('GUILD_ROLE_DELETE', {
       guild_id: GUILD,
       role_id: '100000000000000010',
     });
-    await cli.waitFor('role gone 100000000000000010 undefined');
+    await cli.waitFor('role gone 100000000000000010 Mod');
     cli.signal('SIGTERM');
     await cli.exited;
 

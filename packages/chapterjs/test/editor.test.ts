@@ -25,17 +25,24 @@ function languageServer(): string | null {
   }
 }
 
+interface Completion {
+  label: string;
+  sortText?: string;
+  labelDetails?: { description?: string };
+}
+
 /**
- * The modules the editor offers to import `name` from, when the cursor is
- * right after it. `settings` is what the editor settings of the project say
- * under "typescript".
+ * What the editor offers when the cursor is right after `after` in a file,
+ * as `pick` reads it. `settings` is what the editor settings of the project
+ * say under "typescript".
  */
-async function importsOffered(
+async function offered(
   exe: string,
   cwd: string,
   file: string,
-  name: string,
-  settings: unknown
+  after: string,
+  settings: unknown,
+  pick: (items: Completion[]) => string[]
 ): Promise<string[]> {
   const child = spawn(exe, ['--lsp', '--stdio'], { cwd });
   onTestFinished(() => void child.kill());
@@ -80,7 +87,7 @@ async function importsOffered(
   });
 
   const text = readFileSync(file, 'utf8');
-  const index = text.indexOf(name) + name.length;
+  const index = text.indexOf(after) + after.length;
   const before = text.slice(0, index).split('\n');
   const uri = pathToFileURL(file).href;
   const root = pathToFileURL(cwd).href;
@@ -102,24 +109,51 @@ async function importsOffered(
       textDocument: { uri, languageId: 'typescript', version: 1, text },
     },
   });
-  // The project loads in the background: ask until the imports are known.
+  // The project loads in the background: ask until the answer is known.
   for (let attempt = 0; ; attempt++) {
     const { result } = (await request('textDocument/completion', {
       textDocument: { uri },
       position: { line: before.length - 1, character: before.at(-1)!.length },
       context: { triggerKind: 1 },
-    })) as {
-      result?: {
-        items?: { label: string; labelDetails?: { description?: string } }[];
-      };
-    };
-    const offered = (result?.items ?? [])
-      .filter(item => item.label === name && item.labelDetails?.description)
-      .map(item => item.labelDetails!.description!);
-    if (offered.length > 0 || attempt >= 40) return offered;
+    })) as { result?: { items?: Completion[] } };
+    const picked = pick(result?.items ?? []);
+    if (picked.length > 0 || attempt >= 40) return picked;
     await new Promise(resolve => setTimeout(resolve, 250));
   }
 }
+
+/** The modules the editor offers to import `name` from. */
+const importsOffered = (
+  exe: string,
+  cwd: string,
+  file: string,
+  name: string,
+  settings: unknown
+): Promise<string[]> =>
+  offered(exe, cwd, file, name, settings, items =>
+    items
+      .filter(item => item.label === name && item.labelDetails?.description)
+      .map(item => item.labelDetails!.description!)
+  );
+
+/**
+ * The properties the editor offers inside an object: what it lists before
+ * everything that merely exists (globals, things to import).
+ */
+const propertiesOffered = (
+  exe: string,
+  cwd: string,
+  file: string,
+  after: string
+): Promise<string[]> =>
+  offered(exe, cwd, file, after, null, items =>
+    items
+      .filter(
+        item => (item.sortText ?? '') < '15' && /^\w+\??$/.test(item.label)
+      )
+      .map(item => item.label.replace('?', ''))
+      .sort()
+  );
 
 const exe = languageServer();
 
@@ -141,6 +175,10 @@ describe.skipIf(exe === null || process.platform === 'win32')(
         'src/events/messageCreate/reply.ts': `export default event(({ message }) => {});\n`,
         'src/events/messageCreate/nested/deep.ts': `export default event(({ message }) => {});\n`,
         'src/commands/new.ts': `export default command({ description: 'd', run() {} });\n`,
+        // Options being written.
+        'src/events/messageCreate/options.ts': `import { event } from 'chapterjs';\nexport default event(({ message }) => message.id, { });\n`,
+        'src/events/messageUpdate/second.ts': `import { event } from 'chapterjs';\nexport default event(({ message }) => message.id, { where: 'both', });\n`,
+        'src/events/messageDelete/options.ts': `import { event } from 'chapterjs';\nexport default event(({ messageId }) => messageId, { });\n`,
         // A folder created after the types were written.
         'src/events/memberJoin/welcome.ts': `export default event(({ member }) => {});\n`,
       });
@@ -182,5 +220,25 @@ describe.skipIf(exe === null || process.platform === 'win32')(
         )
       ).toEqual(['chapterjs']);
     }, 40_000);
+
+    it.each([
+      [
+        'src/events/messageCreate/options.ts',
+        'message.id, { ',
+        ['bots', 'where'],
+      ],
+      // What is already written is not offered again.
+      ['src/events/messageUpdate/second.ts', "where: 'both', ", ['bots']],
+      ['src/events/messageDelete/options.ts', 'messageId, { ', ['where']],
+    ])(
+      'offers the options of the event, and nothing else, in %s',
+      async (file, after, options) => {
+        const cwd = await scaffolded();
+        expect(
+          await propertiesOffered(exe!, cwd, join(cwd, file), after)
+        ).toEqual(options);
+      },
+      40_000
+    );
   }
 );

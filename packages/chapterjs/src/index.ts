@@ -16,6 +16,10 @@ export type {
   ChannelOption,
   CommandConfig,
   CommandContext,
+  CommandInDm,
+  CommandInGuild,
+  CommandInPrivate,
+  CommandWhere,
   CommandFile,
   CommandLocales,
   CommandOption,
@@ -29,6 +33,9 @@ export type {
 } from './commands/command.js';
 export type {
   CommandInteraction,
+  DmCommandInteraction,
+  GuildCommandInteraction,
+  PrivateCommandInteraction,
   Interaction,
   InteractionReply,
   InteractionReplyOptions,
@@ -36,6 +43,9 @@ export type {
 
 // What the functions of src/events/ receive, by event.
 export type {
+  ContextOf,
+  EventWhere,
+  WhereEventOptions,
   EventContexts,
   EventFile,
   EventName,
@@ -57,6 +67,7 @@ export type {
   InviteCreateOptions,
   PermissionOverwrite,
   TextBasedChannel,
+  GuildTextBasedChannel,
   TextChannel,
   ThreadChannel,
   ThreadCreateOptions,
@@ -85,7 +96,11 @@ export type {
 export type {
   Attachment,
   EmojiInput,
+  DmMessage,
+  GuildMessage,
+  MemberMessage,
   Message,
+  PrivateMessage,
   MessageFlagName,
   Reaction,
 } from './structures/message.js';

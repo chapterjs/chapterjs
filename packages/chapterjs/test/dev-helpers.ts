@@ -19,6 +19,8 @@ export const BOT = '100000000000000002';
 export const GUILD = '100000000000000000';
 export const GENERAL = '100000000000000021';
 export const ALICE = '100000000000000003';
+/** A server that is not the dev server. */
+export const OTHER_GUILD = '100000000000000900';
 
 /** Application flags of a bot with every privileged intent enabled. */
 export const ALL_PRIVILEGED = (1 << 13) | (1 << 15) | (1 << 19);
@@ -54,7 +56,17 @@ export const rawGuild = (id = GUILD, name = 'Dev Server') => ({
   member_count: 2,
   joined_at: '2024-01-01T00:00:00Z',
   large: false,
-  members: [],
+  // Discord always sends the bot itself among the members.
+  members: [
+    {
+      user: { id: BOT, username: 'test-bot', discriminator: '0', bot: true },
+      roles: [],
+      joined_at: '2024-01-01T00:00:00Z',
+      deaf: false,
+      mute: false,
+      flags: 0,
+    },
+  ],
   channels: [{ id: GENERAL, type: 0, name: 'general' }],
   threads: [],
   voice_states: [],
@@ -104,7 +116,15 @@ export interface FakeWorld {
  * another server the dev bot must ignore.
  */
 export async function world(
-  options: { flags?: number; inGuild?: boolean } = {}
+  options: {
+    flags?: number;
+    inGuild?: boolean;
+    /** In how many shards Discord splits the bot. */
+    shards?: number;
+    maxConcurrency?: number;
+    /** The servers the bot is in, besides its dev server. */
+    guilds?: { id: string; name: string }[];
+  } = {}
 ): Promise<FakeWorld> {
   const discord = await fakeDiscord();
   const gateway = await fakeGateway();
@@ -124,12 +144,12 @@ export async function world(
   discord.on('GET', '/gateway/bot', {
     body: {
       url: gateway.url,
-      shards: 1,
+      shards: options.shards ?? 1,
       session_start_limit: {
         total: 1000,
         remaining: 999,
         reset_after: 0,
-        max_concurrency: 1,
+        max_concurrency: options.maxConcurrency ?? 1,
       },
     },
   });
@@ -137,24 +157,62 @@ export async function world(
   discord.on('PUT', `/applications/${BOT}/guilds/${GUILD}/commands`, {
     body: [],
   });
-  const OTHER = '100000000000000900';
-  gateway.behavior.onIdentify = connection => {
+  // What the bot has for everyone: nothing, until a test says otherwise.
+  discord.on('GET', `/applications/${BOT}/commands`, { body: [] });
+  discord.on('PUT', `/applications/${BOT}/commands`, { body: [] });
+  const guilds = [
+    ...(options.guilds ?? [{ id: OTHER_GUILD, name: 'Someone else' }]),
+    { id: GUILD, name: 'Dev Server' },
+  ];
+  gateway.behavior.onIdentify = (connection, identify) => {
+    // Each shard only hears of its own servers.
+    const [shard, count] = (identify as { shard?: [number, number] }).shard ?? [
+      0, 1,
+    ];
+    const mine = guilds.filter(guild => shardOf(guild.id, count) === shard);
     connection.dispatch('READY', {
       v: 10,
       user: { id: BOT, username: 'test-bot', discriminator: '0', bot: true },
-      guilds: [
-        { id: GUILD, unavailable: true },
-        { id: OTHER, unavailable: true },
-      ],
+      guilds: mine.map(guild => ({ id: guild.id, unavailable: true })),
       session_id: `session-${gateway.connections.length}`,
       resume_gateway_url: gateway.url,
       application: { id: BOT, flags: 0 },
     });
-    connection.dispatch('GUILD_CREATE', rawGuild(OTHER, 'Someone else'));
-    connection.dispatch('GUILD_CREATE', rawGuild());
+    for (const guild of mine) {
+      connection.dispatch('GUILD_CREATE', rawGuild(guild.id, guild.name));
+    }
   };
   return { discord, gateway, env: { CHAPTERJS_API_URL: discord.url } };
 }
+
+/** The shard Discord gives the events of a server to. */
+export const shardOf = (guildId: string, count: number): number =>
+  Number((BigInt(guildId) >> 22n) % BigInt(count));
+
+/**
+ * Starts `chapterjs start` in a project, against a fake Discord. Shards
+ * identify without waiting for each other, unless a test says otherwise.
+ */
+export function runStart(
+  cwd: string,
+  fake: FakeWorld,
+  args: string[] = [],
+  env: Record<string, string> = {}
+): Cli {
+  return startCli({
+    bin,
+    args: ['start', ...args],
+    cwd,
+    env: { CHAPTERJS_IDENTIFY_INTERVAL: '1', ...fake.env, ...env },
+  });
+}
+
+/**
+ * Starts `chapterjs start` for every server, the dev server included: as
+ * on a host that was not told about a dev server.
+ */
+export const runProduction = (cwd: string, fake: FakeWorld): Cli =>
+  runStart(cwd, fake, [], { DEV_GUILD_ID: '' });
 
 /** Starts `chapterjs dev` in a project, against a fake Discord. */
 export function runDev(cwd: string, fake: FakeWorld, args = ['dev']): Cli {

@@ -28,6 +28,7 @@ import type { Context } from './context.js';
 import { GuildEmoji } from './emoji.js';
 import { Guild, storesOf } from './guild.js';
 import { Invite } from './invite.js';
+import { remember } from './known.js';
 import { GuildMember } from './member.js';
 import { Message, type MessageData } from './message.js';
 import { Role } from './role.js';
@@ -44,6 +45,8 @@ function upsert<S extends Structure<Raw>, Raw extends object>(
   const cached = store.get(id);
   if (cached) {
     patch(cached, data);
+    // Seen again: the most recent of a store that keeps a limited number.
+    store.set(id, cached);
     return cached;
   }
   const created = create();
@@ -110,9 +113,11 @@ export class Entities {
   role(guildId: Snowflake, raw: RawRole): Role {
     const guild = this.#ctx.cache.guilds.get(guildId);
     const create = () => new Role(this.#ctx, raw, guildId);
-    return guild
+    const role = guild
       ? upsert(storesOf(guild).roles, raw.id, raw, create)
       : create();
+    remember(role, { guild });
+    return role;
   }
 
   emoji(guildId: Snowflake, raw: RawEmoji): GuildEmoji {
@@ -142,9 +147,15 @@ export class Entities {
     const user = this.user(userData);
     const guild = this.#ctx.cache.guilds.get(guildId);
     const create = () => new GuildMember(this.#ctx, data, guildId, user);
-    return guild
+    const member = guild
       ? upsert(storesOf(guild).members, user.id, data, create)
       : create();
+    remember(member, { guild });
+    // The bot itself, kept by its server whatever the cache keeps.
+    if (guild && user.id === this.#ctx.self?.userId) {
+      remember(guild, { member });
+    }
+    return member;
   }
 
   /**
@@ -167,6 +178,7 @@ export class Entities {
         channel.id,
         channel as GuildChannel | ThreadChannel
       );
+      remember(channel, { guild });
     }
     return channel;
   }
@@ -207,14 +219,23 @@ export class Entities {
     const data =
       guildId && !rest.guild_id ? { ...rest, guild_id: guildId } : rest;
     // Messages of a server come with the member who wrote them.
-    if (member && data.guild_id && member.roles && !raw.webhook_id) {
-      this.member(data.guild_id, member as RawGuildMember, rawAuthor);
-    }
+    const writer =
+      member && data.guild_id && member.roles && !raw.webhook_id
+        ? this.member(data.guild_id, member as RawGuildMember, rawAuthor)
+        : undefined;
     const channel = this.#ctx.cache.channels.get(raw.channel_id);
     const create = () => new Message(this.#ctx, data, author, mentions);
-    return channel
+    const message = channel
       ? upsert(messagesOf(channel), raw.id, data, create)
       : create();
+    remember(message, {
+      guild: data.guild_id
+        ? this.#ctx.cache.guilds.get(data.guild_id)
+        : undefined,
+      member: writer,
+      channel,
+    });
+    return message;
   }
 
   invite(raw: RawInvite): Invite {

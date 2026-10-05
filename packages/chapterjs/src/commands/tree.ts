@@ -158,8 +158,17 @@ export function findConflicts(entries: readonly CommandEntry[]): {
 }
 
 /**
+ * The commands that only work in private messages. Discord does not offer
+ * the commands of one server there, so they can't be used with those.
+ * @see https://docs.discord.com/developers/interactions/application-commands#permissions
+ */
+export const privateOnly = (entries: readonly CommandEntry[]): CommandEntry[] =>
+  entries.filter(entry => entry.command.where === 'dm');
+
+/**
  * What to register for a set of commands. `guild` is for commands of one
- * server (dev), where Discord takes no contexts.
+ * server (dev), where Discord takes no contexts: the commands that only
+ * work in private messages are left out, they could never run there.
  *
  * A folder has no file: Discord asks for its description but never shows
  * it, so it is generated, and it is shown under the name of the folder in
@@ -187,6 +196,7 @@ export function buildCommands(
 
   const roots = new Map<string, LoadedCommand[]>();
   for (const { command } of entries) {
+    if (guild && command.where === 'dm') continue;
     const list = roots.get(command.path[0]!) ?? [];
     list.push(command);
     roots.set(command.path[0]!, list);
@@ -215,9 +225,16 @@ export function buildCommands(
             ? {}
             : {
                 integration_types: [ApplicationIntegrationType.GuildInstall],
-                contexts: commands.every(command => command.dm)
-                  ? [InteractionContextType.Guild, InteractionContextType.BotDm]
-                  : [InteractionContextType.Guild],
+                // A command is offered wherever one of its subcommands
+                // works; each one refuses the place it does not work in.
+                contexts: [
+                  ...(commands.some(command => command.where !== 'dm')
+                    ? [InteractionContextType.Guild]
+                    : []),
+                  ...(commands.some(command => command.where !== 'guild')
+                    ? [InteractionContextType.BotDm]
+                    : []),
+                ],
               }),
           ...(commands.some(command => command.nsfw) ? { nsfw: true } : {}),
         } as CommandPayload,

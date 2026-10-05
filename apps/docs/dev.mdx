@@ -25,7 +25,7 @@ bun dev
 
 ```text
 ✓ Connected to My Server as my-bot
-ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, DIRECT_MESSAGES, MESSAGE_CONTENT
+ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT
 ✓ 1 command, 2 events loaded
 ✓ Commands updated on My Server
 ```
@@ -129,7 +129,13 @@ bun typecheck
 
 ## Only your test server
 
-In dev, your bot only sees the server of `DEV_GUILD_ID`: what happens in the other servers it is in is ignored. Private messages sent to the bot are still received.
+In dev, your bot only sees the server of `DEV_GUILD_ID`. What happens in the other servers it is in, and in private messages, is ignored: that is for [`chapterjs start`](/start), which can run the same bot for everyone at the same time.
+
+What only works in private messages can't be tried in dev, and `chapterjs dev` tells you which files:
+
+```text
+ℹ src/commands/settings.ts /settings only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+```
 
 ## Stopping
 
