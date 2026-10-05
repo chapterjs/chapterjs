@@ -263,6 +263,43 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
     expect(again.output).not.toContain('⚠');
   });
 
+  it('names the file and the line of the project when the compiled bot fails', async () => {
+    const fake = await world();
+    const cwd = project(
+      {
+        'src/lib/risky.ts': `export function risky(text: string): string {
+  // What went wrong is here, three files away from the compiled one.
+  if (text === 'boom') throw new Error('it broke');
+  return text;
+}
+`,
+        'src/events/messageCreate/log.ts': `import { event } from 'chapterjs';
+import { risky } from '../../lib/risky';
+
+export default event(({ message }) => {
+  console.log('said: ' + risky(message.content));
+});
+`,
+      },
+      'BOT_TOKEN=test-token\n'
+    );
+    const cli = runStart(cwd, fake);
+    await cli.waitFor('✓ 1 event loaded');
+    const connection = await connected(fake);
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000075', 'boom')
+    );
+    // The line in the code of the developer, not in the compiled file.
+    await cli.waitFor('✗ src/lib/risky.ts:3 it broke');
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000076', 'fine')
+    );
+    await cli.waitFor('said: fine');
+    expect(cli.output).not.toContain('bot.js');
+  });
+
   it('runs a build without the sources it was made from', async () => {
     const fake = await world();
     const cwd = project(files);
@@ -288,20 +325,28 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
       /^✗ This build was made with chapterjs 0\.0\.1-old, and this is chapterjs \d+\.\d+\.\d+.*\.\n  Run "chapterjs build" again\.\n$/
     );
 
-    // Something around the build changed: a file of it no longer runs.
+    // Half a build (a copy that was cut short) is no build.
+    writeFileSync(info, JSON.stringify(built));
+    const bot = join(cwd, '.chapterjs/build/bot.js');
+    const compiled = readFileSync(bot, 'utf8');
+    rmSync(bot);
+    const half = await startCli({ bin, args: ['start'], cwd, env: fake.env })
+      .exited;
+    expect(half.code).toBe(1);
+    expect(half.output).toMatch(/^✗ There is no build of your bot here\./);
+    writeFileSync(bot, compiled);
+
+    // Something around the build changed: it no longer runs.
     writeFileSync(info, JSON.stringify(built));
     writeFileSync(
-      join(cwd, '.chapterjs/build/src/commands/ping.ts'),
+      join(cwd, '.chapterjs/build/bot.js'),
       "throw new Error('a package changed');\n"
     );
     const broken = await startCli({ bin, args: ['start'], cwd, env: fake.env })
       .exited;
     expect(broken.code).toBe(1);
-    expect(broken.output).toMatch(
-      /✗ src\/commands\/ping\.ts:1 a package changed/
-    );
-    expect(broken.output).toMatch(
-      /✗ This file of the build can't run any more, so the bot was not started\. Run "chapterjs build" again: it says what to fix\./
+    expect(broken.output).toBe(
+      '✗ The build of your bot can\'t run any more: a package changed\n  Run "chapterjs build" again: it says what to fix.\n'
     );
     expect(fake.gateway.connections).toEqual([]);
   });

@@ -2,14 +2,13 @@
 // Nothing is reloaded, commands are registered for every server, and a
 // large bot is spread over several processes by itself.
 
-import { join } from 'node:path';
 import { registerCommands } from '../commands/register.js';
 import { buildCommands } from '../commands/tree.js';
 import type { Bot } from '../core/bot.js';
 import { GLOBAL_REQUESTS_PER_SECOND } from '../discord/api.js';
+import { messageOf } from '../loader/locate.js';
 import { GetGatewayBot } from '../discord/endpoints.js';
 import { SessionLimitError } from '../gateway/errors.js';
-import { enableProjectLoader } from '../loader/hot.js';
 import { RestClient } from '../rest/rest.js';
 import {
   connectToPrimary,
@@ -18,7 +17,7 @@ import {
   runCluster,
   type Assignment,
 } from './cluster.js';
-import { buildDir, readBuild } from './build.js';
+import { loadBundle, readBuild } from './build.js';
 import { readStartEnv } from './env.js';
 import type { Log } from './log.js';
 import {
@@ -75,20 +74,30 @@ export async function start(options: StartOptions): Promise<number> {
       'Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.'
     );
   }
-  const root = buildDir(cwd);
+  let files;
+  try {
+    files = await loadBundle(cwd);
+  } catch (error) {
+    // The build ran when it was made: something changed around it since
+    // (a package, the version of Node).
+    if (!assignment) {
+      log.error(
+        `The build of your bot can't run any more: ${messageOf(error)}\nRun "chapterjs build" again: it says what to fix.`
+      );
+    }
+    return 1;
+  }
   const project = createProject({
-    cwd: root,
+    cwd,
     version: options.version,
     log,
+    built: files,
     ...(options.deferAfter === undefined
       ? {}
       : { deferAfter: options.deferAfter }),
   });
-  enableProjectLoader(join(root, 'src'), { reload: false });
   const failures = await project.load();
   if (failures.length > 0) {
-    // The build checked them all: something changed around it since (a
-    // package, the version of Node).
     for (const failure of failures) project.report(failure);
     if (!assignment) {
       log.error(

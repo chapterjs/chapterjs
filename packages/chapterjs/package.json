@@ -25,6 +25,9 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage"
   },
+  "dependencies": {
+    "esbuild": "^0.28.2"
+  },
   "devDependencies": {
     "@chapterjs/test-utils": "workspace:*",
     "@types/node": "^24.0.0",

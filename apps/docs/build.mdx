@@ -1,9 +1,9 @@
 ---
 title: 'chapterjs build'
-description: 'Check your bot and prepare it for production'
+description: 'Check your bot and compile it for production'
 ---
 
-`chapterjs build` prepares your bot for production. Everything that can be wrong with your files is found here, before anything is online. It is what the `build` script of your project runs:
+`chapterjs build` checks your bot and compiles it for production. Everything that can be wrong with your files is found here, before anything is online. It is what the `build` script of your project runs:
 
 <CodeGroup>
 ```bash pnpm
@@ -25,7 +25,7 @@ bun run build
 
 ```text
 ✓ Types checked
-✓ Built in .chapterjs/build: 4 commands, 6 events
+✓ Built in .chapterjs/build: 4 commands, 6 events (18 kB)
 ℹ Run chapterjs start to put it online.
 ```
 
@@ -52,8 +52,14 @@ Then [`chapterjs start`](/start) runs what was built. It does not need your toke
     ✗ This file can't run, so your bot was not built. Fix it and build again: chapterjs dev shows the same errors while you write.
     ```
   </Step>
-  <Step title="Keeps what passed">
-    Your `src` folder, as it is at that moment, is kept in `.chapterjs/build`. That is what production runs.
+  <Step title="Compiles your bot">
+    Your whole bot becomes **one JavaScript file**, in `.chapterjs/build`:
+
+    - every command and event, with what they import from your project;
+    - only what is used: code nothing calls is left out;
+    - compact, so it loads fast.
+
+    That file is what production runs.
   </Step>
 </Steps>
 
@@ -69,15 +75,40 @@ Once built, your bot does not change when you edit a file. The changes go online
 
 So you can keep working in the same folder while your bot runs.
 
-## Everything your bot runs is in src
+## Errors still name your files
 
-The build only takes the `src` folder. A file of your bot that imports something from elsewhere in your project would not find it in production, and the build tells you:
+The compiled file is not made to be read, but you never have to: when something fails in production, the error names the file and the line **you wrote**.
 
 ```text
-ℹ A file your bot imports was not found in the build. Everything it runs must be inside src/ (or be an installed package): move it there.
+✗ src/lib/levels.ts:42 Cannot read properties of undefined (reading 'xp')
 ```
 
-Packages you installed are found as usual.
+The names of your functions and variables are kept too.
+
+## What is in the build
+
+| | In the build |
+| --- | --- |
+| Your commands and events | Yes |
+| What they import from your project, wherever it is | Yes |
+| Files and folders starting with `_`, when something imports them | Yes |
+| Packages you installed | No: they stay in `node_modules`, which production needs too |
+| Files your code reads while running (a JSON opened with `readFile`, an image...) | No: keep them next to your project |
+
+## Nothing to install
+
+The compiling is done by [esbuild](https://esbuild.github.io), which comes with ChapterJS: your project has nothing to add, and nothing to configure.
+
+<Note>
+  With **pnpm**, a project needs one more file, or pnpm refuses to install it: esbuild comes with an install script, and pnpm wants to be told what to do with it. `create chapter` writes that file for you. In a project made another way, create `pnpm-workspace.yaml` next to your `package.json`:
+
+  ```yaml pnpm-workspace.yaml
+  allowBuilds:
+    esbuild: false
+  ignoredBuiltDependencies:
+    - esbuild
+  ```
+</Note>
 
 ## Putting your bot online
 
@@ -85,7 +116,7 @@ On the machine that hosts your bot:
 
 <Steps>
   <Step title="Install">
-    Copy your project there (without `node_modules`), then install its packages.
+    Copy your project there (without `node_modules`), then install its packages. Include the development ones if you want the build to check the types.
   </Step>
   <Step title="Build">
     Run the `build` script.

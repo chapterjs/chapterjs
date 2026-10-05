@@ -5,6 +5,7 @@ import {
   symlinkSync,
   writeFileSync,
   rmSync,
+  readdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -23,7 +24,7 @@ export default command({
 `;
 const files = {
   'src/commands/ping.ts': PING,
-  'src/lib/answer.ts': `export const answer: string = 'Pong!';\n`,
+  'src/lib/answer.ts': `export const answer: string = 'Pong!';\nexport function neverUsed(): string {\n  return 'dropped from the build';\n}\n`,
   'src/events/ready/hello.ts': `import { event } from 'chapterjs';\nexport default event(({ user }) => console.log(user.username));\n`,
 };
 /** A project with TypeScript, as the scaffolder leaves it. */
@@ -49,20 +50,42 @@ function typed(content: Record<string, string>): string {
 }
 
 describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
-  it('checks the project and keeps what passed in .chapterjs/build', () => {
+  it('checks the project and compiles it into one file in .chapterjs/build', () => {
     const cwd = typed(files);
     const result = buildProject(cwd);
     expect(result.output).toBe(
-      '✓ Types checked\n✓ Built in .chapterjs/build: 1 command, 1 event\nℹ Run chapterjs start to put it online.\n'
+      '✓ Types checked\n✓ Built in .chapterjs/build: 1 command, 1 event (1 kB)\nℹ Run chapterjs start to put it online.\n'
     );
     expect(result.code).toBe(0);
     const built = join(cwd, '.chapterjs/build');
-    // Everything of src, as it was: also what the files import.
-    for (const file of Object.keys(files)) {
-      expect(readFileSync(join(built, file), 'utf8')).toBe(
-        files[file as keyof typeof files]
-      );
-    }
+    expect(readdirSync(built).sort()).toEqual([
+      'bot.js',
+      'bot.js.map',
+      'build.json',
+    ]);
+    const bot = readFileSync(join(built, 'bot.js'), 'utf8');
+    // JavaScript, compact: the code on one line, then where its map is.
+    expect(bot.trimEnd().split('\n')).toHaveLength(2);
+    expect(bot).toMatch(/\n\/\/# sourceMappingURL=bot\.js\.map\n$/);
+    expect(bot).not.toContain(': string');
+    // What the files import from the project is in, what nothing uses is not.
+    expect(bot).toContain('"Pong!"');
+    expect(bot).not.toContain('dropped from the build');
+    // With the names the developer wrote, so errors read like their code.
+    expect(bot).toContain('answer');
+    // Packages are not copied in: the bot and the framework share them.
+    expect(bot).toMatch(/from"chapterjs"/);
+    expect(bot).not.toContain('Symbol.for');
+    // The map leads back to the files of the project, without copying them.
+    const map = JSON.parse(readFileSync(join(built, 'bot.js.map'), 'utf8'));
+    expect(map.sources).toEqual(
+      expect.arrayContaining([
+        '../../src/commands/ping.ts',
+        '../../src/lib/answer.ts',
+        '../../src/events/ready/hello.ts',
+      ])
+    );
+    expect(map).not.toHaveProperty('sourcesContent');
     const info = JSON.parse(readFileSync(join(built, 'build.json'), 'utf8'));
     expect(info).toEqual({
       version: expect.stringMatching(/^\d+\.\d+\.\d+/),
@@ -77,11 +100,19 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
     );
   });
 
+  it('needs nothing installed in the project to compile it', () => {
+    const cwd = project(files);
+    // The compiler comes with the framework.
+    expect(existsSync(join(cwd, 'node_modules/esbuild'))).toBe(false);
+    expect(buildProject(cwd).code).toBe(0);
+    expect(existsSync(join(cwd, '.chapterjs/build/bot.js'))).toBe(true);
+  });
+
   it('says when types could not be checked, and builds all the same', () => {
     const result = buildProject(project(files));
     expect(result.code).toBe(0);
     expect(result.output).toBe(
-      'ℹ Types were not checked: TypeScript is not installed in this project (or it has no tsconfig.json).\n✓ Built in .chapterjs/build: 1 command, 1 event\nℹ Run chapterjs start to put it online.\n'
+      'ℹ Types were not checked: TypeScript is not installed in this project (or it has no tsconfig.json).\n✓ Built in .chapterjs/build: 1 command, 1 event (1 kB)\nℹ Run chapterjs start to put it online.\n'
     );
   });
 
@@ -91,7 +122,7 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
     );
     expect(result.code).toBe(0);
     expect(result.output).toContain(
-      'ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/\n✓ Built in .chapterjs/build: nothing to run yet\n'
+      'ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/\n✓ Built in .chapterjs/build: nothing to run yet (1 kB)\n'
     );
   });
 
@@ -138,18 +169,20 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
       ],
     ],
     [
-      'a file that imports something outside src',
+      'a file that can not be compiled',
       {
-        'config.ts': `export const name: string = 'bot';\n`,
-        'src/commands/outside.ts': `import { command } from 'chapterjs';
-import { name } from '../../config';
-export default command({ description: name, run() {} });
+        'src/commands/lazy.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  async run() {
+    await import('./not-there');
+  },
+});
 `,
       },
       [
-        /✗ src\/commands\/outside\.ts .*Cannot find module/,
-        /ℹ A file your bot imports was not found in the build\. Everything it runs must be inside src\/ \(or be an installed package\): move it there\./,
-        /✗ This file can't run, so your bot was not built\./,
+        /✗ src\/commands\/lazy\.ts:5 Could not resolve "\.\/not-there"/,
+        /✗ This file can't be compiled, so your bot was not built\. Fix it and build again/,
       ],
     ],
   ])('stops on %s, and leaves no build behind', (_what, more, messages) => {
@@ -163,15 +196,36 @@ export default command({ description: name, run() {} });
     expect(existsSync(join(cwd, '.chapterjs/build'))).toBe(false);
   });
 
+  it('takes what the files import from anywhere in the project', () => {
+    const cwd = project({
+      ...files,
+      'config.ts': `export const motto: string = 'from the root of the project';\n`,
+      'src/commands/outside.ts': `import { command } from 'chapterjs';
+import { motto } from '../../config';
+export default command({ description: motto, run() {} });
+`,
+    });
+    const result = buildProject(cwd);
+    expect(result.code).toBe(0);
+    expect(result.output).toContain('2 commands, 1 event');
+    expect(
+      readFileSync(join(cwd, '.chapterjs/build/bot.js'), 'utf8')
+    ).toContain('from the root of the project');
+  });
+
   it('replaces the last build: a removed file is no longer in it', () => {
-    const cwd = project({ ...files, 'src/commands/old.ts': PING });
+    const cwd = project({
+      ...files,
+      'src/commands/old.ts': PING.replace('Replies with Pong!', 'Old command'),
+    });
+    const bot = () =>
+      readFileSync(join(cwd, '.chapterjs/build/bot.js'), 'utf8');
     expect(buildProject(cwd).output).toContain('2 commands, 1 event');
-    const old = join(cwd, '.chapterjs/build/src/commands/old.ts');
-    expect(existsSync(old)).toBe(true);
+    expect(bot()).toContain('Old command');
     rmSync(join(cwd, 'src/commands/old.ts'));
     // A command removed from the project must not stay online.
     expect(buildProject(cwd).output).toContain('1 command, 1 event');
-    expect(existsSync(old)).toBe(false);
+    expect(bot()).not.toContain('Old command');
   });
 
   it('survives what writes the types of the project again', () => {
@@ -185,9 +239,7 @@ export default command({ description: name, run() {} });
     });
     expect(sync.status).toBe(0);
     expect(existsSync(join(cwd, '.chapterjs/build/build.json'))).toBe(true);
-    expect(existsSync(join(cwd, '.chapterjs/build/src/commands/ping.ts'))).toBe(
-      true
-    );
+    expect(existsSync(join(cwd, '.chapterjs/build/bot.js'))).toBe(true);
   });
 
   it('says there is no project in a folder without src', () => {

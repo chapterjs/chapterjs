@@ -21,7 +21,12 @@ import {
   type LoadedEvent,
 } from '../events/router.js';
 import { GatewayFatalError, SessionLimitError } from '../gateway/errors.js';
-import { loadFolder, type FailedFile } from '../loader/loader.js';
+import {
+  loadBuilt,
+  loadFolder,
+  type BuiltFile,
+  type FailedFile,
+} from '../loader/loader.js';
 import { locate, messageOf } from '../loader/locate.js';
 import {
   DiscordApiError,
@@ -37,9 +42,17 @@ export interface ProjectOptions {
   /** The version of the framework. */
   version: string;
   log: Log;
+  /**
+   * The files of the project as `chapterjs build` kept them. Without it,
+   * they are read from the `src` folder.
+   */
+  built?: readonly BuiltFile[];
   /** Only tests change this. */
   deferAfter?: number;
 }
+
+/** The conventional folders of a project: one per feature. */
+export const CONVENTIONS = [eventsConvention, commandsConvention] as const;
 
 /** What a bot of the project is connected with. */
 export interface ConnectOptions {
@@ -148,10 +161,18 @@ export function createProject(options: ProjectOptions): Project {
     },
     report,
     async load() {
-      const [eventFiles, commandFiles] = await Promise.all([
-        loadFolder(cwd, eventsConvention),
-        loadFolder(cwd, commandsConvention),
-      ]);
+      const { built } = options;
+      const [eventFiles, commandFiles] = await Promise.all(
+        built
+          ? [
+              loadBuilt(eventsConvention, built),
+              loadBuilt(commandsConvention, built),
+            ]
+          : [
+              loadFolder(cwd, eventsConvention),
+              loadFolder(cwd, commandsConvention),
+            ]
+      );
       const nextEvents = new Map<string, LoadedEvent>();
       for (const { file, value } of eventFiles.loaded) {
         nextEvents.set(file, { file, event: value });

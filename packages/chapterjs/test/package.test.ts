@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const pkg = JSON.parse(
@@ -6,10 +8,45 @@ const pkg = JSON.parse(
 );
 
 describe('the published package', () => {
-  it('has zero runtime dependencies: only Node built-ins', () => {
-    expect(pkg.dependencies ?? {}).toEqual({});
+  it('has one dependency, the compiler of chapterjs build, and nothing else', () => {
+    expect(Object.keys(pkg.dependencies ?? {})).toEqual(['esbuild']);
     expect(pkg.peerDependencies ?? {}).toEqual({});
     expect(pkg.optionalDependencies ?? {}).toEqual({});
+  });
+
+  it('runs a bot with Node built-ins only: nothing but the build loads a package', () => {
+    const src = fileURLToPath(new URL('../src', import.meta.url));
+    const importing: Record<string, string[]> = {};
+    for (const entry of readdirSync(src, {
+      recursive: true,
+      withFileTypes: true,
+    })) {
+      if (!entry.isFile() || !entry.name.endsWith('.ts')) continue;
+      const file = join(entry.parentPath, entry.name);
+      const code = readFileSync(file, 'utf8');
+      // Every import of something that is neither a file nor part of Node.
+      // The package's own name only appears in examples for developers.
+      const packages = [
+        ...code.matchAll(/(?:from|import)\s*\(?\s*['"]([^'".][^'"]*)['"]/g),
+      ]
+        .map(match => match[1]!)
+        .filter(
+          name =>
+            !name.startsWith('node:') &&
+            !name.startsWith('#') &&
+            name !== 'chapterjs' &&
+            // Code the framework writes for a project, not an import.
+            !name.includes('${')
+        );
+      if (packages.length > 0) {
+        importing[relative(src, file).split(sep).join('/')] = packages;
+      }
+    }
+    expect(importing).toEqual({ 'cli/build.ts': ['esbuild'] });
+    // And only when a build runs: no other command pays for it.
+    const build = readFileSync(join(src, 'cli/build.ts'), 'utf8');
+    expect(build).toContain("await import('esbuild')");
+    expect(build).not.toMatch(/^import .* from 'esbuild'/m);
   });
 
   it('requires the Node version that runs TypeScript natively', () => {

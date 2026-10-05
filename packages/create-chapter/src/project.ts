@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { cp, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { templatesDir } from './templates.js';
+import type { PackageManager } from './package-manager.js';
 
 /** Files that don't make a folder "used": a project can still be created there. */
 const ignoredFiles = new Set([
@@ -52,15 +53,32 @@ export interface CreateOptions {
   template: string;
   /** The `chapterjs` version range the project depends on. */
   chapterjsVersion: string;
+  /** The package manager the project will be installed with. */
+  packageManager?: PackageManager;
   /** Where templates are read from: `templates/` of this package by default. */
   templatesRoot?: string;
 }
+
+/**
+ * What pnpm needs to install a project whose framework comes with esbuild
+ * (which `chapterjs build` compiles the bot with). esbuild has an install
+ * script it does not need; pnpm refuses to go on until the project says whether that
+ * script may run. It may not: no script of a dependency runs.
+ * `allowBuilds` is read by pnpm 11, `ignoredBuiltDependencies` by pnpm 10.
+ */
+export const PNPM_WORKSPACE = `# esbuild works without its install script: pnpm is told not to run it.
+allowBuilds:
+  esbuild: false
+ignoredBuiltDependencies:
+  - esbuild
+`;
 
 /** Copies the template into `dir` and names the project after its folder. */
 export async function createProject({
   dir,
   template,
   chapterjsVersion,
+  packageManager,
   templatesRoot = templatesDir,
 }: CreateOptions) {
   const root = resolve(dir);
@@ -81,4 +99,10 @@ export async function createProject({
   delete pkg.description;
   pkg.dependencies = { ...pkg.dependencies, chapterjs: chapterjsVersion };
   await writeFile(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+
+  // Only for the package manager that reads it: nothing to explain to the
+  // others.
+  if (packageManager === 'pnpm') {
+    await writeFile(join(root, 'pnpm-workspace.yaml'), PNPM_WORKSPACE);
+  }
 }

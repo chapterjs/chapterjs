@@ -1,13 +1,16 @@
 // `chapterjs build`: prepares the bot for production. Everything that can
 // go wrong with the files of the project goes wrong here, before anything
-// is online: types are checked, every file is loaded, and what passed is
-// kept in `.chapterjs/build/`. `chapterjs start` runs that, and only that:
-// the bot in production is exactly what was built.
+// is online: types are checked, every file is run, then the whole bot is
+// compiled into one JavaScript file in `.chapterjs/build/`. `chapterjs
+// start` runs that, and only that: the bot in production is exactly what
+// was built.
+//
+// The compiling is done by esbuild, the one dependency of the framework. It
+// is only loaded here: running a bot never needs it.
 
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  cp,
   mkdir,
   readdir,
   readFile,
@@ -16,15 +19,20 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { eventTypedFolders } from '../events/types.js';
 import { writeGenerated } from '../loader/generated.js';
 import { enableProjectLoader } from '../loader/hot.js';
+import { listFolder, type BuiltFile } from '../loader/loader.js';
 import type { Log } from './log.js';
-import { createProject, hasSources } from './project.js';
+import { CONVENTIONS, createProject, hasSources } from './project.js';
 
 /** Where the build of a project is, from its folder. */
 export const buildDir = (cwd: string): string =>
   join(cwd, '.chapterjs', 'build');
+
+/** The file the whole bot is compiled into, in the build. */
+export const BUNDLE = 'bot.js';
 
 /** What `build.json` says of a build. */
 export interface BuildInfo {
@@ -63,6 +71,7 @@ export async function readBuild(
     info = JSON.parse(
       await readFile(join(buildDir(cwd), 'build.json'), 'utf8')
     ) as BuildInfo;
+    await stat(join(buildDir(cwd), BUNDLE));
   } catch {
     return {
       problem:
@@ -103,6 +112,27 @@ async function checkTypes(
   });
 }
 
+/**
+ * Loads the bot a build compiled: every file of the project, already run.
+ * Errors that come out of it afterwards name the file and the line of the
+ * project, not of the compiled file: Node reads the map next to it.
+ */
+export async function loadBundle(cwd: string): Promise<BuiltFile[]> {
+  process.setSourceMapsEnabled(true);
+  const module = (await import(
+    pathToFileURL(join(buildDir(cwd), BUNDLE)).href
+  )) as { files: BuiltFile[] };
+  return module.files;
+}
+
+/** What esbuild says when it can't compile. */
+interface EsbuildFailure {
+  errors?: {
+    text: string;
+    location?: { file: string; line: number } | null;
+  }[];
+}
+
 export interface BuildOptions {
   /** The folder of the project. */
   cwd: string;
@@ -134,51 +164,110 @@ export async function build(options: BuildOptions): Promise<number> {
     log.success('Types checked');
   }
 
-  // 2. The files as they are now, kept apart: what runs in production does
-  // not change when a file of the project does.
+  // Whatever happens next, the last build is not one to start any more.
   await rm(out, { recursive: true, force: true });
-  await mkdir(out, { recursive: true });
-  await cp(src, join(out, 'src'), { recursive: true });
-
-  // 3. Every file must run, from where it will run.
-  const project = createProject({ cwd: out, version: options.version, log });
-  enableProjectLoader(join(out, 'src'), { reload: false });
-  const failures = await project.load();
-  if (failures.length > 0) {
-    for (const failure of failures) project.report(failure);
-    // The build only takes src: what a file imports from elsewhere in the
-    // project is not there any more.
-    if (
-      failures.some(
-        ({ error }) =>
-          (error as NodeJS.ErrnoException | null)?.code ===
-          'ERR_MODULE_NOT_FOUND'
-      )
-    ) {
-      log.info(
-        'A file your bot imports was not found in the build. Everything it runs must be inside src/ (or be an installed package): move it there.'
-      );
-    }
+  const stopped = async (
+    failures: number,
+    why = "can't run"
+  ): Promise<number> => {
     log.error(
-      `${failures.length === 1 ? 'This file' : `These ${failures.length} files`} can't run, so your bot was not built. Fix ${failures.length === 1 ? 'it' : 'them'} and build again: chapterjs dev shows the same errors while you write.`
+      `${failures === 1 ? 'This file' : `These ${failures} files`} ${why}, so your bot was not built. Fix ${failures === 1 ? 'it' : 'them'} and build again: chapterjs dev shows the same errors while you write.`
     );
-    // A build that failed is not one to start.
     await rm(out, { recursive: true, force: true });
     return 1;
+  };
+
+  // 2. Every file must run, one by one: each says what is wrong with it.
+  enableProjectLoader(src, { reload: false });
+  const sources = createProject({ cwd, version: options.version, log });
+  const failures = await sources.load();
+  if (failures.length > 0) {
+    for (const failure of failures) sources.report(failure);
+    return stopped(failures.length);
+  }
+
+  // 3. The whole bot in one file: every file of the conventional folders,
+  // with what it imports from the project. Packages stay where they are
+  // installed: the bot and the framework must share the same ones.
+  const found = (
+    await Promise.all(
+      CONVENTIONS.map(convention => listFolder(cwd, convention))
+    )
+  ).flat();
+  const entry = [
+    ...found.map(
+      ({ path }, index) => `import * as m${index} from ${JSON.stringify(path)};`
+    ),
+    `export const files = [${found
+      .map(
+        ({ file }, index) =>
+          `{ file: ${JSON.stringify(file)}, exports: m${index} }`
+      )
+      .join(', ')}];`,
+  ].join('\n');
+  await mkdir(out, { recursive: true });
+  // Loaded when it is needed: no other command pays for it.
+  const esbuild = await import('esbuild');
+  try {
+    await esbuild.build({
+      stdin: {
+        contents: entry,
+        resolveDir: cwd,
+        sourcefile: 'chapterjs-build.js',
+        loader: 'js',
+      },
+      absWorkingDir: cwd,
+      outfile: join(out, BUNDLE),
+      bundle: true,
+      platform: 'node',
+      format: 'esm',
+      target: 'node22',
+      packages: 'external',
+      // Compact, but with the names the developer wrote: an error must
+      // still read like their code. The map gives back files and lines.
+      minifyWhitespace: true,
+      minifySyntax: true,
+      minifyIdentifiers: false,
+      keepNames: true,
+      sourcemap: true,
+      sourcesContent: false,
+      logLevel: 'silent',
+    });
+  } catch (error) {
+    const errors = (error as EsbuildFailure).errors ?? [];
+    if (errors.length === 0) throw error;
+    for (const { text, location } of errors) {
+      log.error(
+        `${location ? `${location.file}:${location.line} ` : ''}${text}`
+      );
+    }
+    return stopped(errors.length, "can't be compiled");
+  }
+
+  // 4. What was compiled is run once, as production will run it.
+  const built = createProject({
+    cwd,
+    version: options.version,
+    log,
+    built: await loadBundle(cwd),
+  });
+  const broken = await built.load();
+  if (broken.length > 0) {
+    for (const failure of broken) built.report(failure);
+    return stopped(broken.length, "can't run once compiled");
   }
 
   const info: BuildInfo = {
     version: options.version,
     sources: await fingerprint(src),
-    commands: project.commands.size,
-    events: project.events.size,
+    commands: built.commands.size,
+    events: built.events.size,
   };
   await writeFile(join(out, 'build.json'), JSON.stringify(info, null, 2));
-  if (project.isEmpty()) {
-    log.info(project.summary());
-  }
+  if (built.isEmpty()) log.info(built.summary());
+  const { size } = await stat(join(out, BUNDLE));
   log.success(
-    `Built in .chapterjs/build: ${project.isEmpty() ? 'nothing to run yet' : project.summary().replace(/ loaded$/, '')}`
+    `Built in .chapterjs/build: ${built.isEmpty() ? 'nothing to run yet' : built.summary().replace(/ loaded$/, '')} (${Math.max(1, Math.round(size / 1024))} kB)`
   );
   log.info('Run chapterjs start to put it online.');
   return 0;
