@@ -118,7 +118,9 @@ export async function writeGenerated(
           // What TypeScript itself leaves there to check faster next time,
           // and what features remember between two runs.
           !path.endsWith('.tsbuildinfo') &&
-          !relative(root, path).startsWith(`cache${sep}`)
+          !relative(root, path).startsWith(`cache${sep}`) &&
+          // What `chapterjs build` made is not ours to remove.
+          !relative(root, path).startsWith(`build${sep}`)
       )
       .map(path => rm(path, { force: true }))
   );

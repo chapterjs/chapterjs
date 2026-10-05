@@ -1,0 +1,102 @@
+---
+title: 'chapterjs build'
+description: 'Check your bot and prepare it for production'
+---
+
+`chapterjs build` prepares your bot for production. Everything that can be wrong with your files is found here, before anything is online. It is what the `build` script of your project runs:
+
+<CodeGroup>
+```bash pnpm
+pnpm build
+```
+
+```bash npm
+npm run build
+```
+
+```bash yarn
+yarn build
+```
+
+```bash bun
+bun run build
+```
+</CodeGroup>
+
+```text
+✓ Types checked
+✓ Built in .chapterjs/build: 4 commands, 6 events
+ℹ Run chapterjs start to put it online.
+```
+
+Then [`chapterjs start`](/start) runs what was built. It does not need your token, and it never talks to Discord: you can run it anywhere, as often as you want.
+
+## What it does
+
+<Steps>
+  <Step title="Checks the types">
+    What your editor underlines, for the whole project at once. One error stops the build:
+
+    ```text
+    ✗ Your project has type errors, so it was not built:
+      src/commands/ban.ts(12,25): error TS18047: 'message.member' is possibly 'null'.
+    ```
+
+    This uses the TypeScript of your project. If it is not installed where you build, the build says so and goes on.
+  </Step>
+  <Step title="Runs every file once">
+    Each command and each event is loaded and checked, like `chapterjs dev` does when you save: a file in the wrong folder, an option without description, two files that are the same command...
+
+    ```text
+    ✗ src/commands/poll.ts The default export of this file must be what command() returns: import { command } from 'chapterjs'; export default command({ description: '...', run({ interaction }) { ... } })
+    ✗ This file can't run, so your bot was not built. Fix it and build again: chapterjs dev shows the same errors while you write.
+    ```
+  </Step>
+  <Step title="Keeps what passed">
+    Your `src` folder, as it is at that moment, is kept in `.chapterjs/build`. That is what production runs.
+  </Step>
+</Steps>
+
+A build that fails leaves nothing behind: there is never a half-built bot to start by mistake.
+
+## Production runs the build, not your files
+
+Once built, your bot does not change when you edit a file. The changes go online the next time you build:
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+So you can keep working in the same folder while your bot runs.
+
+## Everything your bot runs is in src
+
+The build only takes the `src` folder. A file of your bot that imports something from elsewhere in your project would not find it in production, and the build tells you:
+
+```text
+ℹ A file your bot imports was not found in the build. Everything it runs must be inside src/ (or be an installed package): move it there.
+```
+
+Packages you installed are found as usual.
+
+## Putting your bot online
+
+On the machine that hosts your bot:
+
+<Steps>
+  <Step title="Install">
+    Copy your project there (without `node_modules`), then install its packages.
+  </Step>
+  <Step title="Build">
+    Run the `build` script.
+  </Step>
+  <Step title="Start">
+    Run the `start` script, with `BOT_TOKEN` given by your host: see [chapterjs start](/start).
+  </Step>
+</Steps>
+
+Many hosts ask for a "build command" and a "start command": give them the `build` and `start` scripts of your project.
+
+<Note>
+  The `.chapterjs` folder is not saved in git. A host that takes your project from git builds it there; if you build on your computer and upload the result, upload `.chapterjs/build` too.
+</Note>

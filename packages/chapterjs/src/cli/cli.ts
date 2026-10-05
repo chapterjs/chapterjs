@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { eventTypedFolders } from '../events/types.js';
 import { writeGenerated } from '../loader/generated.js';
+import { build } from './build.js';
 import { readAssignment } from './cluster.js';
 import { dev } from './dev.js';
 import { createLog } from './log.js';
@@ -15,7 +16,8 @@ const USAGE = `Usage: chapterjs <command>
 
 Commands:
   dev     Run your bot on your dev server and reload it when you save a file
-  start   Run your bot for everyone, in production
+  build   Check your bot and prepare it for production
+  start   Run for everyone the bot that was built
   sync    Write the types of your project (dev does it too)
 
 Options of start:
@@ -107,10 +109,8 @@ if (command === 'dev') {
 } else if (command === undefined || command === '--help' || command === '-h') {
   console.log(USAGE);
 } else if (command === 'build') {
-  log.error(
-    `"chapterjs ${command}" is not available yet in this version.\nUse "chapterjs dev" to run your bot while you write it.`
-  );
-  process.exitCode = 1;
+  process.exitCode = await build({ cwd: process.cwd(), version, log });
+  process.exit();
 } else {
   log.error(`"${command}" is not a command.\n${USAGE}`);
   process.exitCode = 1;

@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import {
   fakeDiscord,
   fakeGateway,
@@ -185,6 +186,20 @@ export async function world(
   return { discord, gateway, env: { CHAPTERJS_API_URL: discord.url } };
 }
 
+/** Runs `chapterjs build` in a project, and waits for it. */
+export function buildProject(cwd: string): { code: number; output: string } {
+  const result = spawnSync(process.execPath, [bin, 'build'], {
+    cwd,
+    encoding: 'utf8',
+    // Nothing inherited from who runs the tests.
+    env: { PATH: process.env.PATH ?? '', NO_COLOR: '1' },
+  });
+  return {
+    code: result.status ?? 1,
+    output: `${result.stdout}${result.stderr}`,
+  };
+}
+
 /** The shard Discord gives the events of a server to. */
 export const shardOf = (guildId: string, count: number): number =>
   Number((BigInt(guildId) >> 22n) % BigInt(count));
@@ -199,6 +214,8 @@ export function runStart(
   args: string[] = [],
   env: Record<string, string> = {}
 ): Cli {
+  // Production runs what was built.
+  buildProject(cwd);
   return startCli({
     bin,
     args: ['start', ...args],

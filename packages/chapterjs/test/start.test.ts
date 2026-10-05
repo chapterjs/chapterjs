@@ -1,3 +1,6 @@
+import { startCli } from '@chapterjs/test-utils';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { planProcesses, splitShards } from '../src/cli/cluster.js';
 import { GatewayIntent } from '../src/discord/intents.js';
@@ -14,6 +17,8 @@ import {
   shardOf,
   world,
   type FakeWorld,
+  bin,
+  buildProject,
 } from './dev-helpers.js';
 
 const PING = `import { command } from 'chapterjs';
@@ -166,30 +171,6 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
 
   it.each([
     [
-      'a file that can not run',
-      { ...files, 'src/commands/broken.ts': 'export default 5;\n' },
-      undefined,
-      [
-        /✗ src\/commands\/broken\.ts The default export of this file must be what command\(\) returns/,
-        /✗ This file can't run, so the bot was not started\. Fix it and start again: chapterjs dev shows the same errors while you write\./,
-      ],
-    ],
-    [
-      'several files that can not run',
-      {
-        ...files,
-        'src/commands/broken.ts': 'export default 5;\n',
-        'src/events/nope/x.ts': '',
-        'src/commands/throws.ts': "throw new Error('boom');\n",
-      },
-      undefined,
-      [
-        /✗ src\/commands\/throws\.ts:1 boom/,
-        /✗ src\/events\/nope\/x\.ts The folder src\/events\/nope is not named after an event/,
-        /✗ These 3 files can't run, so the bot was not started\. Fix them and start again/,
-      ],
-    ],
-    [
       'no token',
       files,
       null,
@@ -235,11 +216,94 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
     expect(globalCommands(fake)).toEqual([]);
   });
 
-  it('says there is no project in a folder without src', async () => {
+  it('does not start what was not built, and says what to run', async () => {
     const fake = await world();
-    const result = await runStart(project({}), fake).exited;
+    // A project nobody built: `startCli` directly, not the helper.
+    const cwd = project(files);
+    const result = await startCli({
+      bin,
+      args: ['start'],
+      cwd,
+      env: fake.env,
+    }).exited;
     expect(result.code).toBe(1);
-    expect(result.output).toMatch(/✗ There is no src folder here\./);
+    expect(result.output).toBe(
+      '✗ There is no build of your bot here.\n  Run "chapterjs build" first (the build script of your project), then start again.\n'
+    );
+    expect(fake.discord.requests).toEqual([]);
+    expect(fake.gateway.connections).toEqual([]);
+  });
+
+  it('runs what was built, not what changed since, and says so', async () => {
+    const fake = await world();
+    const cwd = project(files);
+    expect(buildProject(cwd).code).toBe(0);
+    // Changed after the build: a new answer, and a file that can't run.
+    writeFileSync(
+      join(cwd, 'src/events/ready/hello.ts'),
+      READY.replace('ready: ', 'changed: ')
+    );
+    writeFileSync(join(cwd, 'src/commands/broken.ts'), 'export default 5;\n');
+    const cli = startCli({ bin, args: ['start'], cwd, env: fake.env });
+    await cli.waitFor('✓ 1 command, 2 events loaded');
+    await cli.waitFor('ready: test-bot pid ');
+    expect(cli.output.split('\n')[0]).toBe(
+      '⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.'
+    );
+    expect(cli.output).not.toContain('changed: ');
+    expect(cli.output).not.toContain('✗');
+    cli.signal('SIGTERM');
+    await cli.exited;
+
+    // Built again: the changes are checked, then online.
+    rmSync(join(cwd, 'src/commands/broken.ts'));
+    expect(buildProject(cwd).code).toBe(0);
+    const again = startCli({ bin, args: ['start'], cwd, env: fake.env });
+    await again.waitFor('changed: test-bot pid ');
+    expect(again.output).not.toContain('⚠');
+  });
+
+  it('runs a build without the sources it was made from', async () => {
+    const fake = await world();
+    const cwd = project(files);
+    expect(buildProject(cwd).code).toBe(0);
+    // What a host receives: the build, not the project.
+    rmSync(join(cwd, 'src'), { recursive: true });
+    const cli = startCli({ bin, args: ['start'], cwd, env: fake.env });
+    await cli.waitFor('✓ 1 command, 2 events loaded');
+    expect(cli.output).not.toMatch(/[✗⚠]/);
+  });
+
+  it('refuses a build made by another version, or that can not run any more', async () => {
+    const fake = await world();
+    const cwd = project(files);
+    expect(buildProject(cwd).code).toBe(0);
+    const info = join(cwd, '.chapterjs/build/build.json');
+    const built = JSON.parse(readFileSync(info, 'utf8')) as { version: string };
+    writeFileSync(info, JSON.stringify({ ...built, version: '0.0.1-old' }));
+    const old = await startCli({ bin, args: ['start'], cwd, env: fake.env })
+      .exited;
+    expect(old.code).toBe(1);
+    expect(old.output).toMatch(
+      /^✗ This build was made with chapterjs 0\.0\.1-old, and this is chapterjs \d+\.\d+\.\d+.*\.\n  Run "chapterjs build" again\.\n$/
+    );
+
+    // Something around the build changed: a file of it no longer runs.
+    writeFileSync(info, JSON.stringify(built));
+    writeFileSync(
+      join(cwd, '.chapterjs/build/src/commands/ping.ts'),
+      "throw new Error('a package changed');\n"
+    );
+    const broken = await startCli({ bin, args: ['start'], cwd, env: fake.env })
+      .exited;
+    expect(broken.code).toBe(1);
+    expect(broken.output).toMatch(
+      /✗ src\/commands\/ping\.ts:1 a package changed/
+    );
+    expect(broken.output).toMatch(
+      /✗ This file of the build can't run any more, so the bot was not started\. Run "chapterjs build" again: it says what to fix\./
+    );
+    expect(fake.gateway.connections).toEqual([]);
   });
 
   it('stops for good when Discord refuses the bot', async () => {
@@ -532,20 +596,16 @@ describe.skipIf(process.platform === 'win32')(
       await Promise.all(open.map(connection => connection.waitForClose()));
     }, 30_000);
 
-    it('does not start any process with a file that can not run', async () => {
+    it('says once that nothing was built, whatever the number of processes', async () => {
       const fake = await big();
-      const result = await runStart(
-        project(
-          { ...files, 'src/commands/broken.ts': 'export default 5;\n' },
-          'BOT_TOKEN=test-token\n'
-        ),
-        fake,
-        ['--processes', '2']
-      ).exited;
+      const result = await startCli({
+        bin,
+        args: ['start', '--processes', '2'],
+        cwd: project(files, 'BOT_TOKEN=test-token\n'),
+        env: fake.env,
+      }).exited;
       expect(result.code).toBe(1);
-      expect(
-        result.output.match(/can't run, so the bot was not started/g)
-      ).toHaveLength(1);
+      expect(result.output.match(/There is no build/g)).toHaveLength(1);
       expect(fake.gateway.connections).toEqual([]);
     });
 

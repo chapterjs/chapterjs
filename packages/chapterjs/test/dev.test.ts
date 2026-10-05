@@ -670,11 +670,6 @@ describe.skipIf(process.platform === 'win32')(
 
     it.each([
       [
-        ['build'],
-        /✗ "chapterjs build" is not available yet in this version\.\n  Use "chapterjs dev"/,
-        1,
-      ],
-      [
         ['start', '--processes'],
         /✗ chapterjs start takes one option: --processes followed by a number, like "chapterjs start --processes 4"\. Got "--processes"\./,
         1,
@@ -690,7 +685,7 @@ describe.skipIf(process.platform === 'win32')(
       ],
       [
         [],
-        /^Usage: chapterjs <command>\n\nCommands:\n  dev .+\n  start .+\n  sync .+\n\nOptions of start:\n  --processes <n> /,
+        /^Usage: chapterjs <command>\n\nCommands:\n  dev .+\n  build .+\n  start .+\n  sync .+\n\nOptions of start:\n  --processes <n> /,
         0,
       ],
       [['--help'], /^Usage: chapterjs <command>/, 0],

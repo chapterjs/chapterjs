@@ -1,6 +1,6 @@
-// `chapterjs start`: runs the bot for everyone. Nothing is reloaded, a file
-// that can't run stops the start, commands are registered for every server,
-// and a large bot is spread over several processes by itself.
+// `chapterjs start`: runs for everyone the bot `chapterjs build` prepared.
+// Nothing is reloaded, commands are registered for every server, and a
+// large bot is spread over several processes by itself.
 
 import { join } from 'node:path';
 import { registerCommands } from '../commands/register.js';
@@ -18,6 +18,7 @@ import {
   runCluster,
   type Assignment,
 } from './cluster.js';
+import { buildDir, readBuild } from './build.js';
 import { readStartEnv } from './env.js';
 import type { Log } from './log.js';
 import {
@@ -25,7 +26,7 @@ import {
   ensurePrivilegedIntents,
   fetchApplication,
 } from './preflight.js';
-import { createProject, explain, hasSources, type Project } from './project.js';
+import { createProject, explain, type Project } from './project.js';
 
 export interface StartOptions {
   /** The folder of the project. */
@@ -61,25 +62,37 @@ export async function start(options: StartOptions): Promise<number> {
     return 1;
   }
   const { token, devGuildId } = read.env;
-  if (!(await hasSources(cwd, log))) return 1;
 
-  // 2. The files of the project: in production, they must all run.
+  // 2. What `chapterjs build` prepared: production runs that, and only
+  // that.
+  const built = await readBuild(cwd, options.version);
+  if ('problem' in built) {
+    if (!assignment) log.error(built.problem);
+    return 1;
+  }
+  if (built.stale && !assignment) {
+    log.warn(
+      'Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.'
+    );
+  }
+  const root = buildDir(cwd);
   const project = createProject({
-    cwd,
+    cwd: root,
     version: options.version,
     log,
     ...(options.deferAfter === undefined
       ? {}
       : { deferAfter: options.deferAfter }),
   });
-  enableProjectLoader(join(cwd, 'src'), { reload: false });
+  enableProjectLoader(join(root, 'src'), { reload: false });
   const failures = await project.load();
   if (failures.length > 0) {
+    // The build checked them all: something changed around it since (a
+    // package, the version of Node).
     for (const failure of failures) project.report(failure);
-    // Said once, by the process the developer started.
     if (!assignment) {
       log.error(
-        `${failures.length === 1 ? 'This file' : `These ${failures.length} files`} can't run, so the bot was not started. Fix ${failures.length === 1 ? 'it' : 'them'} and start again: chapterjs dev shows the same errors while you write.`
+        `${failures.length === 1 ? 'This file' : `These ${failures.length} files`} of the build can't run any more, so the bot was not started. Run "chapterjs build" again: it says what to fix.`
       );
     }
     return 1;
