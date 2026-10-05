@@ -1,0 +1,309 @@
+---
+title: 'Commands'
+description: 'Slash commands: one file per command, options typed for you'
+---
+
+A slash command is what people type after `/` in Discord. To create one, add a file in `src/commands/`:
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Replies with Pong!',
+  async run({ interaction }) {
+    await interaction.reply('Pong!');
+  },
+});
+```
+
+That is all: `/ping` shows up in your test server as soon as you save, and runs your function when someone uses it. Nothing to register, no list to keep up to date.
+
+## The path is the name
+
+The path of a file is the name of its command:
+
+```text
+src/commands/
+├── ping.ts             /ping
+└── mod/
+    ├── ban.ts          /mod ban
+    ├── kick.ts         /mod kick
+    └── roles/
+        └── add.ts      /mod roles add
+```
+
+- A **file** is a command.
+- A file in a **folder** is a subcommand of the command named after the folder.
+- A second folder makes a group. Discord allows nothing deeper.
+
+Names follow Discord's rules: lowercase letters, digits, `-` and `_`, 32 characters at most.
+
+<Warning>
+  A command with subcommands can't be used by itself: with `mod/ban.ts`, there is no `/mod`. A file `mod.ts` next to the folder `mod/` is reported.
+</Warning>
+
+### Organising your files
+
+Two kinds of names are never part of a command, so you can sort your files the way you like:
+
+```text
+src/commands/
+├── _embeds.ts              not a command: code you share
+├── (fun)/
+│   └── ping.ts             /ping
+└── (moderation)/
+    ├── _checks.ts          not a command either
+    ├── (punishments)/
+    │   ├── ban.ts          /ban
+    │   └── kick.ts         /kick
+    └── mod/
+        └── warn.ts         /mod warn
+```
+
+- A folder **in parentheses**, like `(moderation)`, only groups files. It changes nothing for Discord, and you can put as many as you want inside each other.
+- A file or a folder starting with **`_`** is private: ChapterJS never reads it as a command. Use it for the code several commands share, and import it as usual (`import { canPunish } from '../_checks'`).
+
+<Note>
+  Two files can't be the same command: `(fun)/ping.ts` and `(tools)/ping.ts` are both `/ping`, so the second one is reported.
+</Note>
+
+### A command or a subcommand?
+
+Prefer **commands** (`/ban`, `/kick`) sorted in a folder in parentheses, and keep **subcommands** for the variants of one action (`/timeout add`, `/timeout remove`).
+
+The reason is how Discord hides commands: it shows or hides a whole command, never one subcommand. With `/mod ban` and `/mod kick`, someone who may only kick still sees `/mod ban`; ChapterJS refuses it when they use it, but with `/ban` and `/kick` they would not see it at all.
+
+## Options
+
+Options are what people fill in after the name of the command. Declare them, and `run` receives their values **already typed**: you never write a type.
+
+```ts src/commands/mod/ban.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Ban a member',
+  permissions: ['BanMembers'],
+  options: {
+    target: { type: 'user', description: 'Who to ban', required: true },
+    reason: { type: 'string', description: 'Why', maxLength: 200 },
+    days: { type: 'integer', description: 'Days of messages to delete', min: 0, max: 7 },
+  },
+  async run({ interaction, options, guild }) {
+    // options.target: User
+    // options.reason: string | undefined
+    // options.days: number | undefined
+    await guild.ban(options.target, {
+      reason: options.reason,
+      deleteMessageSeconds: (options.days ?? 0) * 86_400,
+    });
+    await interaction.reply(`Banned ${options.target.displayName}.`);
+  },
+});
+```
+
+An option is **optional** unless it says `required: true`: an optional one may be `undefined`, and your editor reminds you.
+
+| `type` | What the person fills in | What `run` receives |
+| --- | --- | --- |
+| `'string'` | A text | `string` |
+| `'integer'` | A whole number | `number` |
+| `'number'` | Any number | `number` |
+| `'boolean'` | True or false | `boolean` |
+| `'user'` | A user | [`User`](/reference/user) |
+| `'role'` | A role | [`Role`](/reference/role) |
+| `'channel'` | A channel | [`Channel`](/reference/channels) |
+| `'mentionable'` | A user or a role | `User \| Role` |
+| `'attachment'` | A file | [`Attachment`](/reference/data#attachment) |
+
+Every option has a `description` (1 to 100 characters). Some types accept more:
+
+| Field | For | Meaning |
+| --- | --- | --- |
+| `required` | all | The person must fill it in |
+| `choices` | `string`, `integer`, `number` | The only values that can be picked (25 at most) |
+| `minLength`, `maxLength` | `string` | The length of the text |
+| `min`, `max` | `integer`, `number` | The smallest and largest value |
+| `channelTypes` | `channel` | The kinds of channels that can be picked |
+
+A command has 25 options at most. Everything is checked when the file loads: a mistake is explained in your terminal before Discord refuses it.
+
+### Choices
+
+With `choices`, the person picks in a list, and the value is typed as one of them:
+
+```ts src/commands/color.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Pick a color',
+  options: {
+    // A list: what the person sees is what your code receives.
+    color: { type: 'string', description: 'Your color', choices: ['red', 'green'], required: true },
+    // An object: the key is shown, the value is received.
+    size: { type: 'integer', description: 'How big', choices: { Small: 1, Large: 2 } },
+  },
+  async run({ interaction, options }) {
+    // options.color: 'red' | 'green'
+    // options.size: 1 | 2 | undefined
+    await interaction.reply(`You picked ${options.color}.`);
+  },
+});
+```
+
+## What run receives
+
+| Name | What it is |
+| --- | --- |
+| `interaction` | The use of the command: what you answer with |
+| `options` | What the person filled in |
+| `user` | Who used the command |
+| `member` | Who used the command, as a [member](/reference/member) of the server |
+| `guild` | The [server](/reference/guild) the command was used in |
+| `channel` | The channel the command was used in; `null` if the bot does not know it |
+
+## Answering
+
+`interaction.reply()` takes what [any message takes](/reference/sending-messages): a text, or options with embeds, files, components...
+
+```ts src/commands/secret.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Tells you a secret',
+  async run({ interaction, user }) {
+    // Only the person who used the command sees this answer.
+    await interaction.reply({ content: `Your id is ${user.id}.`, ephemeral: true });
+    // Another message, after the answer.
+    await interaction.followUp({ content: 'Keep it for yourself.', ephemeral: true });
+  },
+});
+```
+
+| Method | What it does |
+| --- | --- |
+| `interaction.reply(message)` | Answers. Once per use of the command |
+| `interaction.edit(message)` | Changes the answer |
+| `interaction.followUp(message)` | Sends another message, after the answer |
+| `interaction.delete()` | Deletes the answer |
+| `interaction.defer()` | Says the answer is coming (see below) |
+
+Pass `ephemeral: true` to `reply()` or `followUp()` to show the message only to the person. To make every answer of a command ephemeral, put `ephemeral: true` on the command itself.
+
+### When the answer takes time
+
+Discord wants an answer within 3 seconds. **You don't have to care**: when your function takes longer, ChapterJS tells Discord the answer is coming, the person sees "thinking…", and your `reply()` completes it, up to 15 minutes later.
+
+```ts src/commands/report.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Builds a long report',
+  async run({ interaction }) {
+    await sleep(10_000); // something slow
+    await interaction.reply('Here is your report.');
+  },
+});
+```
+
+Call `interaction.defer()` yourself if you want "thinking…" to show up right away.
+
+<Info>
+  Whether a deferred answer is ephemeral is decided when it is deferred. For a slow command whose answer must be private, put `ephemeral: true` on the command, or call `interaction.defer({ ephemeral: true })`.
+</Info>
+
+## Who can use a command
+
+`permissions` lists what a member needs to use the command:
+
+```ts src/commands/purge.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Deletes the last messages of this channel',
+  permissions: ['ManageMessages'],
+  options: {
+    count: { type: 'integer', description: 'How many', min: 2, max: 100, required: true },
+  },
+  async run({ interaction, options, channel }) {
+    if (!channel?.isTextBased()) return interaction.reply('Not in this channel.');
+    const messages = await channel.fetchMessages({ limit: options.count });
+    const deleted = await channel.bulkDelete(messages);
+    await interaction.reply({ content: `Deleted ${deleted} messages.`, ephemeral: true });
+  },
+});
+```
+
+Discord hides the command from members who lack the permissions, and ChapterJS checks again when it is used: someone without them gets a private message saying which one is missing, and your function does not run.
+
+Other settings of a command:
+
+| Field | Meaning |
+| --- | --- |
+| `dm: true` | Also offer the command in private messages with the bot. `guild` and `member` can then be `null`, and your editor makes you handle it |
+| `nsfw: true` | Only show the command in age-restricted channels |
+| `ephemeral: true` | Make the answers of the command only visible to who used it |
+
+## Translations
+
+Discord can show a command in the language of each person. Add `locales` to a command, with one entry per language: the name, the description, the options and their choices can all be translated.
+
+```ts src/commands/greet.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Greets someone',
+  options: {
+    who: { type: 'user', description: 'Who to greet', required: true },
+    tone: { type: 'string', description: 'How', choices: ['warm', 'formal'] },
+  },
+  locales: {
+    fr: {
+      name: 'saluer',
+      description: 'Salue quelqu’un',
+      options: {
+        who: { name: 'qui', description: 'Qui saluer' },
+        tone: { name: 'ton', description: 'Comment', choices: { warm: 'Chaleureux', formal: 'Formel' } },
+      },
+    },
+    'es-ES': { description: 'Saluda a alguien' },
+  },
+  async run({ interaction, options }) {
+    // Whatever the language of the person, the names are the ones you declared.
+    const hello = options.tone === 'formal' ? 'Good day' : 'Hey';
+    await interaction.reply(`${hello}, ${options.who.displayName}!`);
+  },
+});
+```
+
+- **Everything is optional.** Translate only what you want, in the languages you want: what is missing is shown as declared.
+- **Your code does not change.** `options.who` is still `options.who` for a French speaker who sees `qui`.
+- **Your editor checks it.** A language Discord does not know, an option the command does not have or a choice that does not exist is underlined.
+- The keys of `choices` are the choices as you declared them: the values of a list (`'warm'`), or the keys of an object.
+
+A translated name follows the same rules as a name: lowercase, no spaces, 32 characters at most. The languages are the [ones Discord supports](/reference/values#locale): `fr`, `de`, `es-ES`, `pt-BR`, `ja`...
+
+A folder is not translated: `/mod ban` can be shown as `/mod bannir`, never as `/modération bannir`. If your bot speaks one language, name the folder in that language.
+
+<Tip>
+  To **answer** in the language of the person, read `interaction.locale` in your function: it is the language of their Discord.
+</Tip>
+
+## When your function fails
+
+An error never stops the bot. The person gets a short, private answer ("Something went wrong while running this command", or "I don't have the permission to do that here" when Discord refused an action), and you get the error in your terminal with the file and the line:
+
+```text
+✗ src/commands/mod/ban.ts:14 Discord refused PUT /guilds/{guild.id}/bans/{user.id}: Missing Permissions (50013)
+```
+
+A function that finishes without answering is reported too: the person would see "The application did not respond".
+
+## How commands reach Discord
+
+`chapterjs dev` registers your commands on your **test server only**, where they show up at once. It tells Discord again only when something people see changed (a name, a description, an option, a translation): changing what a command *does* never costs a request, and neither does starting your bot again.
+
+```text
+✓ 3 commands, 2 events loaded
+✓ Commands updated on My Server
+```

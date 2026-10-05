@@ -10,6 +10,30 @@
 // types only, and nothing here lets user code connect to Discord or send
 // requests by itself.
 
+// Slash commands: what the files of src/commands/ are written with.
+export { command } from './commands/command.js';
+export type {
+  ChannelOption,
+  CommandConfig,
+  CommandContext,
+  CommandFile,
+  CommandLocales,
+  CommandOption,
+  CommandOptions,
+  CommandTranslation,
+  NumberOption,
+  OptionTranslation,
+  OptionValuesOf,
+  SimpleOption,
+  StringOption,
+} from './commands/command.js';
+export type {
+  CommandInteraction,
+  Interaction,
+  InteractionReply,
+  InteractionReplyOptions,
+} from './structures/interaction.js';
+
 // What the functions of src/events/ receive, by event.
 export type {
   EventContexts,

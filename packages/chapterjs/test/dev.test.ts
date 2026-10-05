@@ -154,7 +154,8 @@ export default event(({ user, guilds }) => {
     expect(posted(fake)).toHaveLength(1);
     expect(
       (
-        fake.discord.requests.at(-1)!.body as {
+        fake.discord.requestsTo('POST', `/channels/${GENERAL}/messages`).at(-1)!
+          .body as {
           message_reference: { message_id: string };
         }
       ).message_reference.message_id
@@ -375,7 +376,7 @@ export default event(async ({ message }) => {
     const cli = runDev(project({ 'src/commands/.gitkeep': '' }), fake);
     await cli.waitFor('ℹ Intents computed from your files: GUILDS');
     await cli.waitFor(
-      'ℹ No events yet: add a file in a folder like src/events/messageCreate/'
+      'ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/'
     );
     const connection = await connected(fake);
     expect(
@@ -924,14 +925,14 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
         paths: { chapterjs: ['../types/events.memberJoin.d.ts'] },
       },
       include: [
-        '../../src/events/memberJoin',
+        '../../src/events/**/memberJoin',
         '../types/events.memberJoin.d.ts',
       ],
     });
     const main = JSON.parse(read(cwd, 'projects/main.json'));
     expect(main.include).toEqual(['../../src']);
     expect(main.exclude.sort()).toEqual(
-      EVENT_NAMES.map(name => `../../src/events/${name}`).sort()
+      EVENT_NAMES.map(name => `../../src/events/**/${name}`).sort()
     );
     expect(JSON.parse(read(cwd, 'tsconfig.json'))).toEqual({
       files: [],
@@ -1164,7 +1165,7 @@ export default event(({ message }) => {
         );
         if (message) {
           await cli.waitFor(message);
-          await cli.waitFor('ℹ No events yet');
+          await cli.waitFor('ℹ Nothing to run yet');
         } else {
           // An empty object asks for nothing: accepted everywhere.
           await cli.waitFor('✓ 1 event loaded');
@@ -1280,6 +1281,6 @@ export default event(() => console.log('nested ran'));
     await cli.waitFor(
       /✗ src\/events\/ready\/broken\.ts Cannot find module '.*\/src\/lib\/nope' imported from .*\/src\/events\/ready\/broken\.ts/
     );
-    await cli.waitFor('ℹ No events yet');
+    await cli.waitFor('ℹ Nothing to run yet');
   });
 });

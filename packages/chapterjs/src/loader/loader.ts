@@ -15,8 +15,8 @@ export interface Convention<T> {
   many: string;
   /**
    * Checks where a file is, before it is run. `path` is its path inside
-   * the folder, with `/`. Throws an error whose message says where the file
-   * should be.
+   * the folder, with `/`, without the `(group)` folders (see below). Throws
+   * an error whose message says where the file should be.
    */
   check?(path: string): void;
   /**
@@ -47,6 +47,25 @@ export interface LoadResult<T> {
 const SOURCE = /\.(?:ts|mts|js|mjs)$/;
 const DECLARATION = /\.d\.m?ts$/;
 
+/**
+ * How users organise a conventional folder without changing what it means,
+ * the same in every feature:
+ * - a file or a folder whose name starts with `_` is private: never
+ *   loaded by the framework, free to hold shared code;
+ * - a folder whose name is in parentheses, like `(moderation)`, only groups
+ *   files: it is not part of what the path says, at any depth.
+ */
+const PRIVATE = /^_/;
+const GROUP = /^\(.*\)$/;
+
+/** The path of a file as the feature reads it: without `(group)` folders. */
+export function logicalPath(inside: string): string {
+  const parts = inside.split('/');
+  return parts
+    .filter((part, index) => index === parts.length - 1 || !GROUP.test(part))
+    .join('/');
+}
+
 /** The source files of a folder and its subfolders, in a stable order. */
 async function scan(dir: string): Promise<string[]> {
   let entries;
@@ -59,6 +78,7 @@ async function scan(dir: string): Promise<string[]> {
   }
   const files: string[] = [];
   for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    if (PRIVATE.test(entry.name)) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...(await scan(path)));
     else if (SOURCE.test(entry.name) && !DECLARATION.test(entry.name)) {
@@ -81,7 +101,7 @@ export async function loadFolder<T>(
       const file = relative(projectDir, path).split(sep).join('/');
       result.files.push(file);
       try {
-        const inside = relative(folder, path).split(sep).join('/');
+        const inside = logicalPath(relative(folder, path).split(sep).join('/'));
         // A misplaced file is not run at all.
         convention.check?.(inside);
         const value = convention.read(await importFile(path), inside);

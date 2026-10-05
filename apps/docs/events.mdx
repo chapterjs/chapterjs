@@ -61,6 +61,26 @@ export default event(async ({ message }) => {
 });
 ```
 
+### Organising your files
+
+Like in `src/commands/`, two kinds of names are ignored, so you can sort your files the way you like:
+
+```text
+src/events/
+├── _format.ts                  not an event: code you share
+├── ready/
+│   └── online.ts
+└── (logs)/
+    ├── messageDelete/
+    │   └── log.ts
+    └── (roles)/
+        └── roleDelete/
+            └── log.ts
+```
+
+- A folder **in parentheses**, like `(logs)`, only groups event folders. You can put as many as you want inside each other.
+- A file or a folder starting with **`_`** is private: ChapterJS never runs it as an event. Use it for the code several files share.
+
 ### Let your editor write the import
 
 Type `event(` in a new file and accept the suggestion: your editor adds `import { event } from 'chapterjs'` for you.

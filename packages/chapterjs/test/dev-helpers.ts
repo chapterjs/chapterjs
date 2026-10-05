@@ -133,6 +133,10 @@ export async function world(
       },
     },
   });
+  // Registering commands succeeds, whatever they are.
+  discord.on('PUT', `/applications/${BOT}/guilds/${GUILD}/commands`, {
+    body: [],
+  });
   const OTHER = '100000000000000900';
   gateway.behavior.onIdentify = connection => {
     connection.dispatch('READY', {

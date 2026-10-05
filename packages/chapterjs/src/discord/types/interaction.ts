@@ -16,6 +16,7 @@ import type { RawGuild, RawGuildMember } from './guild.js';
 import type {
   RawAllowedMentions,
   RawAttachment,
+  RawAttachmentRequest,
   RawEmbed,
   RawMessage,
 } from './message.js';
@@ -244,7 +245,7 @@ export interface RawInteractionCallbackMessageData {
   /** Message components */
   components?: RawComponent[];
   /** Attachment objects with filename and description */
-  attachments?: Partial<RawAttachment>[];
+  attachments?: Partial<RawAttachmentRequest>[];
   /** Details about the poll */
   poll?: RawPollCreateRequest;
 }

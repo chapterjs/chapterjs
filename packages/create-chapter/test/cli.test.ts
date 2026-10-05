@@ -66,6 +66,9 @@ describe.skipIf(process.platform === 'win32')('create-chapter CLI', () => {
       expect(existsSync(join(dir, '_gitignore'))).toBe(false);
       expect(installedBy(dir)).toBe('pnpm');
       expect(output).toContain('Using the default template');
+      // Its first example files are there.
+      expect(existsSync(join(dir, 'src/commands/ping.ts'))).toBe(true);
+      expect(existsSync(join(dir, 'src/events/ready/online.ts'))).toBe(true);
       expect(output).toContain(`Project created in ${dir}`);
       expect(output).toContain('Dependencies installed with pnpm');
       expect(nextSteps(output)).toEqual([

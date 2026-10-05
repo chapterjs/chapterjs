@@ -140,6 +140,7 @@ describe.skipIf(exe === null || process.platform === 'win32')(
         // Files being written: `event` is typed, not imported yet.
         'src/events/messageCreate/reply.ts': `export default event(({ message }) => {});\n`,
         'src/events/messageCreate/nested/deep.ts': `export default event(({ message }) => {});\n`,
+        'src/commands/new.ts': `export default command({ description: 'd', run() {} });\n`,
         // A folder created after the types were written.
         'src/events/memberJoin/welcome.ts': `export default event(({ member }) => {});\n`,
       });
@@ -168,5 +169,18 @@ describe.skipIf(exe === null || process.platform === 'win32')(
       },
       40_000
     );
+
+    it('offers to import command from chapterjs in a command file', async () => {
+      const cwd = await scaffolded();
+      expect(
+        await importsOffered(
+          exe!,
+          cwd,
+          join(cwd, 'src/commands/new.ts'),
+          'command',
+          null
+        )
+      ).toEqual(['chapterjs']);
+    }, 40_000);
   }
 );

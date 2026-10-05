@@ -11,7 +11,8 @@ export function eventTypedFolders(): TypedFolder[] {
     const hasOptions = EVENTS[name].options !== undefined;
     return {
       id: `events.${name}`,
-      folder: `src/events/${name}`,
+      // At any depth: the event folder may be inside `(group)` folders.
+      folder: `src/events/**/${name}`,
       declarations: `import type { EventContexts, EventFile${hasOptions ? ', EventOptions' : ''} } from '#chapterjs';
 
 /**
