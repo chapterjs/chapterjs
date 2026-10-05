@@ -1,0 +1,224 @@
+---
+title: 'Data'
+description: 'The plain objects returned for attachments, reactions, audit logs, scheduled events and more'
+---
+
+Some things have no class of their own: you get them as plain objects, with the fields of the Discord API in camelCase. A `?` after a name means the field is not always there.
+
+## In messages
+
+### Attachment
+
+An item of `message.attachments`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | Attachment id |
+| `filename` | `string` | Name of file attached |
+| `title?` | `string` | The title of the file |
+| `description?` | `string` | Description (alt text) for the file (max 1024 characters) |
+| `contentType?` | `string` | The attachment's media type |
+| `size` | `number` | Size of file in bytes |
+| `url` | `string` | Source url of file |
+| `proxyUrl` | `string` | A proxied url of file |
+| `height?` | `number \| null` | Height of file (if image or video) |
+| `width?` | `number \| null` | Width of file (if image or video) |
+| `placeholder?` | `string` | Thumbhash placeholder (if image or video) |
+| `placeholderVersion?` | `number` | Version of the placeholder (if image or video) |
+| `ephemeral?` | `boolean` | Whether this attachment is ephemeral |
+| `durationSecs?` | `number` | The duration of the audio or video file |
+| `waveform?` | `string` | Base64 encoded bytearray representing a sampled waveform (currently for voice messages) |
+| `flags?` | `number` | Attachment flags combined as a bitfield |
+| `clipParticipants?` | `User[]` | For Clips, array of users who were in the stream |
+| `clipCreatedAt?` | `ISO8601Timestamp` | For Clips, when the clip was created |
+| `application?` | `Partial<Application> \| null` | For Clips, the application in the stream, if recognized |
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#attachment-object-attachment-structure)
+
+### Reaction
+
+An item of `message.reactions`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `count` | `number` | Total number of times this emoji has been used to react (including super reacts) |
+| `countDetails` | `ReactionCountDetails` | Reaction count details object |
+| `me` | `boolean` | Whether the current user reacted using this emoji |
+| `meBurst` | `boolean` | Whether the current user super-reacted using this emoji |
+| `emoji` | `Partial<Emoji>` | Emoji information |
+| `burstColors` | `string[]` | HEX colors used for super reaction |
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#reaction-object-reaction-structure)
+
+### countDetails
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `burst` | `number` | Count of super reactions |
+| `normal` | `number` | Count of normal reactions |
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#reaction-count-details-object-reaction-count-details-structure)
+
+The fields of `message.embeds` are in [Sending messages](/reference/sending-messages#embeds).
+
+## In channels
+
+### ForumTag
+
+An item of `forum.availableTags`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | The id of the tag |
+| `name` | `string` | The name of the tag (0-20 characters) |
+| `moderated` | `boolean` | Whether this tag can only be added to or removed from threads by a member with the `MANAGE_THREADS` permission |
+| `emojiId` | `Snowflake \| null` | The id of a guild's custom emoji * |
+| `emojiName` | `string \| null` | The unicode character of the emoji * |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#forum-tag-object-forum-tag-structure)
+
+### ThreadMember
+
+An item of what `thread.fetchMembers()` returns.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id?` | `Snowflake` | ID of the thread |
+| `userId?` | `Snowflake` | ID of the user |
+| `joinTimestamp` | `ISO8601Timestamp` | Time the user last joined the thread |
+| `flags` | `number` | Any user-thread settings, currently only used for notifications |
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#thread-member-object-thread-member-structure)
+
+## In servers
+
+### AuditLog
+
+What `guild.fetchAuditLog()` returns.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `applicationCommands` | `ApplicationCommand[]` | List of application commands referenced in the audit log |
+| `auditLogEntries` | `AuditLogEntry[]` | List of audit log entries, sorted from most to least recent |
+| `autoModerationRules` | `AutoModerationRule[]` | List of auto moderation rules referenced in the audit log |
+| `guildScheduledEvents` | `GuildScheduledEvent[]` | List of guild scheduled events referenced in the audit log |
+| `integrations` | `Partial<Integration>[]` | List of partial integration objects |
+| `threads` | `Channel[]` | List of threads referenced in the audit log* |
+| `users` | `User[]` | List of users referenced in the audit log |
+| `webhooks` | `Webhook[]` | List of webhooks referenced in the audit log |
+
+[Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-object-audit-log-structure)
+
+### auditLogEntries
+
+`actionType` is a value of [`AuditLogEvent`](/reference/values#auditlogevent).
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `targetId` | `string \| null` | ID of the affected entity (webhook, user, role, etc.) |
+| `changes?` | `AuditLogChange[]` | Changes made to the target_id |
+| `userId` | `Snowflake \| null` | User or app that made the changes |
+| `id` | `Snowflake` | ID of the entry |
+| `actionType` | `AuditLogEvent` | Type of action that occurred |
+| `options?` | `OptionalAuditEntryInfo` | Additional info for certain event types |
+| `reason?` | `string` | Reason for the change (1-512 characters) |
+
+[Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-entry-object-audit-log-entry-structure)
+
+### changes
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `newValue?` | `unknown` | New value of the key |
+| `oldValue?` | `unknown` | Old value of the key |
+| `key` | `string` | Name of the changed entity, with a few exceptions |
+
+[Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-change-object-audit-log-change-structure)
+
+### ScheduledEvent
+
+An item of what `guild.fetchScheduledEvents()` returns.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | The id of the scheduled event |
+| `guildId` | `Snowflake` | The guild id which the scheduled event belongs to |
+| `channelId` | `Snowflake \| null` | The channel id in which the scheduled event will be hosted, or `null` if scheduled entity type is `EXTERNAL` |
+| `creatorId?` | `Snowflake \| null` | The id of the user that created the scheduled event * |
+| `name` | `string` | The name of the scheduled event (1-100 characters) |
+| `description?` | `string \| null` | The description of the scheduled event (1-1000 characters) |
+| `scheduledStartTime` | `ISO8601Timestamp` | The time the scheduled event will start |
+| `scheduledEndTime` | `ISO8601Timestamp \| null` | The time the scheduled event will end, required if entity_type is `EXTERNAL` |
+| `privacyLevel` | `GuildScheduledEventPrivacyLevel` | The privacy level of the scheduled event |
+| `status` | `GuildScheduledEventStatus` | The status of the scheduled event |
+| `entityType` | `GuildScheduledEventEntityType` | The type of the scheduled event |
+| `entityId` | `Snowflake \| null` | The id of an entity associated with a guild scheduled event |
+| `entityMetadata` | `GuildScheduledEventEntityMetadata \| null` | Additional metadata for the guild scheduled event |
+| `creator?` | `User` | The user that created the scheduled event |
+| `userCount?` | `number` | The number of users subscribed to the scheduled event |
+| `image?` | `string \| null` | The cover image hash of the scheduled event |
+| `recurrenceRule` | `GuildScheduledEventRecurrenceRule \| null` | The definition for how often this event should recur |
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild-scheduled-event#guild-scheduled-event-object-guild-scheduled-event-structure)
+
+### AutoModerationRule
+
+An item of what `guild.fetchAutoModerationRules()` returns.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | The id of this rule |
+| `guildId` | `Snowflake` | The id of the guild which this rule belongs to |
+| `name` | `string` | The rule name |
+| `creatorId` | `Snowflake` | The user which first created this rule |
+| `eventType` | `AutoModerationEventType` | The rule event type |
+| `triggerType` | `AutoModerationTriggerType` | The rule trigger type |
+| `triggerMetadata` | `AutoModerationTriggerMetadata` | The rule trigger metadata |
+| `actions` | `AutoModerationAction[]` | The actions which will execute when the rule is triggered |
+| `enabled` | `boolean` | Whether the rule is enabled |
+| `exemptRoles` | `Snowflake[]` | The role ids that should not be affected by the rule (Maximum of 20) |
+| `exemptChannels` | `Snowflake[]` | The channel ids that should not be affected by the rule (Maximum of 50) |
+
+[Discord documentation](https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-rule-object-auto-moderation-rule-structure)
+
+### triggerMetadata
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `keywordFilter?` | `string[]` | Substrings which will be searched for in content (Maximum of 1000) |
+| `regexPatterns?` | `string[]` | Regular expression patterns which will be matched against content (Maximum of 10) |
+| `presets?` | `AutoModerationKeywordPresetType[]` | The internally pre-defined wordsets which will be searched for in content |
+| `allowList?` | `string[]` | Substrings which should not trigger the rule (Maximum of 100 or 1000) |
+| `mentionTotalLimit?` | `number` | Total number of unique role and user mentions allowed per message (Maximum of 50) |
+| `mentionRaidProtectionEnabled?` | `boolean` | Whether to automatically detect mention raids |
+
+[Discord documentation](https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-rule-object-trigger-metadata)
+
+### actions
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `type` | `AutoModerationActionType` | The type of action |
+| `metadata?` | `AutoModerationActionMetadata` | Additional metadata needed during execution for this specific action type |
+
+[Discord documentation](https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-action-object-auto-moderation-action-structure)
+
+### Sticker
+
+An item of what `guild.fetchStickers()` returns.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | Id of the sticker |
+| `packId?` | `Snowflake` | For standard stickers, id of the pack the sticker is from |
+| `name` | `string` | Name of the sticker |
+| `description` | `string \| null` | Description of the sticker |
+| `tags` | `string` | Autocomplete/suggestion tags for the sticker (max 200 characters) |
+| `type` | `StickerType` | Type of sticker |
+| `formatType` | `StickerFormatType` | Type of sticker format |
+| `available?` | `boolean` | Whether this guild sticker can be used, may be false due to loss of Server Boosts |
+| `guildId?` | `Snowflake` | Id of the guild that owns this sticker |
+| `user?` | `User` | The user that uploaded the guild sticker |
+| `sortValue?` | `number` | The standard sticker's sort order within its pack |
+
+[Discord documentation](https://docs.discord.com/developers/resources/sticker#sticker-object-sticker-structure)

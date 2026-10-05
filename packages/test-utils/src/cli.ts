@@ -42,6 +42,8 @@ export interface Cli {
   /** Types text without pressing Enter. */
   type(text: string): void;
   press(key: keyof typeof keys): void;
+  /** Sends a signal to the process, like the system or Ctrl+C would. */
+  signal(name: NodeJS.Signals): void;
   /** Resolves when the process exits, with its code and full output. */
   readonly exited: Promise<ExitResult>;
 }
@@ -159,6 +161,9 @@ export function startCli({
     },
     press(key) {
       child.stdin.write(keys[key]);
+    },
+    signal(name) {
+      child.kill(name);
     },
     exited,
   };

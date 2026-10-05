@@ -26,6 +26,33 @@
           "index",
           "quickstart"
         ]
+      },
+      {
+        "group": "Essentials",
+        "pages": [
+          "dev",
+          "events"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/overview",
+          "reference/guild",
+          "reference/member",
+          "reference/user",
+          "reference/role",
+          "reference/channels",
+          "reference/message",
+          "reference/sending-messages",
+          "reference/emojis-invites-webhooks",
+          "reference/permissions",
+          "reference/errors",
+          "reference/helpers",
+          "reference/values",
+          "reference/options",
+          "reference/data"
+        ]
       }
     ],
     "global": {

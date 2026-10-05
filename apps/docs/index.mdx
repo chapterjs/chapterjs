@@ -207,7 +207,8 @@ export const Message = ({ avatar, name, bot, children }) => (
           <TreeItem depth={2} name="ping.ts" active />
           <TreeItem depth={2} name="poll.ts" />
           <TreeItem depth={1} name="events" folder />
-          <TreeItem depth={2} name="memberJoin.ts" />
+          <TreeItem depth={2} name="memberJoin" folder />
+          <TreeItem depth={3} name="welcome.ts" />
           <TreeItem name=".env" />
           <TreeItem name="package.json" />
         </div>
@@ -296,7 +297,7 @@ export const Message = ({ avatar, name, bot, children }) => (
             <Mono className="space-y-1.5 text-left">
               <div>src/commands/<span className="text-zinc-950 dark:text-white">ping.ts</span></div>
               <div>src/commands/<span className="text-zinc-950 dark:text-white">poll.ts</span></div>
-              <div>src/events/<span className="text-zinc-950 dark:text-white">memberJoin.ts</span></div>
+              <div>src/events/memberJoin/<span className="text-zinc-950 dark:text-white">welcome.ts</span></div>
             </Mono>
             <Icon icon="arrow-right" color={BLURPLE} size={16} />
             <div className="rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-2 space-y-1">
@@ -307,7 +308,7 @@ export const Message = ({ avatar, name, bot, children }) => (
           </div>
         }
       >
-        Put a file in <C>src/events/</C> and your bot reacts to it. Put one in <C>src/commands/</C> and the command shows up on Discord. No client, no registration script.
+        Put a file in <C>src/events/memberJoin/</C> and your bot reacts when someone joins. Put one in <C>src/commands/</C> and the command shows up on Discord. No client, no registration script.
       </Cell>
 
       <Cell

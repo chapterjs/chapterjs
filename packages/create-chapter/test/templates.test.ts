@@ -137,16 +137,22 @@ describe('shipped templates', async () => {
       expect(existsSync(join(dir, 'src', 'commands'))).toBe(true);
     });
 
-    it('lets Node run its TypeScript files directly', () => {
+    it('type-checks files the way chapterjs runs them', () => {
       const tsconfig = JSON.parse(read('tsconfig.json'));
       expect(tsconfig.compilerOptions).toMatchObject({
-        module: 'NodeNext',
+        // Imports need no extension.
+        module: 'Preserve',
+        moduleResolution: 'Bundler',
         allowImportingTsExtensions: true,
         erasableSyntaxOnly: true,
         verbatimModuleSyntax: true,
         noEmit: true,
         strict: true,
       });
+      // The files of the project are type-checked by the projects chapterjs
+      // generates, where each folder gets its own types.
+      expect(tsconfig.files).toEqual([]);
+      expect(tsconfig.references).toEqual([{ path: './.chapterjs' }]);
     });
   });
 });

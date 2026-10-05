@@ -1,0 +1,110 @@
+---
+title: 'User'
+description: 'A Discord account, the same in every server'
+---
+
+A `User` is a Discord account. For what is specific to one server (nickname, roles, permissions), see [GuildMember](/reference/member).
+
+```ts
+import type { User } from 'chapterjs';
+
+async function greet(user: User) {
+  if (user.bot) return;
+  await user.send({
+    content: `Hi ${user.displayName}!`,
+    embeds: [{ thumbnail: { url: user.avatarURL({ size: 256 }) } }],
+  });
+}
+```
+
+<Warning>
+  Sending a private message fails when the user has closed their DMs or shares no server with the bot. Catch the error if that is fine for you: see [Errors](/reference/errors).
+</Warning>
+
+## Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `id` | `Snowflake` | The unique id Discord gave it. |
+| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
+| `username` | `string` | The unique name of the account (`@name`). |
+| `globalName` | `string \| null` | The name shown in Discord, when the user chose one. |
+| `displayName` | `string` | The name to show: the display name, or else the username. |
+| `discriminator` | `string` | `"0"` for users on the current username system. |
+| `bot` | `boolean` | Whether the account is a bot. |
+| `system` | `boolean` | Whether the account is an official Discord system account. |
+| `avatar` | `string \| null` | The hash of the avatar; use `avatarURL()` to get the image. |
+| `banner` | `string \| null` | The hash of the banner; use `bannerURL()` to get the image. |
+| `accentColor` | `number \| null` | The banner color, as a number (`0xff0000`). |
+| `locale` | `Locale \| null` | Only known for the bot itself. |
+| `flags` | `UserFlagName[]` | The public badges of the account, by name. |
+
+## Helpers
+
+These read what the bot already knows: they never send a request.
+
+### avatarURL()
+
+```ts
+avatarURL(options?: ImageOptions): string
+```
+
+The URL of the avatar; of the default one when none is set.
+
+### bannerURL()
+
+```ts
+bannerURL(options?: ImageOptions): string | null
+```
+
+The URL of the banner, when one is set.
+
+### toString()
+
+```ts
+toString(): string
+```
+
+`<@id>`: mentions the user when put in a message.
+
+## Reading from Discord
+
+### fetch()
+
+```ts
+fetch(): Promise<User>
+```
+
+Asks Discord for the latest data of this user.
+
+## Actions
+
+### createDM()
+
+```ts
+createDM(): Promise<DMChannel>
+```
+
+Opens the private conversation with this user.
+
+[Discord documentation](https://docs.discord.com/developers/resources/user#create-dm)
+
+### send()
+
+```ts
+send(message: MessageInput): Promise<Message>
+```
+
+Sends a private message to this user.
+
+## Image options
+
+A `?` after a name means the field can be left out.
+
+### ImageOptions
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `format?` | `ImageFormat` | The file format. By default: WebP, which Discord recommends since it works for still and animated images, whatever was uploaded. |
+| `size?` | `ImageSize` | The size in pixels: a power of two between 16 and 4096. |
+| `animated?` | `boolean` | `false` to get the first frame of an animated image. By default an animated image stays animated. |
