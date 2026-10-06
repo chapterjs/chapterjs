@@ -209,6 +209,16 @@ export type {
   Reaction,
 } from './structures/message.js';
 // Tasks: what the files of src/tasks/ are written with.
+export { presence } from './presence/presence.js';
+export type {
+  Activity,
+  ActivityKind,
+  PlainActivity,
+  PresenceConfig,
+  PresenceFile,
+  PresenceStatusName,
+  StreamingActivity,
+} from './presence/presence.js';
 export { task } from './tasks/task.js';
 export type {
   CronTaskConfig,

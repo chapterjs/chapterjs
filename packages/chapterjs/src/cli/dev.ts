@@ -240,6 +240,7 @@ export async function dev(options: DevOptions): Promise<number> {
             notePrivateOnly();
             if (bot) {
               configure(bot.ctx.cache, limitsFor(project.events.values()));
+              if (project.applyPresence(bot)) log.reload('Presence updated');
             }
             const intents = project.intents(false);
             if ((intents & ~connectedIntents) !== 0 && bot) {

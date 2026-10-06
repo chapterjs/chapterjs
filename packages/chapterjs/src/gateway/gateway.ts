@@ -15,7 +15,7 @@ export interface GatewayOptions {
   rest: Rest;
   token: string;
   intents: number;
-  presence?: RawGatewayPresenceUpdate;
+  presence?: RawGatewayPresenceUpdate | undefined;
   /**
    * Which shards this process runs, out of how many. By default: all of
    * them, as many as Discord recommends. A layer that spreads shards over
@@ -48,9 +48,12 @@ export class Gateway {
   readonly #shards = new Map<number, Shard>();
   #shardCount = 0;
   #started = false;
+  /** The presence every session starts with. */
+  #presence: RawGatewayPresenceUpdate | undefined;
 
   constructor(options: GatewayOptions) {
     this.#options = options;
+    this.#presence = options.presence;
   }
 
   /** How many shards the bot is split into, across every process. */
@@ -116,7 +119,7 @@ export class Gateway {
           token: options.token,
           intents: options.intents,
           url: info.url,
-          presence: options.presence,
+          presence: this.#presence,
           identifyGate,
           onDispatch: options.onDispatch,
           onEvent: options.onEvent,
@@ -132,6 +135,16 @@ export class Gateway {
       await this.close();
       throw error;
     }
+  }
+
+  /**
+   * Changes the presence of the bot on every shard of this process: sent
+   * now when Discord's limit allows it, and carried by every session
+   * started later.
+   */
+  setPresence(presence: RawGatewayPresenceUpdate): void {
+    this.#presence = presence;
+    for (const shard of this.#shards.values()) shard.setPresence(presence);
   }
 
   /** The shard of this process that handles a server, if it runs here. */

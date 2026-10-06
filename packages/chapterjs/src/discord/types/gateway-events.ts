@@ -169,7 +169,7 @@ export interface RawGatewayPresenceUpdate {
   /** Unix time (in milliseconds) of when the client went idle, or null if the client is not idle */
   since: number | null;
   /** User's activities */
-  activities: RawActivity[];
+  activities: RawBotActivity[];
   /** User's new status */
   status: PresenceStatus;
   /** Whether or not the client is afk */
@@ -827,6 +827,14 @@ export interface RawClientStatus {
   /** User's status set for an active virtual reality application session */
   vr?: PresenceStatus;
 }
+
+/**
+ * An activity as a bot may send it: "Bot users are only able to set `name`,
+ * `state`, `type`, and `url`."
+ * @see https://docs.discord.com/developers/events/gateway-events#activity-object
+ */
+export type RawBotActivity = Pick<RawActivity, 'name' | 'type'> &
+  Partial<Pick<RawActivity, 'state' | 'url'>>;
 
 /**
  * Activity Structure

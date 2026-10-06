@@ -1,0 +1,78 @@
+---
+title: 'Presence'
+description: 'Show what your bot is doing under its name, with one file'
+---
+
+The presence of your bot is what Discord shows under its name in the member list: its status (the colored dot) and what it is doing. It is one file, `src/presence.ts`.
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  status: 'online',
+  activity: { type: 'watching', name: 'over the server' },
+});
+```
+
+That is all: as soon as the bot is connected, it is online and "Watching over the server". Without this file, the bot is online and shows nothing. Both fields are optional: a `status` alone, or an `activity` alone, works.
+
+<Note>
+  Everything the file declares is in the [reference](/reference/presence).
+</Note>
+
+## Status
+
+| Write         | Shown                                |
+| ------------- | ------------------------------------ |
+| `'online'`    | A green dot (the default)            |
+| `'idle'`      | An orange moon                       |
+| `'dnd'`       | A red dot, "do not disturb"          |
+| `'invisible'` | Offline, while the bot keeps running |
+
+## Activity
+
+`type` says how Discord words it, `name` is the text after it.
+
+| Type          | Shown                                       |
+| ------------- | ------------------------------------------- |
+| `'playing'`   | Playing _name_                              |
+| `'listening'` | Listening to _name_                         |
+| `'watching'`  | Watching _name_                             |
+| `'competing'` | Competing in _name_                         |
+| `'custom'`    | _name_, alone                               |
+| `'streaming'` | Streaming _name_, with a link to the stream |
+
+A `'streaming'` activity needs the `url` of the stream, and Discord only accepts a Twitch or a YouTube link:
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  activity: {
+    type: 'streaming',
+    name: 'the finals',
+    url: 'https://twitch.tv/someone',
+  },
+});
+```
+
+A status or a type that is not in these lists, an empty `name`, or a `url` on another type, is an error when the file loads, with what to write.
+
+## In development
+
+In `chapterjs dev`, saving `src/presence.ts` changes the presence at once, without reconnecting:
+
+```text
+↻ Presence updated
+```
+
+A file that does not load is reported with what is wrong, and the bot keeps the last presence that worked. Deleting the file puts the bot back to online with nothing shown. Discord accepts a few changes of presence per minute: when you save faster than that, only the latest one is sent, when it may be.
+
+<CardGroup cols={2}>
+  <Card title="presence() reference" icon="activity" href="/reference/presence">
+    Every field of the presence file.
+  </Card>
+  <Card title="Tasks" icon="clock" href="/tasks">
+    What your bot does by itself, every so often.
+  </Card>
+</CardGroup>

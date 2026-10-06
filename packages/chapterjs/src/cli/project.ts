@@ -19,6 +19,11 @@ import {
 import { ComponentRouter, type ComponentEntry } from '../components/router.js';
 import { tasksConvention } from '../tasks/convention.js';
 import {
+  DEFAULT_PRESENCE,
+  presenceConvention,
+  type LoadedPresence,
+} from '../presence/convention.js';
+import {
   TimerScheduler,
   type Scheduler,
   type TaskEntry,
@@ -85,6 +90,7 @@ export const CONVENTIONS = [
   commandsConvention,
   componentsConvention,
   tasksConvention,
+  presenceConvention,
 ] as const;
 
 /** What a bot of the project is connected with. */
@@ -112,6 +118,8 @@ export interface Project {
   readonly commands: ReadonlyMap<string, CommandEntry>;
   readonly components: ReadonlyMap<string, ComponentEntry>;
   readonly tasks: ReadonlyMap<string, TaskEntry>;
+  /** What `src/presence.ts` declares, or `null` without that file. */
+  readonly presence: LoadedPresence | null;
   /**
    * Loads every file (again). A file that fails is returned; it keeps its
    * last working version when it had one.
@@ -119,7 +127,7 @@ export interface Project {
   load(): Promise<FailedFile[]>;
   /** Shows a failure with its file and line. */
   report(failure: FailedFile): void;
-  /** "2 commands, 3 events, 4 components loaded". */
+  /** "2 commands, 3 events, 4 components, a presence loaded". */
   summary(): string;
   isEmpty(): boolean;
   /** The files that make an intent necessary. */
@@ -134,6 +142,12 @@ export interface Project {
   connect(options: ConnectOptions): Promise<Bot>;
   /** Runs the files of the `ready` event: the bot knows its servers. */
   ready(bot: Bot): void;
+  /**
+   * Gives the bot the presence of the project as it is now (Discord's
+   * default without a presence file). Nothing is sent when it did not
+   * change since the bot was given one.
+   */
+  applyPresence(bot: Bot): boolean;
   /**
    * Starts the tasks of the project, with the bot `current` returns (none
    * while it reconnects). Only one process of a bot runs them.
@@ -198,6 +212,9 @@ export function createProject(options: ProjectOptions): Project {
   let commands = new Map<string, CommandEntry>();
   let components = new Map<string, ComponentEntry>();
   let tasks = new Map<string, TaskEntry>();
+  let presence: LoadedPresence | null = null;
+  /** The presence each bot was given last, to send only what changed. */
+  const given = new WeakMap<Bot, string>();
   let lost = false;
   const count = (size: number, one: string, many: string): string =>
     `${size} ${size === 1 ? one : many}`;
@@ -215,25 +232,35 @@ export function createProject(options: ProjectOptions): Project {
     get tasks() {
       return tasks;
     },
+    get presence() {
+      return presence;
+    },
     report,
     async load() {
       const { built } = options;
-      const [eventFiles, commandFiles, componentFiles, taskFiles] =
-        await Promise.all(
-          built
-            ? [
-                loadBuilt(eventsConvention, built),
-                loadBuilt(commandsConvention, built),
-                loadBuilt(componentsConvention, built),
-                loadBuilt(tasksConvention, built),
-              ]
-            : [
-                loadFolder(cwd, eventsConvention),
-                loadFolder(cwd, commandsConvention),
-                loadFolder(cwd, componentsConvention),
-                loadFolder(cwd, tasksConvention),
-              ]
-        );
+      const [
+        eventFiles,
+        commandFiles,
+        componentFiles,
+        taskFiles,
+        presenceFiles,
+      ] = await Promise.all(
+        built
+          ? [
+              loadBuilt(eventsConvention, built),
+              loadBuilt(commandsConvention, built),
+              loadBuilt(componentsConvention, built),
+              loadBuilt(tasksConvention, built),
+              loadBuilt(presenceConvention, built),
+            ]
+          : [
+              loadFolder(cwd, eventsConvention),
+              loadFolder(cwd, commandsConvention),
+              loadFolder(cwd, componentsConvention),
+              loadFolder(cwd, tasksConvention),
+              loadFolder(cwd, presenceConvention),
+            ]
+      );
       const nextEvents = new Map<string, LoadedEvent>();
       for (const { file, value } of eventFiles.loaded) {
         nextEvents.set(file, { file, event: value });
@@ -277,11 +304,24 @@ export function createProject(options: ProjectOptions): Project {
       }
       tasks = nextTasks;
       scheduler.set(tasks.values());
+
+      // One presence file. A second one (another extension) is left out.
+      const [first, ...extra] = presenceFiles.loaded;
+      if (first) presence = first.value;
+      else if (presenceFiles.failed.length === 0) presence = null;
+      const twice = extra.map(({ file }) => ({
+        file,
+        error: new TypeError(
+          `There are two presence files: ${first!.file} is used, keep only one.`
+        ),
+      }));
       return [
         ...eventFiles.failed,
         ...commandFiles.failed,
         ...componentFiles.failed,
         ...taskFiles.failed,
+        ...presenceFiles.failed,
+        ...twice,
         ...[...conflicts, ...unique.conflicts].map(({ file, message }) => ({
           file,
           error: new TypeError(message),
@@ -293,7 +333,8 @@ export function createProject(options: ProjectOptions): Project {
         events.size === 0 &&
         commands.size === 0 &&
         components.size === 0 &&
-        tasks.size === 0
+        tasks.size === 0 &&
+        presence === null
       ) {
         return 'Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/';
       }
@@ -306,13 +347,15 @@ export function createProject(options: ProjectOptions): Project {
           ? [count(components.size, 'component', 'components')]
           : []),
         ...(tasks.size > 0 ? [count(tasks.size, 'task', 'tasks')] : []),
+        ...(presence ? ['a presence'] : []),
       ].join(', ')} loaded`;
     },
     isEmpty: () =>
       events.size === 0 &&
       commands.size === 0 &&
       components.size === 0 &&
-      tasks.size === 0,
+      tasks.size === 0 &&
+      presence === null,
     filesNeeding: intent =>
       [...events.values()]
         .filter(({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0)
@@ -328,6 +371,7 @@ export function createProject(options: ProjectOptions): Project {
           (connection.privateEvents === false ? ~PRIVATE_INTENTS : ~0),
         guildFilter: connection.guildFilter,
         privateEvents: connection.privateEvents,
+        presence: presence?.raw,
         shards: connection.shards,
         identifyGate: connection.identifyGate,
         ...(connection.identifyInterval === undefined
@@ -372,8 +416,16 @@ export function createProject(options: ProjectOptions): Project {
           }
         },
       });
+      given.set(created, presence?.key ?? '');
       await created.connect();
       return created;
+    },
+    applyPresence(bot) {
+      const key = presence?.key ?? '';
+      if (given.get(bot) === key) return false;
+      given.set(bot, key);
+      bot.setPresence(presence?.raw ?? DEFAULT_PRESENCE);
+      return true;
     },
     ready(bot) {
       const user = bot.ctx.cache.users.get(bot.ctx.self!.userId)!;

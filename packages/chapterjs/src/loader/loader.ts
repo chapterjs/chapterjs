@@ -6,10 +6,21 @@ import { readdir } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { importFile } from './hot.js';
 
-/** A folder of the project whose files the framework loads. */
+/**
+ * A folder of the project whose files the framework loads, or one file at
+ * the root of `src/`.
+ */
 export interface Convention<T> {
-  /** The folder, inside `src/`. */
+  /**
+   * The folder, inside `src/`. With `single`, the name of the one file
+   * instead: `'presence'` is `src/presence.ts`.
+   */
   folder: string;
+  /**
+   * The convention is one file, `src/<folder>.ts`, not a folder. `check`
+   * and `read` receive its name with its extension (`presence.ts`).
+   */
+  single?: boolean;
   /** What one file is called in messages: "event", "command"... */
   one: string;
   many: string;
@@ -96,12 +107,47 @@ export interface FoundFile {
   path: string;
 }
 
-/** The files of a conventional folder, in a stable order. */
+/** Whether a path of the project is the file of a single-file convention. */
+function isSingle(file: string, folder: string): boolean {
+  return (
+    file.startsWith(`src/${folder}.`) &&
+    SOURCE.test(file) &&
+    !DECLARATION.test(file) &&
+    !file.slice(`src/${folder}.`.length).includes('/')
+  );
+}
+
+/** The one file of a single-file convention, with any source extension. */
+async function scanSingle(dir: string, name: string): Promise<string[]> {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
+  return entries
+    .filter(
+      entry =>
+        entry.isFile() &&
+        entry.name.startsWith(`${name}.`) &&
+        SOURCE.test(entry.name) &&
+        !DECLARATION.test(entry.name)
+    )
+    .map(entry => join(dir, entry.name));
+}
+
+/**
+ * The files of a conventional folder, in a stable order (or the one file
+ * of a single-file convention, under every source extension it has).
+ */
 export async function listFolder(
   projectDir: string,
-  convention: Pick<Convention<unknown>, 'folder'>
+  convention: Pick<Convention<unknown>, 'folder' | 'single'>
 ): Promise<FoundFile[]> {
-  const paths = await scan(join(projectDir, 'src', convention.folder));
+  const paths = convention.single
+    ? await scanSingle(join(projectDir, 'src'), convention.folder)
+    : await scan(join(projectDir, 'src', convention.folder));
   return paths
     .map(path => ({
       file: relative(projectDir, path).split(sep).join('/'),
@@ -120,7 +166,7 @@ async function readFiles<T>(
   files: readonly string[],
   exportsOf: (file: string) => Promise<Record<string, unknown>>
 ): Promise<LoadResult<T>> {
-  const prefix = `src/${convention.folder}/`;
+  const prefix = convention.single ? 'src/' : `src/${convention.folder}/`;
   const result: LoadResult<T> = { loaded: [], failed: [], files: [...files] };
   await Promise.all(
     files.map(async file => {
@@ -175,7 +221,11 @@ export function loadBuilt<T>(
   const prefix = `src/${convention.folder}/`;
   const mine = new Map(
     built
-      .filter(({ file }) => file.startsWith(prefix))
+      .filter(({ file }) =>
+        convention.single
+          ? isSingle(file, convention.folder)
+          : file.startsWith(prefix)
+      )
       .map(({ file, exports }) => [file, exports])
   );
   return readFiles(convention, [...mine.keys()], file =>

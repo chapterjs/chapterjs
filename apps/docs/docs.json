@@ -92,6 +92,11 @@
             "pages": ["tasks/index"]
           },
           {
+            "group": "Presence",
+            "icon": "activity",
+            "pages": ["presence"]
+          },
+          {
             "group": "Messages and memory",
             "icon": "message-square",
             "pages": ["messages", "memory"]
@@ -135,7 +140,8 @@
               "reference/modal",
               "reference/embed",
               "reference/layout",
-              "reference/task"
+              "reference/task",
+              "reference/presence"
             ]
           },
           {
