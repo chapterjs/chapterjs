@@ -169,7 +169,16 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     Your `run` function finished without calling `interaction.reply()`. `chapterjs dev` warns you (`⚠ … finished without answering`). Every command must answer: see [Answering](/commands/answering).
   </Accordion>
   <Accordion title="This interaction failed">
-    Someone clicked a button or a select menu, or sent a modal. ChapterJS does not handle those yet, and nothing in your project runs: see [What's not there yet](/not-yet).
+    Someone clicked a button or a select menu, or sent a form, and its `run` finished without answering. `chapterjs dev` warns you (`⚠ … finished without answering`). Answer with `interaction.update()`, `interaction.reply()`, or `interaction.deferUpdate()` to change nothing: see [Buttons](/components#answering-a-click).
+  </Accordion>
+  <Accordion title="This button is not available any more. / This menu… / This form…">
+    The message is older than your project: the file of the component was renamed, removed or moved to another kind of folder since the message was sent. Send the message again, or bring the file back.
+  </Accordion>
+  <Accordion title="This button is out of date.">
+    The `data` of the component changed shape since the message was sent (a value added, removed or of another kind). Old messages carry the old data: send the message again.
+  </Accordion>
+  <Accordion title="Only the person who used the command can use this button.">
+    The component says `who: 'author'`, and someone else clicked. That is what you asked for: see [Who may click](/components#who-may-click).
   </Accordion>
   <Accordion title="Something went wrong while running this command.">
     Your `run` function threw. The person gets this short answer, privately; you get the error with the file and the line in your terminal. When Discord refused an action for a missing permission, the person reads "I don't have the permission to do that here." instead.

@@ -25,6 +25,7 @@ import { createContext } from '../src/structures/entities.js';
 import { storesOf } from '../src/structures/guild.js';
 import { remember } from '../src/structures/known.js';
 import { buildMessage } from '../src/structures/payload.js';
+import { text } from '../src/components/layout.js';
 
 // Ids are real-looking snowflakes: some code reads their creation date.
 const GUILD = '100000000000000000';
@@ -1553,7 +1554,7 @@ describe('building a message', () => {
     [{ stickers: ['1', '2', '3'] }],
     [{ files: [{ name: 'a.txt', data: '' }] }],
     [{ poll: { question: { text: 'q' }, answers: [] } }],
-    [{ components: [{ type: 10, content: 'text' }] }],
+    [{ components: [text('x'.repeat(4000))] }],
   ])('accepts a message at the limit', input => {
     expect(() => buildMessage(input as never)).not.toThrow();
   });

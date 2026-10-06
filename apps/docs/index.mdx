@@ -157,6 +157,9 @@ export const Message = ({ bot, name, children }) => (
           <TreeItem depth={1} name="commands" folder />
           <TreeItem depth={2} name="ping.ts" active />
           <TreeItem depth={2} name="poll.ts" />
+          <TreeItem depth={1} name="components" folder />
+          <TreeItem depth={2} name="buttons" folder />
+          <TreeItem depth={3} name="vote.ts" />
           <TreeItem depth={1} name="events" folder />
           <TreeItem depth={2} name="memberJoin" folder />
           <TreeItem depth={3} name="welcome.ts" />
@@ -172,9 +175,9 @@ export const Message = ({ bot, name, children }) => (
             <div><span className="cj-muted">{"$"}</span> pnpm dev</div>
             <div><span className="cj-ok">✓</span> Connected to My Server as my-bot</div>
             <div><span className="cj-info">ℹ</span> Intents computed from your files: GUILDS, GUILD_MEMBERS</div>
-            <div><span className="cj-ok">✓</span> 2 commands, 1 event loaded</div>
+            <div><span className="cj-ok">✓</span> 2 commands, 1 event, 1 component loaded</div>
             <div className="cj-muted pt-2">saved src/commands/ping.ts</div>
-            <div><span className="cj-info">↻</span> Reloaded in 12 ms, 2 commands, 1 event loaded</div>
+            <div><span className="cj-info">↻</span> Reloaded in 12 ms, 2 commands, 1 event, 1 component loaded</div>
             <div className="flex items-center gap-1"><span className="cj-muted">{"$"}</span><span className="cj-cursor h-4 w-2" /></div>
           </div>
         </div>
@@ -278,17 +281,19 @@ export const Message = ({ bot, name, children }) => (
             <div>src/commands/<span className="text-zinc-950 dark:text-white">ping.ts</span></div>
             <div>src/commands/<span className="text-zinc-950 dark:text-white">poll.ts</span></div>
             <div>src/events/memberJoin/<span className="text-zinc-950 dark:text-white">welcome.ts</span></div>
+            <div>src/components/buttons/<span className="text-zinc-950 dark:text-white">vote.ts</span></div>
           </Mono>
           <span className="cj-accent"><Icon icon="arrow-right" size={16} /></span>
           <div className="cj-chip space-y-1 rounded-lg p-2">
             <Mono className="rounded bg-zinc-100 px-2 py-1 dark:bg-white/5"><span className="cj-accent">/</span>ping</Mono>
             <Mono className="px-2 py-1"><span className="cj-accent">/</span>poll</Mono>
             <Mono className="px-2 py-1">on member join</Mono>
+            <Mono className="px-2 py-1">a button</Mono>
           </div>
         </div>
       }
     >
-      A file in <C>src/events/memberJoin/</C> runs when someone joins. A file in <C>src/commands/</C> shows up as a slash command. No client, no registration script, no list of intents.
+      A file in <C>src/events/memberJoin/</C> runs when someone joins. A file in <C>src/commands/</C> shows up as a slash command. A file in <C>src/components/buttons/</C> is a button, with an id you never write. No client, no registration script, no list of intents.
     </Cell>
 
     <Cell

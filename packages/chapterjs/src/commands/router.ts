@@ -1,7 +1,6 @@
 // Runs the command someone used: finds its file, turns what Discord sent
 // into what `run` receives, and makes sure the person always gets an answer.
 
-import { setTimeout as sleep } from 'node:timers/promises';
 import { Permissions } from '../discord/permissions.js';
 import {
   ApplicationCommandOptionType,
@@ -15,7 +14,14 @@ import {
   type RawApplicationCommandInteractionDataOption,
   type RawInteraction,
 } from '../discord/types/interaction.js';
-import { DiscordApiError } from '../rest/errors.js';
+import {
+  authorOf,
+  placeContext,
+  refuse,
+  resolvePlace,
+  runInteraction,
+  type Reporter,
+} from '../interactions/dispatch.js';
 import type { Context } from '../structures/context.js';
 import { CommandInteraction } from '../structures/interaction.js';
 import { remember } from '../structures/known.js';
@@ -23,17 +29,7 @@ import { toCamelCase } from '../util/case.js';
 import type { CommandContext } from './command.js';
 import { commandName, type CommandEntry } from './tree.js';
 
-export interface CommandRouterOptions {
-  /** A `run` threw: reported with the file it comes from. */
-  onError: (file: string, error: unknown) => void;
-  /** Something the developer should know, that is not an error of theirs. */
-  onWarning: (file: string, message: string) => void;
-  /**
-   * After how long without an answer the framework defers, in milliseconds.
-   * Discord gives 3 seconds: the default leaves room for the request.
-   */
-  deferAfter?: number;
-}
+export type CommandRouterOptions = Reporter;
 
 const SUB = ApplicationCommandOptionType.SubCommand;
 const GROUP = ApplicationCommandOptionType.SubCommandGroup;
@@ -69,55 +65,45 @@ export class CommandRouter {
       given = given[0].options ?? [];
     }
     const entry = this.#commands.get(path.join(' '));
+    const name = commandName(path);
 
-    const { user: rawUser, member: rawMember, ...rest } = raw;
-    const author = rawMember?.user ?? rawUser;
+    const author = authorOf(raw);
     if (!author) return;
-    const user = ctx.entities.user(author);
+    const { user: _user, member: _member, message: _message, ...rest } = raw;
+    const user = ctx.entities.user(author.user);
     const interaction = new CommandInteraction(ctx, rest, user, {
       ephemeral: entry?.command.ephemeral ?? false,
-      commandName: commandName(path),
+      commandName: name,
     });
-    const refuse = (message: string): void => {
-      interaction.reply({ content: message, ephemeral: true }).catch(() => {});
-    };
     if (!entry) {
       // Still registered on Discord, but its file is gone or broken.
-      refuse('This command is not available right now.');
+      refuse(interaction, 'This command is not available right now.');
       return;
     }
     const { command, file } = entry;
-
-    // In a server Discord sends the member, in a private message the user.
-    const guild = raw.guild_id
-      ? (ctx.cache.guilds.get(raw.guild_id) ?? null)
-      : null;
-    const member =
-      raw.guild_id && rawMember
-        ? ctx.entities.member(raw.guild_id, rawMember)
-        : null;
-    const inGuild = guild !== null && member !== null;
-    if (command.where === 'guild' && !inGuild) {
-      refuse('This command can only be used in a server.');
+    const placed = resolvePlace(
+      ctx,
+      raw,
+      user,
+      author.member,
+      command.where,
+      'command',
+      message => this.#options.onWarning(file, `${name} ${message}`)
+    );
+    if (!placed.place) {
+      refuse(interaction, placed.refusal);
       return;
     }
-    if (command.where === 'dm' && raw.guild_id) {
-      refuse('This command can only be used in a private message with me.');
-      return;
-    }
-    if (raw.guild_id && !inGuild) {
-      // A server the bot is not in: nothing of it is known.
-      refuse('This command can not be used here.');
-      return;
-    }
+    const { place } = placed;
     // What the member can do where the command was used, overwrites
     // included: Discord computes it for us.
-    if (command.permissions !== 0n && rawMember) {
-      const missing = new Permissions(rawMember.permissions ?? '0').missing(
+    if (command.permissions !== 0n && author.member) {
+      const missing = new Permissions(author.member.permissions ?? '0').missing(
         command.permissions
       );
       if (missing.length > 0) {
         refuse(
+          interaction,
           `You need the ${missing.join(', ')} permission${missing.length === 1 ? '' : 's'} to use this command.`
         );
         return;
@@ -129,71 +115,32 @@ export class CommandRouter {
       options = this.#readOptions(ctx, raw, data, given, entry);
     } catch (error) {
       this.#options.onError(file, error);
-      refuse('Something went wrong while running this command.');
-      return;
-    }
-    // Discord sends the channel with the interaction: known without asking.
-    const channel =
-      (raw.channel_id ? ctx.cache.channels.get(raw.channel_id) : undefined) ??
-      (raw.channel?.id
-        ? ctx.entities.channel(raw.channel as RawChannel, raw.guild_id)
-        : undefined);
-    if (!channel?.isTextBased() || (!inGuild && !channel.isDM())) {
-      this.#options.onWarning(
-        file,
-        `${commandName(path)} was used in a channel the bot can't answer in (${channel ? `type ${channel.type}` : 'Discord did not say which'}): it did not run.`
-      );
-      refuse('This command can not be used here.');
+      refuse(interaction, 'Something went wrong while running this command.');
       return;
     }
     remember(interaction, {
-      guild: guild ?? undefined,
-      member: member ?? undefined,
-      channel,
+      guild: place.guild ?? undefined,
+      member: place.member ?? undefined,
+      channel: place.channel,
     });
-    // What a command receives follows where it works: nothing about a
-    // server exists for a command of private messages.
     const context = Object.freeze({
       interaction,
       options: Object.freeze(options),
       user,
-      channel,
-      ...(command.where === 'dm' ? {} : { guild, member }),
+      ...placeContext(place, command.where),
     }) as unknown as CommandContext;
 
-    // Discord wants an answer within 3 seconds: when `run` takes longer,
-    // the framework says the answer is coming.
-    const stop = new AbortController();
-    sleep(this.#options.deferAfter ?? 2000, undefined, { signal: stop.signal })
-      .then(() => interaction.defer())
-      .catch(() => {});
-
-    new Promise(resolve => resolve(command.run(context)))
-      .then(() => {
-        if (!interaction.answered) {
-          this.#options.onWarning(
-            file,
-            `${commandName(path)} finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.`
-          );
-        }
-      })
-      .catch((error: unknown) => {
-        this.#options.onError(file, error);
-        // The person gets a plain answer, never the technical details.
-        const missingPermission =
-          error instanceof DiscordApiError &&
-          (error.code === 50013 || error.code === 50001);
-        const content = missingPermission
-          ? "I don't have the permission to do that here."
-          : 'Something went wrong while running this command.';
-        const tell = interaction.deferred
-          ? interaction.edit(content)
-          : interaction.answered
-            ? interaction.followUp({ content, ephemeral: true })
-            : interaction.reply({ content, ephemeral: true });
-        tell.catch(() => {});
-      })
-      .finally(() => stop.abort());
+    runInteraction({
+      interaction,
+      file,
+      name,
+      what: 'command',
+      reporter: this.#options,
+      defer: () => interaction.defer(),
+      unanswered:
+        'finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.',
+      run: () => command.run(context),
+    });
   }
 
   /** The value of each declared option, as structures where it applies. */

@@ -77,6 +77,16 @@
             "pages": ["events/index", "events/messages"]
           },
           {
+            "group": "Components",
+            "icon": "mouse-pointer-click",
+            "pages": [
+              "components/index",
+              "components/selects",
+              "components/modals",
+              "components/embeds"
+            ]
+          },
+          {
             "group": "Messages and memory",
             "icon": "message-square",
             "pages": ["messages", "memory"]
@@ -114,7 +124,12 @@
             "pages": [
               "reference/command",
               "reference/event",
-              "reference/events"
+              "reference/events",
+              "reference/button",
+              "reference/select",
+              "reference/modal",
+              "reference/embed",
+              "reference/layout"
             ]
           },
           {
@@ -188,39 +203,97 @@
       {
         "header": "Guide",
         "items": [
-          { "label": "Quickstart", "href": "/quickstart" },
-          { "label": "Commands", "href": "/commands" },
-          { "label": "Events", "href": "/events" },
-          { "label": "Run your bot", "href": "/run/dev" }
+          {
+            "label": "Quickstart",
+            "href": "/quickstart"
+          },
+          {
+            "label": "Commands",
+            "href": "/commands"
+          },
+          {
+            "label": "Events",
+            "href": "/events"
+          },
+          {
+            "label": "Components",
+            "href": "/components"
+          },
+          {
+            "label": "Run your bot",
+            "href": "/run/dev"
+          }
         ]
       },
       {
         "header": "Reference",
         "items": [
-          { "label": "Your files", "href": "/reference/command" },
-          { "label": "Structures", "href": "/reference" },
-          { "label": "CLI", "href": "/reference/cli" },
-          { "label": "Errors", "href": "/reference/errors" }
+          {
+            "label": "Your files",
+            "href": "/reference/command"
+          },
+          {
+            "label": "Structures",
+            "href": "/reference"
+          },
+          {
+            "label": "CLI",
+            "href": "/reference/cli"
+          },
+          {
+            "label": "Errors",
+            "href": "/reference/errors"
+          }
         ]
       },
       {
         "header": "Elsewhere",
         "items": [
-          { "label": "GitHub", "href": "https://github.com/chapterjs/chapterjs" },
-          { "label": "npm", "href": "https://www.npmjs.com/package/chapterjs" },
-          { "label": "Discord developer docs", "href": "https://docs.discord.com/developers" }
+          {
+            "label": "GitHub",
+            "href": "https://github.com/chapterjs/chapterjs"
+          },
+          {
+            "label": "npm",
+            "href": "https://www.npmjs.com/package/chapterjs"
+          },
+          {
+            "label": "Discord developer docs",
+            "href": "https://docs.discord.com/developers"
+          }
         ]
       }
     ]
   },
   "redirects": [
-    { "source": "/dev", "destination": "/run/dev" },
-    { "source": "/build", "destination": "/run/build" },
-    { "source": "/start", "destination": "/run/start" },
-    { "source": "/reference/overview", "destination": "/reference" },
-    { "source": "/reference/values", "destination": "/reference/enums" },
-    { "source": "/reference/sending-messages", "destination": "/messages" },
-    { "source": "/reference/emojis-invites-webhooks", "destination": "/reference/emoji" }
+    {
+      "source": "/dev",
+      "destination": "/run/dev"
+    },
+    {
+      "source": "/build",
+      "destination": "/run/build"
+    },
+    {
+      "source": "/start",
+      "destination": "/run/start"
+    },
+    {
+      "source": "/reference/overview",
+      "destination": "/reference"
+    },
+    {
+      "source": "/reference/values",
+      "destination": "/reference/enums"
+    },
+    {
+      "source": "/reference/sending-messages",
+      "destination": "/messages"
+    },
+    {
+      "source": "/reference/emojis-invites-webhooks",
+      "destination": "/reference/emoji"
+    }
   ],
   "seo": {
     "indexing": "navigable",

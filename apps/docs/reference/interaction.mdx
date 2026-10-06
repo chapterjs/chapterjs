@@ -3,7 +3,7 @@ title: 'Interaction'
 description: 'Someone used something of the bot and waits for an answer: reply, defer, edit, follow up'
 ---
 
-An `Interaction` is what you answer with: the `interaction` of a [command](/commands) is a `CommandInteraction`. Discord wants a first answer within 3 seconds, and accepts edits and other messages for 15 minutes.
+An `Interaction` is what you answer with: the `interaction` of a [command](/commands) is a `CommandInteraction`, the one of a [button or a menu](/components) a `ComponentInteraction`, the one of a [form](/components/modals) a `ModalInteraction`. Discord wants a first answer within 3 seconds, and accepts edits and other messages for 15 minutes.
 
 ```ts
 import type { CommandInteraction } from 'chapterjs';
@@ -61,7 +61,7 @@ export async function deny(interaction: CommandInteraction, why: string) {
 </ResponseField>
 
 <ResponseField name="deferred" type="boolean">
-  Whether `defer()` was called and the answer is still to come.
+  Whether `defer()` was called and the answer is still to come. Also `true` after `deferUpdate()`, until `update()` or `reply()` completes it.
 </ResponseField>
 
 ### CommandInteraction
@@ -72,9 +72,35 @@ Someone used a slash command. It has everything above, plus:
   The command as the person typed it: `/mod ban`.
 </ResponseField>
 
+And one more action, [`showModal()`](#showmodal).
+
+### ComponentInteraction
+
+Someone clicked a button or picked something in a select menu of a message of the bot. It can answer like a command, or change the message the component is on. It has everything of `Interaction`, plus:
+
+<ResponseField name="message" type="Message">
+  The message the component is on.
+</ResponseField>
+
+And three more actions: [`update()`](#update), [`deferUpdate()`](#deferupdate) and [`showModal()`](#showmodal).
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-message-component-data-structure)
+
+### ModalInteraction
+
+Someone sent a form of the bot. It can answer like a command; when a button or a menu opened the form, it can also change their message. It has everything of `Interaction`, plus:
+
+<ResponseField name="message" type="Message | null">
+  The message whose button or menu opened the form; `null` when a command did.
+</ResponseField>
+
+And two more actions: [`update()`](#update) and [`deferUpdate()`](#deferupdate), which throw when `message` is `null`: "This form was opened by a command, not by a button or a menu: there is no message to change. Use interaction.reply()."
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-modal-submit-data-structure)
+
 ### In a server, in private
 
-What a command receives is more precise than `CommandInteraction`, and follows the `where` of the command:
+What a command receives is more precise than `CommandInteraction`, and follows the `where` of the command. The same holds for components, with the [`InGuild`, `InPrivate` and `InDm`](/reference/button#inguild-inprivate-indm) types.
 
 | Type | For | What changes |
 | --- | --- | --- |
@@ -121,6 +147,40 @@ defer(options?: { ephemeral?: boolean }): Promise<void>
 Tells Discord the answer is coming: the person sees "thinking…" and `reply()` can then take up to 15 minutes. The framework does it by itself when an answer takes long; call it yourself to choose when.
 
 Does nothing when the interaction was already answered or deferred. Whether the answer is ephemeral is decided here: without `ephemeral`, it is what the command says.
+
+### update()
+
+```ts
+update(message: string | MessageEditOptions): Promise<Message>
+```
+
+On a `ComponentInteraction` and a `ModalInteraction`. Changes the message the component is on, as the answer: its text, its embeds, its components, its files. Only what you pass changes; `components: []` removes the buttons and menus.
+
+Throws when the interaction was already answered with a message or deferred with `defer()`: "This interaction was already answered: the message can no longer be changed through it. Use interaction.message.edit() to change the message, or interaction.followUp() to send another one."
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-interaction-callback-type)
+
+### deferUpdate()
+
+```ts
+deferUpdate(): Promise<void>
+```
+
+On a `ComponentInteraction` and a `ModalInteraction`. Tells Discord the message will change later: the person sees nothing meanwhile, and `update()` can then take up to 15 minutes. The framework does it by itself when an answer to a component takes long.
+
+After `deferUpdate()`, `reply()` sends its message as a follow-up, which looks the same to the person, and `edit()` changes the message of the component.
+
+### showModal()
+
+```ts
+showModal(form: ModalComponent): Promise<void>
+```
+
+On a `CommandInteraction` and a `ComponentInteraction`. Opens a form, as the answer: `showModal(report({ userId }))`, with a form of `src/components/modals/`. It must be the first answer, and the person has as long as they want to fill it in.
+
+Throws when something was already answered: "A form can only be the first answer to an interaction: call interaction.showModal() before reply() or defer(), and the framework waits for it."
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal)
 
 ### edit()
 

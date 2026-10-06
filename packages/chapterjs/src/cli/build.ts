@@ -20,12 +20,15 @@ import {
 } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { eventTypedFolders } from '../events/types.js';
-import { writeGenerated } from '../loader/generated.js';
 import { enableProjectLoader } from '../loader/hot.js';
 import { listFolder, type BuiltFile } from '../loader/loader.js';
 import type { Log } from './log.js';
-import { CONVENTIONS, createProject, hasSources } from './project.js';
+import {
+  CONVENTIONS,
+  createProject,
+  hasSources,
+  writeTypes,
+} from './project.js';
 
 /** Where the build of a project is, from its folder. */
 export const buildDir = (cwd: string): string =>
@@ -149,7 +152,7 @@ export async function build(options: BuildOptions): Promise<number> {
   const out = buildDir(cwd);
 
   // 1. Types: what the editor underlines, for the whole project.
-  await writeGenerated(cwd, eventTypedFolders());
+  await writeTypes(cwd);
   const types = await checkTypes(cwd);
   if (types === null) {
     log.info(

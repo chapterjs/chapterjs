@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { eventTypedFolders } from '../events/types.js';
-import { writeGenerated } from '../loader/generated.js';
+
 import { build } from './build.js';
 import { readAssignment } from './cluster.js';
 import { dev } from './dev.js';
+import { writeTypes } from './project.js';
 import { createLog } from './log.js';
 import { start } from './start.js';
 
@@ -102,7 +102,7 @@ if (command === 'dev') {
 } else if (command === 'sync') {
   // Run after installing, so the editor knows the types before the first
   // `chapterjs dev`.
-  await writeGenerated(process.cwd(), eventTypedFolders());
+  await writeTypes(process.cwd());
   log.success('Types written to .chapterjs/');
 } else if (command === '--version' || command === '-v') {
   console.log(version);

@@ -12,10 +12,9 @@ import type { RawApplication } from '../discord/types/application.js';
 import type { RawApplicationCommand } from '../discord/types/application-command.js';
 import { EVENTS } from '../events/registry.js';
 import { limitsFor } from '../events/router.js';
-import { eventTypedFolders } from '../events/types.js';
-import { writeGenerated } from '../loader/generated.js';
 import { enableProjectLoader, nextGeneration } from '../loader/hot.js';
 import { messageOf } from '../loader/locate.js';
+import { watchPublic } from '../assets/public.js';
 import { snapshotFolder, watchFolder } from '../loader/watch.js';
 import { RestClient } from '../rest/rest.js';
 import { readDevEnv } from './env.js';
@@ -27,7 +26,7 @@ import {
   fetchApplication,
   type PreflightOptions,
 } from './preflight.js';
-import { createProject, explain, hasSources } from './project.js';
+import { createProject, explain, hasSources, writeTypes } from './project.js';
 
 export interface DevOptions {
   /** The folder of the project. */
@@ -68,7 +67,7 @@ export async function dev(options: DevOptions): Promise<number> {
       ? {}
       : { deferAfter: options.deferAfter }),
   });
-  await writeGenerated(cwd, eventTypedFolders());
+  await writeTypes(cwd);
   enableProjectLoader(src, { reload: true });
   // Taken before loading: what is saved from now on must be reloaded.
   const loaded = snapshotFolder(src);
@@ -91,6 +90,15 @@ export async function dev(options: DevOptions): Promise<number> {
 
   let bot: Bot | null = null;
   let watcher: { close(): void } | null = null;
+  // The files of public/ are listed in the types: a file added or removed
+  // is offered (or not) by the editor at once.
+  const assets = watchPublic(cwd, () => {
+    writeTypes(cwd)
+      .then(written => {
+        if (written > 0) log.reload('public/ changed: types updated');
+      })
+      .catch(() => {});
+  });
   const memory = project.watchMemory(() => bot);
   // Resolved with the exit code when something ends the command: asked for
   // from the very start, so nothing that happens early is lost.
@@ -205,6 +213,11 @@ export async function dev(options: DevOptions): Promise<number> {
           note(file, `this ${event.name} file`);
         }
       }
+      for (const { file, component } of project.components.values()) {
+        if (component.kind !== 'embed' && component.where === 'dm') {
+          note(file, `the ${component.kind} ${component.path}`);
+        }
+      }
     };
     notePrivateOnly();
 
@@ -266,12 +279,14 @@ export async function dev(options: DevOptions): Promise<number> {
     const code = await ended;
     await reloading.catch(() => {});
     watcher.close();
+    assets.close();
     memory.stop();
     await bot?.close();
     if (code === 0) log.success('Disconnected');
     return code;
   } catch (error) {
     watcher?.close();
+    assets.close();
     memory.stop();
     await bot?.close();
     if (signal.aborted) return 0;

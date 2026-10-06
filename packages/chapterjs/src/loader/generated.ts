@@ -48,18 +48,32 @@ function packageSpecifier(projectDir: string): string {
 /** Every file of `.chapterjs/`, by its path inside it. */
 function generatedFiles(
   projectDir: string,
-  folders: readonly TypedFolder[]
+  folders: readonly TypedFolder[],
+  shared: string
 ): Map<string, string> {
   const files = new Map<string, string>();
   const specifier = packageSpecifier(projectDir);
+  const types = (declarations: string): string =>
+    `${HEADER}export * from '${specifier}';\n${declarations.replaceAll("'#chapterjs'", `'${specifier}'`)}`;
   // The folder ignores itself: nothing to add to the project's .gitignore.
   files.set('.gitignore', '*\n');
+  // What every file of the project gets, whatever its folder: written as
+  // an augmentation of 'chapterjs', so it adds to the package in the main
+  // project and to the generated types in the others, without a second
+  // copy of the package for editors to offer.
+  const everywhere = shared === '' ? [] : ['../types/shared.d.ts'];
+  if (shared !== '') {
+    files.set(
+      'types/shared.d.ts',
+      `${HEADER}${shared.replaceAll("'#chapterjs'", `'${specifier}'`)}`
+    );
+  }
   // Files that are in no typed folder: 'chapterjs' is the package itself.
   files.set(
     'projects/main.json',
     json({
       extends: '../../tsconfig.json',
-      include: ['../../src'],
+      include: ['../../src', ...everywhere],
       exclude: folders.map(({ folder }) => `../../${folder}`),
     })
   );
@@ -71,13 +85,10 @@ function generatedFiles(
         compilerOptions: { paths: { chapterjs: [`../types/${id}.d.ts`] } },
         // The declaration file is listed too: a folder that does not exist
         // yet is then a valid, empty project, typed as soon as it exists.
-        include: [`../../${folder}`, `../types/${id}.d.ts`],
+        include: [`../../${folder}`, `../types/${id}.d.ts`, ...everywhere],
       })
     );
-    files.set(
-      `types/${id}.d.ts`,
-      `${HEADER}export * from '${specifier}';\n${declarations.replaceAll("'#chapterjs'", `'${specifier}'`)}`
-    );
+    files.set(`types/${id}.d.ts`, types(declarations));
   }
   files.set(
     'tsconfig.json',
@@ -95,15 +106,19 @@ function generatedFiles(
 /**
  * Writes the `.chapterjs/` folder of a project. A file whose content did
  * not change is left alone, so editors don't reload for nothing; what an
- * older version wrote and this one does not is removed.
+ * older version wrote and this one does not is removed. `shared` is what
+ * 'chapterjs' declares in every file of the project, whatever its folder:
+ * a `declare module 'chapterjs'` augmentation, importing the package from
+ * `'#chapterjs'` like the declarations of a `TypedFolder`.
  * @returns how many files were written
  */
 export async function writeGenerated(
   projectDir: string,
-  folders: readonly TypedFolder[]
+  folders: readonly TypedFolder[],
+  shared = ''
 ): Promise<number> {
   const root = join(projectDir, '.chapterjs');
-  const files = generatedFiles(projectDir, folders);
+  const files = generatedFiles(projectDir, folders, shared);
   const existing = await readdir(root, {
     recursive: true,
     withFileTypes: true,

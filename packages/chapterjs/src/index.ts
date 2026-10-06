@@ -33,13 +33,117 @@ export type {
 } from './commands/command.js';
 export type {
   CommandInteraction,
+  ComponentInteraction,
   DmCommandInteraction,
   GuildCommandInteraction,
   PrivateCommandInteraction,
   Interaction,
   InteractionReply,
   InteractionReplyOptions,
+  ModalInteraction,
 } from './structures/interaction.js';
+
+// Components: what the files of src/components/ are written with, and the
+// pieces of a message written where the message is.
+export { button } from './components/button.js';
+export type {
+  ButtonConfig,
+  ButtonContext,
+  ButtonFile,
+  ButtonLook,
+  ButtonStyleName,
+} from './components/button.js';
+export { select } from './components/select.js';
+export type {
+  EntitySelectConfig,
+  EntitySelectType,
+  SelectConfig,
+  SelectContext,
+  SelectFile,
+  SelectInstanceOptions,
+  SelectLook,
+  SelectType,
+  StringSelectConfig,
+} from './components/select.js';
+export { modal } from './components/modal.js';
+export type {
+  CheckboxField,
+  CheckboxesField,
+  EntityField,
+  FieldValue,
+  FieldValuesOf,
+  FilesField,
+  ModalConfig,
+  ModalContext,
+  ModalField,
+  ModalFields,
+  ModalFile,
+  ModalInstanceOptions,
+  ModalPrefill,
+  NoteField,
+  RadioField,
+  SelectField,
+  TextField,
+} from './components/modal.js';
+export { embed } from './components/embed.js';
+export type { EmbedFile } from './components/embed.js';
+export type {
+  ComponentWhere,
+  ComponentWho,
+  InDm,
+  InGuild,
+  InPrivate,
+  InteractiveConfig,
+  InteractiveContext,
+  PlaceInDm,
+  PlaceInGuild,
+  PlaceInPrivate,
+  PlaceOf,
+} from './components/component.js';
+export type {
+  DataKind,
+  DataShape,
+  DataValuesOf,
+} from './components/custom-id.js';
+export type {
+  OptionValue,
+  RichOption,
+  SelectOptions,
+} from './components/options.js';
+export {
+  container,
+  file,
+  gallery,
+  linkButton,
+  premiumButton,
+  row,
+  section,
+  separator,
+  text,
+  thumbnail,
+} from './components/layout.js';
+export type {
+  ContainerOptions,
+  LinkButtonOptions,
+  MediaOptions,
+  SeparatorOptions,
+} from './components/layout.js';
+export type {
+  ActionRowComponent,
+  ButtonComponent,
+  ContainerChild,
+  ContainerComponent,
+  FileComponent,
+  GalleryComponent,
+  MessageComponent,
+  ModalComponent,
+  Piece,
+  SectionComponent,
+  SelectComponent,
+  SeparatorComponent,
+  TextComponent,
+  ThumbnailComponent,
+} from './components/instance.js';
 
 // What the functions of src/events/ receive, by event.
 export type {
@@ -104,9 +208,10 @@ export type {
   MessageFlagName,
   Reaction,
 } from './structures/message.js';
+// Files of public/: `asset()` is typed per project by `.chapterjs/`.
+export type { AssetFile, AssetOptions } from './assets/asset.js';
 export type {
   AllowedMentions,
-  Component,
   Embed,
   FileInput,
   MessageEditOptions,

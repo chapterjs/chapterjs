@@ -1,0 +1,181 @@
+---
+title: 'select()'
+description: 'Everything a select menu file declares, the three ways to write options, and what the run function receives'
+---
+
+`select()` is what a file of `src/components/selects/` exports by default. It takes one object, `SelectConfig`, and types `values` in `run` from it.
+
+```ts src/components/selects/color.ts
+import { select } from 'chapterjs';
+
+export default select({
+  placeholder: 'Pick a color',
+  options: { Red: 'red', Blue: 'blue' },
+  async run({ interaction, value }) {
+    await interaction.update({ content: `You picked ${value}.`, components: [] });
+  },
+});
+```
+
+<Note>
+  How to write a menu and show it is in the [guide](/components/selects). This page lists what exists. What a menu shares with a button (`data`, `where`, `who`, the place) is on the [button() page](/reference/button#shared-by-buttons-and-select-menus).
+</Note>
+
+## select()
+
+```ts
+select<Options extends SelectOptions, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: StringSelectConfig<Options, Data, Where>): SelectFile<Data>
+select<Type extends EntitySelectType, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: EntitySelectConfig<Type, Data, Where>): SelectFile<Data>
+```
+
+Declares a select menu. Export the result as the default export of a file of `src/components/selects/`: the path of the file is what tells the menu apart, so you never write an id.
+
+### SelectFile
+
+What `select()` returns: the default export of a select file. Import it where you send a message, and call it with the data it carries; a menu without data is used as is, or called with what to show.
+
+```ts
+type SelectFile<Data extends DataShape = {}> = { readonly config: unknown } &
+  ({} extends DataValuesOf<Data>
+    ? ((options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
+    : (data: DataValuesOf<Data>, options?: SelectInstanceOptions) => SelectComponent)
+```
+
+<ResponseField name="config" type="unknown">
+  What the file gave to `select()`, not checked yet.
+</ResponseField>
+
+## SelectConfig
+
+What a select file gives to `select()`: a menu of texts, or of things of the server.
+
+```ts
+type SelectConfig = StringSelectConfig | EntitySelectConfig
+```
+
+Both have every field of [InteractiveConfig](/reference/button#interactiveconfig) and of [SelectLook](#selectlook), plus:
+
+<ResponseField name="min" type="number">
+  How many things must be picked at least (0 to 25). 1 by default.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  How many things can be picked at most (1 to 25). 1 by default.
+</ResponseField>
+
+<ResponseField name="run" type="(context: SelectContext<Picked, Data, Where>) => unknown" required>
+  What to do when something is picked.
+</ResponseField>
+
+### StringSelectConfig
+
+A menu of texts you declare.
+
+<ResponseField name="type" type="'string'">
+  The kind of menu: texts you declare, which is the default.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  The options (25 at most): a list of texts, an object from what is shown to what your code receives, or a list of `RichOption`.
+</ResponseField>
+
+### EntitySelectConfig
+
+A menu of users, roles, users and roles, or channels of the server.
+
+<ResponseField name="type" type="EntitySelectType" required>
+  The kind of menu: what Discord lists.
+</ResponseField>
+
+<ResponseField name="channelTypes" type="readonly ChannelType[]">
+  For a menu of channels: the kinds of channels listed. All by default.
+</ResponseField>
+
+### SelectType, EntitySelectType
+
+```ts
+type SelectType = 'string' | 'user' | 'role' | 'mentionable' | 'channel'
+type EntitySelectType = 'user' | 'role' | 'mentionable' | 'channel'
+```
+
+The kinds of menus: texts you declare, or things of the server.
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#string-select)
+
+## SelectLook
+
+What a select menu looks like.
+
+<ResponseField name="placeholder" type="string">
+  The text shown when nothing is picked (150 characters at most).
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean">
+  Shows the menu greyed out, impossible to use.
+</ResponseField>
+
+### SelectInstanceOptions
+
+What a message can change when it shows a menu: everything of `SelectLook`, plus:
+
+<ResponseField name="defaults" type="readonly (string | { id: Snowflake })[]">
+  What is picked when the menu appears: the values of the options for a menu of texts, the ids (or the things themselves) for the others.
+</ResponseField>
+
+## Options
+
+### SelectOptions
+
+```ts
+type SelectOptions = readonly string[] | Readonly<Record<string, string>> | readonly RichOption[]
+```
+
+The options of a menu: a list of texts (each is shown and received as is), an object whose keys are what is shown and values what your code receives, or a list of `RichOption` for descriptions and emojis. The same type serves the `select`, `radio` and `checkboxes` fields of a [form](/reference/modal).
+
+### RichOption
+
+One option of a menu, with everything Discord shows for it.
+
+<ResponseField name="label" type="string" required>
+  What the person sees (100 characters at most).
+</ResponseField>
+
+<ResponseField name="value" type="string" required>
+  What your code receives (100 characters at most).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  A second line under the label (100 characters at most).
+</ResponseField>
+
+<ResponseField name="emoji" type="EmojiInput">
+  An emoji before the label.
+</ResponseField>
+
+<ResponseField name="default" type="boolean">
+  Shows the option as picked when the menu appears.
+</ResponseField>
+
+### OptionValue
+
+```ts
+type OptionValue<Options extends SelectOptions> = string
+```
+
+What `run` receives for one picked option, typed from the declaration: the union of the texts of a list, of the values of an object, or of the `value` of each `RichOption`.
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#string-select-select-option-structure)
+
+## SelectContext
+
+What `run` receives when something is picked: everything of [InteractiveContext](/reference/button#interactivecontext), the place as [PlaceOf](/reference/button#placeof) gives it with a [ComponentInteraction](/reference/interaction#componentinteraction), and:
+
+<ResponseField name="values" type="Picked[]" required>
+  What was picked, in the order of the menu.
+</ResponseField>
+
+<ResponseField name="value" type="Picked | undefined" required>
+  The first thing picked; `undefined` when nothing was (a menu with `min: 0`).
+</ResponseField>
+
+`Picked` is `OptionValue<Options>` for a menu of texts, `User` for `'user'`, `Role` for `'role'`, `User | Role` for `'mentionable'` and `Channel` for `'channel'`.

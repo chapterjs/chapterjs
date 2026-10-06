@@ -303,7 +303,29 @@ describe('createProject', () => {
       chapterjsVersion: '^1.0.0',
       templatesRoot,
     });
-    expect(readdirSync(dir)).toEqual(['package.json']);
+    expect(readdirSync(dir)).toEqual(['package.json', 'public']);
+  });
+
+  it('creates the public/ folder, and keeps what a template puts in it', async () => {
+    const empty = join(tempDir(), 'bot');
+    await createProject({
+      dir: empty,
+      template: 'tpl',
+      chapterjsVersion: '^1.0.0',
+      templatesRoot: fakeTemplates({ 'package.json': templatePackage }),
+    });
+    expect(readdirSync(join(empty, 'public'))).toEqual([]);
+    const filled = join(tempDir(), 'bot');
+    await createProject({
+      dir: filled,
+      template: 'tpl',
+      chapterjsVersion: '^1.0.0',
+      templatesRoot: fakeTemplates({
+        'package.json': templatePackage,
+        'public/logo.png': 'PNG',
+      }),
+    });
+    expect(readdirSync(join(filled, 'public'))).toEqual(['logo.png']);
   });
 
   it('names the package after the folder and sets the chapterjs version', async () => {

@@ -1,0 +1,253 @@
+---
+title: 'button()'
+description: 'Everything a button file declares, what its run function receives, and the types shared by every interactive component'
+---
+
+`button()` is what a file of `src/components/buttons/` exports by default. It takes one object, `ButtonConfig`, and types `run` from it.
+
+```ts src/components/buttons/confirm.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Confirm',
+  style: 'success',
+  async run({ interaction }) {
+    await interaction.update({ content: 'Confirmed!', components: [] });
+  },
+});
+```
+
+<Note>
+  How to write a button, carry data in it and answer a click is in the [guide](/components). This page lists what exists.
+</Note>
+
+## button()
+
+```ts
+button<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ButtonConfig<Data, Where>): ButtonFile<Data>
+```
+
+Declares a button. Export the result as the default export of a file of `src/components/buttons/`: the path of the file is what tells the button apart, so you never write an id.
+
+`Data` and `Where` are inferred from what you pass: you never write them.
+
+### ButtonFile
+
+What `button()` returns: the default export of a button file. Import it where you send a message, and call it with the data the button carries (`ban({ userId })`); a button without data is used as is (`confirm`), or called with a look (`confirm({ disabled: true })`).
+
+```ts
+type ButtonFile<Data extends DataShape = {}> = { readonly config: unknown } &
+  ({} extends DataValuesOf<Data>
+    ? ((look?: ButtonLook) => ButtonComponent) & ButtonComponent
+    : (data: DataValuesOf<Data>, look?: ButtonLook) => ButtonComponent)
+```
+
+<ResponseField name="config" type="unknown">
+  What the file gave to `button()`, not checked yet.
+</ResponseField>
+
+## ButtonConfig
+
+What a button file gives to `button()`. It has every field of [`ButtonLook`](#buttonlook) and of [`InteractiveConfig`](#interactiveconfig), plus:
+
+<ResponseField name="run" type="(context: ButtonContext<Data, Where>) => unknown" required>
+  What to do when someone clicks the button.
+</ResponseField>
+
+A button needs a `label` or an `emoji`.
+
+### ButtonLook
+
+What a button looks like. Everything is optional when it is put in a message: what the file says is the default.
+
+<ResponseField name="label" type="string">
+  The text on the button (80 characters at most).
+</ResponseField>
+
+<ResponseField name="emoji" type="EmojiInput">
+  An emoji on the button, before the label.
+</ResponseField>
+
+<ResponseField name="style" type="ButtonStyleName">
+  The color of the button. `'primary'` by default.
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean">
+  Shows the button greyed out, impossible to click.
+</ResponseField>
+
+### ButtonStyleName
+
+```ts
+type ButtonStyleName = 'primary' | 'secondary' | 'success' | 'danger'
+```
+
+The color of a button: `'primary'` (blurple), `'secondary'` (grey), `'success'` (green) or `'danger'` (red). Link and premium buttons are made with [`linkButton()`](/reference/layout#linkbutton) and [`premiumButton()`](/reference/layout#premiumbutton).
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#button-button-styles)
+
+## ButtonContext
+
+What `run` receives when the button is clicked: everything of [InteractiveContext](#interactivecontext), and the place as [PlaceOf](#placeof) gives it for `Where`, with a [ComponentInteraction](/reference/interaction#componentinteraction).
+
+```ts
+type ButtonContext<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'> =
+  InteractiveContext<Data> & PlaceOf<Where, ComponentInteraction>
+```
+
+## Shared by buttons and select menus
+
+### InteractiveConfig
+
+What every interactive component declares, besides what it looks like.
+
+<ResponseField name="data" type="DataShape">
+  What the component carries from the message that shows it to the code that runs when it is used: a name and a kind for each value (`{ userId: 'string', page: 'number' }`). Given when the component is put in a message, received typed in `run`. Discord keeps it in the component itself, so it survives restarts.
+</ResponseField>
+
+<ResponseField name="where" type="ComponentWhere">
+  Where the component can be used: `'guild'` (in servers, the default), `'dm'` (in private messages with the bot) or `'both'`. What `run` receives follows it.
+</ResponseField>
+
+<ResponseField name="who" type="ComponentWho">
+  Who may use it: `'everyone'` (the default) or only the `'author'` of the command the message answers.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean">
+  Make the answers of the component only visible to who used it.
+</ResponseField>
+
+### InteractiveContext
+
+What every interactive component gives to its `run`, besides the place.
+
+<ResponseField name="user" type="User">
+  Who used it.
+</ResponseField>
+
+<ResponseField name="message" type="Message">
+  The message the component is on.
+</ResponseField>
+
+<ResponseField name="data" type="DataValuesOf<Data>">
+  What the component carries, as declared in `data`.
+</ResponseField>
+
+### ComponentWhere
+
+```ts
+type ComponentWhere = 'guild' | 'dm' | 'both'
+```
+
+Where a component can be used: in messages of servers (`'guild'`), in private messages with the bot (`'dm'`), or in both. A component is where the message that holds it is: this says where your code expects it.
+
+### ComponentWho
+
+```ts
+type ComponentWho = 'everyone' | 'author'
+```
+
+Who may use a component: `'everyone'` who sees the message (the default), or only the `'author'`, the person who used the command the message answers. Anyone else gets a private refusal.
+
+## Data
+
+### DataKind
+
+```ts
+type DataKind = 'string' | 'number' | 'boolean'
+```
+
+The kinds of values a component can carry in its `data`.
+
+### DataShape
+
+```ts
+type DataShape = Readonly<Record<string, DataKind>>
+```
+
+What a component carries: a name for each value, and its kind.
+
+### DataValuesOf
+
+```ts
+type DataValuesOf<Shape extends DataShape> = { [Name in keyof Shape]: string | number | boolean }
+```
+
+The values of a `data` declaration, typed from it: `string` for `'string'`, `number` for `'number'`, `boolean` for `'boolean'`.
+
+## The place
+
+What `run` receives about where the component was used follows `where`, like for a [command](/reference/command#commandcontext). The same types serve forms, with a `ModalInteraction`.
+
+### PlaceOf
+
+```ts
+type PlaceOf<Where extends ComponentWhere, I extends Interaction> =
+  Where extends 'guild' ? PlaceInGuild<I>
+  : Where extends 'dm' ? PlaceInDm<I>
+  : PlaceInGuild<I> | PlaceInPrivate<I>
+```
+
+What `run` receives about where it was used, following `where`.
+
+### PlaceInGuild
+
+What `run` receives about the place, in a server.
+
+<ResponseField name="interaction" type="InGuild<I>" required>
+  The interaction, with its server, member and channel never `null`.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild" required>
+  The server it was used in.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember" required>
+  Who used it, as a member of the server.
+</ResponseField>
+
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  The channel it was used in.
+</ResponseField>
+
+### PlaceInPrivate
+
+What `run` receives about the place, in a private message, when it also works in servers (`where: 'both'`).
+
+<ResponseField name="interaction" type="InPrivate<I>" required>
+  The interaction, with `guildId`, `guild` and `member` set to `null`.
+</ResponseField>
+
+<ResponseField name="guild" type="null" required>
+  No server: it was used in a private message.
+</ResponseField>
+
+<ResponseField name="member" type="null" required>
+  No member: the person is `user`.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  The private conversation it was used in.
+</ResponseField>
+
+### PlaceInDm
+
+What `run` receives about the place, when it only works in private messages (`where: 'dm'`).
+
+<ResponseField name="interaction" type="InDm<I>" required>
+  The interaction, on which nothing about a server exists.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  The private conversation it was used in.
+</ResponseField>
+
+### InGuild, InPrivate, InDm
+
+```ts
+type InGuild<I extends Interaction> = I & { guildId: string; guild: Guild; member: GuildMember; channel: GuildTextBasedChannel }
+type InPrivate<I extends Interaction> = I & { guildId: null; guild: null; member: null; channel: DMChannel }
+type InDm<I extends Interaction> = Omit<I, 'guildId' | 'guild' | 'member' | 'channel'> & { channel: DMChannel }
+```
+
+An interaction as seen from a server, from a private message for something that also works in servers, and from a private message for something that only works there.

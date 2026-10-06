@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { cp, readFile, rename, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { templatesDir } from './templates.js';
 import type { PackageManager } from './package-manager.js';
@@ -83,6 +83,9 @@ export async function createProject({
 }: CreateOptions) {
   const root = resolve(dir);
   await cp(join(templatesRoot, template), root, { recursive: true });
+  // Where the files the bot sends go (`asset()`): git and npm keep no empty
+  // folder, so no template can ship it; every project gets it here.
+  await mkdir(join(root, 'public'), { recursive: true });
 
   // npm strips `.gitignore` from published packages, so templates ship it as `_gitignore`.
   const gitignore = join(root, '_gitignore');

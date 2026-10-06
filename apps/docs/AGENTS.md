@@ -35,6 +35,8 @@ Each page of one tab links to its counterpart in the other (`commands/answering`
 | what the bot remembers           | the cache                                  | Users never configure a cache                                                               |
 | intents, privileged intents      | gateway intents                            | With the name of the Developer Portal option: Message Content Intent, Server Members Intent |
 | event, command                   | hook, listener, interaction (for commands) |                                                                                             |
+| form                             | modal (in prose)                           | `modal()` and `ModalInteraction` stay in code; a "form" is what the person fills in         |
+| component, button, menu          | custom_id, custom id (in prose)            | Users never see an id: the path of the file is what tells a component apart                 |
 | ChapterJS                        | chapterjs (in prose)                       | `chapterjs` is the package and the CLI                                                      |
 
 ### Messages

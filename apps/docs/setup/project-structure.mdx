@@ -8,9 +8,15 @@ A project made with `create chapter` looks like this. Everything your bot does l
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
     <Tree.Folder name=".chapterjs" />
+    <Tree.Folder name="public" />
     <Tree.Folder name="src" defaultOpen>
       <Tree.Folder name="commands" defaultOpen>
         <Tree.File name="ping.ts" highlight />
+      </Tree.Folder>
+      <Tree.Folder name="components" defaultOpen>
+        <Tree.Folder name="buttons" defaultOpen>
+          <Tree.File name="again.ts" highlight />
+        </Tree.Folder>
       </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
         <Tree.Folder name="ready" defaultOpen>
@@ -34,8 +40,9 @@ ChapterJS never asks you to register anything. A file is a command or a reaction
 | --- | --- | --- |
 | `src/commands/` | A slash command, named after its path: `ping.ts` is `/ping`, `mod/ban.ts` is `/mod ban` | `command({ ... })` |
 | `src/events/<event>/` | One reaction to the event named by its folder: `memberJoin/welcome.ts` runs when someone joins | `event(({ ... }) => { ... })` |
+| `src/components/buttons/`, `selects/`, `modals/`, `embeds/` | A button, a select menu, a form or an embed, told apart by its path: `buttons/again.ts` is the button Discord sends back as `buttons/again` | `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed({ ... })` |
 
-Both are imported from the same place, in every file:
+All are imported from the same place, in every file:
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
@@ -56,15 +63,30 @@ export default event(async ({ member, guild }) => {
 });
 ```
 
+```ts src/components/buttons/again.ts
+import { button } from 'chapterjs';
+
+const again = button({
+  label: 'Again',
+  data: { count: 'number' },
+  async run({ interaction, data }) {
+    const count = data.count + 1;
+    await interaction.update({ content: `Pong! ×${count}`, components: [again({ count })] });
+  },
+});
+
+export default again;
+```
+
 Any other folder of `src/` is yours: `src/lib/`, `src/db/`, whatever you like. ChapterJS only reads the folders above, and your files import the rest as usual.
 
 <Note>
-  How to write each kind of file is in [Commands](/commands) and [Events](/events).
+  How to write each kind of file is in [Commands](/commands), [Events](/events) and [Buttons](/components).
 </Note>
 
 ## Two naming rules
 
-Inside `src/commands/` and `src/events/`, two kinds of names are never part of a command or an event, so you can sort your files the way you like:
+Inside `src/commands/`, `src/events/` and `src/components/`, two kinds of names are never part of a command, an event or a component, so you can sort your files the way you like:
 
 <Tree>
   <Tree.Folder name="src/commands" defaultOpen>
@@ -86,7 +108,7 @@ Inside `src/commands/` and `src/events/`, two kinds of names are never part of a
 - **A folder in parentheses only groups files.** `(fun)/ping.ts` is still `/ping`, and `(moderation)/mod/warn.ts` is `/mod warn`. Put as many as you want inside each other; Discord never sees them.
 - **A name starting with `_` is private.** `_embeds.ts` and `_checks.ts` are never read as a command or an event. Use them for the code several files share, and import them like any file: `import { canPunish } from './_checks'`.
 
-The same two rules apply in `src/events/`: `(logs)/messageDelete/log.ts` reacts to `messageDelete`.
+The same two rules apply in `src/events/`, where `(logs)/messageDelete/log.ts` reacts to `messageDelete`, and in `src/components/`, where `(mod)/buttons/ban.ts` is the button `buttons/ban`.
 
 <Warning>
   Two files can't be the same thing. `(fun)/ping.ts` and `(tools)/ping.ts` are both `/ping`: the second one is reported and left out.
@@ -126,13 +148,17 @@ Writing the extension works as well: `'../lib/greet.ts'`.
 
 Packages from `node_modules` are imported as usual. The files you import are watched like the others: in [`chapterjs dev`](/run/dev), saving `src/lib/greet.ts` reloads every file that uses it.
 
+## `public/`: the files your bot sends
+
+Pictures, documents, sounds: put them in `public/`, in any folders you like, and send one with `asset('photos/monday.png')` in the `files` of a message. Your editor lists the files of the folder as you type, and `chapterjs dev` keeps that list up to date while you add files. A file is read when the message is sent. See [Files](/messages#files).
+
 ## `.chapterjs/`: generated, ignored, safe to delete
 
 This folder is written by ChapterJS, and git ignores it. It holds:
 
 | | What it is |
 | --- | --- |
-| `types/`, `projects/` | The types of your project: how `event` knows, in each folder, what its function receives. Your editor reads them. |
+| `types/`, `projects/` | The types of your project: how `event` knows, in each folder, what its function receives, and how `asset()` knows the files of `public/`. Your editor reads them. |
 | `cache/` | What was last registered on Discord, so starting your bot again costs no request. |
 | `build/` | Your compiled bot, written by [`chapterjs build`](/run/build). |
 

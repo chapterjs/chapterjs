@@ -118,7 +118,7 @@ The languages of Discord: `guild.preferredLocale`, `interaction.locale`, `user.l
 
 ## ButtonStyle
 
-The `style` of a button, in the components of a message (see [`Component`](/reference/message-options#component)).
+The `style` of a button as Discord sends it in a message you receive. In your files, a button takes a [`ButtonStyleName`](/reference/button#buttonstylename) (`'primary'`, `'danger'`...) instead.
 
 | Name | Value |
 | --- | --- |
@@ -129,15 +129,11 @@ The `style` of a button, in the components of a message (see [`Component`](/refe
 | `ButtonStyle.Link` | `5` |
 | `ButtonStyle.Premium` | `6` |
 
-<Warning>
-  The bot can send buttons and select menus, but cannot answer when someone uses them yet: see [What is not there yet](/not-yet).
-</Warning>
-
 [Discord documentation](https://docs.discord.com/developers/components/reference#button-button-styles)
 
 ## ComponentType
 
-The `type` of a component of a message (see [`Component`](/reference/message-options#component)).
+The `type` of a component of a message you receive. The components you send are made with the files of `src/components/` and the [layout helpers](/reference/layout), which set it for you.
 
 | Name | Value | Meaning |
 | --- | --- | --- |

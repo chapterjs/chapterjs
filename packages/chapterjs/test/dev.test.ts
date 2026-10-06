@@ -937,10 +937,11 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
       include: [
         '../../src/events/**/memberJoin',
         '../types/events.memberJoin.d.ts',
+        '../types/shared.d.ts',
       ],
     });
     const main = JSON.parse(read(cwd, 'projects/main.json'));
-    expect(main.include).toEqual(['../../src']);
+    expect(main.include).toEqual(['../../src', '../types/shared.d.ts']);
     expect(main.exclude.sort()).toEqual(
       EVENT_NAMES.map(name => `../../src/events/**/${name}`).sort()
     );
@@ -954,7 +955,14 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
       ],
     });
     expect(readdirSync(join(cwd, '.chapterjs/types')).sort()).toEqual(
-      EVENT_NAMES.map(name => `events.${name}.d.ts`).sort()
+      [...EVENT_NAMES.map(name => `events.${name}.d.ts`), 'shared.d.ts'].sort()
+    );
+    // What every file gets: here, a public/ folder with nothing in it.
+    expect(read(cwd, 'types/shared.d.ts')).toContain(
+      "declare module 'chapterjs' {"
+    );
+    expect(read(cwd, 'types/shared.d.ts')).toContain(
+      'export type PublicFile = never;'
     );
     expect(read(cwd, '.gitignore')).toBe('*\n');
     // Nothing was asked to Discord, and no .env is needed.

@@ -39,16 +39,16 @@ What a message can contain, and how it is sent. A message needs at least a conte
   The text of the message (up to 2000 characters).
 </ResponseField>
 
-<ResponseField name="embeds" type="Embed[]">
-  Up to 10 embeds. See [Embed](#embed).
+<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
+  Up to 10 embeds: written here, or files of `src/components/embeds/`. See [Embed](#embed) and [embed()](/reference/embed).
 </ResponseField>
 
-<ResponseField name="components" type="Component[]">
-  Buttons, select menus and layout components. See [Component](#component).
+<ResponseField name="components" type="MessageComponent[]">
+  Buttons, select menus and layout components, made by ChapterJS: the files of `src/components/` and `row()`, `text()`, `container()`... See [Components](#components).
 </ResponseField>
 
-<ResponseField name="files" type="FileInput[]">
-  Up to 10 files to attach. See [FileInput](#fileinput).
+<ResponseField name="files" type="(FileInput | AssetFile)[]">
+  Up to 10 files to attach: their content, or `asset()` for a file of `public/`. See [FileInput](#fileinput) and [asset()](#asset).
 </ResponseField>
 
 <ResponseField name="allowedMentions" type="AllowedMentions">
@@ -89,16 +89,16 @@ What can be changed in a message that was already sent: `message.edit()` takes a
   The text of the message (up to 2000 characters).
 </ResponseField>
 
-<ResponseField name="embeds" type="Embed[]">
-  Up to 10 embeds.
+<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
+  Up to 10 embeds: written here, or files of `src/components/embeds/`.
 </ResponseField>
 
-<ResponseField name="components" type="Component[]">
-  Buttons, select menus and layout components.
+<ResponseField name="components" type="MessageComponent[]">
+  Buttons, select menus and layout components, made by ChapterJS: the files of `src/components/` and `row()`, `text()`, `container()`...
 </ResponseField>
 
-<ResponseField name="files" type="FileInput[]">
-  Up to 10 files to attach.
+<ResponseField name="files" type="(FileInput | AssetFile)[]">
+  Up to 10 files to attach: their content, or `asset()` for a file of `public/`.
 </ResponseField>
 
 <ResponseField name="allowedMentions" type="AllowedMentions">
@@ -136,6 +136,68 @@ A file to attach to a message. Each file is sent with the message, and an embed 
 </ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/reference#uploading-files)
+
+## asset()
+
+```ts
+asset(path: PublicFile, options?: AssetOptions): AssetFile
+```
+
+A file of the `public/` folder of the project, to send with a message: `files: [asset('photos/monday.png')]`. The file is read when the message is sent, so a missing file is an error there.
+
+`asset` is imported from `'chapterjs'` like everything else, and typed for your project by the `.chapterjs/` folder: `PublicFile` is the union of the paths of every file of `public/`, so the editor lists them and underlines one that does not exist. The folder is read again by `chapterjs dev` every time a file is added or removed, and by `chapterjs sync` and `chapterjs build`. How to use it is in [Files](/messages#files).
+
+### PublicFile
+
+```ts
+type PublicFile = 'logo.png' | 'photos/monday.png' | ...
+```
+
+A file of the `public/` folder of your project, as a path from it: `'photos/monday.png'`. `never` while the folder is empty or missing.
+
+### AssetOptions
+
+What can change about a file of `public/` when it is sent.
+
+<ResponseField name="name" type="string">
+  The name the file is sent under; by default its own name.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  What the file shows, for people who can't see it.
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Hides the file until it is clicked.
+</ResponseField>
+
+<ResponseField name="contentType" type="string">
+  The media type of the file (`image/png`); guessed from the name when missing.
+</ResponseField>
+
+### AssetFile
+
+A file of the `public/` folder of the project, made by `asset()`, to put in the `files` of a message. It is read when the message is sent.
+
+<ResponseField name="name" type="string" required>
+  The name the file is sent under, with its extension.
+</ResponseField>
+
+<ResponseField name="path" type="string" required>
+  The path of the file inside `public/`.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  What the file shows, for people who can't see it.
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Hides the file until it is clicked.
+</ResponseField>
+
+<ResponseField name="contentType" type="string">
+  The media type of the file; guessed from the name when missing.
+</ResponseField>
 
 ## Embed
 
@@ -381,25 +443,11 @@ A poll to attach to a message.
 
 [Discord documentation](https://docs.discord.com/developers/resources/poll#poll-create-request-object)
 
-## Component
+## Components
 
-<Warning>
-  Your bot can send buttons and select menus, but it cannot answer them yet: a click does nothing, and your files are not run for it. Components are on the list of [what is not there yet](/not-yet).
-</Warning>
+`components` only takes what ChapterJS made: the buttons, menus and forms of `src/components/`, and the layout helpers (`row()`, `linkButton()`, `text()`, `section()`, `container()`...). A plain object is refused before anything is sent, so no id is ever written by hand. Buttons that follow each other are put in rows of 5; a menu gets a row of its own.
 
-A button, a select menu or a layout component of a message. `Component` is the union of every component of the Discord reference, with camelCase names: `type` is a value of [`ComponentType`](/reference/enums#componenttype), and a button takes a [`ButtonStyle`](/reference/enums#buttonstyle). What can be at the top of a message:
-
-| `type` | What it is |
-| --- | --- |
-| `ComponentType.ActionRow` | A row of up to 5 buttons, or one select menu |
-| `ComponentType.Section` | Text with an accessory next to it |
-| `ComponentType.TextDisplay` | Markdown text |
-| `ComponentType.MediaGallery` | Images and other media |
-| `ComponentType.File` | An attached file |
-| `ComponentType.Separator` | Vertical space between components |
-| `ComponentType.Container` | A box that groups components |
-
-An action row holds buttons (`ComponentType.Button`) or one select menu (`StringSelect`, `UserSelect`, `RoleSelect`, `MentionableSelect`, `ChannelSelect`). The fields of each component are the ones of the Discord reference, in camelCase (`customId`, `minValues`, `maxValues`...). A button of style `ButtonStyle.Link` takes a `url` instead of a `customId`.
+A message with a text, a section, a gallery, a file, a separator or a container is built with components only: Discord shows no `content` and no `embeds`, and the message says so before leaving if you pass one. The pieces and their types are listed in [Layout](/reference/layout); how to use them is in [Buttons](/components) and [Embeds and layout](/components/embeds).
 
 [Discord documentation](https://docs.discord.com/developers/components/reference)
 

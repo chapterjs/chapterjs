@@ -181,6 +181,11 @@ describe.skipIf(exe === null || process.platform === 'win32')(
         'src/events/messageDelete/options.ts': `import { event } from 'chapterjs';\nexport default event(({ messageId }) => messageId, { });\n`,
         // A folder created after the types were written.
         'src/events/memberJoin/welcome.ts': `export default event(({ member }) => {});\n`,
+        // The files of public/ are offered to asset(), in every folder.
+        'public/logo.png': '',
+        'public/photos/monday.png': '',
+        'src/commands/photo.ts': `import { asset, command } from 'chapterjs';\nexport default command({ description: 'd', async run({ channel }) { await channel.send({ files: [asset('`,
+        'src/events/ready/photo.ts': `import { asset, event } from 'chapterjs';\nexport default event(({ guilds }) => asset('`,
       });
       cpSync(join(template, 'tsconfig.json'), join(cwd, 'tsconfig.json'));
       symlinkSync(
@@ -204,6 +209,22 @@ describe.skipIf(exe === null || process.platform === 'win32')(
         expect(
           await importsOffered(exe!, cwd, join(cwd, file), 'event', null)
         ).toEqual(['chapterjs']);
+      },
+      40_000
+    );
+
+    it.each(['src/commands/photo.ts', 'src/events/ready/photo.ts'])(
+      'offers the files of public/ inside asset() in %s',
+      async file => {
+        const cwd = await scaffolded();
+        expect(
+          await offered(exe!, cwd, join(cwd, file), "asset('", null, items =>
+            items
+              .map(item => item.label)
+              .filter(label => label.includes('.'))
+              .sort()
+          )
+        ).toEqual(['logo.png', 'photos/monday.png']);
       },
       40_000
     );
