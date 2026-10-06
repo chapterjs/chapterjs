@@ -3,82 +3,104 @@
  * needs beyond Tailwind classes: gradients, glows and the Discord mockup
  * colors. Everything else is docs.json (theme, colors, fonts).
  *
- * Palette ("paper and ember"): paper #FAFAF9 / ink #0C0A09, ember #EA580C
- * with #FB923C for dark mode. The same values are in docs.json.
+ * Palette ("paper and orchid"): paper #FAFAFA / ink #09090B, orchid #C026D3
+ * with #E879F9 for dark mode. The same values are in docs.json.
  */
 
 :root {
-  --cj-ember: #ea580c;
-  --cj-ember-light: #fb923c;
-  --cj-ember-deep: #c2410c;
-  --cj-ink: #0c0a09;
-  --cj-paper: #fafaf9;
+  --cj-orchid: #c026d3;
+  --cj-orchid-light: #e879f9;
+  --cj-orchid-deep: #a21caf;
+  --cj-ink: #09090b;
+  --cj-paper: #fafafa;
 }
 
 /* The accent, which is a little brighter on ink than on paper. */
 .cj-accent {
-  color: var(--cj-ember);
+  color: var(--cj-orchid);
 }
 .dark .cj-accent {
-  color: var(--cj-ember-light);
+  color: var(--cj-orchid-light);
 }
 
-/* Headline gradient: ember to a warm amber, on both modes. */
+/* Headline gradient: violet to orchid to pink, on both modes. */
 .cj-gradient-text {
-  background: linear-gradient(100deg, #ea580c 0%, #f59e0b 60%, #fb923c 100%);
+  background: linear-gradient(100deg, #8b5cf6 0%, #d946ef 55%, #f472b6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-/* The hero background: a faint grid that fades out, and an ember glow. */
+/* The hero background: a faint grid that fades out. */
 .cj-hero-bg {
   background-image:
-    linear-gradient(to right, rgba(120, 113, 108, 0.14) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(120, 113, 108, 0.14) 1px, transparent 1px);
+    linear-gradient(to right, rgba(113, 113, 122, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(113, 113, 122, 0.14) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, black 30%, transparent 78%);
   -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, black 30%, transparent 78%);
 }
-.cj-hero-glow {
-  background: radial-gradient(ellipse 45% 38% at 50% 0%, rgba(234, 88, 12, 0.22), transparent 70%);
+/* Two soft blobs behind the title, violet and pink, like a light leak.
+ * Size, position and blur live here: Mintlify does not build Tailwind's
+ * arbitrary values or filters for a custom page. */
+.cj-hero-blob {
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.5;
+}
+.dark .cj-hero-blob {
+  opacity: 0.35;
+}
+.cj-hero-blob-violet {
+  background: #8b5cf6;
+  width: 640px;
+  height: 360px;
+  left: calc(50% - 560px);
+  top: 40px;
+}
+.cj-hero-blob-pink {
+  background: #ec4899;
+  width: 560px;
+  height: 340px;
+  left: calc(50% - 80px);
+  top: 160px;
 }
 .cj-shot-glow {
-  background: radial-gradient(ellipse 55% 60% at 50% 45%, rgba(234, 88, 12, 0.28), transparent 70%);
+  background: radial-gradient(ellipse 55% 60% at 50% 45%, rgba(192, 38, 211, 0.28), transparent 70%);
 }
 .cj-cta-glow {
-  background: radial-gradient(ellipse 60% 90% at 50% 100%, rgba(234, 88, 12, 0.24), transparent 70%);
+  background: radial-gradient(ellipse 60% 90% at 50% 100%, rgba(192, 38, 211, 0.24), transparent 70%);
 }
 
 /* Buttons. */
 .cj-btn-primary {
-  background: linear-gradient(135deg, #fb923c, #ea580c 60%, #c2410c);
+  background: linear-gradient(135deg, #e879f9, #c026d3 60%, #a21caf);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.25) inset,
-    0 10px 30px rgba(234, 88, 12, 0.35);
+    0 10px 30px rgba(192, 38, 211, 0.35);
 }
 .cj-btn-primary:hover {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.25) inset,
-    0 14px 36px rgba(234, 88, 12, 0.45);
+    0 14px 36px rgba(192, 38, 211, 0.45);
 }
 
-/* Bento cells: a hairline border and a warm surface in both modes. */
+/* Bento cells: a hairline border and a quiet surface in both modes. */
 .cj-cell {
   background: #ffffff;
-  border: 1px solid rgba(12, 10, 9, 0.08);
+  border: 1px solid rgba(9, 9, 11, 0.08);
 }
 .dark .cj-cell {
   background: rgba(255, 255, 255, 0.025);
   border-color: rgba(255, 255, 255, 0.08);
 }
 .cj-cell:hover {
-  border-color: rgba(234, 88, 12, 0.45);
+  border-color: rgba(192, 38, 211, 0.45);
 }
 
 /* Chips and small mono labels. */
 .cj-chip {
-  border: 1px solid rgba(12, 10, 9, 0.1);
+  border: 1px solid rgba(9, 9, 11, 0.1);
   background: #ffffff;
 }
 .dark .cj-chip {
@@ -86,31 +108,31 @@
   background: rgba(255, 255, 255, 0.03);
 }
 .cj-dot {
-  background: var(--cj-ember);
-  box-shadow: 0 0 14px rgba(234, 88, 12, 0.8);
+  background: var(--cj-orchid);
+  box-shadow: 0 0 14px rgba(192, 38, 211, 0.8);
 }
 .cj-dot-privileged {
-  background: #f59e0b;
+  background: #a78bfa;
 }
 
 /* The product shot: an editor, a terminal and Discord, always dark. */
 .cj-shot {
-  background: #141210;
+  background: #121114;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 40px 100px rgba(12, 10, 9, 0.55);
+  box-shadow: 0 40px 100px rgba(9, 9, 11, 0.55);
 }
 .cj-shot-bar {
-  background: #1b1917;
+  background: #1a1820;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .cj-shot-pane {
   border-color: rgba(255, 255, 255, 0.08);
 }
 .cj-explorer {
-  background: #181614;
+  background: #16151a;
 }
 .cj-tree-active {
-  background: rgba(234, 88, 12, 0.18);
+  background: rgba(192, 38, 211, 0.18);
   color: #ffffff;
 }
 .cj-discord {
@@ -126,7 +148,7 @@
 }
 .cj-discord-embed {
   background: #2b2d31;
-  border-left: 4px solid var(--cj-ember);
+  border-left: 4px solid var(--cj-orchid);
 }
 .cj-discord-command {
   background: rgba(88, 101, 242, 0.3);
@@ -136,7 +158,7 @@
   background: #f0b232;
 }
 .cj-avatar-bot {
-  background: var(--cj-ember);
+  background: var(--cj-orchid);
 }
 .cj-badge-app {
   background: #5865f2;
@@ -150,13 +172,13 @@
   color: #7dd3fc;
 }
 .cj-muted {
-  color: #78716c;
+  color: #71717a;
 }
 .cj-text {
-  color: #d6d3d1;
+  color: #d4d4d8;
 }
 .cj-cursor {
-  background: #d6d3d1;
+  background: #d4d4d8;
   animation: cj-blink 1s steps(2, start) infinite;
 }
 @keyframes cj-blink {

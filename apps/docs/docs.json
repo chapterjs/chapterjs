@@ -4,14 +4,14 @@
   "name": "ChapterJS",
   "description": "The Discord framework: a folder of files becomes a fast, type-safe Discord bot.",
   "colors": {
-    "primary": "#EA580C",
-    "light": "#FB923C",
-    "dark": "#C2410C"
+    "primary": "#C026D3",
+    "light": "#E879F9",
+    "dark": "#A21CAF"
   },
   "background": {
     "color": {
-      "light": "#FAFAF9",
-      "dark": "#0C0A09"
+      "light": "#FAFAFA",
+      "dark": "#09090B"
     }
   },
   "appearance": {
@@ -95,7 +95,7 @@
           {
             "group": "More",
             "icon": "compass",
-            "pages": ["not-yet", "from-discord-js"]
+            "pages": ["not-yet"]
           }
         ]
       },
@@ -165,16 +165,7 @@
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Discord developer docs",
-          "href": "https://docs.discord.com/developers",
-          "icon": "external-link"
-        }
-      ]
-    }
+    ]
   },
   "navbar": {
     "links": [

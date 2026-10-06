@@ -12,8 +12,8 @@ export const Eyebrow = ({ children }) => (
 export const Heading = ({ eyebrow, title, children }) => (
   <div className="max-w-2xl">
     <Eyebrow>{eyebrow}</Eyebrow>
-    <h2 className="mt-3 text-3xl sm:text-5xl font-bold tracking-tight text-stone-950 dark:text-white">{title}</h2>
-    {children && <p className="mt-4 text-base sm:text-lg leading-7 text-stone-600 dark:text-stone-400">{children}</p>}
+    <h2 className="mt-3 text-3xl sm:text-5xl font-bold tracking-tight text-zinc-950 dark:text-white">{title}</h2>
+    {children && <p className="mt-4 text-base sm:text-lg leading-7 text-zinc-600 dark:text-zinc-400">{children}</p>}
   </div>
 );
 
@@ -23,30 +23,30 @@ export const Cell = ({ icon, title, children, visual, className = "" }) => (
     <div>
       <div className="flex items-center gap-2.5">
         {icon && <span className="cj-accent"><Icon icon={icon} size={18} /></span>}
-        <h3 className="text-base font-semibold tracking-tight text-stone-950 dark:text-white">{title}</h3>
+        <h3 className="text-base font-semibold tracking-tight text-zinc-950 dark:text-white">{title}</h3>
       </div>
-      <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-stone-400">{children}</p>
+      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{children}</p>
     </div>
   </div>
 );
 
 export const C = ({ children }) => (
-  <code className="rounded bg-stone-200/70 px-1 py-0.5 font-mono text-[0.85em] text-stone-950 dark:bg-white/10 dark:text-stone-100">{children}</code>
+  <code className="rounded bg-zinc-200/70 px-1 py-0.5 font-mono text-[0.85em] text-zinc-950 dark:bg-white/10 dark:text-zinc-100">{children}</code>
 );
 
 export const Mono = ({ className = "", children }) => (
-  <div className={`font-mono text-xs text-stone-600 dark:text-stone-400 ${className}`}>{children}</div>
+  <div className={`font-mono text-xs text-zinc-600 dark:text-zinc-400 ${className}`}>{children}</div>
 );
 
 export const Chip = ({ children, privileged }) => (
-  <span className="cj-chip inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-xs text-stone-700 dark:text-stone-300">
+  <span className="cj-chip inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-xs text-zinc-700 dark:text-zinc-300">
     <span className={`h-1.5 w-1.5 rounded-full ${privileged ? "cj-dot-privileged" : "cj-dot"}`} />
     {children}
   </span>
 );
 
 export const Check = ({ children }) => (
-  <li className="flex gap-3 text-sm leading-6 text-stone-600 dark:text-stone-400">
+  <li className="flex gap-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
     <span className="cj-accent mt-1 shrink-0"><Icon icon="check" size={14} /></span>
     <span>{children}</span>
   </li>
@@ -62,7 +62,7 @@ export const Lights = () => (
 
 export const TreeItem = ({ depth = 0, name, active, folder }) => (
   <div
-    className={`flex items-center gap-2 rounded py-1 pr-3 ${active ? "cj-tree-active" : folder ? "text-stone-500" : "text-stone-300"}`}
+    className={`flex items-center gap-2 rounded py-1 pr-3 ${active ? "cj-tree-active" : folder ? "text-zinc-500" : "text-zinc-300"}`}
     style={{ paddingLeft: `${0.75 + depth * 0.9}rem` }}
   >
     <Icon icon={folder ? "folder" : "file"} size={11} />
@@ -92,52 +92,51 @@ export const Message = ({ bot, name, children }) => (
 
 <div className="relative overflow-hidden">
   <div className="cj-hero-bg pointer-events-none absolute inset-0" />
-  <div className="cj-hero-glow pointer-events-none absolute inset-x-0 top-0 h-[640px]" />
+  <div className="cj-hero-blob cj-hero-blob-violet pointer-events-none absolute" />
+  <div className="cj-hero-blob cj-hero-blob-pink pointer-events-none absolute" />
 
-  <div className="relative mx-auto max-w-5xl px-6 pt-16 text-center lg:pt-24">
-    <a
-      href="/quickstart"
-      className="cj-chip inline-flex items-center gap-2 rounded-full py-1 pl-1.5 pr-3 text-xs text-stone-600 backdrop-blur transition-colors hover:border-stone-400 dark:text-stone-300"
-    >
-      <span className="cj-btn-primary rounded-full px-2 py-0.5 text-[11px] font-medium text-white">New</span>
-      One command creates your bot <Icon icon="arrow-right" size={11} />
-    </a>
-
-    <h1 className="mt-7 text-5xl font-bold leading-[0.95] tracking-tight text-stone-950 sm:text-7xl lg:text-8xl dark:text-white">
-      A folder of files.<br />
-      <span className="cj-gradient-text">A Discord bot.</span>
+  <div className="relative mx-auto max-w-4xl px-6 pt-20 text-center lg:pt-28">
+    <h1 className="cj-gradient-text text-5xl font-bold leading-[1.02] tracking-tight sm:text-7xl lg:text-[88px]">
+      The Discord framework
     </h1>
 
-    <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-stone-600 sm:text-xl dark:text-stone-400">
-      ChapterJS is the Discord framework that reads your folders. Drop a file in <C>src/commands/</C> or <C>src/events/</C> and it is live: connection, intents, command registration, hot reload and scaling are done for you, fully typed, with zero dependencies to run.
+    <p className="mx-auto mt-6 max-w-2xl text-xl leading-8 text-zinc-600 sm:text-2xl sm:leading-9 dark:text-zinc-300">
+      A folder of files becomes a fast, type-safe Discord bot. Nothing to configure, nothing to register, nothing to install to run it.
     </p>
 
-    <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+    <div className="mx-auto mt-10 w-full max-w-md text-left [&>div]:my-0 [&_pre]:text-[15px]">
+      <CodeGroup>
+      ```bash pnpm
+      pnpm create chapter
+      ```
+
+      ```bash npm
+      npm create chapter@latest
+      ```
+
+      ```bash yarn
+      yarn create chapter
+      ```
+
+      ```bash bun
+      bun create chapter
+      ```
+      </CodeGroup>
+    </div>
+
+    <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
       <a
         href="/quickstart"
         className="cj-btn-primary inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-medium text-white transition-shadow"
       >
         Get started <Icon icon="arrow-right" size={13} />
       </a>
-      <div className="w-full text-left sm:w-auto sm:min-w-[270px] [&>div]:my-0">
-        <CodeGroup>
-        ```bash pnpm
-        pnpm create chapter
-        ```
-
-        ```bash npm
-        npm create chapter@latest
-        ```
-
-        ```bash yarn
-        yarn create chapter
-        ```
-
-        ```bash bun
-        bun create chapter
-        ```
-        </CodeGroup>
-      </div>
+      <a
+        href="https://github.com/chapterjs/chapterjs"
+        className="cj-chip inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-medium text-zinc-950 transition-colors hover:border-zinc-400 dark:text-white"
+      >
+        <Icon icon="github" size={14} /> GitHub
+      </a>
     </div>
   </div>
 
@@ -170,13 +169,13 @@ export const Message = ({ bot, name, children }) => (
             <Icon icon="terminal" size={11} /> Terminal
           </div>
           <div className="cj-text space-y-2 p-4 leading-5">
-            <div><span className="cj-muted">$</span> pnpm dev</div>
+            <div><span className="cj-muted">{"$"}</span> pnpm dev</div>
             <div><span className="cj-ok">✓</span> Connected to My Server as my-bot</div>
             <div><span className="cj-info">ℹ</span> Intents computed from your files: GUILDS, GUILD_MEMBERS</div>
             <div><span className="cj-ok">✓</span> 2 commands, 1 event loaded</div>
             <div className="cj-muted pt-2">saved src/commands/ping.ts</div>
             <div><span className="cj-info">↻</span> Reloaded in 12 ms, 2 commands, 1 event loaded</div>
-            <div className="flex items-center gap-1"><span className="cj-muted">$</span><span className="cj-cursor h-4 w-2" /></div>
+            <div className="flex items-center gap-1"><span className="cj-muted">{"$"}</span><span className="cj-cursor h-4 w-2" /></div>
           </div>
         </div>
 
@@ -209,19 +208,19 @@ export const Message = ({ bot, name, children }) => (
 <div className="mx-auto mt-20 max-w-6xl px-6">
   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
-      <div className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl dark:text-white">0</div>
+      <div className="text-4xl font-bold tracking-tight text-zinc-950 sm:text-5xl dark:text-white">0</div>
       <Mono className="mt-2">dependencies to run a bot</Mono>
     </div>
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
-      <div className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl dark:text-white">100%</div>
+      <div className="text-4xl font-bold tracking-tight text-zinc-950 sm:text-5xl dark:text-white">100%</div>
       <Mono className="mt-2">type-safe, no <C>any</C></Mono>
     </div>
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
-      <div className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl dark:text-white">v10</div>
+      <div className="text-4xl font-bold tracking-tight text-zinc-950 sm:text-5xl dark:text-white">v10</div>
       <Mono className="mt-2">Discord API and gateway</Mono>
     </div>
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
-      <div className="text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl dark:text-white">1</div>
+      <div className="text-4xl font-bold tracking-tight text-zinc-950 sm:text-5xl dark:text-white">1</div>
       <Mono className="mt-2">command to start</Mono>
     </div>
   </div>
@@ -258,7 +257,7 @@ export const Message = ({ bot, name, children }) => (
     </div>
   </div>
 
-  <p className="mt-6 text-sm leading-6 text-stone-600 dark:text-stone-400">
+  <p className="mt-6 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
     That is all. <C>/ping</C> is registered on Discord, the bot asks for the Server Members intent because a file needs it, and <C>member</C> and <C>guild</C> are typed without you writing a type.
   </p>
 </div>
@@ -276,13 +275,13 @@ export const Message = ({ bot, name, children }) => (
       visual={
         <div className="grid w-full max-w-lg grid-cols-[1fr_auto_1fr] items-center gap-4">
           <Mono className="space-y-1.5 text-left">
-            <div>src/commands/<span className="text-stone-950 dark:text-white">ping.ts</span></div>
-            <div>src/commands/<span className="text-stone-950 dark:text-white">poll.ts</span></div>
-            <div>src/events/memberJoin/<span className="text-stone-950 dark:text-white">welcome.ts</span></div>
+            <div>src/commands/<span className="text-zinc-950 dark:text-white">ping.ts</span></div>
+            <div>src/commands/<span className="text-zinc-950 dark:text-white">poll.ts</span></div>
+            <div>src/events/memberJoin/<span className="text-zinc-950 dark:text-white">welcome.ts</span></div>
           </Mono>
           <span className="cj-accent"><Icon icon="arrow-right" size={16} /></span>
           <div className="cj-chip space-y-1 rounded-lg p-2">
-            <Mono className="rounded bg-stone-100 px-2 py-1 dark:bg-white/5"><span className="cj-accent">/</span>ping</Mono>
+            <Mono className="rounded bg-zinc-100 px-2 py-1 dark:bg-white/5"><span className="cj-accent">/</span>ping</Mono>
             <Mono className="px-2 py-1"><span className="cj-accent">/</span>poll</Mono>
             <Mono className="px-2 py-1">on member join</Mono>
           </div>
@@ -298,9 +297,9 @@ export const Message = ({ bot, name, children }) => (
       visual={
         <div className="flex items-center gap-3">
           <Mono>save</Mono>
-          <span className="h-px w-10 bg-stone-300 dark:bg-stone-700" />
-          <span className="h-2.5 w-2.5 rounded-full bg-stone-300 dark:bg-stone-700" />
-          <span className="h-px w-10 bg-stone-300 dark:bg-stone-700" />
+          <span className="h-px w-10 bg-zinc-300 dark:bg-zinc-700" />
+          <span className="h-2.5 w-2.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+          <span className="h-px w-10 bg-zinc-300 dark:bg-zinc-700" />
           <span className="cj-dot h-3.5 w-3.5 rounded-full" />
           <Mono>live</Mono>
         </div>
@@ -317,7 +316,7 @@ export const Message = ({ bot, name, children }) => (
           <Mono className="text-sm">
             options.<span className="cj-squiggle">targt</span>
           </Mono>
-          <Mono className="mt-2 text-[11px]"><span className="text-red-500">✗</span> Property 'targt' does not exist. Did you mean <span className="text-stone-950 dark:text-white">'target'</span>?</Mono>
+          <Mono className="mt-2 text-[11px]"><span className="text-red-500">✗</span> Property 'targt' does not exist. Did you mean <span className="text-zinc-950 dark:text-white">'target'</span>?</Mono>
         </div>
       }
     >
@@ -344,10 +343,10 @@ export const Message = ({ bot, name, children }) => (
       title="Errors in plain words"
       visual={
         <div className="cj-chip w-full max-w-[280px] rounded-lg p-3 text-left">
-          <div className="text-xs font-semibold text-stone-950 dark:text-white">What happened</div>
-          <div className="mt-1.5 h-1.5 w-4/5 rounded bg-stone-200 dark:bg-white/10" />
+          <div className="text-xs font-semibold text-zinc-950 dark:text-white">What happened</div>
+          <div className="mt-1.5 h-1.5 w-4/5 rounded bg-zinc-200 dark:bg-white/10" />
           <div className="cj-accent mt-3 text-xs font-semibold">What to do</div>
-          <div className="mt-1.5 h-1.5 w-3/5 rounded bg-stone-200 dark:bg-white/10" />
+          <div className="mt-1.5 h-1.5 w-3/5 rounded bg-zinc-200 dark:bg-white/10" />
         </div>
       }
     >
@@ -374,18 +373,18 @@ export const Message = ({ bot, name, children }) => (
   <div className="mt-10 grid gap-3 md:grid-cols-3">
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
       <Mono className="cj-accent">01</Mono>
-      <h3 className="mt-3 text-lg font-semibold tracking-tight text-stone-950 dark:text-white">Create</h3>
-      <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-stone-400">Run <C>pnpm create chapter</C>, pick a folder and a template. Dependencies are installed for you.</p>
+      <h3 className="mt-3 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">Create</h3>
+      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Run <C>pnpm create chapter</C>, pick a folder and a template. Dependencies are installed for you.</p>
     </div>
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
       <Mono className="cj-accent">02</Mono>
-      <h3 className="mt-3 text-lg font-semibold tracking-tight text-stone-950 dark:text-white">Configure</h3>
-      <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-stone-400">Put <C>BOT_TOKEN</C> and <C>DEV_GUILD_ID</C> in <C>.env</C>. Anything missing is explained before the bot connects.</p>
+      <h3 className="mt-3 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">Configure</h3>
+      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Put <C>BOT_TOKEN</C> and <C>DEV_GUILD_ID</C> in <C>.env</C>. Anything missing is explained before the bot connects.</p>
     </div>
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
       <Mono className="cj-accent">03</Mono>
-      <h3 className="mt-3 text-lg font-semibold tracking-tight text-stone-950 dark:text-white">Run</h3>
-      <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-stone-400">Start <C>pnpm dev</C>. Your bot joins your test server and reloads every time you save.</p>
+      <h3 className="mt-3 text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">Run</h3>
+      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">Start <C>pnpm dev</C>. Your bot joins your test server and reloads every time you save.</p>
     </div>
   </div>
 </div>
@@ -400,8 +399,8 @@ export const Message = ({ bot, name, children }) => (
   <div className="mt-10 grid gap-3 md:grid-cols-2">
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-lg font-semibold text-stone-950 dark:text-white">chapterjs dev</span>
-        <span className="cj-accent rounded-full bg-orange-500/10 px-2 py-0.5 text-[11px] font-medium">development</span>
+        <span className="font-mono text-lg font-semibold text-zinc-950 dark:text-white">chapterjs dev</span>
+        <span className="cj-accent rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-[11px] font-medium">development</span>
       </div>
       <ul className="mt-6 list-none space-y-3 p-0">
         <Check>Runs on your test server only</Check>
@@ -412,8 +411,8 @@ export const Message = ({ bot, name, children }) => (
     </div>
     <div className="cj-cell rounded-2xl p-6 sm:p-7">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-lg font-semibold text-stone-950 dark:text-white">chapterjs start</span>
-        <span className="rounded-full bg-stone-200 px-2 py-0.5 text-[11px] font-medium text-stone-700 dark:bg-white/10 dark:text-stone-300">production</span>
+        <span className="font-mono text-lg font-semibold text-zinc-950 dark:text-white">chapterjs start</span>
+        <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-medium text-zinc-700 dark:bg-white/10 dark:text-zinc-300">production</span>
       </div>
       <ul className="mt-6 list-none space-y-3 p-0">
         <Check>Runs what <C>chapterjs build</C> checked and compiled</Check>
@@ -431,10 +430,10 @@ export const Message = ({ bot, name, children }) => (
   <div className="cj-cell relative overflow-hidden rounded-3xl">
     <div className="cj-cta-glow pointer-events-none absolute inset-0" />
     <div className="relative px-6 py-16 text-center sm:py-20">
-      <h2 className="text-4xl font-bold tracking-tight text-stone-950 sm:text-6xl dark:text-white">
+      <h2 className="text-4xl font-bold tracking-tight text-zinc-950 sm:text-6xl dark:text-white">
         Your bot is one command away.
       </h2>
-      <p className="mt-4 text-base text-stone-600 sm:text-lg dark:text-stone-400">
+      <p className="mt-4 text-base text-zinc-600 sm:text-lg dark:text-zinc-400">
         Create a project, add your token, and run it on your test server.
       </p>
       <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -446,7 +445,7 @@ export const Message = ({ bot, name, children }) => (
         </a>
         <a
           href="https://github.com/chapterjs/chapterjs"
-          className="cj-chip inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-medium text-stone-950 transition-colors hover:border-stone-400 dark:text-white"
+          className="cj-chip inline-flex h-12 items-center gap-2 rounded-full px-6 text-sm font-medium text-zinc-950 transition-colors hover:border-zinc-400 dark:text-white"
         >
           <Icon icon="star" size={14} /> Star on GitHub
         </a>
