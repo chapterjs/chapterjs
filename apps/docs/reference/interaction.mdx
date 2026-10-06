@@ -45,7 +45,7 @@ export async function deny(interaction: CommandInteraction, why: string) {
 </ResponseField>
 
 <ResponseField name="channel" type="TextBasedChannel">
-  The channel it happened in. Always there, without a request: Discord sends it with the interaction.
+  The channel it happened in: Discord sends it with the interaction.
 </ResponseField>
 
 <ResponseField name="member" type="GuildMember | null">
@@ -66,7 +66,7 @@ export async function deny(interaction: CommandInteraction, why: string) {
 
 ### CommandInteraction
 
-A slash command was used. It has everything above, plus:
+Someone used a slash command. It has everything above, plus:
 
 <ResponseField name="commandName" type="string">
   The command as the person typed it: `/mod ban`.
@@ -78,11 +78,23 @@ What a command receives is more precise than `CommandInteraction`, and follows t
 
 | Type | For | What changes |
 | --- | --- | --- |
-| `GuildCommandInteraction` | A command used in a server (`where: 'guild'`, the default) | `guildId` is a `Snowflake`, `guild` is a `Guild`, `member` is a `GuildMember`, `channel` is a `GuildTextBasedChannel` |
-| `DmCommandInteraction` | A command of private messages only (`where: 'dm'`) | `guildId`, `guild` and `member` do not exist; `channel` is a `DMChannel` |
-| `PrivateCommandInteraction` | A command used in private, in a command that works in both places (`where: 'both'`) | `guildId`, `guild` and `member` are `null`; `channel` is a `DMChannel` |
+| `GuildCommandInteraction` | A slash command used in a server: what a command receives by default (`where: 'guild'`). Discord sends the server, the member and the channel with it. | `guildId` is a `Snowflake`, `guild` is a `Guild`, `member` is a `GuildMember`, `channel` is a `GuildTextBasedChannel` |
+| `DmCommandInteraction` | A slash command that is only used in private messages with the bot (`where: 'dm'`): nothing about a server exists on it. | `guildId`, `guild` and `member` do not exist; `channel` is a `DMChannel` |
+| `PrivateCommandInteraction` | A slash command used in a private message with the bot, for a command that works in both places (`where: 'both'`): there is no server, which is how it is told apart from `GuildCommandInteraction`. | `guildId`, `guild` and `member` are `null`; `channel` is a `DMChannel` |
 
 With `where: 'both'`, `run` receives `GuildCommandInteraction | PrivateCommandInteraction`: one `if (interaction.guild)` narrows everything.
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-interaction-structure)
+
+## Helpers
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+The data of the interaction, without its token: a token is a secret. `console.log(interaction)` never shows it either.
 
 ## Actions
 
@@ -94,9 +106,9 @@ Answers are sent one after the other, in the order they were asked: you can call
 reply(message: InteractionReply): Promise<Message>
 ```
 
-Answers. If `defer()` was called, or if ChapterJS deferred for you, this completes the pending answer.
+Answers. If `defer()` was called (by you, or by the framework because the answer was taking long), this completes the pending answer.
 
-Throws when the interaction was already answered: use `followUp()` for another message, or `edit()` to change the answer.
+Throws when the interaction was already answered: "This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer."
 
 [Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#create-interaction-response)
 
@@ -106,9 +118,9 @@ Throws when the interaction was already answered: use `followUp()` for another m
 defer(options?: { ephemeral?: boolean }): Promise<void>
 ```
 
-Tells Discord the answer is coming: the person sees "thinking…" until `reply()`. You rarely need it: after 2 seconds without an answer, ChapterJS defers for you. Does nothing when the interaction was already answered or deferred.
+Tells Discord the answer is coming: the person sees "thinking…" and `reply()` can then take up to 15 minutes. The framework does it by itself when an answer takes long; call it yourself to choose when.
 
-Whether the answer is ephemeral is decided here: pass `{ ephemeral: true }` for a slow answer that must stay private.
+Does nothing when the interaction was already answered or deferred. Whether the answer is ephemeral is decided here: without `ephemeral`, it is what the command says.
 
 ### edit()
 
@@ -116,9 +128,9 @@ Whether the answer is ephemeral is decided here: pass `{ ephemeral: true }` for 
 edit(message: string | MessageEditOptions): Promise<Message>
 ```
 
-Changes the answer. Only what you pass changes.
+Changes the answer. It takes a text, or [MessageEditOptions](/reference/message-options#messageeditoptions).
 
-Throws when there is no answer yet: call `reply()` first.
+Throws when there is no answer yet: "There is no answer to edit yet: call interaction.reply() first."
 
 [Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#edit-original-interaction-response)
 
@@ -130,7 +142,7 @@ followUp(message: InteractionReply): Promise<Message>
 
 Sends another message, after the answer.
 
-Throws when there is no answer yet: call `reply()` first.
+Throws when there is no answer yet: "A follow-up comes after an answer: call interaction.reply() first."
 
 [Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#create-followup-message)
 
@@ -144,27 +156,19 @@ Deletes the answer.
 
 [Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#delete-original-interaction-response)
 
-### toJSON()
-
-```ts
-toJSON(): object
-```
-
-The data of the interaction, without its token: a token is a secret, and `console.log(interaction)` never shows it either.
-
 ## Types
 
 ### InteractionReply
 
-What `reply()` and `followUp()` take: a text, or `InteractionReplyOptions`.
+```ts
+InteractionReply = string | InteractionReplyOptions
+```
+
+An answer to an interaction: its text, or its options. What `reply()` and `followUp()` take.
 
 ### InteractionReplyOptions
 
-Everything a [message](/reference/message-options) takes, except `replyTo` and `stickers`, plus:
-
-<ResponseField name="ephemeral" type="boolean">
-  Only show the answer to who used the command. By default: what the command says with its own `ephemeral`, else visible to everyone.
-</ResponseField>
+The options of an answer: everything a message takes, except `replyTo` and `stickers`, plus `ephemeral`. It is listed in [InteractionReplyOptions](/reference/message-options#interactionreplyoptions).
 
 ```ts
 import type { CommandInteraction } from 'chapterjs';

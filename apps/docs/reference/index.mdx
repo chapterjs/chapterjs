@@ -1,12 +1,12 @@
 ---
 title: 'Overview'
-description: 'How ChapterJS represents Discord: servers, members, channels, messages and what you can do with them'
+description: 'Find every property and method of what your functions receive: servers, members, channels, messages'
 ---
 
-ChapterJS gives your code **structures**: a server, a member, a channel, a message... Each one has properties to read and methods to act. Everything is typed, so your editor completes names and underlines mistakes before the bot runs.
+ChapterJS gives your code **structures**: a server, a member, a channel, a message... Each one has properties to read and methods to act. Everything is typed, so your editor completes names and underlines mistakes before the bot runs. You never create a structure: your [commands](/commands) and your [events](/events) receive them.
 
 <Note>
-  You receive these structures in your [commands](/commands) and your [events](/events).
+  This tab lists everything. How to write a bot with it is in the guide, starting with the [quickstart](/quickstart).
 </Note>
 
 ## The structures
@@ -15,31 +15,45 @@ ChapterJS gives your code **structures**: a server, a member, a channel, a messa
   <Card title="Guild" icon="server" href="/reference/guild">
     A server: its members, roles, channels, bans.
   </Card>
-  <Card title="GuildMember" icon="user-group" href="/reference/member">
+  <Card title="GuildMember" icon="users" href="/reference/member">
     A user in one server: nickname, roles, permissions, moderation.
   </Card>
   <Card title="User" icon="user" href="/reference/user">
     A Discord account, the same in every server.
   </Card>
-  <Card title="Role" icon="shield" href="/reference/role">
-    A role of a server.
+  <Card title="Role" icon="shield-check" href="/reference/role">
+    A role of a server: permissions, position, members.
   </Card>
-  <Card title="Channels" icon="hashtag" href="/reference/channels">
+  <Card title="Channels" icon="hash" href="/reference/channels">
     Text, voice, category, forum, thread and private channels.
   </Card>
-  <Card title="Message" icon="message" href="/reference/message">
+  <Card title="Message" icon="message-square" href="/reference/message">
     A message: reply, edit, react, pin.
+  </Card>
+  <Card title="Interaction" icon="zap" href="/reference/interaction">
+    Someone used a command and waits for an answer.
+  </Card>
+  <Card title="GuildEmoji" icon="smile" href="/reference/emoji">
+    A custom emoji of a server.
+  </Card>
+  <Card title="Invite" icon="link" href="/reference/invite">
+    An invite to a server.
+  </Card>
+  <Card title="Webhook" icon="webhook" href="/reference/webhook">
+    A way to post in a channel under any name.
   </Card>
 </CardGroup>
 
-## Three rules to remember
+What your files are written with is on its own pages: [command()](/reference/command), [event()](/reference/event) and [every event](/reference/events). Shared types have one page each: [message options](/reference/message-options), [options](/reference/options), [data](/reference/data), [permissions](/reference/permissions), [enums](/reference/enums), [helpers](/reference/helpers) and [errors](/reference/errors).
+
+## Three rules
 
 <Steps>
   <Step title="A property never costs anything">
-    `guild.name`, `member.roles`, `guild.channels`... read what the bot already knows. They are instant and never send a request to Discord.
+    `guild.name`, `member.roles`, `guild.channels`... read what the bot remembers. They are instant and never send a request to Discord.
   </Step>
   <Step title="A fetch method asks Discord">
-    Methods that start with `fetch` return a promise. When they get one thing by its id, they look in what the bot knows first and only ask Discord if needed. Pass `{ force: true }` to always ask Discord.
+    Methods that start with `fetch` return a promise. When they get one thing by its id, they look at what the bot remembers first and only ask Discord when it is not there. Pass `{ force: true }` to ask Discord anyway.
   </Step>
   <Step title="Other methods act">
     `member.ban()`, `channel.send()`, `message.delete()`... do something on Discord and return a promise. Always `await` them.
@@ -50,24 +64,19 @@ ChapterJS gives your code **structures**: a server, a member, a channel, a messa
 import type { Guild } from 'chapterjs';
 
 async function example(guild: Guild) {
-  // Property: instant.
-  console.log(guild.name, guild.roles.size);
-
-  // Fetch: from what the bot knows, or else from Discord.
-  const owner = await guild.fetchOwner();
-
-  // Action: done on Discord.
-  await owner.send(`Hello from ${guild.name}!`);
+  console.log(guild.name, guild.roles.size); // instant
+  const owner = await guild.fetchOwner(); // remembered, or else asked to Discord
+  await owner.send(`Hello from ${guild.name}!`); // done on Discord
 }
 ```
 
 ## Names are in camelCase
 
-Discord names its fields like `rate_limit_per_user`. In ChapterJS you always read and write `rateLimitPerUser`: the framework translates in both directions, including inside embeds and options.
+Discord names its fields like `rate_limit_per_user`. In ChapterJS you always read and write `rateLimitPerUser`: the framework translates in both directions, inside embeds and options too.
 
 ## Lists are Maps
 
-`guild.members`, `guild.roles`, `guild.channels`, `channel.messages`... are standard JavaScript [`Map`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map)s that you can only read, with the id as the key:
+`guild.members`, `guild.roles`, `guild.channels`, `channel.messages`... are JavaScript [`Map`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Map)s that you can only read, with the id as the key:
 
 ```ts
 import type { Guild } from 'chapterjs';
@@ -75,20 +84,21 @@ import type { Guild } from 'chapterjs';
 function example(guild: Guild) {
   const role = guild.roles.get('123456789012345678');
   const names = [...guild.channels.values()].map(channel => channel.name);
-  const bots = [...guild.members.values()].filter(member => member.user.bot);
-  return { role, names, bots };
+  return { role, names };
 }
 ```
 
+What a `Map` holds is what the bot remembers, which is not always everything: see [Memory](/memory).
+
 ## Ids
 
-A Discord id (a "snowflake") is a text made of digits, like `'175928847299117063'`. Never store one as a number: it is too big and would lose precision.
+A Discord id (a `Snowflake`) is a text made of digits, like `'175928847299117063'`. Never store one as a number: it is too big and would lose precision.
 
-Everywhere a method takes a user, a role, a channel or a message, you can pass either its id or the structure itself.
+Everywhere a method takes a user, a role, a channel or a message, you can pass its id or the structure itself.
 
 ## The reason
 
-Actions that moderators can see in the audit log of the server accept a `reason`, shown there:
+Actions that moderators can see in the audit log of the server take a `reason`, shown there:
 
 ```ts
 import type { GuildMember } from 'chapterjs';
@@ -101,10 +111,10 @@ async function example(member: GuildMember) {
 
 ## Limits are checked for you
 
-What you pass is checked before it is sent: a message that is too long, an invalid image size or a timeout of more than 28 days throws an error that says what the limit is. Discord's rate limits are handled by the framework: a request simply waits for its turn.
+What you pass is checked before it is sent: a message that is too long, an image size that does not exist or a timeout of more than 28 days throws an error that says what the limit is. The rate limits of Discord are handled by the framework: a request waits for its turn.
 
 When Discord refuses an action (a missing permission, something that no longer exists...), the method throws: see [Errors](/reference/errors).
 
 ## Logging
 
-`console.log(guild)` shows the data of a structure with camelCase names. `structure.toJSON()` returns the same data as a plain object.
+`console.log(guild)` shows the name of the class and the data of the structure with camelCase names. `toJSON()` returns that data as a plain object. Neither shows a secret: a [webhook](/reference/webhook) leaves its token out.

@@ -46,6 +46,7 @@ export abstract class Structure<Raw extends object> {
     return toCamelCase(this.#data);
   }
 
+  /** What `console.log` shows: the name of the class, then `toJSON()`. */
   [inspect.custom](
     _depth: number,
     options: Parameters<typeof inspect>[1]
@@ -58,6 +59,7 @@ export abstract class Structure<Raw extends object> {
 export abstract class IdStructure<
   Raw extends { id: Snowflake },
 > extends Structure<Raw> {
+  /** The unique id Discord gave it. */
   get id(): Snowflake {
     return dataOf(this).id;
   }

@@ -79,8 +79,23 @@ export interface GuildStores {
 /** Only the framework writes to the stores of a server. */
 export let storesOf: (guild: Guild) => GuildStores;
 
+/**
+ * What `edit()` takes on a server: only what is passed changes. Images are
+ * data URIs (`data:image/png;base64,...`).
+ * @see https://docs.discord.com/developers/resources/guild#modify-guild-json-params
+ */
 export type GuildEditOptions = Camelize<ModifyGuildJSONParams>;
+/**
+ * What `createChannel()` takes: a name, a type, and the settings of that
+ * kind of channel.
+ * @see https://docs.discord.com/developers/resources/guild#create-guild-channel-json-params
+ */
 export type ChannelCreateOptions = Camelize<CreateGuildChannelJSONParams>;
+/**
+ * What `createRole()` takes. Permissions are given by name, as a list of
+ * names or as a `Permissions` set.
+ * @see https://docs.discord.com/developers/resources/guild#create-guild-role-json-params
+ */
 export type RoleCreateOptions = Camelize<
   Omit<CreateGuildRoleJSONParams, 'permissions'>
 > & {
@@ -95,9 +110,27 @@ export interface Ban {
   reason: string | null;
 }
 
+/**
+ * What moderators and bots did in a server: its entries, newest first, and
+ * what they refer to.
+ * @see https://docs.discord.com/developers/resources/audit-log#audit-log-object-audit-log-structure
+ */
 export type AuditLog = Camelize<RawAuditLog>;
+/**
+ * An event scheduled in a server: when it happens, where, and how often.
+ * @see https://docs.discord.com/developers/resources/guild-scheduled-event#guild-scheduled-event-object-guild-scheduled-event-structure
+ */
 export type ScheduledEvent = Camelize<RawGuildScheduledEvent>;
+/**
+ * A rule Discord applies by itself to the messages of a server: what
+ * triggers it, and what it does then.
+ * @see https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-rule-object-auto-moderation-rule-structure
+ */
 export type AutoModerationRule = Camelize<RawAutoModerationRule>;
+/**
+ * A sticker: one of a server, or a standard one from a pack.
+ * @see https://docs.discord.com/developers/resources/sticker#sticker-object-sticker-structure
+ */
 export type Sticker = Camelize<RawSticker>;
 
 /**
@@ -311,7 +344,7 @@ export class Guild extends IdStructure<GuildData> {
   // -- Members ---------------------------------------------------------------
 
   /**
-   * A member of the server: from the cache, or else from Discord.
+   * A member of the server: from what the bot remembers, or else from Discord.
    * @see https://docs.discord.com/developers/resources/guild#get-guild-member
    */
   async fetchMember(

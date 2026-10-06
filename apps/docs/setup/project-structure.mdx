@@ -96,10 +96,33 @@ The same two rules apply in `src/events/`: `(logs)/messageDelete/log.ts` reacts 
 
 Your files are TypeScript, run by Node directly. A relative import needs no extension, and a folder with an `index` file works too:
 
-```ts
+<CodeGroup>
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
 import { greet } from '../lib/greet'; // src/lib/greet.ts
 import { db } from '../db'; // src/db/index.ts
+
+export default command({
+  description: 'Says hello',
+  async run({ interaction, user }) {
+    db.visits += 1;
+    await interaction.reply(greet(user.displayName));
+  },
+});
 ```
+
+```ts src/lib/greet.ts
+export function greet(name: string): string {
+  return `Hello ${name}!`;
+}
+```
+
+```ts src/db/index.ts
+export const db = { visits: 0 };
+```
+</CodeGroup>
+
+Writing the extension works as well: `'../lib/greet.ts'`.
 
 Packages from `node_modules` are imported as usual. The files you import are watched like the others: in [`chapterjs dev`](/run/dev), saving `src/lib/greet.ts` reloads every file that uses it.
 
@@ -113,11 +136,11 @@ This folder is written by ChapterJS, and git ignores it. It holds:
 | `cache/` | What was last registered on Discord, so starting your bot again costs no request. |
 | `build/` | Your compiled bot, written by [`chapterjs build`](/run/build). |
 
-It is written when you install your project (`postinstall` runs `chapterjs sync`) and every time `chapterjs dev` starts. If your editor says that `event` does not exist, run `chapterjs sync`.
+It is written when you install your project (`postinstall` runs `chapterjs sync`) and every time `chapterjs dev` or `chapterjs build` starts. If your editor says that `event` does not exist, run `chapterjs sync`: see the [CLI reference](/reference/cli#chapterjs-sync).
 
 ## `.env`
 
-Two values, read by `chapterjs dev`:
+Two values, read by [`chapterjs dev`](/run/dev); [`chapterjs start`](/run/start) only needs the first one:
 
 ```bash .env
 BOT_TOKEN=
@@ -167,7 +190,7 @@ ignoredBuiltDependencies:
   <Card title="Commands" icon="terminal" href="/commands">
     One file per slash command, options typed for you.
   </Card>
-  <Card title="Events" icon="bolt" href="/events">
+  <Card title="Events" icon="zap" href="/events">
     A folder per event, as many files as you want.
   </Card>
 </CardGroup>

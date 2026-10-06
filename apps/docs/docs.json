@@ -1,22 +1,43 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "luma",
   "name": "ChapterJS",
   "description": "The Discord framework: a folder of files becomes a fast, type-safe Discord bot.",
   "colors": {
-    "primary": "#5865F2",
-    "light": "#949CF7",
-    "dark": "#4752C4"
+    "primary": "#EA580C",
+    "light": "#FB923C",
+    "dark": "#C2410C"
   },
   "background": {
-    "decoration": "gradient",
     "color": {
-      "light": "#F5F6FC",
-      "dark": "#0B0D1E"
+      "light": "#FAFAF9",
+      "dark": "#0C0A09"
     }
   },
   "appearance": {
     "default": "dark"
+  },
+  "fonts": {
+    "family": "Geist",
+    "heading": {
+      "family": "Bricolage Grotesque",
+      "weight": 700
+    }
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": {
+      "theme": {
+        "light": "github-light",
+        "dark": "vesper"
+      }
+    }
+  },
+  "thumbnails": {
+    "appearance": "dark"
   },
   "favicon": "/favicon.svg",
   "logo": {
@@ -52,12 +73,12 @@
           },
           {
             "group": "Events",
-            "icon": "bolt",
+            "icon": "zap",
             "pages": ["events/index", "events/messages"]
           },
           {
             "group": "Messages and memory",
-            "icon": "message",
+            "icon": "message-square",
             "pages": ["messages", "memory"]
           },
           {
@@ -84,6 +105,7 @@
         "groups": [
           {
             "group": "Reference",
+            "icon": "library",
             "pages": ["reference/index"]
           },
           {
@@ -97,7 +119,7 @@
           },
           {
             "group": "Structures",
-            "icon": "cubes",
+            "icon": "boxes",
             "pages": [
               "reference/guild",
               "reference/member",
@@ -105,8 +127,9 @@
               "reference/role",
               {
                 "group": "Channels",
+                "icon": "hash",
+                "root": "reference/channels/index",
                 "pages": [
-                  "reference/channels/index",
                   "reference/channels/text",
                   "reference/channels/voice",
                   "reference/channels/category",
@@ -124,7 +147,7 @@
           },
           {
             "group": "Types",
-            "icon": "brackets-curly",
+            "icon": "braces",
             "pages": [
               "reference/message-options",
               "reference/options",
@@ -146,14 +169,9 @@
     "global": {
       "anchors": [
         {
-          "anchor": "GitHub",
-          "href": "https://github.com/chapterjs/chapterjs",
-          "icon": "github"
-        },
-        {
           "anchor": "Discord developer docs",
           "href": "https://docs.discord.com/developers",
-          "icon": "discord"
+          "icon": "external-link"
         }
       ]
     }
@@ -161,7 +179,7 @@
   "navbar": {
     "links": [
       {
-        "label": "GitHub",
+        "type": "github",
         "href": "https://github.com/chapterjs/chapterjs"
       }
     ],
@@ -170,6 +188,39 @@
       "label": "Get started",
       "href": "/quickstart"
     }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/chapterjs/chapterjs"
+    },
+    "links": [
+      {
+        "header": "Guide",
+        "items": [
+          { "label": "Quickstart", "href": "/quickstart" },
+          { "label": "Commands", "href": "/commands" },
+          { "label": "Events", "href": "/events" },
+          { "label": "Run your bot", "href": "/run/dev" }
+        ]
+      },
+      {
+        "header": "Reference",
+        "items": [
+          { "label": "Your files", "href": "/reference/command" },
+          { "label": "Structures", "href": "/reference" },
+          { "label": "CLI", "href": "/reference/cli" },
+          { "label": "Errors", "href": "/reference/errors" }
+        ]
+      },
+      {
+        "header": "Elsewhere",
+        "items": [
+          { "label": "GitHub", "href": "https://github.com/chapterjs/chapterjs" },
+          { "label": "npm", "href": "https://www.npmjs.com/package/chapterjs" },
+          { "label": "Discord developer docs", "href": "https://docs.discord.com/developers" }
+        ]
+      }
+    ]
   },
   "redirects": [
     { "source": "/dev", "destination": "/run/dev" },
@@ -183,11 +234,13 @@
   "seo": {
     "indexing": "navigable",
     "metatags": {
-      "og:site_name": "ChapterJS"
+      "og:site_name": "ChapterJS",
+      "og:type": "website",
+      "twitter:card": "summary_large_image"
     }
   },
   "search": {
-    "prompt": "Search the docs, or ask how to do something..."
+    "prompt": "Search, or ask how to do something..."
   },
   "errors": {
     "404": {
@@ -195,11 +248,6 @@
     }
   },
   "contextual": {
-    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/chapterjs/chapterjs"
-    }
+    "options": ["copy", "view", "claude", "chatgpt", "cursor", "vscode", "mcp"]
   }
 }

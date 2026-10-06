@@ -1,0 +1,48 @@
+---
+title: 'ForumChannel'
+description: 'A forum or media channel: its tags, and how to create a post'
+---
+
+A `ForumChannel` is a forum or media channel: it only contains posts, which are threads. It is what `channel.isForum()` gives.
+
+```ts
+import type { ForumChannel } from 'chapterjs';
+
+async function report(forum: ForumChannel, title: string, details: string) {
+  const bug = forum.availableTags.find(tag => tag.name === 'bug');
+  const post = await forum.createPost({
+    name: title,
+    message: { content: details },
+    appliedTags: bug ? [bug.id] : [],
+  });
+  return `Created ${post}`;
+}
+```
+
+<Note>
+  A post is a [`ThreadChannel`](/reference/channels/thread): send its messages, archive it or change its tags there. The first message of a post takes everything of [Sending messages](/messages).
+</Note>
+
+## Properties
+
+It also has everything of [GuildChannel](/reference/channels#guildchannel). Messages can't be sent in the forum itself, only in its posts.
+
+<ResponseField name="topic" type="string | null">
+  The guidelines of the forum.
+</ResponseField>
+
+<ResponseField name="availableTags" type="ForumTag[]">
+  The tags posts of this forum can have. Each entry is a [`ForumTag`](/reference/data#forumtag).
+</ResponseField>
+
+## Actions
+
+### createPost()
+
+```ts
+createPost(options: ForumPostOptions, reason?: string): Promise<ThreadChannel>
+```
+
+Creates a post in the forum. The options are a [`ForumPostOptions`](/reference/options#forumpostoptions).
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-in-forum-or-media-channel)

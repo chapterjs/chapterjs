@@ -1,0 +1,138 @@
+---
+title: 'Translations'
+description: 'Show the name, the description, the options and the choices of a command in the language of each person'
+---
+
+Discord shows each person the commands in their language, when the command has a translation for it. Add `locales` to a command, with one entry per language:
+
+```ts src/commands/greet.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Greets someone',
+  options: {
+    who: { type: 'user', description: 'Who to greet', required: true },
+    tone: { type: 'string', description: 'How', choices: ['warm', 'formal'] },
+  },
+  locales: {
+    fr: {
+      name: 'saluer',
+      description: 'Salue quelqu’un',
+      options: {
+        who: { name: 'qui', description: 'Qui saluer' },
+        tone: { name: 'ton', description: 'Comment', choices: { warm: 'Chaleureux', formal: 'Formel' } },
+      },
+    },
+    'es-ES': { description: 'Saluda a alguien' },
+  },
+  async run({ interaction, options }) {
+    // Whatever the language of the person, the names are the ones you declared.
+    const hello = options.tone === 'formal' ? 'Good day' : 'Hey';
+    await interaction.reply(`${hello}, ${options.who.displayName}!`);
+  },
+});
+```
+
+That is all: a French speaker sees `/saluer qui ton` and picks "Chaleureux"; your code still receives `options.who` and `'warm'`.
+
+<Note>
+  The shape of `locales` is in the [reference](/reference/command#commandlocales).
+</Note>
+
+## What can be translated
+
+| In a language | Field | Rules |
+| --- | --- | --- |
+| The command | `name` | Same rules as a name: lowercase letters, digits, `-` and `_`, 32 characters at most |
+| | `description` | 1 to 100 characters |
+| An option | `options.<name>.name` | Same rules as a name |
+| | `options.<name>.description` | 1 to 100 characters |
+| Its choices | `options.<name>.choices` | An object: each key is a choice as you declared it, each value is 1 to 100 characters |
+
+- **Everything is optional.** Translate only what you want, in the languages you want: what is missing is shown as declared.
+- **Your code does not change.** `options.who` is still `options.who` for a French speaker who sees `qui`, and a choice is still `'warm'` when the person picked "Chaleureux".
+- **Your editor checks it.** A language Discord does not know, an option the command does not have or a choice that does not exist is underlined.
+- The keys of `choices` are the choices **as you declared them**: the values of a list (`'warm'`), or the keys of an object (`'Small'` for `{ Small: 1 }`). The choices of a number option are written as texts: `{ '1': 'Un' }`.
+
+## The languages
+
+The keys of `locales` are the languages of Discord, as the [`Locale`](/reference/enums#locale) values write them: `fr`, `de`, `es-ES`, `pt-BR`, `ja`... A language Discord does not know is refused when the file loads:
+
+```text
+✗ src/commands/greet.ts "en" is not a language Discord knows. Languages are: id, da, de, en-GB, en-US, es-ES, es-419, fr, hr, it, lt, hu, nl, no, pl, pt-BR, ro, fi, sv-SE, vi, tr, cs, el, bg, ru, uk, hi, th, zh-CN, ja, zh-TW, ko.
+```
+
+English is two languages, `en-GB` and `en-US`; Spanish is `es-ES` and `es-419`; Chinese is `zh-CN` and `zh-TW`.
+
+## Folders are not translated
+
+A folder is not translated: `/mod ban` can be shown as `/mod bannir`, never as `/modération bannir`. The name of a folder is what Discord shows in every language. If your bot speaks one language, name the folder in that language.
+
+## What is checked
+
+Translations are checked when the file loads, like the rest of the command:
+
+<AccordionGroup>
+  <Accordion title="A translated name Discord refuses">
+    ```text
+    ✗ src/commands/greet.ts "Saluer" can't be the name of this command in the "fr" translation: use lowercase letters, digits, - and _ only, 32 characters at most.
+    ```
+  </Accordion>
+  <Accordion title="A description too long">
+    ```text
+    ✗ src/commands/greet.ts The description of this command in the "fr" translation is 120 characters long: Discord accepts 100 at most.
+    ```
+  </Accordion>
+  <Accordion title="An option or a choice the command does not have">
+    ```text
+    ✗ src/commands/greet.ts the "fr" translation translates an option "whom" that this command does not have. Its options are: who, tone.
+    ```
+
+    ```text
+    ✗ src/commands/greet.ts the "fr" translation translates a choice "cold" that the option "tone" does not have. Its choices are: warm, formal.
+    ```
+
+    ```text
+    ✗ src/commands/greet.ts the "fr" translation translates choices of the option "who", which has no choices.
+    ```
+  </Accordion>
+  <Accordion title="Two options with the same name in one language">
+    In each language, every option keeps a name of its own, whether translated or not:
+
+    ```text
+    ✗ src/commands/greet.ts In the "fr" translation, the options "who" and "tone" would both be called "qui".
+    ```
+
+    ```text
+    ✗ src/commands/greet.ts In the "fr" translation, the option "who" is called "tone", which is the name of another option.
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Answering in their language
+
+Translations change what Discord **shows**. To **answer** in the language of the person, read `interaction.locale` in your function: it is the language of their Discord.
+
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Says hello in your language',
+  locales: {
+    fr: { name: 'bonjour', description: 'Dit bonjour dans votre langue' },
+  },
+  async run({ interaction }) {
+    const hello = interaction.locale === 'fr' ? 'Bonjour !' : 'Hello!';
+    await interaction.reply(hello);
+  },
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="Events" icon="zap" href="/events">
+    React to what happens on Discord.
+  </Card>
+  <Card title="Reference: command()" icon="braces" href="/reference/command">
+    Every field and type of a command.
+  </Card>
+</CardGroup>

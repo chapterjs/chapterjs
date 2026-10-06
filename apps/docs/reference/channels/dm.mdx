@@ -1,0 +1,31 @@
+---
+title: 'DMChannel'
+description: 'A private conversation between the bot and a user'
+---
+
+A `DMChannel` is a private conversation between the bot and a user. It is what `channel.isDM()` gives, the `channel` of a [private message](/reference/message#dmmessage) and of a command used in a private message, and what `user.createDM()` returns. To write to someone, `user.send()` is shorter.
+
+```ts
+import type { DMChannel } from 'chapterjs';
+
+async function thank(channel: DMChannel) {
+  const name = channel.recipient?.displayName ?? 'there';
+  await channel.send(`Thanks for your message, ${name}! A moderator will answer soon.`);
+}
+```
+
+<Note>
+  How to send, edit and read messages is in [Sending messages](/messages). Private messages only reach your bot with `chapterjs start`: see [Private messages](/events/messages).
+</Note>
+
+## Properties
+
+It also has everything of [Channel](/reference/channels#channel) and [what channels with messages share](/reference/channels#channels-with-messages). `guildId` and `guild` are `null`: there is no server.
+
+<ResponseField name="recipientId" type="Snowflake | null">
+  The id of the user the bot talks to.
+</ResponseField>
+
+<ResponseField name="recipient" type="User | null">
+  The user the bot talks to, when it is known.
+</ResponseField>

@@ -1,9 +1,9 @@
 ---
 title: 'chapterjs start'
-description: 'Run for everyone the bot you built'
+description: 'Run for everyone the bot you built, on one process or several'
 ---
 
-`chapterjs start` runs your bot on every server it is in, after [`chapterjs build`](/build) prepared it. It is what the `start` script of your project runs, on the machine that hosts your bot:
+`chapterjs start` runs your bot in every server it is in, after [`chapterjs build`](/run/build) prepared it. It is what the `start` script of your project runs, on the machine that hosts your bot:
 
 <CodeGroup>
 ```bash pnpm
@@ -30,23 +30,21 @@ bun start
 ✓ 4 commands, 6 events loaded
 ```
 
-It runs what `chapterjs build` kept, not your files as they are now. Without a build, it tells you:
+That is all: the bot is online everywhere, with its commands shown in every server and in private messages. It runs what `chapterjs build` kept, not your files as they are now.
 
-```text
-✗ There is no build of your bot here.
-  Run "chapterjs build" first (the build script of your project), then start again.
-```
+<Note>The `--processes` option, the environment variables and the exit codes are in the [CLI reference](/reference/cli#chapterjs-start).</Note>
 
 ## What changes from dev
 
 | | `chapterjs dev` | `chapterjs start` |
 | --- | --- | --- |
-| Servers | Your test server only | Every server, except your test server |
+| Servers | Your test server only | Every server, except your test server when it knows it |
 | Private messages | Never | Yes |
-| Commands | Shown in your test server, at once | Shown everywhere |
+| Commands | Shown in your test server, at once | Shown everywhere, for everyone |
 | A file that can't run | Keeps its last working version | Found by `chapterjs build`, before anything is online |
 | Saving a file | Reloads it | Nothing: build and start again |
 | Something to fix on Discord | Waits for you | Stops and says what to fix |
+| Processes | One | As many as the size of your bot needs |
 
 ## What it needs
 
@@ -56,11 +54,50 @@ One value: the token of your bot.
 BOT_TOKEN=
 ```
 
-On a host, you usually don't upload a `.env` file: you give `BOT_TOKEN` in its settings (often called "environment variables" or "secrets"). Both work, and the host wins when both are there.
+On a host, you usually upload no `.env` file: you give `BOT_TOKEN` in its settings (often called "environment variables" or "secrets"). Both work, and the real environment wins when both are there. Without it:
+
+```text
+✗ BOT_TOKEN is not set.
+  Give it to the bot the way your host does it (its "environment variables" or "secrets"), or in a .env file in this folder.
+  Copy the token of your bot from https://discord.com/developers/applications → your application → Bot → Reset Token.
+```
 
 <Warning>
   Your token is a password. Never put it in your code, and never commit your `.env` file.
 </Warning>
+
+And a build. Without one, or with one made by another version of ChapterJS, the command stops and says what to run:
+
+```text
+✗ There is no build of your bot here.
+  Run "chapterjs build" first (the build script of your project), then start again.
+```
+
+When your files changed since the build, the bot still starts, with the build:
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+A build that can't run any more (a package or Node changed since it was made) stops the command: `✗ The build of your bot can't run any more: ...`, followed by `Run "chapterjs build" again: it says what to fix.`
+
+## What it checks
+
+The process you start checks everything once, for all the processes of the bot, before anything is online:
+
+- **The token.** A refused token stops the command: `✗ Discord refused the bot token. ...`
+- **The privileged intents** your files need. Nothing waits in production: the message is an error and the command stops.
+  ```text
+  ✗ Your files need an option that is not enabled for your bot:
+    - Message Content Intent, needed by src/events/messageCreate/ping.ts
+    Enable it under "Privileged Gateway Intents", then save:
+    https://discord.com/developers/applications/123456789012345678/bot
+  ```
+- **The commands**, registered for everyone, only when they changed since the last start from this folder: `✓ Commands updated for everyone`. Nothing is sent otherwise, and nothing is printed.
+- **How many sessions the bot may still start today.** Discord limits that, and resets the token of a bot that goes over, so ChapterJS stops first:
+  ```text
+  ✗ The bot needs to start 1 session(s) but Discord only allows 0 more until 10/7/2026, 9:00:00 AM. Going over that limit makes Discord reset the bot token, so the bot is not started. This usually means it was restarted too many times: wait, then start it again.
+  ```
 
 ## Your test server stays yours
 
@@ -80,9 +117,9 @@ They never answer the same thing. Without `DEV_GUILD_ID`, production runs every 
 
 ### Commands are shown once
 
-Your test server gets the commands of everyone, like any server. `chapterjs dev` does not give them a second time: it only adds the commands that are **new or different** in your project. Used in your test server, a command always runs the code on your computer.
+Your test server gets the commands of everyone, like any server. `chapterjs dev` does not add them a second time: it only registers there the commands that are **new or different** in your project. Used in your test server, a command always runs the code on your computer.
 
-While you are changing a command that is already in production, your test server shows it twice (yours, and the one everyone has), and `chapterjs dev` tells you:
+While you are changing a command that is already in production, your test server shows it twice (yours, and the one everyone has), and `chapterjs dev` tells you once:
 
 ```text
 ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
@@ -103,14 +140,17 @@ When there are many, it also spreads them over **several processes**, so your bo
 Each process runs your project for its share of the servers, and what it prints starts with its number:
 
 ```text
-[3] ✗ src/commands/poll.ts:8 Missing Permissions
+[3] ✗ src/commands/poll.ts:8 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
 ```
 
-- **Nothing to configure.** One process is used for every 4 shards, never more than your machine has CPUs. A bot under a few thousand servers runs in one process, like before.
-- **A process that stops is started again**, and its servers are back in a moment. The others don't notice.
-- **Stopping the bot stops them all**, cleanly.
+- **Nothing to configure.** One process is used for every 4 shards, never more than your machine has CPUs. A bot under a few thousand servers runs in one process.
+- **A process that stops by itself is started again**, and its servers are back in a moment. The others don't notice. One that ran for more than a minute starts again right away; one that keeps falling waits longer each time, up to a minute.
+  ```text
+  ⚠ Process 3 of 5 stopped by itself (exit code 1): starting it again. Its servers are back in a moment.
+  ```
+- **Stopping the bot stops them all**, cleanly. When Discord refuses the bot for good in one process, every process stops and the command ends with exit code 1.
 
-To choose yourself, pass the number:
+To choose the number yourself, pass it. It is never more than the number of shards:
 
 <CodeGroup>
 ```bash pnpm
@@ -130,6 +170,12 @@ bun start --processes 8
 ```
 </CodeGroup>
 
+Anything else after `start` is refused:
+
+```text
+✗ chapterjs start takes one option: --processes followed by a number, like "chapterjs start --processes 4". Got "--processes many".
+```
+
 ### What it means for your code
 
 Each process has its own memory. A variable of one process is not seen by the others:
@@ -146,7 +192,7 @@ let commandsUsed = 0;
 To share something between processes, keep it outside of them, in a database.
 
 <Note>
-  Every process runs on the same machine. Spreading a bot over several machines is not available yet.
+  Every process runs on the same machine. Spreading a bot over several machines is [not available yet](/not-yet).
 </Note>
 
 ## Stopping
@@ -156,3 +202,12 @@ Press `Ctrl+C`, or let your host stop the process. The bot disconnects properly 
 ```text
 ✓ Disconnected
 ```
+
+<CardGroup cols={2}>
+  <Card title="Deploy" icon="server" href="/run/deploy">
+    Put your bot on a machine that stays on.
+  </Card>
+  <Card title="Troubleshooting" icon="bug" href="/run/troubleshooting">
+    Every message, and what to do about it.
+  </Card>
+</CardGroup>

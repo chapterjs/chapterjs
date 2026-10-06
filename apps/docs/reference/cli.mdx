@@ -1,0 +1,163 @@
+---
+title: 'CLI'
+description: 'Every command of chapterjs, what it reads from the environment, its exit codes and the symbols of its messages'
+---
+
+The `chapterjs` command comes with the `chapterjs` package. Projects made with `create chapter` run it through their scripts (`dev`, `build`, `start`, `postinstall`).
+
+```text
+Usage: chapterjs <command>
+
+Commands:
+  dev     Run your bot on your dev server and reload it when you save a file
+  build   Check your bot and prepare it for production
+  start   Run for everyone the bot that was built
+  sync    Write the types of your project (dev does it too)
+
+Options of start:
+  --processes <n>   How many processes to use (by default: as many as the
+                    size of your bot needs)
+```
+
+<Note>
+  How to use each command is in the guide: [chapterjs dev](/run/dev), [chapterjs build](/run/build), [chapterjs start](/run/start), [Deploy](/run/deploy). What every message means is in [Troubleshooting](/run/troubleshooting).
+</Note>
+
+## Commands
+
+Every command runs in the folder of the project: the one with `package.json` and `src/`. Without `src/`, `dev` and `build` stop with `✗ There is no src folder here.`
+
+### `chapterjs dev`
+
+Runs the bot of the current folder on the test server of `DEV_GUILD_ID`, and reloads every file under `src/` when it is saved. Runs until stopped.
+
+| Step | What happens |
+| --- | --- |
+| `.env` | `BOT_TOKEN` and `DEV_GUILD_ID` are read and checked. Every problem is printed, then the command stops. |
+| Types | `.chapterjs/` is written, like `chapterjs sync`. |
+| Files | Every file of `src/commands/` and `src/events/` is loaded. A broken file is reported and left out. |
+| Token | Checked with Discord. |
+| Test server | The bot must be in it: otherwise an invite link is printed and, in a terminal, the command waits. |
+| Privileged intents | Those the files need must be enabled: otherwise the files and the link are printed and, in a terminal, the command waits. |
+| Connection | To the test server only. What happens in other servers and in private messages is dropped, and the intents that only serve private messages are not asked for. |
+| Commands | Registered on the test server, only when they changed since the last time, without the ones production already shows as declared. Registered again after a reload that changed them. |
+| Reload | On every save under `src/`: files are loaded again, a failing file keeps its last working version, the bot reconnects when the files need new intents. |
+| Stop | `Ctrl+C` or `SIGTERM`: the session is closed and the bot goes offline at once. A second one exits without waiting. |
+
+Takes no option.
+
+### `chapterjs build`
+
+Checks the project and compiles it into `.chapterjs/build/`. Needs no token and sends nothing to Discord.
+
+| Step | What happens |
+| --- | --- |
+| Types | `.chapterjs/` is written, then `node_modules/.bin/tsc -b` runs when it exists and the project has a `tsconfig.json`. A type error stops the build. Without TypeScript, the build says so and goes on. |
+| Files | The previous build is removed. Every file of `src/commands/` and `src/events/` is loaded from `src/`. One broken file stops the build. |
+| Compile | Every file of those folders, with what it imports from the project, is bundled into `.chapterjs/build/bot.js` (ESM, Node 22, packages left in `node_modules`, whitespace and syntax minified, names kept) with `bot.js.map` next to it (no sources inside). |
+| Check | The compiled file is loaded once and every file is checked again. |
+| Record | `.chapterjs/build/build.json`: the version of `chapterjs`, a fingerprint of `src/`, the number of commands and events. |
+
+A build that fails leaves no `.chapterjs/build/` behind. Takes no option.
+
+### `chapterjs start`
+
+Runs the build for everyone. Runs until stopped.
+
+```bash
+chapterjs start [--processes <n>]
+```
+
+| Step | What happens |
+| --- | --- |
+| `.env` | `BOT_TOKEN` is read and checked; `DEV_GUILD_ID` is read when it is there. |
+| Build | `.chapterjs/build/` must exist and have been made by the same version of `chapterjs`. When `src/` is there and changed since the build, a `⚠` says so and the build runs anyway. |
+| Files | Loaded from the build, never from `src/`. |
+| Token and privileged intents | Checked once. A problem is an error: nothing waits. |
+| Commands | Registered for everyone, only when they changed since the last start from this folder. |
+| Sessions | Discord is asked how many shards the bot needs and how many sessions it may still start today. Not enough sessions left stops the command. |
+| Processes | One process for every 4 shards, never more than the machine has CPUs, never more than the shards, or what `--processes` asks. With several, the process you started forks the others, prefixes their lines with `[n] `, starts again one that stops by itself and stops them all together. |
+| Connection | To every server, except the one of `DEV_GUILD_ID` when it is set. Private messages are handled. |
+| Stop | `Ctrl+C` or `SIGTERM`: every process closes its session and the bot goes offline at once. |
+
+<ResponseField name="--processes" type="integer">
+  How many processes run the bot: a whole number of 1 or more, written `--processes 4` or `--processes=4`. Capped at the number of shards. Anything else after `start` stops the command with `✗ chapterjs start takes one option: ...`.
+</ResponseField>
+
+### `chapterjs sync`
+
+Writes the `.chapterjs/` folder of the project: the types that give `event` its meaning in each folder of `src/events/`, one TypeScript project per folder and the `tsconfig.json` that references them. Prints `✓ Types written to .chapterjs/`. Needs no token. `dev` and `build` do it too when they start; templates run it as `postinstall`.
+
+Only files whose content changed are written; what an older version wrote is removed. `.chapterjs/cache/` and `.chapterjs/build/` are left alone.
+
+### `chapterjs --version`
+
+Prints the version of the package. `-v` works too.
+
+### `chapterjs --help`
+
+Prints the usage above. `-h` and no command at all do the same. Any other word is an error: `✗ "…" is not a command.`, followed by the usage.
+
+## Environment
+
+### `.env`
+
+`dev` and `start` read the `.env` file of the project folder, when there is one, then the real environment: **a variable set in the environment wins** over the file. Values are trimmed.
+
+<ResponseField name="BOT_TOKEN" type="string" required>
+  The token of the bot, from the **Bot** page of the application in the Developer Portal. A `Bot ` prefix is removed. Refused when empty, when it is a placeholder left from an example (`your-token-here`, `xxx`, `todo`, `changeme`, `<...>`…) or when it contains a space.
+</ResponseField>
+
+<ResponseField name="DEV_GUILD_ID" type="string">
+  The ID of the test server: 17 to 20 digits. Required by `dev`, which runs the bot in that server only. Optional for `start`, which then ignores that server, so that `dev` and `start` can share one token without answering the same thing twice. Refused when it is not an ID.
+</ResponseField>
+
+Without a `.env` file, `dev` stops with `✗ There is no .env file in this folder.` when neither value is in the environment, and `start` with `✗ BOT_TOKEN is not set.` when the token is not.
+
+### Other variables
+
+<ResponseField name="NO_COLOR" type="string">
+  Set to anything to print the symbols without color. Colors are only used when the output is a terminal anyway.
+</ResponseField>
+
+<ResponseField name="NODE_OPTIONS" type="string">
+  Read by Node itself. `--max-old-space-size=<MB>` raises the memory the bot may use: see [Memory](/memory).
+</ResponseField>
+
+Whether a person is watching (`dev` waits for a fix instead of stopping) is decided by the terminal: both the input and the output must be a terminal.
+
+## Exit codes
+
+| Code | Command | When |
+| --- | --- | --- |
+| `0` | all | Stopped by `Ctrl+C` or `SIGTERM`, or finished: a build that succeeded, `sync`, `--version`, `--help`. |
+| `1` | `dev`, `start` | A problem before connecting (a value of `.env`, the token, the test server or an intent when not waiting, no build, not enough sessions), or Discord refused the bot for good while it ran. Also a second `Ctrl+C`. |
+| `1` | `build` | Type errors, a file that can't run, can't be compiled or can't run once compiled. |
+| `1` | any | An unknown command, or `start` with anything other than `--processes <n>`. |
+| `78` | a process started by `start` | Discord refused the bot in that process: the one you started then stops every process and exits with `1`. |
+
+## Symbols
+
+Every line printed by the CLI starts with one of five symbols. Lines that follow the first one of a message are indented under it.
+
+| Symbol | Meaning |
+| --- | --- |
+| `✓` | Something worked |
+| `ℹ` | Something worth knowing |
+| `↻` | A reload or a reconnection |
+| `⚠` | Something to look at, that does not stop the bot |
+| `✗` | Something failed: what happened, then what to do |
+
+An error in a file of the project is prefixed with its path, and its line when known: `✗ src/commands/ping.ts:4 …`. With several processes, every line of a process starts with its number: `[2] ✓ …`.
+
+## `.chapterjs/`
+
+What the CLI keeps in the project, ignored by git:
+
+| Path | Written by | What it is |
+| --- | --- | --- |
+| `types/`, `projects/`, `tsconfig.json` | `sync`, `dev`, `build` | The types of the project, one TypeScript project per folder of `src/events/`, plus one for the rest of `src/`. |
+| `cache/commands.json`, `cache/commands.global.json` | `dev`, `start` | A fingerprint of the commands last registered on the test server and for everyone, so that nothing is sent when they did not change. |
+| `build/bot.js`, `build/bot.js.map`, `build/build.json` | `build` | The compiled bot, its map back to `src/`, and what the build was made of. |
+
+The folder can be deleted at any time: `sync` writes the types again, the next `dev` or `start` registers the commands again, and `build` makes a new build.

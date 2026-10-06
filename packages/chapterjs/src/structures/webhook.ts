@@ -13,6 +13,7 @@ import { ctxOf, dataOf, IdStructure } from './base.js';
 import type { Message } from './message.js';
 import { buildMessage, type MessageOptions } from './payload.js';
 
+/** What a message posted with a webhook can contain. */
 export interface WebhookMessageOptions extends Omit<MessageOptions, 'replyTo'> {
   /** Shows this name instead of the name of the webhook. */
   username?: string;

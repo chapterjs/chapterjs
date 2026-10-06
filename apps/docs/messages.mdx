@@ -1,185 +1,184 @@
 ---
 title: 'Sending messages'
-description: 'Everything a message can contain: text, embeds, files, components, polls'
+description: 'Send text, embeds, files and polls, reply, edit, delete, react, pin and read the history of a channel'
 ---
 
-`channel.send()`, `message.reply()`, `user.send()`, `member.send()` and `webhook.send()` all take the same thing: a text, or an object of options.
+Everything that can receive a message has a `send()`: a channel, a user, a member, a webhook. A message is a text, or an object with everything it contains.
+
+```ts src/commands/announce.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Posts an announcement in this channel',
+  options: {
+    text: { type: 'string', description: 'What to announce', required: true },
+  },
+  async run({ interaction, channel, options }) {
+    await channel.send({
+      embeds: [{ title: 'Announcement', description: options.text, color: 0x5865f2 }],
+    });
+    await interaction.reply({ content: 'Posted!', ephemeral: true });
+  },
+});
+```
+
+That is all: `channel` is the channel the command was used in, and `send()` posts there. The message is checked before it leaves (a text over 2000 characters, too many embeds...): a mistake is an error in your code with a plain message, not a refusal of Discord.
+
+<Note>
+  Every field a message takes is in [Message options](/reference/message-options), and everything a message you receive has is in [Message](/reference/message).
+</Note>
+
+## Where a message goes
+
+| You have | Write |
+| --- | --- |
+| A channel (`channel`, `message.channel`, one of `guild.channels`) | `channel.send(...)` |
+| A message to answer | `message.reply(...)` |
+| A user or a member to write to in private | `user.send(...)`, `member.send(...)` |
+| A command to answer | `interaction.reply(...)`: see [Answering](/commands/answering) |
+| A webhook | `webhook.send(...)`: see [Webhook](/reference/webhook) |
+
+They all take the same thing. A text:
 
 ```ts
 import type { TextChannel } from 'chapterjs';
 
-async function example(channel: TextChannel) {
-  // A text...
+async function hello(channel: TextChannel) {
   await channel.send('Hello!');
+}
+```
 
-  // ...or options.
+Or an object, when the message has more than a text, or is sent differently:
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function quietly(channel: TextChannel) {
   await channel.send({
-    content: 'Here is the report',
+    content: 'A new version is out: https://example.com/changelog',
+    silent: true, // no notification sound
+    suppressEmbeds: true, // no preview of the link
+  });
+}
+```
+
+A message needs at least a content, an embed, a file, a component, a sticker or a poll. Everything else is optional, and every `send()` returns the `Message` that was sent, so you can react to it, pin it or edit it later.
+
+## Replying
+
+`message.reply()` answers a message in its channel: Discord shows the message it answers above yours.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function thank(message: Message) {
+  await message.reply('Thanks!');
+}
+```
+
+A reply notifies the author of the message by default. To answer without pinging, pass `allowedMentions`:
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function quietReply(message: Message) {
+  await message.reply({
+    content: 'Noted.',
+    allowedMentions: { repliedUser: false },
+  });
+}
+```
+
+`send()` can reply too: pass the message (or its id) as `replyTo`.
+
+## Embeds
+
+An embed is a box with a title, a description, fields, an image, a footer... Pass up to 10 in `embeds`:
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function report(channel: TextChannel, newMembers: number, messages: number) {
+  await channel.send({
     embeds: [
       {
         title: 'Weekly report',
         description: 'Everything went well.',
         color: 0x5865f2,
         fields: [
-          { name: 'New members', value: '42', inline: true },
-          { name: 'Messages', value: '1 337', inline: true },
+          { name: 'New members', value: String(newMembers), inline: true },
+          { name: 'Messages', value: String(messages), inline: true },
         ],
         footer: { text: 'Generated automatically' },
         timestamp: new Date().toISOString(),
       },
     ],
-    files: [{ name: 'report.txt', data: 'The full report', description: 'The report as a file' }],
-    silent: true,
   });
 }
 ```
 
-## MessageOptions
+Discord limits what an embed holds (256 characters for a title, 25 fields, 6000 characters for all the embeds of a message...). Going over one throws before anything is sent, with the field and the limit in the message:
 
-A `?` after a name means the field can be left out.
+```text
+The title of embed 1 is 300 characters long: Discord accepts 256 at most.
+```
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `content?` | `string` | The text of the message (up to 2000 characters). |
-| `embeds?` | `Embed[]` | Up to 10 embeds. |
-| `components?` | `Component[]` | Buttons, select menus and layout components. |
-| `files?` | `FileInput[]` | Up to 10 files to attach. |
-| `allowedMentions?` | `AllowedMentions` | Who the message is allowed to notify. |
-| `stickers?` | `Snowflake[]` | The ids of up to 3 stickers of the server. |
-| `poll?` | `PollInput` | A poll to attach to the message. |
-| `tts?` | `boolean` | Reads the message aloud. |
-| `silent?` | `boolean` | Sends the message without a notification sound. |
-| `suppressEmbeds?` | `boolean` | Does not show the previews of the links of the message. |
-| `replyTo?` | `Snowflake \| { id: Snowflake }` | The message to reply to. |
-
-
-A message needs at least a content, an embed, a file, a component, a sticker or a poll.
-
-### Editing
-
-`message.edit()` accepts a text, or `content`, `embeds`, `components`, `files`, `allowedMentions` and `suppressEmbeds`. Only what you pass changes: pass an empty list to remove embeds, for example.
+The limits are listed in [Embed limits](/reference/message-options#embed-limits).
 
 ## Files
 
-A `?` after a name means the field can be left out.
-
-A file to attach to a message.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | The name of the file, with its extension: `chart.png`. |
-| `data` | `Blob \| Uint8Array \| ArrayBuffer \| string` | The content of the file. |
-| `description?` | `string` | What the file shows, for people who can't see it. |
-| `spoiler?` | `boolean` | Hides the file until it is clicked. |
-| `contentType?` | `string` | The media type of the file (`image/png`); guessed from the name when missing. |
-
+A file is a name with its extension and its content: a text, a `Buffer`, a `Uint8Array`, an `ArrayBuffer` or a `Blob`. Up to 10 per message.
 
 ```ts
 import { readFile } from 'node:fs/promises';
 import type { TextChannel } from 'chapterjs';
 
-async function sendImage(channel: TextChannel) {
+async function sendChart(channel: TextChannel) {
   await channel.send({
-    files: [{ name: 'chart.png', data: await readFile('./chart.png') }],
-    // An embed can show an attached image.
+    files: [
+      {
+        name: 'chart.png',
+        data: await readFile('./chart.png'),
+        description: 'Messages per day this week', // for people who can't see it
+      },
+    ],
+    // An embed can show an attached file.
     embeds: [{ title: 'This week', image: { url: 'attachment://chart.png' } }],
   });
 }
 ```
 
-## Embeds
+A text too long for a message can go in a file instead:
 
-### Embed
+```ts
+import type { TextChannel } from 'chapterjs';
 
-A `?` after a name means the field can be left out.
+async function sendLog(channel: TextChannel, log: string) {
+  await channel.send({
+    content: 'Here is the full log.',
+    files: [{ name: 'log.txt', data: log }],
+  });
+}
+```
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `title?` | `string` | Title of embed |
-| `description?` | `string` | Description of embed |
-| `url?` | `string` | Url of embed |
-| `timestamp?` | `ISO8601Timestamp` | Timestamp of embed content |
-| `color?` | `number` | Color code of the embed |
-| `footer?` | `EmbedFooter` | Footer information |
-| `image?` | `EmbedImage` | Image information |
-| `thumbnail?` | `EmbedImage` | Thumbnail information |
-| `author?` | `EmbedAuthor` | Author information |
-| `fields?` | `EmbedField[]` | Fields information, max of 25 |
+`spoiler: true` hides a file until it is clicked.
 
-[Discord documentation](https://docs.discord.com/developers/resources/message#embed-object-embed-structure)
+## Mentions
 
-### footer
+A mention is a text: write it in `content` with the helpers of ChapterJS, or with what a structure gives when put in a text (`${member}`, `${channel}`, `${role}`).
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `text` | `string` | Footer text |
-| `iconUrl?` | `string` | Url of footer icon (only supports http(s) and attachments) |
-| `proxyIconUrl?` | `string` | A proxied url of footer icon |
+```ts
+import { roleMention, timestamp, type GuildMember, type TextChannel } from 'chapterjs';
 
-[Discord documentation](https://docs.discord.com/developers/resources/message#embed-object-embed-footer-structure)
+async function welcome(channel: TextChannel, member: GuildMember, helpersRoleId: string) {
+  await channel.send(
+    `Welcome ${member}! You joined ${timestamp(member.joinedAt ?? new Date(), 'R')}. ` +
+      `${roleMention(helpersRoleId)} will help you in ${channel}.`
+  );
+}
+```
 
-### author
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | Name of author |
-| `url?` | `string` | Url of author (only supports http(s)) |
-| `iconUrl?` | `string` | Url of author icon (only supports http(s) and attachments) |
-| `proxyIconUrl?` | `string` | A proxied url of author icon |
-
-[Discord documentation](https://docs.discord.com/developers/resources/message#embed-object-embed-author-structure)
-
-### fields
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | Name of the field |
-| `value` | `string` | Value of the field |
-| `inline?` | `boolean` | Whether or not this field should display inline |
-
-[Discord documentation](https://docs.discord.com/developers/resources/message#embed-object-embed-field-structure)
-
-### image and thumbnail
-
-Only `url` is yours to set: Discord fills the rest when it sends a message back.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `url` | `string` | Source url of image (only supports http(s) and attachments) |
-| `description?` | `string` | Description (alt text) for the image |
-
-[Discord documentation](https://docs.discord.com/developers/resources/message#embed-object-embed-image-structure)
-
-
-| Limit | Maximum |
-| --- | --- |
-| Embeds per message | 10 |
-| `title` | 256 characters |
-| `description` | 4096 characters |
-| `fields` | 25 |
-| `fields[].name` | 256 characters |
-| `fields[].value` | 1024 characters |
-| `footer.text` | 2048 characters |
-| `author.name` | 256 characters |
-| All of the above, for every embed of a message | 6000 characters |
-
-Going over a limit throws an error that names the field, before anything is sent.
-
-## Who gets notified
-
-By default a message notifies everyone it mentions. `allowedMentions` restricts that:
-
-### AllowedMentions
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `parse?` | `AllowedMentionType[]` | An array of allowed mention types to parse from the content |
-| `roles?` | `Snowflake[]` | Array of role ids to mention, max 100 |
-| `users?` | `Snowflake[]` | Array of user ids to mention, max 100 |
-| `repliedUser?` | `boolean` | For replies, whether to mention the author of the message being replied to, defaults to false |
-
-[Discord documentation](https://docs.discord.com/developers/resources/message#allowed-mentions-object-default-settings-for-allowed-mentions)
-
+By default a message notifies everyone it mentions, roles and @everyone included. `allowedMentions` says who really gets a notification, whatever the text contains:
 
 ```ts
 import type { Message } from 'chapterjs';
@@ -193,29 +192,14 @@ async function quote(message: Message) {
 }
 ```
 
+- `parse` is the kinds of mentions of the text that notify: `['users']`, `['roles']`, `['everyone']`, or `[]` for nobody.
+- `users` and `roles` list the ids that may be notified, whatever `parse` says.
+
+The helpers (`userMention`, `roleMention`, `channelMention`, `timestamp`...) are listed in [Helpers](/reference/helpers).
+
 ## Polls
 
-### PollInput
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `question` | `PollMedia` | The question of the poll. Only `text` is supported. |
-| `answers` | `PollAnswer[]` | Each of the answers available in the poll, up to 10 |
-| `duration?` | `number` | Number of hours the poll should be open for, up to 32 days. Defaults to 24 |
-| `allowMultiselect?` | `boolean` | Whether a user can select multiple answers. Defaults to false |
-| `layoutType?` | `PollLayoutType` | The layout type of the poll. Defaults to... DEFAULT! |
-
-[Discord documentation](https://docs.discord.com/developers/resources/poll#poll-create-request-object-poll-create-request-object-structure)
-
-### question and pollMedia
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `text?` | `string` | The text of the field |
-| `emoji?` | `Partial<Emoji>` | The emoji of the field |
-
-[Discord documentation](https://docs.discord.com/developers/resources/poll#poll-media-object-poll-media-object-structure)
-
+A poll is a question with up to 10 answers. People vote in Discord; the poll closes after `duration` hours (24 by default).
 
 ```ts
 import type { TextChannel } from 'chapterjs';
@@ -229,40 +213,122 @@ async function ask(channel: TextChannel) {
         { answerId: 2, pollMedia: { text: 'Pasta', emoji: { name: '🍝' } } },
       ],
       duration: 24, // hours
+      allowMultiselect: false,
     },
   });
 }
 ```
 
-## Components
+## Editing
 
-`components` takes the components of the [Discord component reference](https://docs.discord.com/developers/components/reference), with camelCase names. Use `ComponentType` and `ButtonStyle` instead of numbers:
+`message.edit()` changes a message the bot wrote: its text, its embeds, its components, its files, and whether the previews of its links show. Only what you pass changes.
 
 ```ts
-import { ButtonStyle, ComponentType, type TextChannel } from 'chapterjs';
+import type { TextChannel } from 'chapterjs';
 
-async function withButtons(channel: TextChannel) {
-  await channel.send({
-    content: 'Do you accept the rules?',
-    components: [
-      {
-        type: ComponentType.ActionRow,
-        components: [
-          { type: ComponentType.Button, style: ButtonStyle.Success, label: 'Accept', customId: 'rules:accept' },
-          { type: ComponentType.Button, style: ButtonStyle.Link, label: 'Read them', url: 'https://example.com/rules' },
-        ],
-      },
-    ],
-  });
+async function countdown(channel: TextChannel) {
+  const message = await channel.send('Starting in 3...');
+  for (const n of [2, 1]) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await message.edit(`Starting in ${n}...`);
+  }
+  await message.edit({ content: 'Go!', embeds: [] }); // also removes the embeds
 }
 ```
 
-## Webhooks
+A message written by someone else can't be edited. What `edit()` accepts is listed in [MessageEditOptions](/reference/message-options#messageeditoptions).
 
-`webhook.send()` accepts the same options (except `replyTo`), plus:
+## Deleting
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `username?` | `string` | Shows this name instead of the name of the webhook. |
-| `avatarURL?` | `string` | Shows this avatar instead of the avatar of the webhook. |
-| `threadId?` | `Snowflake` | Sends the message in this thread of the channel of the webhook. |
+`message.delete()` deletes one message; the reason goes to the audit log of the server.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function removeInvite(message: Message) {
+  if (!message.content.includes('discord.gg/')) return;
+  await message.delete('Invite link');
+}
+```
+
+To delete many at once, `channel.bulkDelete()` takes messages or ids and returns how many were deleted. Discord refuses to delete messages older than two weeks in bulk: they are left out.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function clear(channel: TextChannel, count: number) {
+  const messages = await channel.fetchMessages({ limit: count });
+  const deleted = await channel.bulkDelete(messages, 'Channel cleared');
+  await channel.send(`Deleted ${deleted} messages.`);
+}
+```
+
+## Reacting
+
+`message.react()` adds a reaction of the bot: a standard emoji, or a custom emoji of the server, as Discord writes it (`<:name:id>`) or as one of `guild.emojis`.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function vote(message: Message) {
+  await message.react('👍');
+  await message.react('👎');
+}
+```
+
+`message.reactions` lists the reactions a message has, with how many of each; `fetchReactionUsers()` asks who reacted with one emoji. `removeReaction()` removes the reaction of the bot (or of a given user), `clearReactions()` removes every reaction, or every reaction of one emoji.
+
+## Pinning
+
+`message.pin()` and `message.unpin()` pin and unpin a message in its channel; `channel.fetchPins()` lists the pinned messages, latest pin first.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function keep(message: Message) {
+  if (!message.pinned) await message.pin('Kept by the bot');
+}
+```
+
+## Reading the history
+
+`channel.fetchMessages()` asks Discord for the latest messages of a channel, newest first, 100 at most per call. `before`, `after` and `around` pick where to read from, so you can go further back:
+
+```ts
+import type { Message, TextChannel } from 'chapterjs';
+
+async function lastMessagesOf(channel: TextChannel, authorId: string, count: number) {
+  const found: Message[] = [];
+  let before: Message | undefined;
+  while (found.length < count) {
+    const page = await channel.fetchMessages({ limit: 100, before });
+    for (const message of page) {
+      if (message.author.id === authorId) found.push(message);
+    }
+    before = page.at(-1);
+    if (!before || page.length < 100) break;
+  }
+  return found.slice(0, count);
+}
+```
+
+`channel.fetchMessage(id)` gets one message by its id. `channel.messages` is what the bot remembers of the channel without asking Discord: it is empty by default, since most bots never read an old message. See [what the bot remembers](/memory).
+
+<Tip>
+  A message you receive in an [event](/events/messages) is already a `Message`: no need to fetch it to reply, react or delete.
+</Tip>
+
+## Components
+
+<Warning>
+  Your bot can send buttons and select menus in `components`, but it cannot answer them yet: a click does nothing, and your files are not run for it. Components are on the list of [what is not there yet](/not-yet).
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Events about messages" icon="message-square" href="/events/messages">
+    React when a message is sent, edited or deleted.
+  </Card>
+  <Card title="Message options" icon="braces" href="/reference/message-options">
+    Every field a message takes, with the limits.
+  </Card>
+</CardGroup>

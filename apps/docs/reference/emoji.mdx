@@ -1,57 +1,103 @@
 ---
-title: 'Emojis, invites and webhooks'
-description: 'Custom emojis, invites to a server and webhooks'
+title: 'GuildEmoji'
+description: 'Read, show, rename and delete the custom emojis of a server'
 ---
 
-## GuildEmoji
-
-A custom emoji of a server. Putting one in a text shows it:
+A `GuildEmoji` is a custom emoji of a server. You get one from `guild.emojis`, `guild.fetchEmojis()` or `guild.createEmoji()`. Putting one in a text shows it.
 
 ```ts
 import type { Guild } from 'chapterjs';
 
-async function example(guild: Guild) {
+async function welcome(guild: Guild) {
   const emoji = [...guild.emojis.values()].find(emoji => emoji.name === 'party');
-  if (!emoji) return;
   const channel = guild.channels.get(guild.systemChannelId ?? '');
-  if (channel?.isTextBased()) await channel.send(`Welcome! ${emoji}`);
+  if (!emoji || !channel?.isTextBased()) return;
+  await channel.send(`Welcome! ${emoji}`);
 }
 ```
 
-### GuildEmoji properties
+<Note>
+  How to put an emoji in a message or react with one is in [Messages](/messages). A standard emoji (🎉) is a text, not a `GuildEmoji`.
+</Note>
 
-| Property | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The unique id Discord gave it. |
-| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
-| `guildId` | `Snowflake` | The id of the server of the emoji. |
-| `name` | `string` | The name of the emoji, without the colons. |
-| `animated` | `boolean` | Whether the emoji moves. |
-| `available` | `boolean` | `false` when the server lost the boosts that gave it this emoji. |
-| `managed` | `boolean` | Whether the emoji belongs to an integration. |
-| `roleIds` | `readonly Snowflake[]` | The ids of the roles allowed to use the emoji; empty for everyone. |
+## Properties
 
-### GuildEmoji methods
+<ResponseField name="id" type="Snowflake">
+  The unique id Discord gave it.
+</ResponseField>
 
-#### url()
+<ResponseField name="createdAt" type="Date">
+  When it was created: a Discord id contains its creation date.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake">
+  The id of the server of the emoji.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the emoji, without the colons.
+</ResponseField>
+
+<ResponseField name="animated" type="boolean">
+  Whether the emoji moves.
+</ResponseField>
+
+<ResponseField name="available" type="boolean">
+  `false` when the server lost the boosts that gave it this emoji.
+</ResponseField>
+
+<ResponseField name="managed" type="boolean">
+  Whether the emoji belongs to an integration.
+</ResponseField>
+
+<ResponseField name="roleIds" type="readonly Snowflake[]">
+  The ids of the roles allowed to use the emoji; empty for everyone.
+</ResponseField>
+
+## Helpers
+
+These read what the bot remembers: they never send a request.
+
+### url()
 
 ```ts
 url(options?: ImageOptions): string
 ```
 
-The URL of the image of the emoji.
+The URL of the image of the emoji. See [ImageOptions](/reference/helpers#imageoptions).
 
-#### edit()
+### toString()
 
 ```ts
-edit(options: { name?: string; roles?: (Snowflake | { id: Snowflake })[] | null }, reason?: string): Promise<GuildEmoji>
+toString(): string
+```
+
+`<:name:id>`: shows the emoji when put in a message.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+The data of Discord as a plain object, with camelCase names.
+
+## Actions
+
+### edit()
+
+```ts
+edit(
+  options: { name?: string; roles?: (Snowflake | { id: Snowflake })[] | null },
+  reason?: string
+): Promise<GuildEmoji>
 ```
 
 Renames the emoji, or changes which roles can use it.
 
 [Discord documentation](https://docs.discord.com/developers/resources/emoji#modify-guild-emoji)
 
-#### delete()
+### delete()
 
 ```ts
 delete(reason?: string): Promise<void>
@@ -61,118 +107,6 @@ Deletes the emoji.
 
 [Discord documentation](https://docs.discord.com/developers/resources/emoji#delete-guild-emoji)
 
-#### toString()
+## Types
 
-```ts
-toString(): string
-```
-
-`<:name:id>`: shows the emoji when put in a message.
-
-
-## Invite
-
-```ts
-import type { TextChannel } from 'chapterjs';
-
-async function invite(channel: TextChannel) {
-  const invite = await channel.createInvite({ maxAge: 3600, maxUses: 1, unique: true });
-  return invite.url; // https://discord.gg/...
-}
-```
-
-### Invite properties
-
-| Property | Type | Description |
-| --- | --- | --- |
-| `inviter` | `User \| null` | Who created the invite, when Discord says it. |
-| `inviter` | `User \| null` | Who created the invite, when Discord says it. |
-| `code` | `string` | The unique code of the invite (`discord.gg/code`). |
-| `url` | `string` | The link to share. |
-| `guildId` | `Snowflake \| null` | The id of the server the invite leads to. |
-| `channelId` | `Snowflake \| null` | The id of the channel the invite leads to. |
-| `expiresAt` | `Date \| null` | When the invite stops working; `null` when it never does. |
-| `uses` | `number \| null` | How many times the invite was used, when Discord says it. |
-| `maxUses` | `number \| null` | How many times the invite can be used; `0` means no limit. |
-| `temporary` | `boolean` | Whether members who joined with it are kicked when they go offline. |
-
-### Invite methods
-
-#### delete()
-
-```ts
-delete(reason?: string): Promise<void>
-```
-
-Deletes the invite: its link stops working.
-
-[Discord documentation](https://docs.discord.com/developers/resources/invite#delete-invite)
-
-#### toString()
-
-```ts
-toString(): string
-```
-
-The link to share.
-
-
-## Webhook
-
-A webhook posts messages in a channel under any name and avatar.
-
-```ts
-import type { TextChannel } from 'chapterjs';
-
-async function relay(channel: TextChannel, author: string, text: string) {
-  const webhook = await channel.createWebhook({ name: 'Relay' });
-  await webhook.send({ content: text, username: author });
-}
-```
-
-<Info>
-  A bot can only post with the webhooks it created: check `webhook.canSend`. The token of a webhook is a secret and is never shown when you log a webhook.
-</Info>
-
-### Webhook properties
-
-| Property | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The unique id Discord gave it. |
-| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
-| `name` | `string \| null` | The default name the webhook posts with. |
-| `channelId` | `Snowflake \| null` | The id of the channel the webhook posts in. |
-| `guildId` | `Snowflake \| null` | The id of the server of the webhook. |
-| `canSend` | `boolean` | Whether the bot can post with it: only webhooks it created. |
-
-### Webhook methods
-
-#### send()
-
-```ts
-send(message: string | WebhookMessageOptions): Promise<Message>
-```
-
-Posts a message with the webhook.
-
-[Discord documentation](https://docs.discord.com/developers/resources/webhook#execute-webhook)
-
-#### edit()
-
-```ts
-edit(options: Camelize<ModifyWebhookJSONParams>, reason?: string): Promise<Webhook>
-```
-
-Changes the name, the avatar or the channel of the webhook.
-
-[Discord documentation](https://docs.discord.com/developers/resources/webhook#modify-webhook)
-
-#### delete()
-
-```ts
-delete(reason?: string): Promise<void>
-```
-
-Deletes the webhook.
-
-[Discord documentation](https://docs.discord.com/developers/resources/webhook#delete-webhook)
+`ImageOptions` is in [Helpers](/reference/helpers#imageoptions). To add an emoji to a server, see [`guild.createEmoji()`](/reference/guild#createemoji).

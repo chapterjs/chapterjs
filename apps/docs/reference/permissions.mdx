@@ -1,36 +1,50 @@
 ---
 title: 'Permissions'
-description: 'Read, check and write permissions by name'
+description: 'Check what a member can do, read what a role allows, and write permissions by name'
 ---
 
-Permissions are always written by name, like `'BanMembers'`: your editor completes them and refuses a typo.
+Permissions are always written by name, like `'BanMembers'`: your editor completes them and refuses a typo. Nothing here sends a request: everything is computed from what the bot knows.
+
+<Note>
+  To require permissions before a command runs, declare them in the file of the command: see [Commands](/commands). What ChapterJS answers when the bot itself lacks a permission is in [Errors](/reference/errors#what-the-person-sees).
+</Note>
 
 ```ts
 import type { GuildChannel, GuildMember } from 'chapterjs';
 
 function canPost(member: GuildMember, channel: GuildChannel) {
-  // In the whole server...
-  if (member.permissions.has('Administrator')) return true;
-
-  // ...or in one channel, where overwrites may change them.
   const permissions = member.permissionsIn(channel);
   const missing = permissions.missing(['SendMessages', 'AttachFiles']);
-  if (missing.length > 0) console.log(`Missing: ${missing.join(', ')}`);
-  return missing.length === 0;
+  return missing.length === 0 ? 'Go ahead' : `Missing: ${missing.join(', ')}`;
 }
 ```
 
 ## Where permissions come from
 
-- `member.permissions`: what the member can do in the server, from the roles they have. The owner and administrators can do everything.
-- `member.permissionsIn(channel)` or `channel.permissionsFor(member)`: the same, changed by what the channel allows or denies to their roles and to them. A member who can't see a channel can't do anything in it, and a timed out member can only read.
-- `role.permissions`: what a role gives.
+| Read | Gives | Page |
+| --- | --- | --- |
+| `member.permissions` | What the member can do in the server, from their roles | [GuildMember](/reference/member) |
+| `member.permissionsIn(channel)` | The same, changed by what the channel allows or denies | [GuildMember](/reference/member#permissionsin) |
+| `channel.permissionsFor(member)` | Same as `member.permissionsIn(channel)` | [Channels](/reference/channels) |
+| `role.permissions` | What the role allows in the server | [Role](/reference/role) |
+| `channel.permissionOverwrites` | What each role and member is allowed or denied in the channel | [PermissionOverwrite](/reference/data#permissionoverwrite) |
 
-These are computed from what the bot knows, exactly as [Discord documents it](https://docs.discord.com/developers/topics/permissions#permission-overwrites): they never send a request.
+To write permissions, pass names to `guild.createRole()`, `role.edit()` ([`RoleCreateOptions`](/reference/options#rolecreateoptions), [`RoleEditOptions`](/reference/options#roleeditoptions)) and `channel.setPermissions()`.
 
-## The Permissions set
+## How they are computed
 
-A `Permissions` value never changes: `add()` and `remove()` return a new one.
+The computation follows the [permission rules of Discord](https://docs.discord.com/developers/topics/permissions#permission-overwrites), in four steps:
+
+1. **In the server.** The owner can do everything. Otherwise a member has what the @everyone role allows, plus what each of their roles allows; a member with `Administrator` can do everything.
+2. **In a channel.** The overwrites of the channel change that: first the one for @everyone, then the ones for the roles of the member combined, then the one for the member themselves. Each one removes what it denies, then adds what it allows. An administrator is never affected by overwrites.
+3. **What follows.** A member who can't `ViewChannel` can do nothing in it. A member who can't `SendMessages` can't `MentionEveryone`, `SendTtsMessages`, `AttachFiles` or `EmbedLinks` either.
+4. **Timed out.** A timed out member only keeps `ViewChannel` and `ReadMessageHistory`, unless they are an administrator.
+
+`member.permissions` applies steps 1 and 4; `member.permissionsIn(channel)` and `channel.permissionsFor(member)` apply all four. A thread uses the permissions of the channel it is in.
+
+## Permissions
+
+A set of permissions that never changes: every operation returns a new set. Discord serializes permissions as text because they don't fit in a regular number.
 
 ```ts
 import { Permissions } from 'chapterjs';
@@ -40,15 +54,23 @@ moderator.has('KickMembers'); // true
 moderator.add('ModerateMembers').toArray(); // ['KickMembers', 'BanMembers', 'ModerateMembers']
 ```
 
-### Permissions properties
+### Properties
 
-| Property | Type | Description |
-| --- | --- | --- |
-| `bits` | `bigint` | The permissions as one number, each bit being a permission. |
+<ResponseField name="bits" type="bigint" required>The permissions as one number, each bit being a permission.</ResponseField>
 
-### Permissions methods
+### constructor
 
-#### has()
+```ts
+new Permissions(bits?: PermissionResolvable | string)
+```
+
+Builds a set from a name, a list of names, bits, another set, or the text Discord uses (`'2048'`). Without an argument, the set is empty. A name that is not a permission throws a `TypeError`:
+
+```text
+"BanMember" is not a permission. Permissions are: CreateInstantInvite, KickMembers, BanMembers, ...
+```
+
+### has()
 
 ```ts
 has(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boolean
@@ -56,7 +78,7 @@ has(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boole
 
 Whether every given permission is in the set. An administrator has every permission, unless `{ checkAdmin: false }` is passed.
 
-#### any()
+### any()
 
 ```ts
 any(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boolean
@@ -64,7 +86,7 @@ any(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boole
 
 Whether at least one of the given permissions is in the set.
 
-#### missing()
+### missing()
 
 ```ts
 missing(permission: PermissionResolvable): PermissionName[]
@@ -72,7 +94,7 @@ missing(permission: PermissionResolvable): PermissionName[]
 
 The given permissions that are not in the set, by name.
 
-#### add()
+### add()
 
 ```ts
 add(permission: PermissionResolvable): Permissions
@@ -80,7 +102,7 @@ add(permission: PermissionResolvable): Permissions
 
 A new set with the given permissions added.
 
-#### remove()
+### remove()
 
 ```ts
 remove(permission: PermissionResolvable): Permissions
@@ -88,7 +110,7 @@ remove(permission: PermissionResolvable): Permissions
 
 A new set without the given permissions.
 
-#### toArray()
+### toArray()
 
 ```ts
 toArray(): PermissionName[]
@@ -96,7 +118,7 @@ toArray(): PermissionName[]
 
 The names of the permissions in the set, in the order of the docs.
 
-#### toString()
+### toString()
 
 ```ts
 toString(): string
@@ -104,72 +126,120 @@ toString(): string
 
 The text Discord expects in a request.
 
+### toJSON()
 
-Wherever permissions are expected you can pass a name, a list of names, or a `Permissions` set.
+```ts
+toJSON(): string
+```
+
+The text Discord expects in a request.
 
 <Info>
-  `has()` and `any()` answer `true` for an administrator, whatever is asked. Pass `{ checkAdmin: false }` to check the exact permission.
+  `has()`, `any()` and `missing()` answer for an administrator as if they had everything. Pass `{ checkAdmin: false }` to `has()` or `any()` to check the exact bit.
 </Info>
 
-## Every permission
+[Discord documentation](https://docs.discord.com/developers/topics/permissions)
 
-| Name | Value |
+## PermissionResolvable
+
+A permission, or several: by name, as bits, or as a set.
+
+```ts
+type PermissionResolvable =
+  | PermissionName
+  | bigint
+  | Permissions
+  | readonly (PermissionName | bigint)[]
+```
+
+Every method of `Permissions`, and every option that takes permissions, accepts one. Something else than a name, a bigint, a set or a list of those throws a `TypeError`:
+
+```text
+A permission is a name like "BanMembers", got number.
+```
+
+## PermissionName
+
+The name of one permission: a key of `PermissionFlags`, as listed below.
+
+```ts
+type PermissionName = keyof typeof PermissionFlags
+```
+
+| Name | What it allows |
 | --- | --- |
-| `CreateInstantInvite` | `1n << 0n` |
-| `KickMembers` | `1n << 1n` |
-| `BanMembers` | `1n << 2n` |
-| `Administrator` | `1n << 3n` |
-| `ManageChannels` | `1n << 4n` |
-| `ManageGuild` | `1n << 5n` |
-| `AddReactions` | `1n << 6n` |
-| `ViewAuditLog` | `1n << 7n` |
-| `PrioritySpeaker` | `1n << 8n` |
-| `Stream` | `1n << 9n` |
-| `ViewChannel` | `1n << 10n` |
-| `SendMessages` | `1n << 11n` |
-| `SendTtsMessages` | `1n << 12n` |
-| `ManageMessages` | `1n << 13n` |
-| `EmbedLinks` | `1n << 14n` |
-| `AttachFiles` | `1n << 15n` |
-| `ReadMessageHistory` | `1n << 16n` |
-| `MentionEveryone` | `1n << 17n` |
-| `UseExternalEmojis` | `1n << 18n` |
-| `ViewGuildInsights` | `1n << 19n` |
-| `Connect` | `1n << 20n` |
-| `Speak` | `1n << 21n` |
-| `MuteMembers` | `1n << 22n` |
-| `DeafenMembers` | `1n << 23n` |
-| `MoveMembers` | `1n << 24n` |
-| `UseVad` | `1n << 25n` |
-| `ChangeNickname` | `1n << 26n` |
-| `ManageNicknames` | `1n << 27n` |
-| `ManageRoles` | `1n << 28n` |
-| `ManageWebhooks` | `1n << 29n` |
-| `ManageGuildExpressions` | `1n << 30n` |
-| `UseApplicationCommands` | `1n << 31n` |
-| `RequestToSpeak` | `1n << 32n` |
-| `ManageEvents` | `1n << 33n` |
-| `ManageThreads` | `1n << 34n` |
-| `CreatePublicThreads` | `1n << 35n` |
-| `CreatePrivateThreads` | `1n << 36n` |
-| `UseExternalStickers` | `1n << 37n` |
-| `SendMessagesInThreads` | `1n << 38n` |
-| `UseEmbeddedActivities` | `1n << 39n` |
-| `ModerateMembers` | `1n << 40n` |
-| `ViewCreatorMonetizationAnalytics` | `1n << 41n` |
-| `UseSoundboard` | `1n << 42n` |
-| `CreateGuildExpressions` | `1n << 43n` |
-| `CreateEvents` | `1n << 44n` |
-| `UseExternalSounds` | `1n << 45n` |
-| `SendVoiceMessages` | `1n << 46n` |
-| `SetVoiceChannelStatus` | `1n << 48n` |
-| `SendPolls` | `1n << 49n` |
-| `UseExternalApps` | `1n << 50n` |
-| `PinMessages` | `1n << 51n` |
-| `BypassSlowmode` | `1n << 52n` |
+| `CreateInstantInvite` | Creating invites |
+| `KickMembers` | Kicking members |
+| `BanMembers` | Banning members |
+| `Administrator` | Everything, and ignoring the overwrites of channels |
+| `ManageChannels` | Creating, editing and deleting channels |
+| `ManageGuild` | Editing the server |
+| `AddReactions` | Adding new reactions to messages (reacting with an existing reaction needs nothing) |
+| `ViewAuditLog` | Reading the audit log |
+| `PrioritySpeaker` | Being heard louder in a voice channel |
+| `Stream` | Going live |
+| `ViewChannel` | Seeing a channel: reading its messages, joining it if it is a voice channel |
+| `SendMessages` | Sending messages in a channel and creating posts in a forum (not sending messages in threads) |
+| `SendTtsMessages` | Sending `/tts` messages |
+| `ManageMessages` | Deleting the messages of others |
+| `EmbedLinks` | Having the links one sends previewed |
+| `AttachFiles` | Uploading images and files |
+| `ReadMessageHistory` | Reading older messages |
+| `MentionEveryone` | Using `@everyone` and `@here` |
+| `UseExternalEmojis` | Using the custom emojis of other servers |
+| `ViewGuildInsights` | Reading the insights of the server |
+| `Connect` | Joining a voice channel |
+| `Speak` | Speaking in a voice channel |
+| `MuteMembers` | Muting members in a voice channel |
+| `DeafenMembers` | Deafening members in a voice channel |
+| `MoveMembers` | Moving members between voice channels |
+| `UseVad` | Using voice activity detection in a voice channel |
+| `ChangeNickname` | Changing one's own nickname |
+| `ManageNicknames` | Changing the nicknames of others |
+| `ManageRoles` | Creating, editing and deleting roles |
+| `ManageWebhooks` | Creating, editing and deleting webhooks |
+| `ManageGuildExpressions` | Editing and deleting the emojis, stickers and sounds created by anyone |
+| `UseApplicationCommands` | Using slash commands and context menu commands |
+| `RequestToSpeak` | Asking to speak in a stage channel |
+| `ManageEvents` | Editing and deleting the scheduled events created by anyone |
+| `ManageThreads` | Deleting and archiving threads, and seeing every private thread |
+| `CreatePublicThreads` | Creating public and announcement threads |
+| `CreatePrivateThreads` | Creating private threads |
+| `UseExternalStickers` | Using the custom stickers of other servers |
+| `SendMessagesInThreads` | Sending messages in threads |
+| `UseEmbeddedActivities` | Using activities (apps with the `EMBEDDED` flag) |
+| `ModerateMembers` | Timing members out: they can't send or react in chat and threads, nor speak in voice and stage channels |
+| `ViewCreatorMonetizationAnalytics` | Reading the role subscription insights |
+| `UseSoundboard` | Using the soundboard in a voice channel |
+| `CreateGuildExpressions` | Creating emojis, stickers and sounds, and editing and deleting one's own |
+| `CreateEvents` | Creating scheduled events, and editing and deleting one's own |
+| `UseExternalSounds` | Using the soundboard sounds of other servers |
+| `SendVoiceMessages` | Sending voice messages |
+| `SetVoiceChannelStatus` | Setting the status of a voice channel |
+| `SendPolls` | Sending polls |
+| `UseExternalApps` | Letting apps installed by users answer publicly; otherwise their answers are only visible to the person. Only for apps not also installed on the server |
+| `PinMessages` | Pinning and unpinning messages |
+| `BypassSlowmode` | Ignoring slowmode |
+
+[Discord documentation](https://docs.discord.com/developers/topics/permissions#permissions-bitwise-permission-flags)
+
+## PermissionFlags
+
+The bit of every permission, by name: `PermissionFlags.BanMembers` is `4n` (`1n << 2n`). It is what `PermissionName` is made of, and what `bits` is read against.
+
+```ts
+import { PermissionFlags, Permissions } from 'chapterjs';
+
+const bits = PermissionFlags.KickMembers | PermissionFlags.BanMembers;
+new Permissions(bits).toArray(); // ['KickMembers', 'BanMembers']
+```
+
+You rarely need it: names do the same, readably. Use it when you work with the raw bits of Discord, for example to combine them with `|` or to compare with a number from elsewhere.
 
 [Discord documentation](https://docs.discord.com/developers/topics/permissions#permissions-bitwise-permission-flags)
 
 ## The hierarchy
 
 Having a permission is not always enough: a member can only kick, ban, rename or give roles to members whose highest role is below their own. `member.isHigherThan(other)` and `role.isHigherThan(other)` answer that. The same applies to your bot: its highest role must be above the member it moderates.
+
+[Discord documentation](https://docs.discord.com/developers/topics/permissions#permission-hierarchy)

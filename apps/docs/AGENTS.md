@@ -24,18 +24,18 @@ Each page of one tab links to its counterpart in the other (`commands/answering`
 
 ### Terminology
 
-| Write | Never | Why |
-| --- | --- | --- |
-| server | guild (in prose) | Discord calls them servers; `Guild` stays in code |
-| private message | DM, direct message | `DMChannel` and `where: 'dm'` stay in code |
-| test server | dev server, dev guild | The server of `DEV_GUILD_ID` |
-| the bot | the client, the app | There is no client |
-| the person, who used the command | the user (in prose) | `User` is a type; "member" is a `GuildMember` |
-| your function, `run` | handler, callback, listener | |
-| what the bot remembers | the cache | Users never configure a cache |
-| intents, privileged intents | gateway intents | With the name of the Developer Portal option: Message Content Intent, Server Members Intent |
-| event, command | hook, listener, interaction (for commands) | |
-| ChapterJS | chapterjs (in prose) | `chapterjs` is the package and the CLI |
+| Write                            | Never                                      | Why                                                                                         |
+| -------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| server                           | guild (in prose)                           | Discord calls them servers; `Guild` stays in code                                           |
+| private message                  | DM, direct message                         | `DMChannel` and `where: 'dm'` stay in code                                                  |
+| test server                      | dev server, dev guild                      | The server of `DEV_GUILD_ID`                                                                |
+| the bot                          | the client, the app                        | There is no client                                                                          |
+| the person, who used the command | the user (in prose)                        | `User` is a type; "member" is a `GuildMember`                                               |
+| your function, `run`             | handler, callback, listener                |                                                                                             |
+| what the bot remembers           | the cache                                  | Users never configure a cache                                                               |
+| intents, privileged intents      | gateway intents                            | With the name of the Developer Portal option: Message Content Intent, Server Members Intent |
+| event, command                   | hook, listener, interaction (for commands) |                                                                                             |
+| ChapterJS                        | chapterjs (in prose)                       | `chapterjs` is the package and the CLI                                                      |
 
 ### Messages
 
@@ -45,7 +45,7 @@ The messages of the CLI are quoted as the user sees them, in a `text` code block
 
 ### Guide page
 
-```mdx
+````mdx
 ---
 title: 'Commands'
 description: 'One line that says what the reader can do after this page'
@@ -56,13 +56,15 @@ One sentence, then the first code block: a complete file that works as is, with 
 ```ts src/commands/ping.ts
 …
 ```
+````
 
 "That is all": what happened by itself. Only then the variants, each with its own `##`.
 
-<Note>The full list of what X has is in the [reference](/reference/x).</Note>
+<Note>The full list of what X has is in the [reference](/reference/member).</Note>
 
 <CardGroup cols={2}> at most two "next" cards. </CardGroup>
-```
+
+````
 
 ### Reference page of a structure
 
@@ -81,21 +83,27 @@ One sentence on what it is and where you get it. An example of 8 lines at most, 
 ### permissionsIn()
 ```ts
 permissionsIn(channel: GuildChannel): Permissions
-```
+````
+
 The JSDoc.
 
-## Reading from Discord   ← fetch…()
-## Actions                ← everything else, with the Discord link under the description
+## Reading from Discord ← fetch…()
+
+## Actions ← everything else, with the Discord link under the description
+
 ### kick()
+
 ```ts
 kick(reason?: string): Promise<void>
 ```
+
 The JSDoc.
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#remove-guild-member)
 
-## Types              ← only types that have no page elsewhere; otherwise a link
-```
+## Types ← only types that have no page elsewhere; otherwise a link
+
+`````
 
 Rules:
 
@@ -109,6 +117,12 @@ Rules:
 ### Reference page of an event
 
 In `reference/events.mdx`, one `##` per event: a short table (When, Intents, Options, Remembers), then a `<ResponseField>` per field of what the function receives, with its exact type (`MemberMessage`, `GuildTextBasedChannel`, `Role`…).
+
+## Design
+
+The site is Mintlify's `luma` theme, set in `docs.json`, with the Lucide icon library (`icons.library`): every `icon` of a `<Card>`, a group or an `<Icon>` is a Lucide name (`terminal`, `zap`, `folder-tree`...), never a Font Awesome one. The palette is "paper and ember": paper `#FAFAF9` and ink `#0C0A09` as backgrounds, ember `#EA580C` as the accent (`#FB923C` on dark, `#C2410C` for buttons); code blocks use the `github-light` and `vesper` Shiki themes. Headings are Bricolage Grotesque, text is Geist (Google Fonts, loaded by Mintlify). The logo and the favicon (`logo/`, `favicon.svg`) are a bookmark on an ember tile: the sign of a chapter.
+
+`index.mdx` is the landing page (`mode: "custom"`: no sidebar, no default typography). It is written with Tailwind classes and the few `cj-` classes of `style.css` (gradients, glows, the colors of the editor, terminal and Discord mockup); nothing uses the `style` prop except a computed indentation. Its terminal lines are real messages of the CLI, and its claims only what exists: change it when the framework changes.
 
 ## Components
 
@@ -136,4 +150,5 @@ In `reference/events.mdx`, one `##` per event: a short table (When, Intents, Opt
 
 A change in the framework is not finished until the docs follow, in the same change (see `CLAUDE.md`): a new or renamed API, option, event, convention, env var, command or message. New feature → its guide page and its reference page, both in `docs.json`. Changed API → every page and sample using it. `memory.mdx` follows `CacheLimits` and `core/memory.ts`. `index.mdx` (the landing page) only claims what exists.
 
-`packages/chapterjs/test/docs.test.ts` checks that every name exported by the package appears in these pages: a new export without a page fails the tests.
+`packages/chapterjs/test/docs.test.ts` checks the site against the package: every page of `docs.json` exists and every page is in `docs.json`; every name exported by the package appears in code in some page; every public method and property of a structure class is on its reference page (a method under its `### name()` heading, a property as a `<ResponseField>`), and no `### name()` names a method that does not exist; and every `ts` sample that is a program (a user file titled with its path, or a function taking a typed structure) compiles with `tsc -b` in a scratch project, with the generated types of its folder. A signature block (`kick(reason?: string): Promise<void>`) is not a program and is left alone.
+`````

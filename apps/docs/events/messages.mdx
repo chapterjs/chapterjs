@@ -1,0 +1,156 @@
+---
+title: 'Messages'
+description: 'React to messages sent, edited or deleted, in servers or in private, from people or from bots'
+---
+
+Three events are about messages: `messageCreate`, `messageUpdate` and `messageDelete`. A file of `src/events/messageCreate/` runs every time someone writes in a server your bot is in:
+
+```ts src/events/messageCreate/ping.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  if (message.content === '!ping') await message.reply('Pong!');
+});
+```
+
+That is all. By default, the file only runs for messages written **by people, in servers**: not for bots (yours included), not for webhooks, and not for private messages. So `message.guild`, `message.channel` and `message.member` are always there, and you never write `if (message.author.bot) return;`.
+
+```ts src/events/messageCreate/levels.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  // No "?." needed: a message of a server has a server, a channel and a member.
+  console.log(`${message.member.displayName} wrote in #${message.channel.name} of ${message.guild.name}`);
+});
+```
+
+<Note>
+  The full list of what a message has is in [Message](/reference/message); the three events, with what they give, are in the [reference](/reference/events#messagecreate).
+</Note>
+
+## Message Content Intent
+
+Reading what people write is a **privileged intent**: `messageCreate` and `messageUpdate` need the Message Content Intent, enabled for your bot in the [Developer Portal](/setup/discord-application). Without it, the messages written by other people come without their text: `message.content` is empty. `chapterjs dev` tells you when it is missing and waits for you to enable it, like for every [intent](/events#intents-nothing-to-list). `messageDelete` does not need it.
+
+## Where a file listens
+
+`where` says where a file listens. Pass it as the second argument of `event()`, and what your function receives follows it:
+
+<Tabs>
+  <Tab title="'guild' (default)">
+    The file runs for the messages of servers. The message is a [`MemberMessage`](/reference/message#membermessage): `guild`, `channel` and `member` are always there.
+
+    ```ts src/events/messageCreate/hello.ts
+    import { event } from 'chapterjs';
+
+    export default event(async ({ message }) => {
+      await message.channel.send(`Hello ${message.member.displayName}!`);
+    });
+    ```
+  </Tab>
+  <Tab title="'dm'">
+    The file runs for the private messages people send to your bot. The message is a [`DmMessage`](/reference/message#dmmessage): nothing about a server exists on it, so your editor does not even offer `message.guild`.
+
+    ```ts src/events/messageCreate/support.ts
+    import { event } from 'chapterjs';
+
+    export default event(
+      async ({ message }) => {
+        await message.reply(`Thanks ${message.author.displayName}! A moderator will answer you soon.`);
+      },
+      { where: 'dm' }
+    );
+    ```
+  </Tab>
+  <Tab title="'both'">
+    The file runs for both. The message is a `MemberMessage` or a `PrivateMessage` (`MemberMessage | PrivateMessage`), told apart by `message.guild`: one `if` narrows everything, and inside it the channel and the member are the ones of a server.
+
+    ```ts src/events/messageCreate/everywhere.ts
+    import { event } from 'chapterjs';
+
+    export default event(
+      async ({ message }) => {
+        if (message.guild) {
+          await message.channel.send(`Hello ${message.member.displayName}!`);
+        } else {
+          await message.reply('Hello! We are in private here.');
+        }
+      },
+      { where: 'both' }
+    );
+    ```
+  </Tab>
+</Tabs>
+
+Each file decides for itself: in the same folder, one file can listen in servers and another in private messages.
+
+<Info>
+  `chapterjs dev` runs your bot in your test server only, so a file with `where: 'dm'` can't be tried there. It tells you once:
+
+  ```text
+  ℹ src/events/messageCreate/support.ts this messageCreate file only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+  ```
+
+  Private messages reach your bot with [`chapterjs start`](/run/start).
+</Info>
+
+## Messages of bots and webhooks
+
+By default, `messageCreate` and `messageUpdate` ignore the messages written by bots (this one included) and by webhooks: a bot that answers bots can end up answering itself, or another bot, forever. To receive them too, pass `{ bots: true }`:
+
+```ts src/events/messageCreate/relay.ts
+import { event } from 'chapterjs';
+
+export default event(
+  async ({ message }) => {
+    // Also runs for bots and webhooks: make sure it can't answer itself.
+    if (message.webhookId) console.log(`A webhook posted: ${message.content}`);
+  },
+  { bots: true }
+);
+```
+
+With `bots: true`, the message of a server is a [`GuildMessage`](/reference/message#guildmessage): `guild` and `channel` are still there, but a webhook is not a member of the server, so `message.member` can be `null`.
+
+Both options go together: `{ bots: true, where: 'both' }` receives everything, as a `GuildMessage | PrivateMessage`.
+
+## A deleted message
+
+A message that was deleted no longer exists, so `messageDelete` gives you its id, the channel and the server it was in, and the message itself **as it was** when the bot remembered it.
+
+```ts src/events/messageDelete/log.ts
+import { event } from 'chapterjs';
+
+export default event(({ messageId, channel, guild }) => {
+  console.log(`Message ${messageId} was deleted in #${channel.name} of ${guild.name}`);
+});
+```
+
+In a server, `guild` and `channel` (a `GuildTextBasedChannel`) are always there. `message` is `null` when the bot did not remember the message: the bot [remembers no message](/memory) today, so always use `messageId`.
+
+`messageDelete` takes `where` like the other two, and what your function receives follows it: with `'dm'`, there is no `guild` nor `guildId` at all; with `'both'`, `guild` is `null` for a private message and tells the two apart. It has no `bots` option: a deleted message has no author anymore.
+
+## Intents follow your options
+
+Discord sends the messages of servers and private messages through two different intents, and ChapterJS only asks for what your files listen to: a file with `where: 'dm'` asks for private messages only, a file without `where` for the messages of servers only, and a file with `'both'` for both.
+
+```text
+ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT
+```
+
+## A channel the bot does not know
+
+A message can arrive in a channel your bot has never seen, like a thread created before it connected. ChapterJS then asks Discord for that channel once, before running your files, so that `message.channel` is always there. Everything that happens in that channel meanwhile waits for the same answer, and is delivered in the order it happened. When Discord refuses, the event is not delivered and you are told:
+
+```text
+⚠ A messageCreate event was not given to your files: Discord did not let the bot read the channel it happened in (Discord refused GET /channels/{channel.id}: Missing Access (50001)).
+```
+
+<CardGroup cols={2}>
+  <Card title="Sending messages" icon="mail" href="/messages">
+    Everything a reply can contain: text, embeds, files, polls.
+  </Card>
+  <Card title="What your bot remembers" icon="brain" href="/memory">
+    Members, users and messages: what is kept, and how little it costs.
+  </Card>
+</CardGroup>

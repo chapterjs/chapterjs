@@ -1,0 +1,188 @@
+/*
+ * ChapterJS docs: the few styles the landing page (index.mdx, mode "custom")
+ * needs beyond Tailwind classes: gradients, glows and the Discord mockup
+ * colors. Everything else is docs.json (theme, colors, fonts).
+ *
+ * Palette ("paper and ember"): paper #FAFAF9 / ink #0C0A09, ember #EA580C
+ * with #FB923C for dark mode. The same values are in docs.json.
+ */
+
+:root {
+  --cj-ember: #ea580c;
+  --cj-ember-light: #fb923c;
+  --cj-ember-deep: #c2410c;
+  --cj-ink: #0c0a09;
+  --cj-paper: #fafaf9;
+}
+
+/* The accent, which is a little brighter on ink than on paper. */
+.cj-accent {
+  color: var(--cj-ember);
+}
+.dark .cj-accent {
+  color: var(--cj-ember-light);
+}
+
+/* Headline gradient: ember to a warm amber, on both modes. */
+.cj-gradient-text {
+  background: linear-gradient(100deg, #ea580c 0%, #f59e0b 60%, #fb923c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The hero background: a faint grid that fades out, and an ember glow. */
+.cj-hero-bg {
+  background-image:
+    linear-gradient(to right, rgba(120, 113, 108, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(120, 113, 108, 0.14) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, black 30%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, black 30%, transparent 78%);
+}
+.cj-hero-glow {
+  background: radial-gradient(ellipse 45% 38% at 50% 0%, rgba(234, 88, 12, 0.22), transparent 70%);
+}
+.cj-shot-glow {
+  background: radial-gradient(ellipse 55% 60% at 50% 45%, rgba(234, 88, 12, 0.28), transparent 70%);
+}
+.cj-cta-glow {
+  background: radial-gradient(ellipse 60% 90% at 50% 100%, rgba(234, 88, 12, 0.24), transparent 70%);
+}
+
+/* Buttons. */
+.cj-btn-primary {
+  background: linear-gradient(135deg, #fb923c, #ea580c 60%, #c2410c);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 10px 30px rgba(234, 88, 12, 0.35);
+}
+.cj-btn-primary:hover {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 14px 36px rgba(234, 88, 12, 0.45);
+}
+
+/* Bento cells: a hairline border and a warm surface in both modes. */
+.cj-cell {
+  background: #ffffff;
+  border: 1px solid rgba(12, 10, 9, 0.08);
+}
+.dark .cj-cell {
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.cj-cell:hover {
+  border-color: rgba(234, 88, 12, 0.45);
+}
+
+/* Chips and small mono labels. */
+.cj-chip {
+  border: 1px solid rgba(12, 10, 9, 0.1);
+  background: #ffffff;
+}
+.dark .cj-chip {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+.cj-dot {
+  background: var(--cj-ember);
+  box-shadow: 0 0 14px rgba(234, 88, 12, 0.8);
+}
+.cj-dot-privileged {
+  background: #f59e0b;
+}
+
+/* The product shot: an editor, a terminal and Discord, always dark. */
+.cj-shot {
+  background: #141210;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 40px 100px rgba(12, 10, 9, 0.55);
+}
+.cj-shot-bar {
+  background: #1b1917;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cj-shot-pane {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.cj-explorer {
+  background: #181614;
+}
+.cj-tree-active {
+  background: rgba(234, 88, 12, 0.18);
+  color: #ffffff;
+}
+.cj-discord {
+  background: #313338;
+}
+.cj-discord-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+  color: #f2f3f5;
+}
+.cj-discord-input {
+  background: #383a40;
+  color: #6d6f78;
+}
+.cj-discord-embed {
+  background: #2b2d31;
+  border-left: 4px solid var(--cj-ember);
+}
+.cj-discord-command {
+  background: rgba(88, 101, 242, 0.3);
+  color: #c9cdfb;
+}
+.cj-avatar-user {
+  background: #f0b232;
+}
+.cj-avatar-bot {
+  background: var(--cj-ember);
+}
+.cj-badge-app {
+  background: #5865f2;
+}
+
+/* Terminal colors, matching the CLI: green ✓, blue ℹ ↻, yellow ⚠, red ✗. */
+.cj-ok {
+  color: #4ade80;
+}
+.cj-info {
+  color: #7dd3fc;
+}
+.cj-muted {
+  color: #78716c;
+}
+.cj-text {
+  color: #d6d3d1;
+}
+.cj-cursor {
+  background: #d6d3d1;
+  animation: cj-blink 1s steps(2, start) infinite;
+}
+@keyframes cj-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* The traffic lights of the window. */
+.cj-light-red {
+  background: #ff5f57;
+}
+.cj-light-yellow {
+  background: #febc2e;
+}
+.cj-light-green {
+  background: #28c840;
+}
+
+/* The wavy underline of a typo in the editor. */
+.cj-squiggle {
+  text-decoration: underline wavy #ef4444;
+  text-underline-offset: 4px;
+}
+
+/* The landing page does not want the typography defaults of a doc page. */
+.cj-landing a {
+  text-decoration: none;
+}

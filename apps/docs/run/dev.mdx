@@ -1,9 +1,9 @@
 ---
 title: 'chapterjs dev'
-description: 'Run your bot on your test server while you write it, with instant reload'
+description: 'Run your bot on your test server while you write it, with every file reloaded when you save'
 ---
 
-`chapterjs dev` runs the bot of the current folder. It is what the `dev` script of your project starts:
+`chapterjs dev` runs the bot of the current folder on your test server, and reloads your files when you save them. It is what the `dev` script of your project starts:
 
 <CodeGroup>
 ```bash pnpm
@@ -30,6 +30,10 @@ bun dev
 ✓ Commands updated on My Server
 ```
 
+That is all: the bot is online in your test server, your commands show up there, and every file of `src/` is watched. Everything the command needs from Discord is worked out from your files: the intents of the second line, what the bot [remembers](/memory), the commands to register.
+
+<Note>The options, the environment variables and the exit codes of the command are in the [CLI reference](/reference/cli#chapterjs-dev).</Note>
+
 ## What it needs
 
 A `.env` file at the root of your project, with two values:
@@ -39,37 +43,77 @@ BOT_TOKEN=
 DEV_GUILD_ID=
 ```
 
-- `BOT_TOKEN`: the token of your bot, from the [Developer Portal](https://discord.com/developers/applications) → your application → **Bot** → **Reset Token**.
-- `DEV_GUILD_ID`: the ID of your test server. In Discord, right-click the server → **Copy Server ID** (enable **Settings** → **Advanced** → **Developer Mode** to see it).
+Where to find them is in [Your Discord application](/setup/discord-application). A value set in the real environment wins over the file.
 
-<Warning>
-  Your token is a password: never share it, and never commit your `.env` file. Projects created with `create chapter` already ignore it in git.
-</Warning>
+Without the file, the command stops before anything else:
+
+```text
+✗ There is no .env file in this folder.
+  Copy .env.example to .env, then fill in BOT_TOKEN and DEV_GUILD_ID.
+```
+
+And it must run in the folder of your bot, the one with `package.json` and `src/`:
+
+```text
+✗ There is no src folder here.
+  Run this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapter".
+```
 
 ## What it checks for you
 
-Before connecting, `chapterjs dev` makes sure everything is in place. When something is missing, it says what and how to fix it:
+Before connecting, `chapterjs dev` makes sure everything is in place. When something is missing, it says what and how to fix it, and when you are in a terminal it waits for the fix instead of making you start again:
 
 <AccordionGroup>
-  <Accordion title="A value of .env is missing or wrong">
-    Each value is checked: empty, still the example value, or not what it should be. Fix the `.env` file and start the command again.
+  <Accordion title="A value of .env is wrong">
+    Every problem is printed at once: a value that is empty, still the example value, a token with a space in it, a server ID that is not made of digits. The command stops; fix `.env` and start it again.
+
+    ```text
+    ✗ .env: BOT_TOKEN is still the example value.
+      Copy the token of your bot from https://discord.com/developers/applications → your application → Bot → Reset Token.
+    ✗ .env: DEV_GUILD_ID is empty.
+      In Discord, right-click your test server → Copy Server ID (enable Settings → Advanced → Developer Mode to see it).
+    ```
   </Accordion>
   <Accordion title="The token is refused">
-    Discord does not recognize the token. Copy it again from the Developer Portal: a token is only shown once, and resetting it makes the old one invalid.
+    Discord does not recognize the token, usually because it was reset. The command stops.
+
+    ```text
+    ✗ Discord refused the bot token. Copy it again from the Developer Portal (your application → Bot → Reset Token) into BOT_TOKEN in your .env file.
+    ```
   </Accordion>
   <Accordion title="The bot is not in your test server">
-    You get a link that adds the bot to that server. Open it, confirm, and the command goes on by itself. The link gives the bot every permission, since a test server is a playground.
+    You get a link that adds the bot to that server, with every permission: a test server is a playground. Open it, confirm, and the command goes on by itself.
+
+    ```text
+    ⚠ Your bot is not in your dev server yet (DEV_GUILD_ID=123456789012345678).
+      Open this link to add it:
+      https://discord.com/oauth2/authorize?client_id=...&scope=bot+applications.commands&permissions=8&guild_id=123456789012345678&disable_guild_select=true
+      If the link shows another server, DEV_GUILD_ID is not the ID of a server you manage.
+      Waiting for the bot to be added...
+    ✓ The bot joined My Server
+    ```
   </Accordion>
   <Accordion title="A privileged intent is not enabled">
-    Some [events](/events#intents-nothing-to-list) need an option enabled for your bot. You get the list of the files that need it and the link to the right page. Enable it, save, and the command goes on by itself.
+    Some [events](/events#intents-nothing-to-list) need an option enabled for your bot in the Developer Portal. You get the files that need it and the link to the right page. Enable it, save, and the command goes on by itself.
+
+    ```text
+    ⚠ Your files need an option that is not enabled for your bot:
+      - Message Content Intent, needed by src/events/messageCreate/ping.ts
+      Enable it under "Privileged Gateway Intents", then save:
+      https://discord.com/developers/applications/123456789012345678/bot
+      Waiting for you to enable it...
+    ✓ Privileged intents enabled
+    ```
+
+    The three options and which files need them are in [Your Discord application](/setup/discord-application#privileged-intents).
   </Accordion>
 </AccordionGroup>
 
 <Info>
-  The command only waits when it runs in a terminal. Started by another program, it stops with the explanation instead.
+  The command only waits when it runs in a terminal. Started by another program, the same two messages are errors (`✗`) and the command stops with exit code 1.
 </Info>
 
-## Instant reload
+## Reload on save
 
 Save a file and your bot uses the new version, without disconnecting:
 
@@ -77,7 +121,7 @@ Save a file and your bot uses the new version, without disconnecting:
 ↻ Reloaded in 12 ms, 1 command, 2 events loaded
 ```
 
-Every file under `src/` is watched: your [commands](/commands), your [events](/events) and the files they import. A new folder or a new file is picked up as soon as it is saved.
+Every file under `src/` is watched: your [commands](/commands), your [events](/events) and the files they import. A new file or a new folder is picked up as soon as it is saved, and several files saved at once are one reload. A file saved while the command was starting is not lost: it is reloaded right after.
 
 A file with a mistake never stops your bot. The error is shown with the file and the line, and **the last version that worked keeps running** until you fix it:
 
@@ -86,22 +130,62 @@ A file with a mistake never stops your bot. The error is shown with the file and
 ⚠ Reloaded with an error: that file keeps running its last working version
 ```
 
-When a new file needs something Discord was not asked for when connecting, the bot reconnects by itself:
+With several broken files, the message counts them: `⚠ Reloaded with 2 errors: those files keep running their last working version`. A file that never worked is left out until it does.
+
+<Info>
+  Reloading starts your files again from scratch: a variable kept in a file (a counter, a list...) goes back to its first value on every save. Packages from `node_modules` are not reloaded.
+</Info>
+
+### When your files need more from Discord
+
+The intents are given to Discord when the bot connects. When a file you save needs one the connection does not have (a new event folder, a file that now listens to private messages), the bot reconnects by itself:
 
 ```text
 ↻ Your files now need more from Discord (GUILD_MEMBERS): reconnecting...
 ✓ Reconnected, 3 events loaded
 ```
 
-<Info>
-  Reloading starts your files again from scratch: a variable kept in a file (a counter, a list...) goes back to its first value on every save.
-</Info>
+If that intent is privileged and not enabled yet, you get the same message and the same wait as before connecting. The `ready` event runs once per start, not when the bot reconnects.
+
+## Your commands on your test server
+
+Your commands are registered on your test server only, where they show up at once. Discord is told again only when something people see changed (a name, a description, an option, a translation): changing what a command *does* costs no request, and neither does starting the bot again.
+
+```text
+✓ Commands updated on My Server
+```
+
+On a reload, the line is `↻ Commands updated on Discord`. When Discord refuses what your files declare, the bot keeps running with the commands Discord already has:
+
+```text
+✗ Discord refused the commands of your project: Discord refused PUT /applications/{application.id}/guilds/{guild.id}/commands: Invalid Form Body (50035)
+    [0].name: Command name is invalid
+```
+
+A command that production already shows for everyone, exactly as your file declares it, is not added a second time. While you are changing one, your test server shows it twice and the command tells you once:
+
+```text
+ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
+```
+
+How dev and production share one bot is in [chapterjs start](/run/start#your-test-server-stays-yours).
+
+## Only your test server
+
+In dev, your bot only sees the server of `DEV_GUILD_ID`. What happens in the other servers it is in, and in private messages, is ignored, and the intents that only serve private messages are not asked for. That is for [`chapterjs start`](/run/start), which can run the same bot for everyone at the same time.
+
+What only works in private messages can't be tried in dev, and `chapterjs dev` names the file once:
+
+```text
+ℹ src/commands/settings.ts /settings only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+ℹ src/events/messageCreate/inbox.ts this messageCreate file only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+```
 
 ## The types of your project
 
 When it starts, `chapterjs dev` writes the types of your project in the `.chapterjs/` folder: this is how `event` knows, in each [event folder](/events), what its function receives. The folder is ignored by git and safe to delete.
 
-`chapterjs sync` writes them without starting the bot. Projects created with `create chapter` run it after each install, so your editor knows the types right away.
+[`chapterjs sync`](/reference/cli#chapterjs-sync) writes them without starting the bot. Projects created with `create chapter` run it after each install, so your editor knows the types right away.
 
 To check the types of your whole project from a terminal, use the `typecheck` script of your project:
 
@@ -127,15 +211,16 @@ bun typecheck
   It runs `tsc -b`. A plain `tsc` checks nothing in a ChapterJS project: your files are checked by the projects of `.chapterjs/`, which only `tsc -b` and your editor follow.
 </Warning>
 
-## Only your test server
+## While the bot runs
 
-In dev, your bot only sees the server of `DEV_GUILD_ID`. What happens in the other servers it is in, and in private messages, is ignored: that is for [`chapterjs start`](/start), which can run the same bot for everyone at the same time.
-
-What only works in private messages can't be tried in dev, and `chapterjs dev` tells you which files:
+The connection to Discord is kept alive by the framework. When it drops, the bot reconnects by itself and your files keep running:
 
 ```text
-ℹ src/commands/settings.ts /settings only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+⚠ Connection to Discord lost, reconnecting...
+↻ Reconnected to Discord
 ```
+
+An error in one of your functions is shown with the file and the line, and stops nothing else: see [when your function fails](/commands#when-your-function-fails). The bot also looks after its own memory: see [Memory](/memory).
 
 ## Stopping
 
@@ -145,12 +230,13 @@ Press `Ctrl+C`. The bot disconnects properly and goes offline at once:
 ✓ Disconnected
 ```
 
-## The symbols
+A second `Ctrl+C` stops the process without waiting; Discord then keeps the bot shown online until it notices the connection is gone.
 
-| Symbol | Meaning |
-| --- | --- |
-| `✓` | Something worked |
-| `ℹ` | Something worth knowing |
-| `↻` | A reload or a reconnection |
-| `⚠` | Something to look at; the bot keeps running |
-| `✗` | Something failed: what happened, then what to do |
+<CardGroup cols={2}>
+  <Card title="chapterjs build" icon="wrench" href="/run/build">
+    Check your bot and compile it for production.
+  </Card>
+  <Card title="Troubleshooting" icon="bug" href="/run/troubleshooting">
+    Every message, and what to do about it.
+  </Card>
+</CardGroup>

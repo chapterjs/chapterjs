@@ -1,0 +1,173 @@
+---
+title: 'Answering'
+description: 'Answer a command, keep the answer private, take your time, change it, and know what the person sees when your function fails'
+---
+
+The `interaction` your function receives is how you answer. `interaction.reply()` takes what any message takes: a text, or an object with embeds, files, components...
+
+```ts src/commands/secret.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Tells you a secret',
+  async run({ interaction, user }) {
+    // Only the person who used the command sees this answer.
+    await interaction.reply({ content: `Your id is ${user.id}.`, ephemeral: true });
+    // Another message, after the answer.
+    await interaction.followUp({ content: 'Keep it for yourself.', ephemeral: true });
+  },
+});
+```
+
+That is all: Discord shows the answer under the command, with the name of the person who used it.
+
+<Note>
+  Everything an interaction has is in the [reference](/reference/interaction). What `reply()` accepts is listed in [InteractionReplyOptions](/reference/message-options#interactionreplyoptions).
+</Note>
+
+## The five methods
+
+| Method | What it does |
+| --- | --- |
+| `interaction.reply(message)` | Answers. Once per use of the command. |
+| `interaction.defer()` | Tells Discord the answer is coming. |
+| `interaction.edit(message)` | Changes the answer. |
+| `interaction.followUp(message)` | Sends another message, after the answer. |
+| `interaction.delete()` | Deletes the answer. |
+
+Answers are sent one after the other, in the order they were asked: you can call `reply()` and `followUp()` without waiting for the first to finish, and they arrive in that order.
+
+A command answers **once**. A second `reply()` throws, and says what to do instead:
+
+```text
+✗ src/commands/twice.ts:7 This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer.
+```
+
+Likewise, `edit()` and `followUp()` need an answer first: "There is no answer to edit yet: call interaction.reply() first." and "A follow-up comes after an answer: call interaction.reply() first."
+
+## Answers only the person sees
+
+Pass `ephemeral: true` to `reply()` or `followUp()` to show that message only to the person who used the command. Nobody else sees it, and they can dismiss it.
+
+To make **every** answer of a command ephemeral, put `ephemeral: true` on the command itself. Each `reply()` and `followUp()` can still say otherwise with its own `ephemeral`:
+
+```ts src/commands/roll.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Rolls a die',
+  ephemeral: true,
+  async run({ interaction, user }) {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    // Everyone sees the roll...
+    await interaction.reply({ content: `${user.displayName} rolled a ${roll}.`, ephemeral: false });
+    // ...and only the person sees the hint.
+    await interaction.followUp('Use /roll again to try your luck.');
+  },
+});
+```
+
+## When the answer takes time
+
+Discord wants an answer within 3 seconds. **You don't have to care**: after 2 seconds without an answer, ChapterJS tells Discord the answer is coming, the person sees "thinking…", and your `reply()` completes it, up to 15 minutes later.
+
+```ts src/commands/report.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Builds a long report',
+  async run({ interaction }) {
+    await sleep(10_000); // something slow
+    await interaction.reply('Here is your report.');
+  },
+});
+```
+
+Call `interaction.defer()` yourself if you want "thinking…" to show up right away, or to choose what the answer looks like:
+
+```ts src/commands/lookup.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Looks something up',
+  options: {
+    query: { type: 'string', description: 'What to look for', required: true },
+  },
+  async run({ interaction, options }) {
+    await interaction.defer({ ephemeral: true });
+    const result = await search(options.query); // something slow
+    await interaction.reply(result);
+  },
+});
+
+async function search(query: string): Promise<string> {
+  return `Nothing found for ${query}.`;
+}
+```
+
+`interaction.deferred` tells whether the answer is still to come, and `interaction.answered` whether it was sent or promised.
+
+<Info>
+  Whether a deferred answer is ephemeral is decided when it is deferred. For a slow command whose answer must be private, put `ephemeral: true` on the command, or call `interaction.defer({ ephemeral: true })` yourself: by the time ChapterJS defers for you, it only knows what the command says.
+</Info>
+
+## Changing or deleting the answer
+
+`edit()` changes the answer that was sent. Only what you pass changes:
+
+```ts src/commands/countdown.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Counts down from 3',
+  async run({ interaction }) {
+    await interaction.reply('3...');
+    for (const step of ['2...', '1...', 'Go!']) {
+      await sleep(1000);
+      await interaction.edit(step);
+    }
+  },
+});
+```
+
+`delete()` removes it. Both work for 15 minutes after the command was used.
+
+## When your function fails
+
+An error never stops the bot. The person gets a short, private answer, and you get the error in your terminal with the file and the line:
+
+```text
+✗ src/commands/mod/ban.ts:14 Discord refused PUT /guilds/{guild.id}/bans/{user.id}: Missing Permissions (50013)
+```
+
+What the person reads depends on what happened:
+
+| What happened | The person reads |
+| --- | --- |
+| Discord refused an action for a missing permission or access | "I don't have the permission to do that here." |
+| Anything else | "Something went wrong while running this command." |
+
+If the command had already answered, the bad news comes as another private message; if the answer was pending ("thinking…"), it becomes the answer.
+
+<Tip>
+  Keep the line of your code: chain with `await`, not `.then()`. An error in something awaited is reported with the line that awaited it.
+</Tip>
+
+## A function that never answers
+
+A command must answer. When `run` finishes without calling `reply()` (or `defer()`), the person sees "The application did not respond", and your terminal says which command:
+
+```text
+⚠ src/commands/silent.ts /silent finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.
+```
+
+<CardGroup cols={2}>
+  <Card title="Translations" icon="languages" href="/commands/translations">
+    Show the command in the language of each person.
+  </Card>
+  <Card title="Sending messages" icon="mail" href="/messages">
+    Embeds, files, polls: everything an answer can contain.
+  </Card>
+</CardGroup>
