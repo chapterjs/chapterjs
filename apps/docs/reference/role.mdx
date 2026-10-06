@@ -1,7 +1,9 @@
 ---
 title: 'Role'
-description: 'A role of a server: its permissions, position and members'
+description: 'Read the permissions, position and members of a role, and change or delete it'
 ---
+
+A `Role` is a role of a server. You get one from `guild.roles`, `member.roles`, `member.highestRole`, a `role` option of a [command](/commands/options) or `guild.createRole()`. Every server has an @everyone role that every member has: `guild.everyoneRole`, whose id is the id of the server.
 
 ```ts
 import type { Guild } from 'chapterjs';
@@ -16,30 +18,75 @@ async function createModerators(guild: Guild) {
 }
 ```
 
-Every server has an `@everyone` role that every member has. Its id is the id of the server: `guild.everyoneRole`.
+<Note>
+  How to check and give permissions is in [Permissions](/reference/permissions); how a command receives a role is in [Options](/commands/options).
+</Note>
 
 ## Properties
 
-| Property | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The unique id Discord gave it. |
-| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
-| `guildId` | `Snowflake` | The id of the server of the role. |
-| `guild` | `Guild` | The server of the role. |
-| `name` | `string` | The name of the role. |
-| `color` | `number` | The color as a number (`0xff0000`); `0` means no color. |
-| `hoist` | `boolean` | Whether members with this role are shown apart in the member list. |
-| `position` | `number` | Where the role is in the hierarchy: the higher, the more powerful. |
-| `permissions` | `Permissions` | What the role allows in the server. |
-| `managed` | `boolean` | Whether the role belongs to an integration (a bot, boosters...). |
-| `mentionable` | `boolean` | Whether everyone can mention the role. |
-| `unicodeEmoji` | `string \| null` | The standard emoji shown next to the role, when it has one. |
-| `isEveryone` | `boolean` | Whether this is the @everyone role, which every member has. |
-| `members` | `GuildMember[]` | The members that have this role, among the ones the bot knows. |
+<ResponseField name="id" type="Snowflake">
+  The unique id Discord gave it.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  When it was created: a Discord id contains its creation date.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake">
+  The id of the server of the role.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  The server of the role.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the role.
+</ResponseField>
+
+<ResponseField name="color" type="number">
+  The color as a number (`0xff0000`); `0` means no color.
+</ResponseField>
+
+<ResponseField name="hoist" type="boolean">
+  Whether members with this role are shown apart in the member list.
+</ResponseField>
+
+<ResponseField name="position" type="number">
+  Where the role is in the hierarchy: the higher, the more powerful.
+</ResponseField>
+
+<ResponseField name="permissions" type="Permissions">
+  What the role allows in the server. See [Permissions](/reference/permissions).
+</ResponseField>
+
+<ResponseField name="managed" type="boolean">
+  Whether the role belongs to an integration (a bot, boosters...).
+</ResponseField>
+
+<ResponseField name="mentionable" type="boolean">
+  Whether everyone can mention the role.
+</ResponseField>
+
+<ResponseField name="unicodeEmoji" type="string | null">
+  The standard emoji shown next to the role, when it has one.
+</ResponseField>
+
+<ResponseField name="isEveryone" type="boolean">
+  Whether this is the @everyone role, which every member has.
+</ResponseField>
+
+<ResponseField name="members" type="GuildMember[]">
+  The members that have this role, among the ones the bot knows.
+</ResponseField>
+
+<Info>
+  `members` is read from the members the bot remembers (see [Memory](/memory)), so it is not always every member with the role.
+</Info>
 
 ## Helpers
 
-These read what the bot already knows: they never send a request.
+These read what the bot remembers: they never send a request.
 
 ### iconURL()
 
@@ -47,7 +94,7 @@ These read what the bot already knows: they never send a request.
 iconURL(options?: ImageOptions): string | null
 ```
 
-The URL of the icon of the role, when it has one.
+The URL of the icon of the role, when it has one. See [ImageOptions](/reference/helpers#imageoptions).
 
 ### isHigherThan()
 
@@ -67,6 +114,14 @@ toString(): string
 
 `<@&id>`: mentions the role when put in a message.
 
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+The data of Discord as a plain object, with camelCase names.
+
 ## Actions
 
 ### edit()
@@ -75,7 +130,7 @@ toString(): string
 edit(options: RoleEditOptions, reason?: string): Promise<Role>
 ```
 
-Changes the role.
+Changes the role. See [RoleEditOptions](/reference/options#roleeditoptions).
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#modify-guild-role)
 
@@ -89,4 +144,6 @@ Deletes the role.
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#delete-guild-role)
 
-See [Options](/reference/options#role-options) for what `edit()` accepts, and [Permissions](/reference/permissions) for how to read and write permissions.
+## Types
+
+`RoleEditOptions` is in [Options](/reference/options#roleeditoptions), next to `RoleCreateOptions`. `Permissions` is in [Permissions](/reference/permissions).

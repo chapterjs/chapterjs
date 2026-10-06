@@ -1,0 +1,467 @@
+---
+title: 'Channels'
+description: 'Tell the kinds of channels apart, and use what every channel, every channel of a server and every channel with messages has'
+---
+
+A channel is where things happen in Discord: a text channel, a voice channel, a category, a forum, a thread or a private conversation. Each kind has its own class, and they all share what `Channel` has. You get one from `guild.channels`, `message.channel`, the `channel` of a command, or a `channel` option.
+
+```ts
+import type { Channel } from 'chapterjs';
+
+async function announce(channel: Channel, text: string) {
+  if (!channel.isTextBased()) return; // a category or a forum: no messages there
+  await channel.send(text);
+
+  if (channel.isThread() && channel.archived) await channel.unarchive();
+}
+```
+
+<Note>
+  How to send, edit and read messages is in [Sending messages](/messages). This page lists what the channels have; each kind has its own page below.
+</Note>
+
+## Which kind of channel
+
+A channel you get from `guild.channels` or `message.channel` can be of any kind. Ask it before using what only one kind has: inside the `if`, your editor knows the kind.
+
+| Method | True for | Class |
+| --- | --- | --- |
+| `isText()` | A text or announcement channel of a server | [`TextChannel`](/reference/channels/text) |
+| `isVoice()` | A voice or stage channel | [`VoiceChannel`](/reference/channels/voice) |
+| `isCategory()` | A category, which groups channels | [`CategoryChannel`](/reference/channels/category) |
+| `isForum()` | A forum or media channel, made of posts | [`ForumChannel`](/reference/channels/forum) |
+| `isThread()` | A thread, or a post of a forum | [`ThreadChannel`](/reference/channels/thread) |
+| `isDM()` | A private conversation | [`DMChannel`](/reference/channels/dm) |
+| `isGuildChannel()` | Any channel of a server that is not a thread | [`GuildChannel`](#guildchannel) |
+| `isTextBased()` | Any channel messages can be sent in | [`TextBasedChannel`](#textbasedchannel) |
+
+`type` says the same thing as a value of [`ChannelType`](/reference/enums#channeltype):
+
+| `ChannelType` | Class |
+| --- | --- |
+| `GuildText`, `GuildAnnouncement` | `TextChannel` |
+| `GuildVoice`, `GuildStageVoice` | `VoiceChannel` |
+| `GuildCategory` | `CategoryChannel` |
+| `GuildForum`, `GuildMedia` | `ForumChannel` |
+| `AnnouncementThread`, `PublicThread`, `PrivateThread` | `ThreadChannel` |
+| `Dm`, `GroupDm` | `DMChannel` |
+
+A kind Discord added after this version is still usable: as a `GuildChannel` when it is in a server, as a `Channel` otherwise.
+
+<CardGroup cols={2}>
+  <Card title="TextChannel" icon="hash" href="/reference/channels/text">
+    A text or announcement channel of a server.
+  </Card>
+  <Card title="VoiceChannel" icon="volume-2" href="/reference/channels/voice">
+    A voice or stage channel: people talk in it, and can write too.
+  </Card>
+  <Card title="CategoryChannel" icon="layout-grid" href="/reference/channels/category">
+    A category: it groups channels.
+  </Card>
+  <Card title="ForumChannel" icon="list" href="/reference/channels/forum">
+    A forum or media channel: it only contains posts, which are threads.
+  </Card>
+  <Card title="ThreadChannel" icon="message-circle" href="/reference/channels/thread">
+    A thread, or a post of a forum.
+  </Card>
+  <Card title="DMChannel" icon="mail" href="/reference/channels/dm">
+    A private conversation between the bot and a user.
+  </Card>
+</CardGroup>
+
+## Channel
+
+A channel of any kind. Use the `is...()` methods to know which kind it is and get the properties and actions of that kind. Every class of this section has what is listed here.
+
+### Properties
+
+<ResponseField name="id" type="Snowflake">
+  The unique id Discord gave it.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  When it was created: a Discord id contains its creation date.
+</ResponseField>
+
+<ResponseField name="type" type="ChannelType">
+  The kind of channel, as a value of `ChannelType`.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  The id of the server of the channel; `null` for a private one.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild | null">
+  The server of the channel; `null` for a private one.
+</ResponseField>
+
+### Helpers
+
+These read what the bot already knows: they never send a request.
+
+#### isTextBased()
+
+```ts
+isTextBased(): this is TextBasedChannel
+```
+
+Whether messages can be sent in it.
+
+#### isGuildChannel()
+
+```ts
+isGuildChannel(): this is GuildChannel
+```
+
+Whether it belongs to a server and is not a thread.
+
+#### isText()
+
+```ts
+isText(): this is TextChannel
+```
+
+A text or announcement channel of a server.
+
+#### isVoice()
+
+```ts
+isVoice(): this is VoiceChannel
+```
+
+A voice or stage channel.
+
+#### isCategory()
+
+```ts
+isCategory(): this is CategoryChannel
+```
+
+A category, which groups channels.
+
+#### isForum()
+
+```ts
+isForum(): this is ForumChannel
+```
+
+A forum or media channel, made of posts.
+
+#### isThread()
+
+```ts
+isThread(): this is ThreadChannel
+```
+
+A thread, or a post of a forum.
+
+#### isDM()
+
+```ts
+isDM(): this is DMChannel
+```
+
+A private conversation.
+
+#### toString()
+
+```ts
+toString(): string
+```
+
+`<#id>`: links the channel when put in a message.
+
+#### toJSON()
+
+```ts
+toJSON(): object
+```
+
+The data of Discord as a plain object, with camelCase names.
+
+### Reading from Discord
+
+#### fetch()
+
+```ts
+fetch(): Promise<Channel>
+```
+
+Asks Discord for the latest data of the channel.
+
+### Actions
+
+#### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Deletes the channel (closes it, for a private conversation).
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#deleteclose-channel)
+
+## GuildChannel
+
+A channel of a server (not a thread). `TextChannel`, `VoiceChannel`, `CategoryChannel` and `ForumChannel` have everything listed here, plus what [`Channel`](#channel) has.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function lock(channel: TextChannel) {
+  const everyone = channel.guild.everyoneRole;
+  // Nobody can write any more, but everyone still reads.
+  await channel.setPermissions(everyone, { deny: ['SendMessages'] }, 'Channel locked');
+}
+```
+
+### Properties
+
+<ResponseField name="guildId" type="Snowflake">
+  The id of the server of the channel.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  The server of the channel.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the channel.
+</ResponseField>
+
+<ResponseField name="position" type="number">
+  Where the channel is in the list.
+</ResponseField>
+
+<ResponseField name="parentId" type="Snowflake | null">
+  The id of the category of the channel, when it is in one.
+</ResponseField>
+
+<ResponseField name="parent" type="CategoryChannel | null">
+  The category of the channel, when it is in one and it is known.
+</ResponseField>
+
+<ResponseField name="nsfw" type="boolean">
+  Whether the channel is age-restricted.
+</ResponseField>
+
+<ResponseField name="permissionOverwrites" type="PermissionOverwrite[]">
+  What roles and members are allowed or denied in this channel. Each entry is a [`PermissionOverwrite`](/reference/data#permissionoverwrite).
+</ResponseField>
+
+### Helpers
+
+#### permissionsFor()
+
+```ts
+permissionsFor(member: GuildMember): Permissions
+```
+
+What a member can do in this channel: their permissions in the server, changed by the overwrites of the channel.
+
+[Discord documentation](https://docs.discord.com/developers/topics/permissions#permission-overwrites)
+
+### Reading from Discord
+
+#### fetchInvites()
+
+```ts
+fetchInvites(): Promise<Invite[]>
+```
+
+The invites that lead to this channel.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#get-channel-invites)
+
+#### fetchWebhooks()
+
+```ts
+fetchWebhooks(): Promise<Webhook[]>
+```
+
+The webhooks that post in this channel.
+
+[Discord documentation](https://docs.discord.com/developers/resources/webhook#get-channel-webhooks)
+
+### Actions
+
+#### edit()
+
+```ts
+edit(options: GuildChannelEditOptions, reason?: string): Promise<this>
+```
+
+Changes the channel. The options are a [`GuildChannelEditOptions`](/reference/options#guildchanneleditoptions).
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#modify-channel)
+
+#### setPermissions()
+
+```ts
+setPermissions(
+  target: Role | GuildMember | User,
+  permissions: { allow?: PermissionResolvable; deny?: PermissionResolvable },
+  reason?: string
+): Promise<void>
+```
+
+Allows or denies permissions to a role or a member in this channel. Permissions that are in neither list follow the server.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#edit-channel-permissions)
+
+#### deletePermissions()
+
+```ts
+deletePermissions(target: Snowflake | { id: Snowflake }, reason?: string): Promise<void>
+```
+
+Removes what was set for a role or a member in this channel.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#delete-channel-permission)
+
+#### createInvite()
+
+```ts
+createInvite(options?: InviteCreateOptions, reason?: string): Promise<Invite>
+```
+
+Creates an invite to this channel. The options are an [`InviteCreateOptions`](/reference/options#invitecreateoptions).
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#create-channel-invite)
+
+#### createWebhook()
+
+```ts
+createWebhook(options: { name: string; avatar?: string | null }, reason?: string): Promise<Webhook>
+```
+
+Creates a webhook that posts in this channel: see [Webhook](/reference/webhook).
+
+<ResponseField name="name" type="string" required>
+  The name of the webhook (1 to 80 characters).
+</ResponseField>
+
+<ResponseField name="avatar" type="string | null">
+  The image of the default avatar of the webhook, as a data URI (`data:image/png;base64,...`).
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/webhook#create-webhook)
+
+## Channels with messages
+
+`TextChannel`, `VoiceChannel`, `ThreadChannel` and `DMChannel` can all send and read messages: they share the properties and methods of this section. Together they are the [`TextBasedChannel`](#textbasedchannel) type.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function clean(channel: TextChannel) {
+  const messages = await channel.fetchMessages({ limit: 100 });
+  const fromBots = messages.filter(message => message.author.bot);
+  const deleted = await channel.bulkDelete(fromBots, 'Cleaning bot messages');
+  await channel.send(`Deleted ${deleted} messages.`);
+}
+```
+
+### Properties
+
+<ResponseField name="messages" type="ReadonlyMap<Snowflake, Message>">
+  The messages of the channel the bot remembers.
+</ResponseField>
+
+<ResponseField name="lastMessageId" type="Snowflake | null">
+  The id of the last message sent in the channel, when known.
+</ResponseField>
+
+<Info>
+  `messages` is empty unless one of your files asks for messages to be remembered: see [what the bot remembers](/memory). `fetchMessage()` and `fetchMessages()` always work.
+</Info>
+
+### Reading from Discord
+
+#### fetchMessage()
+
+```ts
+fetchMessage(id: Snowflake, options?: { force?: boolean }): Promise<Message>
+```
+
+A message of the channel: from what the bot remembers, or else from Discord.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#get-channel-message)
+
+#### fetchMessages()
+
+```ts
+fetchMessages(options?: FetchMessagesOptions): Promise<Message[]>
+```
+
+The latest messages of the channel, newest first. The options are a [`FetchMessagesOptions`](/reference/options#fetchmessagesoptions).
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#get-channel-messages)
+
+#### fetchPins()
+
+```ts
+fetchPins(): Promise<Message[]>
+```
+
+The pinned messages of the channel, latest pin first.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#get-channel-pins)
+
+### Actions
+
+#### send()
+
+```ts
+send(message: MessageInput): Promise<Message>
+```
+
+Sends a message in the channel. What it accepts is a [`MessageInput`](/reference/message-options#messageinput).
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#create-message)
+
+#### bulkDelete()
+
+```ts
+bulkDelete(messages: readonly (Snowflake | { id: Snowflake })[], reason?: string): Promise<number>
+```
+
+Deletes several messages at once. Messages older than two weeks can't be deleted in bulk: they are left out, and their number is not counted in the result.
+
+Returns how many messages were deleted.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#bulk-delete-messages)
+
+#### sendTyping()
+
+```ts
+sendTyping(): Promise<void>
+```
+
+Shows "the bot is typing…" for 10 seconds, or until it sends a message.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#trigger-typing-indicator)
+
+## Types
+
+### TextBasedChannel
+
+```ts
+type TextBasedChannel = GuildTextBasedChannel | DMChannel
+```
+
+Any channel messages can be sent in. It is what `message.channel` and `interaction.channel` give; `isTextBased()` narrows a `Channel` to it.
+
+### GuildTextBasedChannel
+
+```ts
+type GuildTextBasedChannel = TextChannel | VoiceChannel | ThreadChannel
+```
+
+Any channel of a server messages can be sent in. It is the `channel` of a [`GuildMessage`](/reference/message#guildmessage) and of a command used in a server.
+
+### Elsewhere
+
+- [`PermissionOverwrite`](/reference/data#permissionoverwrite): an entry of `permissionOverwrites`.
+- [`GuildChannelEditOptions`](/reference/options#guildchanneleditoptions), [`InviteCreateOptions`](/reference/options#invitecreateoptions) and [`FetchMessagesOptions`](/reference/options#fetchmessagesoptions): what `edit()`, `createInvite()` and `fetchMessages()` take.
+- [`MessageInput`](/reference/message-options#messageinput): what `send()` takes.

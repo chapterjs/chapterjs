@@ -35,6 +35,7 @@ export type InteractionData = Omit<RawInteraction, 'user' | 'member'>;
 /** An answer to an interaction: its text, or its options. */
 export type InteractionReply = string | InteractionReplyOptions;
 
+/** The options of an answer: everything a message takes, except `replyTo` and `stickers`. */
 export interface InteractionReplyOptions extends Omit<
   MessageOptions,
   'replyTo' | 'stickers'
@@ -329,8 +330,11 @@ export interface GuildCommandInteraction extends CommandInteraction {
  * how it is told apart from `GuildCommandInteraction`.
  */
 export interface PrivateCommandInteraction extends CommandInteraction {
+  /** No server: it happened in a private message. */
   readonly guildId: null;
+  /** No server: it happened in a private message. */
   readonly guild: null;
+  /** No member: the person is `user`. */
   readonly member: null;
   /** The private conversation it happened in. */
   readonly channel: DMChannel;

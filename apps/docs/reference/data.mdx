@@ -1,224 +1,280 @@
 ---
 title: 'Data'
-description: 'The plain objects returned for attachments, reactions, audit logs, scheduled events and more'
+description: 'Read the plain objects you get for attachments, reactions, tags, overwrites, bans, audit logs, events, rules and stickers'
 ---
 
-Some things have no class of their own: you get them as plain objects, with the fields of the Discord API in camelCase. A `?` after a name means the field is not always there.
+Some things have no class of their own: you get them as plain objects, with the fields of Discord written in camelCase. They have no methods, and nothing on them sends a request.
 
-## In messages
+<Note>
+  The structures that have a page of their own are listed in the [overview](/reference). What a message contains when you send one is in [Message options](/reference/message-options).
+</Note>
 
-### Attachment
+Two things hold everywhere on this page:
 
-An item of `message.attachments`.
+- A date is a `string` in ISO 8601 (`'2026-10-06T12:00:00.000000+00:00'`): `new Date(value)` turns it into a `Date`.
+- A user inside plain data is plain data too (`id`, `username`, `globalName`, `avatar`...), not a [`User`](/reference/user). Only `Ban` holds a real `User`.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | Attachment id |
-| `filename` | `string` | Name of file attached |
-| `title?` | `string` | The title of the file |
-| `description?` | `string` | Description (alt text) for the file (max 1024 characters) |
-| `contentType?` | `string` | The attachment's media type |
-| `size` | `number` | Size of file in bytes |
-| `url` | `string` | Source url of file |
-| `proxyUrl` | `string` | A proxied url of file |
-| `height?` | `number \| null` | Height of file (if image or video) |
-| `width?` | `number \| null` | Width of file (if image or video) |
-| `placeholder?` | `string` | Thumbhash placeholder (if image or video) |
-| `placeholderVersion?` | `number` | Version of the placeholder (if image or video) |
-| `ephemeral?` | `boolean` | Whether this attachment is ephemeral |
-| `durationSecs?` | `number` | The duration of the audio or video file |
-| `waveform?` | `string` | Base64 encoded bytearray representing a sampled waveform (currently for voice messages) |
-| `flags?` | `number` | Attachment flags combined as a bitfield |
-| `clipParticipants?` | `User[]` | For Clips, array of users who were in the stream |
-| `clipCreatedAt?` | `ISO8601Timestamp` | For Clips, when the clip was created |
-| `application?` | `Partial<Application> \| null` | For Clips, the application in the stream, if recognized |
+```ts
+import type { Message } from 'chapterjs';
+
+function images(message: Message) {
+  return message.attachments.filter(file => file.contentType?.startsWith('image/'));
+}
+```
+
+## Attachment
+
+A file attached to a message. You read them in `message.attachments`.
+
+<ResponseField name="id" type="Snowflake" required>The id of the attachment.</ResponseField>
+<ResponseField name="filename" type="string" required>The name of the file.</ResponseField>
+<ResponseField name="title" type="string">The title of the file.</ResponseField>
+<ResponseField name="description" type="string">What the file shows, for people who can't see it (1024 characters at most).</ResponseField>
+<ResponseField name="contentType" type="string">The media type of the file (`image/png`).</ResponseField>
+<ResponseField name="size" type="number" required>The size of the file, in bytes.</ResponseField>
+<ResponseField name="url" type="string" required>The URL of the file.</ResponseField>
+<ResponseField name="proxyUrl" type="string" required>The URL of the file through the proxy of Discord.</ResponseField>
+<ResponseField name="height" type="number | null">The height, for an image or a video.</ResponseField>
+<ResponseField name="width" type="number | null">The width, for an image or a video.</ResponseField>
+<ResponseField name="placeholder" type="string">A tiny blurred preview of an image or a video, as a thumbhash.</ResponseField>
+<ResponseField name="placeholderVersion" type="number">The version of that preview.</ResponseField>
+<ResponseField name="ephemeral" type="boolean">Whether the file belongs to an ephemeral message: it disappears with it.</ResponseField>
+<ResponseField name="durationSecs" type="number">The length of an audio or video file, in seconds.</ResponseField>
+<ResponseField name="waveform" type="string">The sampled waveform of a voice message, as base64.</ResponseField>
+<ResponseField name="flags" type="number">The flags of the attachment, as a bit field.</ResponseField>
+<ResponseField name="clipParticipants" type="object[]">For a clip of a stream, the users who were in the stream (plain data).</ResponseField>
+<ResponseField name="clipCreatedAt" type="string">For a clip of a stream, when it was recorded.</ResponseField>
+<ResponseField name="application" type="object | null">For a clip of a stream, the application that was streamed, when Discord recognized it (plain data).</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/message#attachment-object-attachment-structure)
 
-### Reaction
+## Reaction
 
-An item of `message.reactions`.
+The reactions of one emoji on a message. You read them in `message.reactions`, one entry per emoji.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `count` | `number` | Total number of times this emoji has been used to react (including super reacts) |
-| `countDetails` | `ReactionCountDetails` | Reaction count details object |
-| `me` | `boolean` | Whether the current user reacted using this emoji |
-| `meBurst` | `boolean` | Whether the current user super-reacted using this emoji |
-| `emoji` | `Partial<Emoji>` | Emoji information |
-| `burstColors` | `string[]` | HEX colors used for super reaction |
+<ResponseField name="count" type="number" required>How many times the emoji was used, super reactions included.</ResponseField>
+<ResponseField name="countDetails" type="object" required>
+  The same count, split.
+  <Expandable title="fields">
+    <ResponseField name="normal" type="number" required>How many normal reactions.</ResponseField>
+    <ResponseField name="burst" type="number" required>How many super reactions.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="me" type="boolean" required>Whether the bot reacted with this emoji.</ResponseField>
+<ResponseField name="meBurst" type="boolean" required>Whether the bot super-reacted with this emoji.</ResponseField>
+<ResponseField name="emoji" type="object" required>
+  The emoji.
+  <Expandable title="fields">
+    <ResponseField name="id" type="Snowflake | null">The id of a custom emoji; `null` for a standard one.</ResponseField>
+    <ResponseField name="name" type="string | null">The name of a custom emoji, or the character of a standard one.</ResponseField>
+    <ResponseField name="animated" type="boolean">Whether a custom emoji is animated.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="burstColors" type="string[]" required>The colors of the super reactions, as hex text.</ResponseField>
+
+To react or read who reacted, see [Message](/reference/message): `react()`, `fetchReactionUsers()`.
 
 [Discord documentation](https://docs.discord.com/developers/resources/message#reaction-object-reaction-structure)
 
-### countDetails
+## ForumTag
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `burst` | `number` | Count of super reactions |
-| `normal` | `number` | Count of normal reactions |
+A tag the posts of a forum can have. You read them in `forum.availableTags`, and pass them in `availableTags` when you [create](/reference/options#channelcreateoptions) or [edit](/reference/options#guildchanneleditoptions) a forum channel.
 
-[Discord documentation](https://docs.discord.com/developers/resources/message#reaction-count-details-object-reaction-count-details-structure)
+<ResponseField name="id" type="Snowflake" required>The id of the tag.</ResponseField>
+<ResponseField name="name" type="string" required>The name of the tag (0-20 characters).</ResponseField>
+<ResponseField name="moderated" type="boolean" required>Whether only members with the `ManageThreads` permission can add the tag to a post or remove it.</ResponseField>
+<ResponseField name="emojiId" type="Snowflake | null" required>The id of a custom emoji of the server shown next to the tag.</ResponseField>
+<ResponseField name="emojiName" type="string | null" required>A standard emoji shown next to the tag, as its character.</ResponseField>
 
-The fields of `message.embeds` are in [Sending messages](/reference/sending-messages#embeds).
-
-## In channels
-
-### ForumTag
-
-An item of `forum.availableTags`.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The id of the tag |
-| `name` | `string` | The name of the tag (0-20 characters) |
-| `moderated` | `boolean` | Whether this tag can only be added to or removed from threads by a member with the `MANAGE_THREADS` permission |
-| `emojiId` | `Snowflake \| null` | The id of a guild's custom emoji * |
-| `emojiName` | `string \| null` | The unicode character of the emoji * |
+A tag has either `emojiId` or `emojiName`, or neither.
 
 [Discord documentation](https://docs.discord.com/developers/resources/channel#forum-tag-object-forum-tag-structure)
 
-### ThreadMember
+## ThreadMember
 
-An item of what `thread.fetchMembers()` returns.
+Someone in a thread, and since when. `thread.fetchMembers()` returns a list of them.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id?` | `Snowflake` | ID of the thread |
-| `userId?` | `Snowflake` | ID of the user |
-| `joinTimestamp` | `ISO8601Timestamp` | Time the user last joined the thread |
-| `flags` | `number` | Any user-thread settings, currently only used for notifications |
+<ResponseField name="id" type="Snowflake">The id of the thread.</ResponseField>
+<ResponseField name="userId" type="Snowflake">The id of the user.</ResponseField>
+<ResponseField name="joinTimestamp" type="string" required>When the user last joined the thread.</ResponseField>
+<ResponseField name="flags" type="number" required>The settings of the user for the thread, as a bit field; today only about notifications.</ResponseField>
+
+To get the member behind it, use `guild.fetchMember(threadMember.userId)`.
 
 [Discord documentation](https://docs.discord.com/developers/resources/channel#thread-member-object-thread-member-structure)
 
-## In servers
+## PermissionOverwrite
 
-### AuditLog
+What a role or a member is allowed or denied in one channel. You read them in `channel.permissionOverwrites`.
 
-What `guild.fetchAuditLog()` returns.
+<ResponseField name="id" type="Snowflake" required>The id of the role or of the member.</ResponseField>
+<ResponseField name="type" type="'role' | 'member'" required>Whether it applies to a role or to a member.</ResponseField>
+<ResponseField name="allow" type="Permissions" required>What is allowed, whatever the server says.</ResponseField>
+<ResponseField name="deny" type="Permissions" required>What is denied, whatever the server says.</ResponseField>
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `applicationCommands` | `ApplicationCommand[]` | List of application commands referenced in the audit log |
-| `auditLogEntries` | `AuditLogEntry[]` | List of audit log entries, sorted from most to least recent |
-| `autoModerationRules` | `AutoModerationRule[]` | List of auto moderation rules referenced in the audit log |
-| `guildScheduledEvents` | `GuildScheduledEvent[]` | List of guild scheduled events referenced in the audit log |
-| `integrations` | `Partial<Integration>[]` | List of partial integration objects |
-| `threads` | `Channel[]` | List of threads referenced in the audit log* |
-| `users` | `User[]` | List of users referenced in the audit log |
-| `webhooks` | `Webhook[]` | List of webhooks referenced in the audit log |
+`allow` and `deny` are [`Permissions`](/reference/permissions) sets, so `overwrite.allow.has('SendMessages')` works. To change an overwrite, use `channel.setPermissions()` and `channel.deletePermissions()`; the `permissionOverwrites` field of [`ChannelCreateOptions`](/reference/options#channelcreateoptions) has another shape, the one Discord takes.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#overwrite-object-overwrite-structure)
+
+## Ban
+
+A ban of a server. `guild.fetchBan()` returns one, `guild.fetchBans()` a list.
+
+<ResponseField name="user" type="User" required>Who is banned.</ResponseField>
+<ResponseField name="reason" type="string | null" required>Why, when a reason was given.</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/guild#ban-object-ban-structure)
+
+## AuditLog
+
+What moderators and bots did in a server: its entries, newest first, and what they refer to. `guild.fetchAuditLog()` returns one.
+
+<ResponseField name="auditLogEntries" type="object[]" required>
+  The entries, from the most recent to the oldest.
+  <Expandable title="fields of an entry">
+    <ResponseField name="id" type="Snowflake" required>The id of the entry.</ResponseField>
+    <ResponseField name="actionType" type="AuditLogEvent" required>What happened: a value of [`AuditLogEvent`](/reference/enums#auditlogevent).</ResponseField>
+    <ResponseField name="targetId" type="string | null" required>The id of what was affected: a webhook, a user, a role...</ResponseField>
+    <ResponseField name="userId" type="Snowflake | null" required>The id of the user or the app that did it.</ResponseField>
+    <ResponseField name="reason" type="string">The reason given (1-512 characters).</ResponseField>
+    <ResponseField name="changes" type="object[]">
+      What changed on the target.
+      <Expandable title="fields of a change">
+        <ResponseField name="key" type="string" required>The name of what changed, with a few exceptions Discord lists.</ResponseField>
+        <ResponseField name="oldValue" type="unknown">The value before.</ResponseField>
+        <ResponseField name="newValue" type="unknown">The value after.</ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="options" type="object">
+      More details for some kinds of entries. Every field can be missing; counts and days are text, as Discord sends them.
+      <Expandable title="fields">
+        <ResponseField name="applicationId" type="Snowflake">The id of the app whose permissions were changed.</ResponseField>
+        <ResponseField name="autoModerationRuleName" type="string">The name of the auto moderation rule that was triggered.</ResponseField>
+        <ResponseField name="autoModerationRuleTriggerType" type="string">What triggers that rule.</ResponseField>
+        <ResponseField name="channelId" type="Snowflake">The channel where it happened.</ResponseField>
+        <ResponseField name="count" type="string">How many things were affected.</ResponseField>
+        <ResponseField name="deleteMemberDays" type="string">After how many days of inactivity members were pruned.</ResponseField>
+        <ResponseField name="id" type="Snowflake">The id of the role or member whose overwrite changed.</ResponseField>
+        <ResponseField name="membersRemoved" type="string">How many members the prune removed.</ResponseField>
+        <ResponseField name="messageId" type="Snowflake">The id of the message that was pinned or unpinned.</ResponseField>
+        <ResponseField name="roleName" type="string">The name of the role, when `type` is `"0"`.</ResponseField>
+        <ResponseField name="type" type="string">Whose overwrite changed: `"0"` a role, `"1"` a member.</ResponseField>
+        <ResponseField name="integrationType" type="string">The kind of integration that did it.</ResponseField>
+        <ResponseField name="status" type="string">The new status of the voice channel.</ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="users" type="object[]" required>The users the entries refer to (plain data).</ResponseField>
+<ResponseField name="webhooks" type="object[]" required>The webhooks the entries refer to (plain data).</ResponseField>
+<ResponseField name="threads" type="object[]" required>The threads the entries refer to (plain data).</ResponseField>
+<ResponseField name="integrations" type="object[]" required>The integrations the entries refer to, partially (plain data).</ResponseField>
+<ResponseField name="applicationCommands" type="object[]" required>The commands the entries refer to (plain data).</ResponseField>
+<ResponseField name="autoModerationRules" type="AutoModerationRule[]" required>The auto moderation rules the entries refer to.</ResponseField>
+<ResponseField name="guildScheduledEvents" type="ScheduledEvent[]" required>The scheduled events the entries refer to.</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-object-audit-log-structure)
 
-### auditLogEntries
+## ScheduledEvent
 
-`actionType` is a value of [`AuditLogEvent`](/reference/values#auditlogevent).
+An event scheduled in a server: when it happens, where, and how often. `guild.fetchScheduledEvents()` returns a list, `guild.createScheduledEvent()` the one it created.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `targetId` | `string \| null` | ID of the affected entity (webhook, user, role, etc.) |
-| `changes?` | `AuditLogChange[]` | Changes made to the target_id |
-| `userId` | `Snowflake \| null` | User or app that made the changes |
-| `id` | `Snowflake` | ID of the entry |
-| `actionType` | `AuditLogEvent` | Type of action that occurred |
-| `options?` | `OptionalAuditEntryInfo` | Additional info for certain event types |
-| `reason?` | `string` | Reason for the change (1-512 characters) |
-
-[Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-entry-object-audit-log-entry-structure)
-
-### changes
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `newValue?` | `unknown` | New value of the key |
-| `oldValue?` | `unknown` | Old value of the key |
-| `key` | `string` | Name of the changed entity, with a few exceptions |
-
-[Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-change-object-audit-log-change-structure)
-
-### ScheduledEvent
-
-An item of what `guild.fetchScheduledEvents()` returns.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The id of the scheduled event |
-| `guildId` | `Snowflake` | The guild id which the scheduled event belongs to |
-| `channelId` | `Snowflake \| null` | The channel id in which the scheduled event will be hosted, or `null` if scheduled entity type is `EXTERNAL` |
-| `creatorId?` | `Snowflake \| null` | The id of the user that created the scheduled event * |
-| `name` | `string` | The name of the scheduled event (1-100 characters) |
-| `description?` | `string \| null` | The description of the scheduled event (1-1000 characters) |
-| `scheduledStartTime` | `ISO8601Timestamp` | The time the scheduled event will start |
-| `scheduledEndTime` | `ISO8601Timestamp \| null` | The time the scheduled event will end, required if entity_type is `EXTERNAL` |
-| `privacyLevel` | `GuildScheduledEventPrivacyLevel` | The privacy level of the scheduled event |
-| `status` | `GuildScheduledEventStatus` | The status of the scheduled event |
-| `entityType` | `GuildScheduledEventEntityType` | The type of the scheduled event |
-| `entityId` | `Snowflake \| null` | The id of an entity associated with a guild scheduled event |
-| `entityMetadata` | `GuildScheduledEventEntityMetadata \| null` | Additional metadata for the guild scheduled event |
-| `creator?` | `User` | The user that created the scheduled event |
-| `userCount?` | `number` | The number of users subscribed to the scheduled event |
-| `image?` | `string \| null` | The cover image hash of the scheduled event |
-| `recurrenceRule` | `GuildScheduledEventRecurrenceRule \| null` | The definition for how often this event should recur |
+<ResponseField name="id" type="Snowflake" required>The id of the event.</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>The id of the server.</ResponseField>
+<ResponseField name="channelId" type="Snowflake | null" required>The id of the channel where the event takes place; `null` when it takes place outside Discord.</ResponseField>
+<ResponseField name="creatorId" type="Snowflake | null">The id of the user who created the event.</ResponseField>
+<ResponseField name="name" type="string" required>The name of the event (1-100 characters).</ResponseField>
+<ResponseField name="description" type="string | null">The description of the event (1-1000 characters).</ResponseField>
+<ResponseField name="scheduledStartTime" type="string" required>When the event starts.</ResponseField>
+<ResponseField name="scheduledEndTime" type="string | null" required>When the event ends; always set for an event outside Discord.</ResponseField>
+<ResponseField name="privacyLevel" type="2" required>Who can see the event: `2`, the members of the server.</ResponseField>
+<ResponseField name="status" type="1 | 2 | 3 | 4" required>`1` scheduled, `2` active, `3` completed, `4` canceled.</ResponseField>
+<ResponseField name="entityType" type="1 | 2 | 3" required>Where it takes place: `1` a stage channel, `2` a voice channel, `3` outside Discord.</ResponseField>
+<ResponseField name="entityId" type="Snowflake | null" required>The id of what the event is tied to, when there is one.</ResponseField>
+<ResponseField name="entityMetadata" type="object | null" required>
+  More about the place.
+  <Expandable title="fields">
+    <ResponseField name="location" type="string">Where the event takes place, for an event outside Discord (1-100 characters).</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="creator" type="object">The user who created the event (plain data).</ResponseField>
+<ResponseField name="userCount" type="number">How many users are interested in the event.</ResponseField>
+<ResponseField name="image" type="string | null">The hash of the cover image.</ResponseField>
+<ResponseField name="recurrenceRule" type="object | null" required>
+  How often the event repeats; `null` when it happens once.
+  <Expandable title="fields">
+    <ResponseField name="start" type="string" required>When the repetition starts.</ResponseField>
+    <ResponseField name="end" type="string | null" required>When the repetition ends.</ResponseField>
+    <ResponseField name="frequency" type="0 | 1 | 2 | 3" required>`0` yearly, `1` monthly, `2` weekly, `3` daily.</ResponseField>
+    <ResponseField name="interval" type="number" required>The spacing between two occurrences, in units of `frequency`: weekly with an interval of `2` is every other week.</ResponseField>
+    <ResponseField name="byWeekday" type="number[] | null" required>The days of the week it repeats on, from `0` (Monday) to `6` (Sunday).</ResponseField>
+    <ResponseField name="byNWeekday" type="object[] | null" required>Days of a given week of the month: `{ n, day }`, with `n` the week (1-5) and `day` the weekday.</ResponseField>
+    <ResponseField name="byMonth" type="number[] | null" required>The months it repeats on, from `1` (January) to `12` (December).</ResponseField>
+    <ResponseField name="byMonthDay" type="number[] | null" required>The days of the month it repeats on.</ResponseField>
+    <ResponseField name="byYearDay" type="number[] | null" required>The days of the year it repeats on (1-364).</ResponseField>
+    <ResponseField name="count" type="number | null" required>How many times it repeats before stopping.</ResponseField>
+  </Expandable>
+</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild-scheduled-event#guild-scheduled-event-object-guild-scheduled-event-structure)
 
-### AutoModerationRule
+## AutoModerationRule
 
-An item of what `guild.fetchAutoModerationRules()` returns.
+A rule Discord applies by itself to the messages of a server: what triggers it, and what it does then. `guild.fetchAutoModerationRules()` returns a list.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The id of this rule |
-| `guildId` | `Snowflake` | The id of the guild which this rule belongs to |
-| `name` | `string` | The rule name |
-| `creatorId` | `Snowflake` | The user which first created this rule |
-| `eventType` | `AutoModerationEventType` | The rule event type |
-| `triggerType` | `AutoModerationTriggerType` | The rule trigger type |
-| `triggerMetadata` | `AutoModerationTriggerMetadata` | The rule trigger metadata |
-| `actions` | `AutoModerationAction[]` | The actions which will execute when the rule is triggered |
-| `enabled` | `boolean` | Whether the rule is enabled |
-| `exemptRoles` | `Snowflake[]` | The role ids that should not be affected by the rule (Maximum of 20) |
-| `exemptChannels` | `Snowflake[]` | The channel ids that should not be affected by the rule (Maximum of 50) |
+<ResponseField name="id" type="Snowflake" required>The id of the rule.</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>The id of the server.</ResponseField>
+<ResponseField name="name" type="string" required>The name of the rule.</ResponseField>
+<ResponseField name="creatorId" type="Snowflake" required>The id of the user who created the rule.</ResponseField>
+<ResponseField name="eventType" type="1 | 2" required>When the rule is checked: `1` a member sends or edits a message, `2` a member edits their profile.</ResponseField>
+<ResponseField name="triggerType" type="1 | 3 | 4 | 5 | 6" required>What triggers it: `1` words from a list, `3` spam, `4` words from a preset list of Discord, `5` too many mentions, `6` words from a list in the profile of a member.</ResponseField>
+<ResponseField name="triggerMetadata" type="object" required>
+  The details of the trigger. Which fields are there depends on `triggerType`.
+  <Expandable title="fields">
+    <ResponseField name="keywordFilter" type="string[]">The words or parts of words searched for (1000 at most).</ResponseField>
+    <ResponseField name="regexPatterns" type="string[]">The regular expressions matched against the content (10 at most).</ResponseField>
+    <ResponseField name="presets" type="number[]">The preset lists of Discord searched for: `1` profanity, `2` sexual content, `3` slurs.</ResponseField>
+    <ResponseField name="allowList" type="string[]">The words that never trigger the rule (100 or 1000 at most, depending on the trigger).</ResponseField>
+    <ResponseField name="mentionTotalLimit" type="number">How many different roles and users a message may mention (50 at most).</ResponseField>
+    <ResponseField name="mentionRaidProtectionEnabled" type="boolean">Whether mention raids are detected by themselves.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="actions" type="object[]" required>
+  What happens when the rule is triggered.
+  <Expandable title="fields of an action">
+    <ResponseField name="type" type="1 | 2 | 3 | 4" required>`1` block the message, `2` send an alert in a channel, `3` time the member out, `4` block the member from using text, voice and other interactions.</ResponseField>
+    <ResponseField name="metadata" type="object">
+      What the action needs.
+      <Expandable title="fields">
+        <ResponseField name="channelId" type="Snowflake">The channel where the alert is sent.</ResponseField>
+        <ResponseField name="durationSeconds" type="number">How long the timeout lasts, in seconds.</ResponseField>
+        <ResponseField name="customMessage" type="string | null">What the member is told when their message is blocked.</ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="enabled" type="boolean" required>Whether the rule is on.</ResponseField>
+<ResponseField name="exemptRoles" type="Snowflake[]" required>The ids of the roles the rule ignores (20 at most).</ResponseField>
+<ResponseField name="exemptChannels" type="Snowflake[]" required>The ids of the channels the rule ignores (50 at most).</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-rule-object-auto-moderation-rule-structure)
 
-### triggerMetadata
+## Sticker
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `keywordFilter?` | `string[]` | Substrings which will be searched for in content (Maximum of 1000) |
-| `regexPatterns?` | `string[]` | Regular expression patterns which will be matched against content (Maximum of 10) |
-| `presets?` | `AutoModerationKeywordPresetType[]` | The internally pre-defined wordsets which will be searched for in content |
-| `allowList?` | `string[]` | Substrings which should not trigger the rule (Maximum of 100 or 1000) |
-| `mentionTotalLimit?` | `number` | Total number of unique role and user mentions allowed per message (Maximum of 50) |
-| `mentionRaidProtectionEnabled?` | `boolean` | Whether to automatically detect mention raids |
+A sticker: one of a server, or a standard one from a pack. `guild.fetchStickers()` returns the ones of a server.
 
-[Discord documentation](https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-rule-object-trigger-metadata)
+<ResponseField name="id" type="Snowflake" required>The id of the sticker.</ResponseField>
+<ResponseField name="packId" type="Snowflake">For a standard sticker, the id of its pack.</ResponseField>
+<ResponseField name="name" type="string" required>The name of the sticker.</ResponseField>
+<ResponseField name="description" type="string | null" required>The description of the sticker.</ResponseField>
+<ResponseField name="tags" type="string" required>The words that suggest the sticker when typing (200 characters at most).</ResponseField>
+<ResponseField name="type" type="1 | 2" required>`1` a standard sticker from a pack, `2` a sticker of a server.</ResponseField>
+<ResponseField name="formatType" type="1 | 2 | 3 | 4" required>The format of the image: `1` PNG, `2` APNG, `3` Lottie, `4` GIF.</ResponseField>
+<ResponseField name="available" type="boolean">Whether the sticker of a server can be used; `false` when the server lost the boosts it needed.</ResponseField>
+<ResponseField name="guildId" type="Snowflake">The id of the server that owns the sticker.</ResponseField>
+<ResponseField name="user" type="object">The user who uploaded the sticker (plain data).</ResponseField>
+<ResponseField name="sortValue" type="number">The place of a standard sticker in its pack.</ResponseField>
 
-### actions
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `type` | `AutoModerationActionType` | The type of action |
-| `metadata?` | `AutoModerationActionMetadata` | Additional metadata needed during execution for this specific action type |
-
-[Discord documentation](https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-action-object-auto-moderation-action-structure)
-
-### Sticker
-
-An item of what `guild.fetchStickers()` returns.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | Id of the sticker |
-| `packId?` | `Snowflake` | For standard stickers, id of the pack the sticker is from |
-| `name` | `string` | Name of the sticker |
-| `description` | `string \| null` | Description of the sticker |
-| `tags` | `string` | Autocomplete/suggestion tags for the sticker (max 200 characters) |
-| `type` | `StickerType` | Type of sticker |
-| `formatType` | `StickerFormatType` | Type of sticker format |
-| `available?` | `boolean` | Whether this guild sticker can be used, may be false due to loss of Server Boosts |
-| `guildId?` | `Snowflake` | Id of the guild that owns this sticker |
-| `user?` | `User` | The user that uploaded the guild sticker |
-| `sortValue?` | `number` | The standard sticker's sort order within its pack |
+To send one, pass its id in the `stickers` of a message: see [Message options](/reference/message-options).
 
 [Discord documentation](https://docs.discord.com/developers/resources/sticker#sticker-object-sticker-structure)

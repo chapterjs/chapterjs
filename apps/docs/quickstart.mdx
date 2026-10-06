@@ -1,15 +1,9 @@
 ---
 title: 'Quickstart'
-description: 'Create your first ChapterJS bot in a minute'
+description: 'Create a bot, run it on your test server and change its first command, in a few minutes'
 ---
 
-## Prerequisites
-
-- Node.js 22.18 or newer
-- A Discord application with a bot, from the [Developer Portal](https://discord.com/developers/applications)
-- A Discord server where you can test your bot
-
-## Get started
+You need [Node.js](https://nodejs.org) 22.18 or newer, a Discord application with a bot, and a server to test in. If you don't have the application yet, [Your Discord application](/setup/discord-application) shows how to create one: it takes two minutes and gives you the two values of step 2.
 
 <Steps>
   <Step title="Create the project">
@@ -35,24 +29,35 @@ description: 'Create your first ChapterJS bot in a minute'
 
     It asks you up to three questions:
 
-    1. **Where to create the project**: a folder name like `my-bot`, or `.` to use the current folder. The folder must be new or empty.
+    1. **Where to create the project**: a folder name like `my-bot`, or `.` for the current folder. The folder must be new or empty.
     2. **Which package manager to use**: only the ones installed on your computer can be picked, and the one you ran the command with is selected by default.
     3. **Which template to start from**.
 
-    A question with only one possible answer is skipped: if you have a single package manager installed, it is used directly, and so is the template while there is only one.
+    A question with only one possible answer is skipped: with a single package manager installed, it is used and you are told so; the same goes for the template while there is only one.
 
-    It then copies the template and installs the dependencies.
+    The template is copied, the dependencies are installed, and the next steps are printed.
 
     <Tip>
-      You can skip the first question by passing the folder name: `pnpm create chapter my-bot`.
+      Pass the folder name to skip the first question: `pnpm create chapter my-bot`.
     </Tip>
 
   </Step>
-  <Step title="Configure">
-    Copy `.env.example` to `.env` and fill in:
+  <Step title="Give it your bot">
+    In the new folder, copy `.env.example` to `.env` and fill in the two values:
 
-    - `BOT_TOKEN`: your bot token, from the **Bot** page of your application.
-    - `DEV_GUILD_ID`: the ID of your test server (right-click the server, then **Copy Server ID**).
+    ```bash .env
+    BOT_TOKEN=
+    DEV_GUILD_ID=
+    ```
+
+    - `BOT_TOKEN`: the token of your bot, from the **Bot** page of your application in the [Developer Portal](https://discord.com/developers/applications).
+    - `DEV_GUILD_ID`: the ID of your test server.
+
+    Where to find both is in [Your Discord application](/setup/discord-application).
+
+    <Warning>
+      Your token is a password: never share it, and never commit `.env`. The project already ignores it in git.
+    </Warning>
 
   </Step>
   <Step title="Run it">
@@ -74,11 +79,23 @@ description: 'Create your first ChapterJS bot in a minute'
     ```
     </CodeGroup>
 
-    Your bot connects to your test server. If something is missing (the bot is not in the server yet, an option to enable...), the command tells you what to do and waits for you: see [chapterjs dev](/dev).
+    Your bot connects to your test server:
+
+    ```text
+    ✓ Connected to My Server as my-bot
+    ℹ Intents computed from your files: GUILDS
+    ✓ 1 command, 1 event loaded
+    my-bot is online in 1 server(s)
+    ✓ Commands updated on My Server
+    ```
+
+    The fourth line is printed by the `ready` event of the template, `src/events/ready/online.ts`.
+
+    If the bot is not in your test server yet, the command prints a link that adds it there and waits for you. If one of your files needs an option that is not enabled for your bot, it says which one and where to enable it, and waits too. Every message says what to do: see [chapterjs dev](/run/dev).
 
   </Step>
   <Step title="Try your first command">
-    The default template comes with a command, in `src/commands/ping.ts`:
+    The template comes with one command, `/ping`:
 
     ```ts src/commands/ping.ts
     import { command } from 'chapterjs';
@@ -91,12 +108,30 @@ description: 'Create your first ChapterJS bot in a minute'
     });
     ```
 
-    Type `/ping` in your test server. Then change the answer and save: your bot reloads instantly.
+    Type `/ping` in your test server: the bot answers "Pong!". Now change the answer and save the file:
 
-    The path of a file is the name of its command, and a folder in `src/events/` is something your bot reacts to: see [Commands](/commands) and [Events](/events).
+    ```text
+    ↻ Reloaded in 12 ms, 1 command, 1 event loaded
+    ```
+
+    Use `/ping` again: it answers with the new text.
 
   </Step>
 </Steps>
 
-When your bot is ready for everyone, put your project on a machine that stays on, then run [`chapterjs build`](/build) and [`chapterjs start`](/start) there.
+That is all. The path of the file is the name of the command: `src/commands/ping.ts` is `/ping`, and nothing registers it. ChapterJS reads the file, tells Discord about the command and runs `run` when someone uses it. The folder of an event works the same way: every file of `src/events/ready/` runs when the bot is connected.
 
+To add a command, add a file in `src/commands/`. To react to something that happens on Discord, add a folder named after it in `src/events/` and a file inside. What goes where is in [Project structure](/setup/project-structure).
+
+When your bot is ready for everyone, put it on a machine that stays on: see [Deploy](/run/deploy).
+
+<Note>Everything the `chapterjs` command does is in the [CLI reference](/reference/cli).</Note>
+
+<CardGroup cols={2}>
+  <Card title="Project structure" icon="folder-tree" href="/setup/project-structure">
+    What each folder and file of your project is for.
+  </Card>
+  <Card title="Commands" icon="terminal" href="/commands">
+    One file per slash command, options typed for you.
+  </Card>
+</CardGroup>

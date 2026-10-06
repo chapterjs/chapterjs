@@ -1,9 +1,9 @@
 ---
 title: 'GuildMember'
-description: 'A user as a member of one server: nickname, roles, permissions and moderation'
+description: 'Read the nickname, roles and permissions of a member and moderate them: timeout, kick, ban'
 ---
 
-A `GuildMember` is a [user](/reference/user) in one server. The same person has one `User`, and one `GuildMember` per server they are in.
+A `GuildMember` is a [user](/reference/user) as a member of one server: the same person has one `User`, and one `GuildMember` per server they are in. You get one as the `member` of a [command](/reference/interaction) used in a server, with the events about members and messages, and from `guild.members` or `guild.fetchMember()`.
 
 ```ts
 import type { GuildMember } from 'chapterjs';
@@ -11,36 +11,84 @@ import type { GuildMember } from 'chapterjs';
 async function mute(member: GuildMember, moderator: GuildMember) {
   if (!moderator.permissions.has('ModerateMembers')) return 'You are not allowed to do that.';
   if (!moderator.isHigherThan(member)) return 'You can only time out members below you.';
-
   await member.timeout(10 * 60 * 1000, `Timed out by ${moderator.displayName}`);
   return `${member.displayName} is timed out for 10 minutes.`;
 }
 ```
 
+<Note>
+  How your functions receive a member is in [Commands](/commands) and [Events](/events). Which members the bot remembers is in [Memory](/memory).
+</Note>
+
 ## Properties
 
-| Property | Type | Description |
-| --- | --- | --- |
-| `guildId` | `Snowflake` | The id of the server. |
-| `user` | `User` | The account of the member. |
-| `id` | `Snowflake` | The id of the user. |
-| `guild` | `Guild` | The server the member is in. |
-| `nick` | `string \| null` | The nickname of the member in this server, when they have one. |
-| `displayName` | `string` | The name to show: nickname, or display name, or username. |
-| `roleIds` | `readonly Snowflake[]` | The ids of the roles of the member (@everyone is not listed). |
-| `roles` | `Role[]` | The roles of the member, @everyone included, highest first. |
-| `highestRole` | `Role` | The highest role of the member in the hierarchy; @everyone at least. |
-| `joinedAt` | `Date \| null` | When the member joined the server. |
-| `boostingSince` | `Date \| null` | Since when the member boosts the server. |
-| `pending` | `boolean` | Whether the member has not passed the membership screening yet. |
-| `timeoutUntil` | `Date \| null` | Until when the member is timed out; `null` when they are not. |
-| `isTimedOut` | `boolean` | Whether the member is timed out right now. |
-| `isOwner` | `boolean` | Whether the member owns the server. |
-| `permissions` | `Permissions` | What the member can do in the server (channels may change it: see `permissionsIn`). |
+<ResponseField name="guildId" type="Snowflake">
+  The id of the server.
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  The account of the member.
+</ResponseField>
+
+<ResponseField name="id" type="Snowflake">
+  The id of the user.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  The server the member is in.
+</ResponseField>
+
+<ResponseField name="nick" type="string | null">
+  The nickname of the member in this server, when they have one.
+</ResponseField>
+
+<ResponseField name="displayName" type="string">
+  The name to show: nickname, or display name, or username.
+</ResponseField>
+
+<ResponseField name="roleIds" type="readonly Snowflake[]">
+  The ids of the roles of the member (@everyone is not listed).
+</ResponseField>
+
+<ResponseField name="roles" type="Role[]">
+  The roles of the member, @everyone included, highest first.
+</ResponseField>
+
+<ResponseField name="highestRole" type="Role">
+  The highest role of the member in the hierarchy; @everyone at least.
+</ResponseField>
+
+<ResponseField name="joinedAt" type="Date | null">
+  When the member joined the server.
+</ResponseField>
+
+<ResponseField name="boostingSince" type="Date | null">
+  Since when the member boosts the server.
+</ResponseField>
+
+<ResponseField name="pending" type="boolean">
+  Whether the member has not passed the membership screening yet.
+</ResponseField>
+
+<ResponseField name="timeoutUntil" type="Date | null">
+  Until when the member is timed out; `null` when they are not.
+</ResponseField>
+
+<ResponseField name="isTimedOut" type="boolean">
+  Whether the member is timed out right now.
+</ResponseField>
+
+<ResponseField name="isOwner" type="boolean">
+  Whether the member owns the server.
+</ResponseField>
+
+<ResponseField name="permissions" type="Permissions">
+  What the member can do in the server (channels may change it: see `permissionsIn`). See [Permissions](/reference/permissions).
+</ResponseField>
 
 ## Helpers
 
-These read what the bot already knows: they never send a request.
+These read what the bot remembers: they never send a request.
 
 ### permissionsIn()
 
@@ -56,7 +104,7 @@ What the member can do in a channel of the server.
 avatarURL(options?: ImageOptions): string
 ```
 
-The avatar of the member in this server, or else of their account.
+The avatar of the member in this server, or else of their account. See [ImageOptions](/reference/helpers#imageoptions).
 
 ### isHigherThan()
 
@@ -84,6 +132,14 @@ toString(): string
 
 `<@id>`: mentions the member when put in a message.
 
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+The data of Discord as a plain object, with camelCase names.
+
 ## Actions
 
 ### edit()
@@ -92,7 +148,7 @@ toString(): string
 edit(options: MemberEditOptions, reason?: string): Promise<GuildMember>
 ```
 
-Changes the member.
+Changes the member. See [MemberEditOptions](#membereditoptions).
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#modify-guild-member)
 
@@ -130,9 +186,7 @@ Takes a role from the member.
 timeout(duration: number, reason?: string): Promise<GuildMember>
 ```
 
-Prevents the member from writing, reacting and speaking for a while.
-
-- `duration`: how long, in milliseconds (28 days at most)
+Prevents the member from writing, reacting and speaking for a while. `duration` is how long, in milliseconds (28 days at most).
 
 ### removeTimeout()
 
@@ -158,7 +212,7 @@ Removes the member from the server; they can come back with an invite.
 ban(options?: BanOptions): Promise<void>
 ```
 
-Bans the member from the server.
+Bans the member from the server. See [BanOptions](#banoptions).
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#create-guild-ban)
 
@@ -168,26 +222,46 @@ Bans the member from the server.
 send(message: MessageInput): Promise<Message>
 ```
 
-Sends a private message to the member.
+Sends a private message to the member. See [MessageInput](/reference/message-options#messageinput).
 
 ## Types
 
-A `?` after a name means the field can be left out.
+### BanOptions
+
+What `ban()` takes, on a member or on a [server](/reference/guild#ban). Every field can be left out.
+
+<ResponseField name="reason" type="string">
+  Why, shown in the audit log of the server.
+</ResponseField>
+
+<ResponseField name="deleteMessageSeconds" type="number">
+  Also deletes the messages the user sent in the last seconds given: from 0 (the default, nothing) to 604800 (7 days).
+</ResponseField>
 
 ### MemberEditOptions
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `nick?` | `string \| null` | The nickname; `null` removes it. |
-| `roles?` | `(Snowflake \| Role)[]` | Replaces every role of the member. |
-| `mute?` | `boolean` | Mutes the member in voice channels. |
-| `deaf?` | `boolean` | Deafens the member in voice channels. |
-| `voiceChannel?` | `Snowflake \| { id: Snowflake } \| null` | Moves the member to another voice channel; `null` disconnects them. |
-| `timeoutUntil?` | `Date \| null` | Until when the member is timed out; `null` ends the timeout. |
+What `edit()` takes. Every field can be left out: only what you pass changes.
 
-### BanOptions
+<ResponseField name="nick" type="string | null">
+  The nickname; `null` removes it.
+</ResponseField>
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `reason?` | `string` | Why, shown in the audit log of the server. |
-| `deleteMessageSeconds?` | `number` | Also deletes the messages the user sent in the last seconds given: from 0 (the default, nothing) to 604800 (7 days). |
+<ResponseField name="roles" type="(Snowflake | Role)[]">
+  Replaces every role of the member.
+</ResponseField>
+
+<ResponseField name="mute" type="boolean">
+  Mutes the member in voice channels.
+</ResponseField>
+
+<ResponseField name="deaf" type="boolean">
+  Deafens the member in voice channels.
+</ResponseField>
+
+<ResponseField name="voiceChannel" type="Snowflake | { id: Snowflake } | null">
+  Moves the member to another voice channel; `null` disconnects them.
+</ResponseField>
+
+<ResponseField name="timeoutUntil" type="Date | null">
+  Until when the member is timed out; `null` ends the timeout.
+</ResponseField>

@@ -49,8 +49,11 @@ export type MessageData = Omit<RawMessage, 'author' | 'mentions'> & {
   guild_id?: Snowflake;
 };
 
+/** The name of a flag of a message: a key of `MessageFlags`. */
 export type MessageFlagName = keyof typeof MessageFlags;
+/** A file attached to a message. */
 export type Attachment = Camelize<RawAttachment>;
+/** The reactions of one emoji on a message. */
 export type Reaction = Camelize<RawReaction>;
 
 /** An emoji to react with: a standard one (`"👍"`), or a custom one. */
@@ -409,8 +412,11 @@ export interface MemberMessage extends GuildMessage {
  * from a `GuildMessage`.
  */
 export interface PrivateMessage extends Message {
+  /** No server: it is a private message. */
   readonly guildId: null;
+  /** No server: it is a private message. */
   readonly guild: null;
+  /** No member: the author is `author`. */
   readonly member: null;
   /** The private conversation, when the bot knows it. */
   readonly channel: DMChannel | null;

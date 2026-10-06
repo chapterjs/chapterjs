@@ -33,7 +33,7 @@ import type {
 import type { Role } from '../structures/role.js';
 import type { User } from '../structures/user.js';
 
-/** What the handler of each event receives. */
+/** What your function receives, for each event. */
 export interface EventContexts {
   /** The bot is connected and knows every server it is in. */
   ready: {
@@ -43,12 +43,20 @@ export interface EventContexts {
     guilds: ReadonlyMap<Snowflake, Guild>;
   };
   /** A message was sent, in a server or in private. */
-  messageCreate: { message: Message };
+  messageCreate: {
+    /** The message that was sent. */
+    message: Message;
+  };
   /** A message was edited. */
-  messageUpdate: { message: Message };
+  messageUpdate: {
+    /** The message, as it is now. */
+    message: Message;
+  };
   /** A message was deleted. */
   messageDelete: {
+    /** The id of the deleted message. */
     messageId: Snowflake;
+    /** The id of the channel the message was in. */
     channelId: Snowflake;
     /** The id of the server; `null` for a private message. */
     guildId: Snowflake | null;
@@ -60,45 +68,86 @@ export interface EventContexts {
     message: Message | null;
   };
   /** Someone joined a server. */
-  memberJoin: { member: GuildMember; guild: Guild };
+  memberJoin: {
+    /** The new member. */
+    member: GuildMember;
+    /** The server they joined. */
+    guild: Guild;
+  };
   /** Someone left a server, or was kicked or banned. */
   memberLeave: {
+    /** The account of who left. */
     user: User;
+    /** The server they left. */
     guild: Guild;
     /** The member as it was, when the bot knew it. */
     member: GuildMember | null;
   };
   /** A member changed: nickname, roles, timeout, avatar... */
-  memberUpdate: { member: GuildMember; guild: Guild };
+  memberUpdate: {
+    /** The member, as they are now. */
+    member: GuildMember;
+    /** The server of the member. */
+    guild: Guild;
+  };
   /** The bot was added to a server. */
-  guildJoin: { guild: Guild };
+  guildJoin: {
+    /** The server the bot was added to. */
+    guild: Guild;
+  };
   /** The bot was removed from a server. */
-  guildLeave: { guild: Guild };
+  guildLeave: {
+    /** The server as it was, when the bot was in it. */
+    guild: Guild;
+  };
   /** A channel was created. */
-  channelCreate: { channel: GuildChannel | ThreadChannel | Channel };
+  channelCreate: {
+    /** The new channel or thread. */
+    channel: GuildChannel | ThreadChannel | Channel;
+  };
   /** A channel changed: name, topic, permissions... */
-  channelUpdate: { channel: GuildChannel | ThreadChannel | Channel };
+  channelUpdate: {
+    /** The channel or thread, as it is now. */
+    channel: GuildChannel | ThreadChannel | Channel;
+  };
   /** A channel was deleted. */
-  channelDelete: { channel: GuildChannel | ThreadChannel | Channel };
+  channelDelete: {
+    /** The channel or thread as it was. */
+    channel: GuildChannel | ThreadChannel | Channel;
+  };
   /** A role was created. */
-  roleCreate: { role: Role; guild: Guild };
+  roleCreate: {
+    /** The new role. */
+    role: Role;
+    /** The server of the role. */
+    guild: Guild;
+  };
   /** A role changed: name, color, permissions, position... */
-  roleUpdate: { role: Role; guild: Guild };
+  roleUpdate: {
+    /** The role, as it is now. */
+    role: Role;
+    /** The server of the role. */
+    guild: Guild;
+  };
   /** A role was deleted. */
   roleDelete: {
+    /** The id of the deleted role. */
     roleId: Snowflake;
+    /** The server the role was in. */
     guild: Guild;
     /** The role as it was. */
     role: Role;
   };
 }
 
+/** The name of an event: the name of a folder of `src/events/`. */
 export type EventName = keyof EventContexts;
 
 /**
  * What `event()` returns: the default export of an event file.
  */
 export interface EventFile {
+  /** The function to run when the event happens. */
   readonly handler: (context: never) => unknown;
   /** What the file passed as second argument, not checked yet. */
   readonly options: unknown;
@@ -190,7 +239,9 @@ interface DeletedInGuild extends Deleted {
 
 /** A private message deleted, for a file that receives both kinds. */
 interface DeletedInPrivate extends Deleted {
+  /** No server: the message was private. */
   guildId: null;
+  /** No server: the message was private. */
   guild: null;
   /** The private conversation, when the bot knows it. */
   channel: DMChannel | null;
@@ -223,7 +274,7 @@ interface NarrowedContexts<Options> {
 }
 
 /**
- * What the handler of an event receives, given the options its file passed
+ * What your function receives for an event, given the options its file passed
  * to `event()`. `EventContexts` is the widest form: every option on.
  */
 export type ContextOf<

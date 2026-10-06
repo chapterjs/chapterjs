@@ -1,0 +1,344 @@
+---
+title: 'command()'
+description: 'Everything a command file declares, every kind of option, and what the run function receives'
+---
+
+`command()` is what a file of `src/commands/` exports by default. It takes one object, `CommandConfig`, and types `run` from it.
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Replies with Pong!',
+  async run({ interaction }) {
+    await interaction.reply('Pong!');
+  },
+});
+```
+
+<Note>
+  How to write a command, its options, its answers and its translations is in the [guide](/commands). This page lists what exists.
+</Note>
+
+## command()
+
+```ts
+command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild'>(config: CommandConfig<Options, Where>): CommandFile
+```
+
+Declares a slash command. Export the result as the default export of a file of `src/commands/`: the path of the file is the name of the command (`src/commands/mod/ban.ts` is `/mod ban`).
+
+`Options` and `Where` are inferred from what you pass: you never write them.
+
+### CommandFile
+
+What `command()` returns: the default export of a command file.
+
+<ResponseField name="config" type="unknown">
+  What the file gave to `command()`, not checked yet.
+</ResponseField>
+
+## CommandConfig
+
+What a command file gives to `command()`: what the command is and does.
+
+<ResponseField name="description" type="string" required>
+  What the command does, shown under its name (1-100 characters).
+</ResponseField>
+
+<ResponseField name="run" type="(context: CommandContext<Options, Where>) => unknown" required>
+  What to do when someone uses the command.
+</ResponseField>
+
+<ResponseField name="options" type="CommandOptions">
+  What the user can fill in (25 options at most).
+</ResponseField>
+
+<ResponseField name="locales" type="CommandLocales<Options>">
+  The command in other languages: Discord shows each person the names and descriptions of their language. Your code always receives the names declared above, whatever the language.
+
+  [Discord documentation](https://docs.discord.com/developers/interactions/application-commands#localization)
+</ResponseField>
+
+<ResponseField name="permissions" type="readonly PermissionName[]">
+  The permissions a member needs to use the command. Server admins can change who sees it in the server settings.
+</ResponseField>
+
+<ResponseField name="where" type="CommandWhere">
+  Where the command can be used: `'guild'` (in servers, the default), `'dm'` (in private messages with the bot) or `'both'`. What `run` receives follows it.
+</ResponseField>
+
+<ResponseField name="nsfw" type="boolean">
+  Only show the command in age-restricted channels.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean">
+  Make the answers of the command only visible to who used it.
+</ResponseField>
+
+### CommandWhere
+
+```ts
+CommandWhere = 'guild' | 'dm' | 'both'
+```
+
+Where a command can be used: in servers (`'guild'`), in private messages with the bot (`'dm'`), or in both.
+
+[Discord documentation](https://docs.discord.com/developers/interactions/application-commands#interaction-contexts)
+
+## The options
+
+### CommandOptions
+
+```ts
+CommandOptions = Readonly<Record<string, CommandOption>>
+```
+
+The options of a command, by name. A name is made of lowercase letters, digits, `-` and `_`, 32 characters at most.
+
+### CommandOption
+
+```ts
+CommandOption = StringOption | NumberOption | ChannelOption | SimpleOption
+```
+
+One option of a command. Every kind has these fields:
+
+<ResponseField name="type" type="string" required>
+  The kind of option: `'string'`, `'integer'`, `'number'`, `'boolean'`, `'user'`, `'role'`, `'channel'`, `'mentionable'` or `'attachment'`.
+</ResponseField>
+
+<ResponseField name="description" type="string" required>
+  What the option is for, shown under its name (1-100 characters).
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether the user must fill it in. By default it is optional.
+</ResponseField>
+
+### StringOption
+
+A text the user types, or picks among `choices`.
+
+<ResponseField name="type" type="'string'" required>
+  The kind of option: a text.
+</ResponseField>
+
+<ResponseField name="choices" type="readonly string[] | Readonly<Record<string, string>>">
+  The only values the user can pick (25 at most): a list, or an object whose keys are what the user sees and values what your code receives.
+</ResponseField>
+
+<ResponseField name="minLength" type="number">
+  The shortest text accepted, in characters (0 to 6000).
+</ResponseField>
+
+<ResponseField name="maxLength" type="number">
+  The longest text accepted, in characters (1 to 6000).
+</ResponseField>
+
+### NumberOption
+
+A whole number (`integer`) or any number (`number`).
+
+<ResponseField name="type" type="'integer' | 'number'" required>
+  The kind of option: a whole number, or any number.
+</ResponseField>
+
+<ResponseField name="choices" type="readonly number[] | Readonly<Record<string, number>>">
+  The only values the user can pick (25 at most): a list, or an object whose keys are what the user sees and values what your code receives.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  The smallest value accepted.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  The largest value accepted.
+</ResponseField>
+
+For an `'integer'` option, `min`, `max` and the choices must be whole numbers.
+
+### ChannelOption
+
+A channel the user picks.
+
+<ResponseField name="type" type="'channel'" required>
+  The kind of option: a channel.
+</ResponseField>
+
+<ResponseField name="channelTypes" type="readonly ChannelType[]">
+  The kinds of channels that can be picked. By default, all of them. The values are those of [`ChannelType`](/reference/enums#channeltype).
+</ResponseField>
+
+### SimpleOption
+
+True or false, a user, a role, a user or a role, or a file.
+
+<ResponseField name="type" type="'boolean' | 'user' | 'role' | 'mentionable' | 'attachment'" required>
+  The kind of option: what the user picks.
+</ResponseField>
+
+### OptionValuesOf
+
+```ts
+OptionValuesOf<Options extends CommandOptions>
+```
+
+The values of the options, typed from their declaration: a required option is always there, an optional one may be `undefined`. It is the type of `options` in `run`.
+
+| `type` | Value |
+| --- | --- |
+| `'string'` | `string` |
+| `'integer'` | `number` |
+| `'number'` | `number` |
+| `'boolean'` | `boolean` |
+| `'user'` | [`User`](/reference/user) |
+| `'role'` | [`Role`](/reference/role) |
+| `'channel'` | [`Channel`](/reference/channels) |
+| `'mentionable'` | `User \| Role` |
+| `'attachment'` | [`Attachment`](/reference/data#attachment) |
+
+With `choices`, the value is the union of the choices: `'red' | 'green'` for `choices: ['red', 'green']`, `1 | 2` for `choices: { Small: 1, Large: 2 }`.
+
+## What run receives
+
+### CommandContext
+
+```ts
+CommandContext<Options extends CommandOptions = CommandOptions, Where extends CommandWhere = 'guild'>
+```
+
+What the `run` function of a command receives. It follows `where`: in a server, the server, the member and the channel are there; in private messages they do not exist; in both, `if (guild)` tells which one it is, for everything at once.
+
+Whatever `where` says, it has:
+
+<ResponseField name="options" type="OptionValuesOf<Options>" required>
+  What the user filled in.
+</ResponseField>
+
+<ResponseField name="user" type="User" required>
+  Who used the command.
+</ResponseField>
+
+And the rest follows `where`:
+
+| `where` | The rest of the context |
+| --- | --- |
+| `'guild'` (the default) | `CommandInGuild` |
+| `'dm'` | `CommandInDm` |
+| `'both'` | `CommandInGuild \| CommandInPrivate` |
+
+### CommandInGuild
+
+What a command used in a server receives about where it was used.
+
+<ResponseField name="interaction" type="GuildCommandInteraction" required>
+  The use of the command: what to answer with.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild" required>
+  The server the command was used in.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember" required>
+  Who used the command, as a member of the server.
+</ResponseField>
+
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  The channel the command was used in.
+</ResponseField>
+
+### CommandInDm
+
+What a command only used in private messages receives: no server.
+
+<ResponseField name="interaction" type="DmCommandInteraction" required>
+  The use of the command: what to answer with.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  The private conversation the command was used in.
+</ResponseField>
+
+### CommandInPrivate
+
+What a command that works in both places receives when it is used in a private message: `guild` is `null`, and checking it tells the rest.
+
+<ResponseField name="interaction" type="PrivateCommandInteraction" required>
+  The use of the command: what to answer with.
+</ResponseField>
+
+<ResponseField name="guild" type="null" required>
+  No server: the command was used in a private message.
+</ResponseField>
+
+<ResponseField name="member" type="null" required>
+  No member: the person is `user`.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  The private conversation the command was used in.
+</ResponseField>
+
+The interactions themselves are described in [Interaction](/reference/interaction).
+
+## Translations
+
+### CommandLocales
+
+```ts
+CommandLocales<Options extends CommandOptions = CommandOptions> = {
+  readonly [Language in Locale]?: CommandTranslation<Options>;
+}
+```
+
+The translations of a command, by language. The keys are the values of [`Locale`](/reference/enums#locale): `fr`, `de`, `es-ES`...
+
+### CommandTranslation
+
+The translation of a command in one language. Everything is optional: what is not translated is shown as declared.
+
+<ResponseField name="name" type="string">
+  The name of the command in that language (same rules as a name).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description of the command in that language (1-100 characters).
+</ResponseField>
+
+<ResponseField name="options" type="{ readonly [Name in keyof Options]?: OptionTranslation }">
+  The translation of each option, by the name declared in `options`.
+</ResponseField>
+
+### OptionTranslation
+
+The translation of one option. Everything is optional.
+
+<ResponseField name="name" type="string">
+  The name of the option in that language (same rules as a name).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description of the option in that language (1-100 characters).
+</ResponseField>
+
+<ResponseField name="choices" type="{ readonly [Choice: string]?: string }">
+  What each choice is called in that language. The keys are the choices as declared: the values of a list, or the keys of an object. Each value is 1 to 100 characters.
+</ResponseField>
+
+## The limits
+
+What a file declares is checked when it loads, against the limits of Discord, with a message that says what to write:
+
+| What | Limit |
+| --- | --- |
+| A name (command, option, translated name) | Lowercase letters, digits, `-` and `_`, 32 characters at most |
+| A description (command, option, translated description) | 1 to 100 characters |
+| Depth of a command | A command, a group and a subcommand: 2 folders at most |
+| Options of a command | 25 at most |
+| Choices of an option | 1 to 25, each shown as 1 to 100 characters, none twice |
+| `minLength`, `maxLength` | Whole numbers between 0 and 6000, `minLength` not above `maxLength` |
+| `min`, `max` | `min` not above `max`; whole numbers for an `'integer'` option |
+| The translated names of the options | No two options with the same name in one language |
+
+[Discord documentation](https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-naming)

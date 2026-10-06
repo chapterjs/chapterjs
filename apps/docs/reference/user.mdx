@@ -1,9 +1,9 @@
 ---
 title: 'User'
-description: 'A Discord account, the same in every server'
+description: 'Read a Discord account, get its avatar and send it a private message'
 ---
 
-A `User` is a Discord account. For what is specific to one server (nickname, roles, permissions), see [GuildMember](/reference/member).
+A `User` is a Discord account, the same in every server. You get one as the `user` of a [command](/reference/interaction), as `message.author`, as `member.user` and as the `user` of the `memberLeave` [event](/reference/events). For what is specific to one server (nickname, roles, permissions), see [GuildMember](/reference/member).
 
 ```ts
 import type { User } from 'chapterjs';
@@ -17,31 +17,71 @@ async function greet(user: User) {
 }
 ```
 
+<Note>
+  How your functions receive a user is in [Commands](/commands) and [Events](/events). What a private message can hold is in [Messages](/messages).
+</Note>
+
 <Warning>
-  Sending a private message fails when the user has closed their DMs or shares no server with the bot. Catch the error if that is fine for you: see [Errors](/reference/errors).
+  Sending a private message fails when the user has closed their private messages or shares no server with the bot. Catch the error when that is fine for you: see [Errors](/reference/errors).
 </Warning>
 
 ## Properties
 
-| Property | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The unique id Discord gave it. |
-| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
-| `username` | `string` | The unique name of the account (`@name`). |
-| `globalName` | `string \| null` | The name shown in Discord, when the user chose one. |
-| `displayName` | `string` | The name to show: the display name, or else the username. |
-| `discriminator` | `string` | `"0"` for users on the current username system. |
-| `bot` | `boolean` | Whether the account is a bot. |
-| `system` | `boolean` | Whether the account is an official Discord system account. |
-| `avatar` | `string \| null` | The hash of the avatar; use `avatarURL()` to get the image. |
-| `banner` | `string \| null` | The hash of the banner; use `bannerURL()` to get the image. |
-| `accentColor` | `number \| null` | The banner color, as a number (`0xff0000`). |
-| `locale` | `Locale \| null` | Only known for the bot itself. |
-| `flags` | `UserFlagName[]` | The public badges of the account, by name. |
+<ResponseField name="id" type="Snowflake">
+  The unique id Discord gave it.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  When it was created: a Discord id contains its creation date.
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  The unique name of the account (`@name`).
+</ResponseField>
+
+<ResponseField name="globalName" type="string | null">
+  The name shown in Discord, when the user chose one.
+</ResponseField>
+
+<ResponseField name="displayName" type="string">
+  The name to show: the display name, or else the username.
+</ResponseField>
+
+<ResponseField name="discriminator" type="string">
+  `"0"` for users on the current username system.
+</ResponseField>
+
+<ResponseField name="bot" type="boolean">
+  Whether the account is a bot.
+</ResponseField>
+
+<ResponseField name="system" type="boolean">
+  Whether the account is an official Discord system account.
+</ResponseField>
+
+<ResponseField name="avatar" type="string | null">
+  The hash of the avatar; use `avatarURL()` to get the image.
+</ResponseField>
+
+<ResponseField name="banner" type="string | null">
+  The hash of the banner; use `bannerURL()` to get the image.
+</ResponseField>
+
+<ResponseField name="accentColor" type="number | null">
+  The banner color, as a number (`0xff0000`).
+</ResponseField>
+
+<ResponseField name="locale" type="Locale | null">
+  Only known for the bot itself. See [Locale](/reference/enums#locale).
+</ResponseField>
+
+<ResponseField name="flags" type="UserFlagName[]">
+  The public badges of the account, by name. See [UserFlagName](#userflagname).
+</ResponseField>
 
 ## Helpers
 
-These read what the bot already knows: they never send a request.
+These read what the bot remembers: they never send a request.
 
 ### avatarURL()
 
@@ -49,7 +89,7 @@ These read what the bot already knows: they never send a request.
 avatarURL(options?: ImageOptions): string
 ```
 
-The URL of the avatar; of the default one when none is set.
+The URL of the avatar; of the default one when none is set. See [ImageOptions](/reference/helpers#imageoptions).
 
 ### bannerURL()
 
@@ -57,7 +97,7 @@ The URL of the avatar; of the default one when none is set.
 bannerURL(options?: ImageOptions): string | null
 ```
 
-The URL of the banner, when one is set.
+The URL of the banner, when one is set. See [ImageOptions](/reference/helpers#imageoptions).
 
 ### toString()
 
@@ -66,6 +106,14 @@ toString(): string
 ```
 
 `<@id>`: mentions the user when put in a message.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+The data of Discord as a plain object, with camelCase names.
 
 ## Reading from Discord
 
@@ -85,7 +133,7 @@ Asks Discord for the latest data of this user.
 createDM(): Promise<DMChannel>
 ```
 
-Opens the private conversation with this user.
+Opens the private conversation with this user. See [DMChannel](/reference/channels/dm).
 
 [Discord documentation](https://docs.discord.com/developers/resources/user#create-dm)
 
@@ -95,16 +143,31 @@ Opens the private conversation with this user.
 send(message: MessageInput): Promise<Message>
 ```
 
-Sends a private message to this user.
+Sends a private message to this user. See [MessageInput](/reference/message-options#messageinput).
 
-## Image options
+## Types
 
-A `?` after a name means the field can be left out.
+### UserFlagName
 
-### ImageOptions
+The name of a public badge, as `flags` lists them: one of the keys of [`UserFlags`](/reference/enums#userflags).
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `format?` | `ImageFormat` | The file format. By default: WebP, which Discord recommends since it works for still and animated images, whatever was uploaded. |
-| `size?` | `ImageSize` | The size in pixels: a power of two between 16 and 4096. |
-| `animated?` | `boolean` | `false` to get the first frame of an animated image. By default an animated image stays animated. |
+| Name | Badge |
+| --- | --- |
+| `Staff` | Discord Employee |
+| `Partner` | Partnered Server Owner |
+| `Hypesquad` | HypeSquad Events Member |
+| `BugHunterLevel1` | Bug Hunter Level 1 |
+| `HypesquadOnlineHouse1` | House Bravery Member |
+| `HypesquadOnlineHouse2` | House Brilliance Member |
+| `HypesquadOnlineHouse3` | House Balance Member |
+| `PremiumEarlySupporter` | Early Nitro Supporter |
+| `TeamPseudoUser` | User is a team |
+| `BugHunterLevel2` | Bug Hunter Level 2 |
+| `VerifiedBot` | Verified Bot |
+| `VerifiedDeveloper` | Early Verified Bot Developer |
+| `CertifiedModerator` | Moderator Programs Alumni |
+| `BotHttpInteractions` | Bot uses only HTTP interactions and is shown in the online member list |
+
+[Discord documentation](https://docs.discord.com/developers/resources/user#user-object-user-flags)
+
+`ImageOptions` is in [Helpers](/reference/helpers#imageoptions).

@@ -1,0 +1,452 @@
+---
+title: 'Message options'
+description: 'Everything a message can contain when you send, reply, edit, answer a command or post with a webhook'
+---
+
+`channel.send()`, `message.reply()`, `user.send()`, `member.send()` and the first message of `forum.createPost()` take a `MessageInput`: a text, or a `MessageOptions` object. `interaction.reply()` and `webhook.send()` take the same options with a few changes, listed at the end.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function example(channel: TextChannel) {
+  await channel.send('Hello!');
+  await channel.send({
+    content: 'Here is the report',
+    embeds: [{ title: 'Weekly report', description: 'Everything went well.' }],
+    files: [{ name: 'report.txt', data: 'The full report' }],
+    silent: true,
+  });
+}
+```
+
+<Note>
+  How to use all of this is in [Sending messages](/messages). The messages you receive are described in [Message](/reference/message).
+</Note>
+
+## MessageInput
+
+```ts
+type MessageInput = string | MessageOptions
+```
+
+A message to send: its text, or its options.
+
+## MessageOptions
+
+What a message can contain, and how it is sent. A message needs at least a content, an embed, a file, a component, a sticker or a poll.
+
+<ResponseField name="content" type="string">
+  The text of the message (up to 2000 characters).
+</ResponseField>
+
+<ResponseField name="embeds" type="Embed[]">
+  Up to 10 embeds. See [Embed](#embed).
+</ResponseField>
+
+<ResponseField name="components" type="Component[]">
+  Buttons, select menus and layout components. See [Component](#component).
+</ResponseField>
+
+<ResponseField name="files" type="FileInput[]">
+  Up to 10 files to attach. See [FileInput](#fileinput).
+</ResponseField>
+
+<ResponseField name="allowedMentions" type="AllowedMentions">
+  Who the message is allowed to notify. See [AllowedMentions](#allowedmentions).
+</ResponseField>
+
+<ResponseField name="stickers" type="Snowflake[]">
+  The ids of up to 3 stickers of the server.
+</ResponseField>
+
+<ResponseField name="poll" type="PollInput">
+  A poll to attach to the message. See [PollInput](#pollinput).
+</ResponseField>
+
+<ResponseField name="tts" type="boolean">
+  Reads the message aloud.
+</ResponseField>
+
+<ResponseField name="silent" type="boolean">
+  Sends the message without a notification sound.
+</ResponseField>
+
+<ResponseField name="suppressEmbeds" type="boolean">
+  Does not show the previews of the links of the message.
+</ResponseField>
+
+<ResponseField name="replyTo" type="Snowflake | { id: Snowflake }">
+  The message to reply to.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#create-message)
+
+## MessageEditOptions
+
+What can be changed in a message that was already sent: `message.edit()` takes a text, or these fields of `MessageOptions`. Only what you pass changes: an empty list removes the embeds or the components, and the files you pass replace the ones of the message.
+
+<ResponseField name="content" type="string">
+  The text of the message (up to 2000 characters).
+</ResponseField>
+
+<ResponseField name="embeds" type="Embed[]">
+  Up to 10 embeds.
+</ResponseField>
+
+<ResponseField name="components" type="Component[]">
+  Buttons, select menus and layout components.
+</ResponseField>
+
+<ResponseField name="files" type="FileInput[]">
+  Up to 10 files to attach.
+</ResponseField>
+
+<ResponseField name="allowedMentions" type="AllowedMentions">
+  Who the message is allowed to notify.
+</ResponseField>
+
+<ResponseField name="suppressEmbeds" type="boolean">
+  Does not show the previews of the links of the message. `false` shows them again.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#edit-message)
+
+## FileInput
+
+A file to attach to a message. Each file is sent with the message, and an embed can show it with `attachment://<name>` as the `url` of its `image` or `thumbnail`.
+
+<ResponseField name="name" type="string" required>
+  The name of the file, with its extension: `chart.png`.
+</ResponseField>
+
+<ResponseField name="data" type="Blob | Uint8Array | ArrayBuffer | string" required>
+  The content of the file.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  What the file shows, for people who can't see it.
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Hides the file until it is clicked.
+</ResponseField>
+
+<ResponseField name="contentType" type="string">
+  The media type of the file (`image/png`); guessed from the name when missing.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/reference#uploading-files)
+
+## Embed
+
+A rich box in a message: title, description, fields, image... The same type describes the `embeds` of a message you receive: the fields marked "Set by Discord" are filled in the messages Discord sends back, and ignored when you send one.
+
+<ResponseField name="title" type="string">
+  The title of the embed (256 characters at most).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The text of the embed (4096 characters at most).
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The link the title opens.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  A date shown in the footer, as an ISO 8601 text: `new Date().toISOString()`.
+</ResponseField>
+
+<ResponseField name="color" type="number">
+  The color of the left border, as a number: `0x5865f2`.
+</ResponseField>
+
+<ResponseField name="footer" type="EmbedFooter">
+  The footer of the embed.
+  <Expandable title="EmbedFooter">
+    <ResponseField name="text" type="string" required>
+      The text of the footer (2048 characters at most).
+    </ResponseField>
+    <ResponseField name="iconUrl" type="string">
+      The URL of the icon of the footer (only `http(s)` and `attachment://` links).
+    </ResponseField>
+    <ResponseField name="proxyIconUrl" type="string">
+      Set by Discord: a proxied URL of the icon.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="image" type="EmbedImage">
+  The large image of the embed.
+  <Expandable title="EmbedImage">
+    <ResponseField name="url" type="string" required>
+      The URL of the image (only `http(s)` and `attachment://` links).
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      What the image shows, for people who can't see it.
+    </ResponseField>
+    <ResponseField name="proxyUrl" type="string">
+      Set by Discord: a proxied URL of the image.
+    </ResponseField>
+    <ResponseField name="height" type="number">
+      Set by Discord: the height of the image.
+    </ResponseField>
+    <ResponseField name="width" type="number">
+      Set by Discord: the width of the image.
+    </ResponseField>
+    <ResponseField name="contentType" type="string">
+      Set by Discord: the media type of the image.
+    </ResponseField>
+    <ResponseField name="placeholder" type="string">
+      Set by Discord: a thumbhash placeholder of the image.
+    </ResponseField>
+    <ResponseField name="placeholderVersion" type="number">
+      Set by Discord: the version of the placeholder.
+    </ResponseField>
+    <ResponseField name="flags" type="number">
+      Set by Discord: the media flags of the image, as a bitfield.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="thumbnail" type="EmbedImage">
+  The small image in the top right corner. Same fields as `image`.
+</ResponseField>
+
+<ResponseField name="author" type="EmbedAuthor">
+  The author line, above the title.
+  <Expandable title="EmbedAuthor">
+    <ResponseField name="name" type="string" required>
+      The name of the author (256 characters at most).
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      The link the name opens (only `http(s)` links).
+    </ResponseField>
+    <ResponseField name="iconUrl" type="string">
+      The URL of the icon of the author (only `http(s)` and `attachment://` links).
+    </ResponseField>
+    <ResponseField name="proxyIconUrl" type="string">
+      Set by Discord: a proxied URL of the icon.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="fields" type="EmbedField[]">
+  Up to 25 fields, shown under the description.
+  <Expandable title="EmbedField">
+    <ResponseField name="name" type="string" required>
+      The name of the field (256 characters at most).
+    </ResponseField>
+    <ResponseField name="value" type="string" required>
+      The value of the field (1024 characters at most).
+    </ResponseField>
+    <ResponseField name="inline" type="boolean">
+      Whether the field is shown next to the previous one instead of under it.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="type" type="'rich' | 'image' | 'video' | 'gifv' | 'article' | 'link' | 'poll_result'">
+  Set by Discord: the kind of embed (always `'rich'` for the embeds a bot sends).
+</ResponseField>
+
+<ResponseField name="video" type="EmbedVideo">
+  Set by Discord: the video of an embed made from a link.
+  <Expandable title="EmbedVideo">
+    <ResponseField name="url" type="string">
+      The URL of the video.
+    </ResponseField>
+    <ResponseField name="proxyUrl" type="string">
+      A proxied URL of the video.
+    </ResponseField>
+    <ResponseField name="height" type="number">
+      The height of the video.
+    </ResponseField>
+    <ResponseField name="width" type="number">
+      The width of the video.
+    </ResponseField>
+    <ResponseField name="contentType" type="string">
+      The media type of the video.
+    </ResponseField>
+    <ResponseField name="placeholder" type="string">
+      A thumbhash placeholder of the video.
+    </ResponseField>
+    <ResponseField name="placeholderVersion" type="number">
+      The version of the placeholder.
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      What the video shows, for people who can't see it.
+    </ResponseField>
+    <ResponseField name="flags" type="number">
+      The media flags of the video, as a bitfield.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="provider" type="EmbedProvider">
+  Set by Discord: the site an embed made from a link comes from.
+  <Expandable title="EmbedProvider">
+    <ResponseField name="name" type="string">
+      The name of the site.
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      The URL of the site.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="flags" type="number">
+  Set by Discord: the flags of the embed, as a bitfield.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#embed-object)
+
+### Embed limits
+
+| Limit | Maximum |
+| --- | --- |
+| Embeds per message | 10 |
+| `title` | 256 characters |
+| `description` | 4096 characters |
+| `fields` | 25 |
+| `fields[].name` | 256 characters |
+| `fields[].value` | 1024 characters |
+| `footer.text` | 2048 characters |
+| `author.name` | 256 characters |
+| All of the above, for every embed of a message | 6000 characters |
+
+Going over one throws an error that names the field, before anything is sent: see [Limits and errors](#limits-and-errors).
+
+## AllowedMentions
+
+Who a message is allowed to notify. Without it, a message notifies everyone it mentions.
+
+<ResponseField name="parse" type="('roles' | 'users' | 'everyone')[]">
+  The kinds of mentions of the text that notify: `[]` notifies nobody.
+</ResponseField>
+
+<ResponseField name="roles" type="Snowflake[]">
+  The ids of the roles to notify (100 at most).
+</ResponseField>
+
+<ResponseField name="users" type="Snowflake[]">
+  The ids of the users to notify (100 at most).
+</ResponseField>
+
+<ResponseField name="repliedUser" type="boolean">
+  For a reply, whether to notify the author of the message replied to. By default `false`.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#allowed-mentions-object)
+
+## PollInput
+
+A poll to attach to a message.
+
+<ResponseField name="question" type="PollMedia" required>
+  The question of the poll. Only `text` is supported.
+  <Expandable title="PollMedia">
+    <ResponseField name="text" type="string">
+      The text.
+    </ResponseField>
+    <ResponseField name="emoji" type="{ id?: Snowflake | null; name?: string | null }">
+      The emoji: `{ name: '🍕' }` for a standard one, `{ id }` for a custom one.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="answers" type="PollAnswer[]" required>
+  Each of the answers available in the poll, up to 10.
+  <Expandable title="PollAnswer">
+    <ResponseField name="answerId" type="number" required>
+      The id of the answer.
+    </ResponseField>
+    <ResponseField name="pollMedia" type="PollMedia" required>
+      The text and the emoji of the answer: same fields as `question`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="duration" type="number">
+  How many hours the poll stays open, up to 32 days. By default 24.
+</ResponseField>
+
+<ResponseField name="allowMultiselect" type="boolean">
+  Whether a person can pick several answers. By default `false`.
+</ResponseField>
+
+<ResponseField name="layoutType" type="1">
+  The layout of the poll. There is only one: `1`, the default.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/poll#poll-create-request-object)
+
+## Component
+
+<Warning>
+  Your bot can send buttons and select menus, but it cannot answer them yet: a click does nothing, and your files are not run for it. Components are on the list of [what is not there yet](/not-yet).
+</Warning>
+
+A button, a select menu or a layout component of a message. `Component` is the union of every component of the Discord reference, with camelCase names: `type` is a value of [`ComponentType`](/reference/enums#componenttype), and a button takes a [`ButtonStyle`](/reference/enums#buttonstyle). What can be at the top of a message:
+
+| `type` | What it is |
+| --- | --- |
+| `ComponentType.ActionRow` | A row of up to 5 buttons, or one select menu |
+| `ComponentType.Section` | Text with an accessory next to it |
+| `ComponentType.TextDisplay` | Markdown text |
+| `ComponentType.MediaGallery` | Images and other media |
+| `ComponentType.File` | An attached file |
+| `ComponentType.Separator` | Vertical space between components |
+| `ComponentType.Container` | A box that groups components |
+
+An action row holds buttons (`ComponentType.Button`) or one select menu (`StringSelect`, `UserSelect`, `RoleSelect`, `MentionableSelect`, `ChannelSelect`). The fields of each component are the ones of the Discord reference, in camelCase (`customId`, `minValues`, `maxValues`...). A button of style `ButtonStyle.Link` takes a `url` instead of a `customId`.
+
+[Discord documentation](https://docs.discord.com/developers/components/reference)
+
+## InteractionReplyOptions
+
+The options of an answer: everything a message takes, except `replyTo` and `stickers`. It is what `interaction.reply()` and `interaction.followUp()` take, as a text or as an object (`InteractionReply`); `interaction.edit()` takes a [`MessageEditOptions`](#messageeditoptions). See [Interaction](/reference/interaction).
+
+<ResponseField name="ephemeral" type="boolean">
+  Only show the answer to who used the command. By default: what the command says with its own `ephemeral`, else visible to everyone.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#create-interaction-response)
+
+## WebhookMessageOptions
+
+What a message posted with a webhook can contain: everything a message takes, except `replyTo`, and these. It is what [`webhook.send()`](/reference/webhook) takes, as a text or as an object.
+
+<ResponseField name="username" type="string">
+  Shows this name instead of the name of the webhook.
+</ResponseField>
+
+<ResponseField name="avatarURL" type="string">
+  Shows this avatar instead of the avatar of the webhook.
+</ResponseField>
+
+<ResponseField name="threadId" type="Snowflake">
+  Sends the message in this thread of the channel of the webhook.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/webhook#execute-webhook)
+
+## Limits and errors
+
+Every message is checked before it is sent, so a mistake is an error in your code with a plain message, not a refusal of Discord. The numbers are the ones of your message.
+
+| What was wrong | The error |
+| --- | --- |
+| Not a text nor an object | `A message is a text or an object like { content: "Hello" }, got number.` |
+| `content` is not a text | `The content of a message is a text, got number.` |
+| `content` over 2000 characters | `The message is 2345 characters long: Discord accepts 2000 at most. Split it in several messages or put the text in a file.` |
+| More than 10 embeds | `A message has 10 embeds at most, got 11.` |
+| A text of an embed too long | `The title of embed 1 is 300 characters long: Discord accepts 256 at most.` (also `description`, `footer text`, `author name`, `name of field 3`, `value of field 3`) |
+| More than 25 fields in an embed | `Embed 1 has 26 fields: Discord accepts 25 at most.` |
+| The embeds over 6000 characters together | `The embeds of the message contain 6100 characters in total: Discord accepts 6000 at most.` |
+| More than 3 stickers | `A message has 3 stickers at most, got 4.` |
+| More than 10 files | `A message has 10 files at most, got 11.` |
+| Nothing to send (when sending, not editing) | `The message is empty: give it a content, an embed, a file, a component, a sticker or a poll.` |
+| A file without a name | `Every file needs a name with its extension, like "chart.png".` |
+
+The text of an embed is counted without the spaces around it. What these checks don't cover (a wrong `customId`, an unknown sticker...) is refused by Discord with a [`DiscordApiError`](/reference/errors#discordapierror) that says which field.

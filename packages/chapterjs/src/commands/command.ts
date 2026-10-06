@@ -29,19 +29,27 @@ interface OptionBase {
 
 /** A text the user types, or picks among `choices`. */
 export interface StringOption extends OptionBase {
+  /** The kind of option: a text. */
   type: 'string';
   /**
    * The only values the user can pick (25 at most): a list, or an object
    * whose keys are what the user sees and values what your code receives.
    */
   choices?: readonly string[] | Readonly<Record<string, string>>;
+  /** The shortest text accepted, in characters (0 to 6000). */
   minLength?: number;
+  /** The longest text accepted, in characters (1 to 6000). */
   maxLength?: number;
 }
 
 /** A whole number (`integer`) or any number (`number`). */
 export interface NumberOption extends OptionBase {
+  /** The kind of option: a whole number, or any number. */
   type: 'integer' | 'number';
+  /**
+   * The only values the user can pick (25 at most): a list, or an object
+   * whose keys are what the user sees and values what your code receives.
+   */
   choices?: readonly number[] | Readonly<Record<string, number>>;
   /** The smallest value accepted. */
   min?: number;
@@ -51,6 +59,7 @@ export interface NumberOption extends OptionBase {
 
 /** A channel the user picks. */
 export interface ChannelOption extends OptionBase {
+  /** The kind of option: a channel. */
   type: 'channel';
   /** The kinds of channels that can be picked. By default, all of them. */
   channelTypes?: readonly ChannelType[];
@@ -58,6 +67,7 @@ export interface ChannelOption extends OptionBase {
 
 /** True or false, a user, a role, a user or a role, or a file. */
 export interface SimpleOption extends OptionBase {
+  /** The kind of option: what the user picks. */
   type: 'boolean' | 'user' | 'role' | 'mentionable' | 'attachment';
 }
 
@@ -114,6 +124,7 @@ export interface OptionTranslation<
 > {
   /** The name of the option in that language (same rules as a name). */
   name?: string;
+  /** The description of the option in that language (1-100 characters). */
   description?: string;
   /**
    * What each choice is called in that language. The keys are the choices
@@ -131,7 +142,9 @@ export interface CommandTranslation<
 > {
   /** The name of the command in that language (same rules as a name). */
   name?: string;
+  /** The description of the command in that language (1-100 characters). */
   description?: string;
+  /** The translation of each option, by the name declared in `options`. */
   options?: {
     readonly [Name in keyof Options]?: OptionTranslation<Options[Name]>;
   };
@@ -168,7 +181,9 @@ export interface CommandInGuild {
 export interface CommandInPrivate {
   /** The use of the command: what to answer with. */
   interaction: PrivateCommandInteraction;
+  /** No server: the command was used in a private message. */
   guild: null;
+  /** No member: the person is `user`. */
   member: null;
   /** The private conversation the command was used in. */
   channel: DMChannel;
@@ -202,6 +217,7 @@ export type CommandContext<
     ? CommandInDm
     : CommandInGuild | CommandInPrivate);
 
+/** What a command file gives to `command()`: what the command is and does. */
 export interface CommandConfig<
   Options extends CommandOptions = CommandOptions,
   Where extends CommandWhere = 'guild',
