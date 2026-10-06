@@ -6,7 +6,7 @@ description: 'Know what ChapterJS does not do yet, how to recognise it, and what
 ChapterJS is young. This page lists what it does not have yet, so that you do not look for it, and what to do meanwhile when there is something.
 
 <Note>
-  What exists is in the [reference](/reference): slash commands, events, components (buttons, select menus, forms, embeds) and the structures they give you.
+  What exists is in the [reference](/reference): slash commands, events, components (buttons, select menus, forms, embeds), tasks and the structures they give you.
 </Note>
 
 ## Autocomplete
@@ -20,12 +20,6 @@ Meanwhile: `choices`, when the values are known in advance (25 at most).
 Commands used by right-clicking a user or a message. Not available: a file of `src/commands/` is always a slash command.
 
 Meanwhile: a slash command with a `user` option, or a `string` option that takes the link of a message.
-
-## Scheduled tasks
-
-Something your bot does by itself, at a time or at intervals. There is no folder for it.
-
-Meanwhile: in a file of `src/events/ready/`, `setInterval` with what you want to run. Mind the [memory](/memory) of what you keep between runs, and know that `chapterjs dev` restarts the file on every save.
 
 ## Presence and status
 

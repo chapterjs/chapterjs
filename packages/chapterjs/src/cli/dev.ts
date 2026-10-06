@@ -187,6 +187,8 @@ export async function dev(options: DevOptions): Promise<number> {
     );
     (project.isEmpty() ? log.info : log.success)(project.summary());
     project.ready(bot);
+    // Tasks follow the bot through reconnections: they read the current one.
+    project.startTasks(() => bot);
 
     // Said once per file: what only happens in private messages can't be
     // tried here. Discord only offers the commands of a server in that
@@ -278,6 +280,7 @@ export async function dev(options: DevOptions): Promise<number> {
     signal.addEventListener('abort', () => fatal(0), { once: true });
     const code = await ended;
     await reloading.catch(() => {});
+    project.stopTasks();
     watcher.close();
     assets.close();
     memory.stop();
@@ -285,6 +288,7 @@ export async function dev(options: DevOptions): Promise<number> {
     if (code === 0) log.success('Disconnected');
     return code;
   } catch (error) {
+    project.stopTasks();
     watcher?.close();
     assets.close();
     memory.stop();

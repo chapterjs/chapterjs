@@ -23,6 +23,7 @@ A project made with `create chapter` looks like this. Everything your bot does l
           <Tree.File name="online.ts" highlight />
         </Tree.Folder>
       </Tree.Folder>
+      <Tree.Folder name="tasks" />
     </Tree.Folder>
     <Tree.File name=".env" />
     <Tree.File name=".env.example" />
@@ -41,6 +42,7 @@ ChapterJS never asks you to register anything. A file is a command or a reaction
 | `src/commands/` | A slash command, named after its path: `ping.ts` is `/ping`, `mod/ban.ts` is `/mod ban` | `command({ ... })` |
 | `src/events/<event>/` | One reaction to the event named by its folder: `memberJoin/welcome.ts` runs when someone joins | `event(({ ... }) => { ... })` |
 | `src/components/buttons/`, `selects/`, `modals/`, `embeds/` | A button, a select menu, a form or an embed, told apart by its path: `buttons/again.ts` is the button Discord sends back as `buttons/again` | `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed({ ... })` |
+| `src/tasks/` | Something the bot does by itself, every so often or at given times: `report.ts` is the task `report` | `task({ ... })` |
 
 All are imported from the same place, in every file:
 
@@ -81,12 +83,12 @@ export default again;
 Any other folder of `src/` is yours: `src/lib/`, `src/db/`, whatever you like. ChapterJS only reads the folders above, and your files import the rest as usual.
 
 <Note>
-  How to write each kind of file is in [Commands](/commands), [Events](/events) and [Buttons](/components).
+  How to write each kind of file is in [Commands](/commands), [Events](/events), [Buttons](/components) and [Tasks](/tasks).
 </Note>
 
 ## Two naming rules
 
-Inside `src/commands/`, `src/events/` and `src/components/`, two kinds of names are never part of a command, an event or a component, so you can sort your files the way you like:
+Inside `src/commands/`, `src/events/`, `src/components/` and `src/tasks/`, two kinds of names are never part of a command, an event, a component or a task, so you can sort your files the way you like:
 
 <Tree>
   <Tree.Folder name="src/commands" defaultOpen>

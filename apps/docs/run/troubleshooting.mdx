@@ -177,6 +177,12 @@ Every message of ChapterJS says what happened, then what to do. This page gather
   <Accordion title="This button is out of date.">
     The `data` of the component changed shape since the message was sent (a value added, removed or of another kind). Old messages carry the old data: send the message again.
   </Accordion>
+  <Accordion title="⚠ … was still running when its next time came: that run was skipped.">
+    A [task](/tasks) took longer than the time between two of its runs. The next run waits for its turn; make the task faster, or run it less often.
+  </Accordion>
+  <Accordion title="⚠ … was due while the bot was not connected: that run was skipped.">
+    A task was due while the bot was reconnecting to Discord. It runs again at its next time.
+  </Accordion>
   <Accordion title="Only the person who used the command can use this button.">
     The component says `who: 'author'`, and someone else clicked. That is what you asked for: see [Who may click](/components#who-may-click).
   </Accordion>

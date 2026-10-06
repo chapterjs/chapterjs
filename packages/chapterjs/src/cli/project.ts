@@ -17,6 +17,12 @@ import {
   findDuplicates,
 } from '../components/convention.js';
 import { ComponentRouter, type ComponentEntry } from '../components/router.js';
+import { tasksConvention } from '../tasks/convention.js';
+import {
+  TimerScheduler,
+  type Scheduler,
+  type TaskEntry,
+} from '../tasks/scheduler.js';
 import { createBot, type Bot, type BotOptions } from '../core/bot.js';
 import { watchMemory } from '../core/memory.js';
 import { GatewayIntent, type GatewayIntentName } from '../discord/intents.js';
@@ -78,6 +84,7 @@ export const CONVENTIONS = [
   eventsConvention,
   commandsConvention,
   componentsConvention,
+  tasksConvention,
 ] as const;
 
 /** What a bot of the project is connected with. */
@@ -104,6 +111,7 @@ export interface Project {
   readonly events: ReadonlyMap<string, LoadedEvent>;
   readonly commands: ReadonlyMap<string, CommandEntry>;
   readonly components: ReadonlyMap<string, ComponentEntry>;
+  readonly tasks: ReadonlyMap<string, TaskEntry>;
   /**
    * Loads every file (again). A file that fails is returned; it keeps its
    * last working version when it had one.
@@ -126,6 +134,13 @@ export interface Project {
   connect(options: ConnectOptions): Promise<Bot>;
   /** Runs the files of the `ready` event: the bot knows its servers. */
   ready(bot: Bot): void;
+  /**
+   * Starts the tasks of the project, with the bot `current` returns (none
+   * while it reconnects). Only one process of a bot runs them.
+   */
+  startTasks(current: () => Bot | null): void;
+  /** Stops the tasks: nothing runs after this. */
+  stopTasks(): void;
   /** Looks after the memory of the bot `current` returns. */
   watchMemory(current: () => Bot | null): { stop(): void };
 }
@@ -178,9 +193,11 @@ export function createProject(options: ProjectOptions): Project {
   };
   const commandRouter = new CommandRouter(reporter);
   const componentRouter = new ComponentRouter(reporter);
+  const scheduler: Scheduler = new TimerScheduler(reporter);
   let events = new Map<string, LoadedEvent>();
   let commands = new Map<string, CommandEntry>();
   let components = new Map<string, ComponentEntry>();
+  let tasks = new Map<string, TaskEntry>();
   let lost = false;
   const count = (size: number, one: string, many: string): string =>
     `${size} ${size === 1 ? one : many}`;
@@ -195,22 +212,28 @@ export function createProject(options: ProjectOptions): Project {
     get components() {
       return components;
     },
+    get tasks() {
+      return tasks;
+    },
     report,
     async load() {
       const { built } = options;
-      const [eventFiles, commandFiles, componentFiles] = await Promise.all(
-        built
-          ? [
-              loadBuilt(eventsConvention, built),
-              loadBuilt(commandsConvention, built),
-              loadBuilt(componentsConvention, built),
-            ]
-          : [
-              loadFolder(cwd, eventsConvention),
-              loadFolder(cwd, commandsConvention),
-              loadFolder(cwd, componentsConvention),
-            ]
-      );
+      const [eventFiles, commandFiles, componentFiles, taskFiles] =
+        await Promise.all(
+          built
+            ? [
+                loadBuilt(eventsConvention, built),
+                loadBuilt(commandsConvention, built),
+                loadBuilt(componentsConvention, built),
+                loadBuilt(tasksConvention, built),
+              ]
+            : [
+                loadFolder(cwd, eventsConvention),
+                loadFolder(cwd, commandsConvention),
+                loadFolder(cwd, componentsConvention),
+                loadFolder(cwd, tasksConvention),
+              ]
+        );
       const nextEvents = new Map<string, LoadedEvent>();
       for (const { file, value } of eventFiles.loaded) {
         nextEvents.set(file, { file, event: value });
@@ -243,10 +266,22 @@ export function createProject(options: ProjectOptions): Project {
       const unique = findDuplicates(pieces);
       components = new Map(unique.valid.map(entry => [entry.file, entry]));
       componentRouter.set(components.values());
+
+      const nextTasks = new Map<string, TaskEntry>();
+      for (const { file, value } of taskFiles.loaded) {
+        nextTasks.set(file, { file, task: value });
+      }
+      for (const { file } of taskFiles.failed) {
+        const previous = tasks.get(file);
+        if (previous) nextTasks.set(file, previous);
+      }
+      tasks = nextTasks;
+      scheduler.set(tasks.values());
       return [
         ...eventFiles.failed,
         ...commandFiles.failed,
         ...componentFiles.failed,
+        ...taskFiles.failed,
         ...[...conflicts, ...unique.conflicts].map(({ file, message }) => ({
           file,
           error: new TypeError(message),
@@ -254,7 +289,12 @@ export function createProject(options: ProjectOptions): Project {
       ];
     },
     summary() {
-      if (events.size === 0 && commands.size === 0 && components.size === 0) {
+      if (
+        events.size === 0 &&
+        commands.size === 0 &&
+        components.size === 0 &&
+        tasks.size === 0
+      ) {
         return 'Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/';
       }
       return `${[
@@ -265,10 +305,14 @@ export function createProject(options: ProjectOptions): Project {
         ...(components.size > 0
           ? [count(components.size, 'component', 'components')]
           : []),
+        ...(tasks.size > 0 ? [count(tasks.size, 'task', 'tasks')] : []),
       ].join(', ')} loaded`;
     },
     isEmpty: () =>
-      events.size === 0 && commands.size === 0 && components.size === 0,
+      events.size === 0 &&
+      commands.size === 0 &&
+      components.size === 0 &&
+      tasks.size === 0,
     filesNeeding: intent =>
       [...events.values()]
         .filter(({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0)
@@ -335,6 +379,15 @@ export function createProject(options: ProjectOptions): Project {
       const user = bot.ctx.cache.users.get(bot.ctx.self!.userId)!;
       router.emit('ready', { user, guilds: bot.ctx.cache.guilds });
     },
+    startTasks(current) {
+      scheduler.start(() => {
+        const bot = current();
+        if (!bot?.ctx.self) return null;
+        const user = bot.ctx.cache.users.get(bot.ctx.self.userId);
+        return user ? { user, guilds: bot.ctx.cache.guilds } : null;
+      });
+    },
+    stopTasks: () => scheduler.stop(),
     // The bot looks after its own memory: it remembers less before memory
     // is full, and only speaks up when it can't give up anything more.
     watchMemory: current =>

@@ -208,6 +208,16 @@ export type {
   MessageFlagName,
   Reaction,
 } from './structures/message.js';
+// Tasks: what the files of src/tasks/ are written with.
+export { task } from './tasks/task.js';
+export type {
+  CronTaskConfig,
+  EveryTaskConfig,
+  TaskConfig,
+  TaskContext,
+  TaskFile,
+} from './tasks/task.js';
+
 // Files of public/: `asset()` is typed per project by `.chapterjs/`.
 export type { AssetFile, AssetOptions } from './assets/asset.js';
 export type {

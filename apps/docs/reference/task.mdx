@@ -1,0 +1,87 @@
+---
+title: 'task()'
+description: 'Everything a task file declares: its schedule, its timezone, and what the run function receives'
+---
+
+`task()` is what a file of `src/tasks/` exports by default. It takes one object, `TaskConfig`.
+
+```ts src/tasks/cleanup.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '10m',
+  async run({ guilds }) {
+    console.log(`Watching ${guilds.size} servers`);
+  },
+});
+```
+
+<Note>
+  How to write a task, and what happens when a run takes long or fails, is in the [guide](/tasks). This page lists what exists.
+</Note>
+
+## task()
+
+```ts
+task(config: TaskConfig): TaskFile
+```
+
+Declares a task: something the bot does by itself. Export the result as the default export of a file of `src/tasks/`: the name of the file is the name of the task.
+
+### TaskFile
+
+What `task()` returns: the default export of a task file.
+
+<ResponseField name="config" type="unknown">
+  What the file gave to `task()`, not checked yet.
+</ResponseField>
+
+## TaskConfig
+
+What a task file gives to `task()`: when it runs, and what it does. It is an `EveryTaskConfig` or a `CronTaskConfig`: one of `every` and `cron`, never both.
+
+<ResponseField name="run" type="(context: TaskContext) => unknown" required>
+  What the task does.
+</ResponseField>
+
+<ResponseField name="onStart" type="boolean">
+  Also run once as soon as the bot is connected, without waiting for the first time of the schedule.
+</ResponseField>
+
+### EveryTaskConfig
+
+A task that runs every so often.
+
+<ResponseField name="every" type="string" required>
+  How often the task runs: a number and a unit, `s`, `m`, `h` or `d`, like `'30s'`, `'10m'`, `'2h'`, `'1d'` or `'1h30m'`. Once per second at most. Counted from when the bot connects.
+</ResponseField>
+
+### CronTaskConfig
+
+A task that runs at given times.
+
+<ResponseField name="cron" type="string" required>
+  When the task runs, as a cron expression: minute, hour, day of month, month and day of week, like `'0 9 * * 1-5'` (9:00 on weekdays). `*`, lists (`1,15`), ranges (`1-5`), steps (`*/15`) and names (`mon`, `jan`) work.
+</ResponseField>
+
+<ResponseField name="timezone" type="string">
+  The timezone the cron follows, like `'Europe/Paris'`. The clock of the machine by default.
+</ResponseField>
+
+When both the day of month and the day of week are given, the task runs on the days that match either, as cron does.
+
+## TaskContext
+
+What `run` receives: the bot, as the `ready` event gives it, and the time.
+
+<ResponseField name="user" type="User" required>
+  The bot itself.
+</ResponseField>
+
+<ResponseField name="guilds" type="ReadonlyMap<Snowflake, Guild>" required>
+  The servers the bot is in.
+</ResponseField>
+
+<ResponseField name="now" type="Date" required>
+  When this run was due.
+</ResponseField>

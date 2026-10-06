@@ -87,6 +87,11 @@
             ]
           },
           {
+            "group": "Tasks",
+            "icon": "clock",
+            "pages": ["tasks/index"]
+          },
+          {
             "group": "Messages and memory",
             "icon": "message-square",
             "pages": ["messages", "memory"]
@@ -129,7 +134,8 @@
               "reference/select",
               "reference/modal",
               "reference/embed",
-              "reference/layout"
+              "reference/layout",
+              "reference/task"
             ]
           },
           {
@@ -218,6 +224,10 @@
           {
             "label": "Components",
             "href": "/components"
+          },
+          {
+            "label": "Tasks",
+            "href": "/tasks"
           },
           {
             "label": "Run your bot",
