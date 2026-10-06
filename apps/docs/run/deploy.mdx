@@ -1,0 +1,171 @@
+---
+title: 'Deploy'
+description: 'Put your bot on a machine that stays on, and keep it running'
+---
+
+A bot is online as long as `chapterjs start` runs. On your computer it stops when you close the terminal, so a bot for everyone lives on a machine that stays on: a server you rent, a container, a host made for Node applications. Whatever it is, the steps are the same.
+
+<Steps>
+  <Step title="Put your project there">
+    Clone your repository, or copy the folder without `node_modules` and `.chapterjs` (both are made on the machine). The machine needs [Node.js](https://nodejs.org) 22.18 or newer and a package manager.
+  </Step>
+  <Step title="Install">
+    Run the install command of your package manager in the folder. The install also writes the types of the project (`postinstall` runs `chapterjs sync`).
+
+    <CodeGroup>
+    ```bash pnpm
+    pnpm install
+    ```
+
+    ```bash npm
+    npm install
+    ```
+
+    ```bash yarn
+    yarn install
+    ```
+
+    ```bash bun
+    bun install
+    ```
+    </CodeGroup>
+
+    Keep the development dependencies if you want the build to check the types there: without TypeScript, `chapterjs build` says `ℹ Types were not checked` and goes on.
+  </Step>
+  <Step title="Give it the token">
+    Set `BOT_TOKEN` the way the machine does it: an environment variable, the "secrets" of a host, or a `.env` file in the folder. The real environment wins over the file. The token is the only value `chapterjs start` requires.
+
+    ```bash .env
+    BOT_TOKEN=
+    ```
+
+    <Warning>
+      Never commit `.env`, and never put the token in your code: whoever has it controls your bot. If it leaks, reset it on the **Bot** page of your application in the Developer Portal, and give the new one to the machine.
+    </Warning>
+  </Step>
+  <Step title="Build">
+    Run the `build` script. It checks every file and compiles the bot into `.chapterjs/build`: see [chapterjs build](/run/build).
+
+    <CodeGroup>
+    ```bash pnpm
+    pnpm build
+    ```
+
+    ```bash npm
+    npm run build
+    ```
+
+    ```bash yarn
+    yarn build
+    ```
+
+    ```bash bun
+    bun run build
+    ```
+    </CodeGroup>
+  </Step>
+  <Step title="Start">
+    Run the `start` script. The bot is online for everyone: see [chapterjs start](/run/start).
+
+    <CodeGroup>
+    ```bash pnpm
+    pnpm start
+    ```
+
+    ```bash npm
+    npm run start
+    ```
+
+    ```bash yarn
+    yarn start
+    ```
+
+    ```bash bun
+    bun start
+    ```
+    </CodeGroup>
+
+    ```text
+    ✓ Commands updated for everyone
+    ✓ Online as my-bot in 128 servers
+    ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT
+    ✓ 4 commands, 6 events loaded
+    ```
+  </Step>
+</Steps>
+
+That is all. Many hosts ask for a "build command" and a "start command": give them the `build` and `start` scripts of your project. A host that takes your project from git does the first two steps by itself.
+
+<Note>The environment variables and the exit codes of `chapterjs start` are in the [CLI reference](/reference/cli#chapterjs-start).</Note>
+
+## Environment variables
+
+| Variable | Required | What it does |
+| --- | --- | --- |
+| `BOT_TOKEN` | Yes | The token of your bot. |
+| `DEV_GUILD_ID` | No | The ID of your test server. When it is set, production leaves that server alone, so `chapterjs dev` can run the same bot there while this one runs everywhere else: see [Your test server stays yours](/run/start#your-test-server-stays-yours). |
+| `NODE_OPTIONS` | No | Options for Node itself. `--max-old-space-size=4096` gives the bot 4096 MB of memory: only for a large bot, when `chapterjs start` asks for it (see below). |
+| `NO_COLOR` | No | Set to anything to print without colors. Colors are already off when the output is not a terminal. |
+
+Nothing else is read. In particular, there is no option for the intents, the commands or what the bot remembers: all of it comes from your files.
+
+## Keeping it running
+
+`chapterjs start` runs until it is stopped. Two things end it:
+
+- **A stop asked by the machine** (`Ctrl+C`, a `SIGTERM` from a host or a process manager): the bot disconnects cleanly, prints `✓ Disconnected` and exits with code 0. Give it a few seconds for that before killing it: a bot killed at once stays shown online until Discord notices.
+- **Something to fix**: a refused token, a privileged intent not enabled, no build, too many sessions started today. The message says what, and the command exits with code 1.
+
+Use what the machine offers to start the bot again when it exits, and when the machine reboots: a process manager, the "restart" setting of a host, a system service. Do not restart it blindly in a tight loop: a bot that stops with code 1 has something to fix, and starting it again changes nothing. Discord limits how many times a day a bot can connect; ChapterJS stops before the limit rather than let Discord reset your token:
+
+```text
+✗ The bot needs to start 1 session(s) but Discord only allows 0 more until 10/7/2026, 9:00:00 AM. Going over that limit makes Discord reset the bot token, so the bot is not started. This usually means it was restarted too many times: wait, then start it again.
+```
+
+Inside `chapterjs start`, nothing needs your help: the connection is kept alive and reconnected when it drops, and a large bot's processes are started again when one of them stops.
+
+## Updating the bot
+
+Put the new files on the machine, build, start again. Until you build, the running bot keeps the previous build, and `chapterjs start` reminds you of it:
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+A build is tied to the version of ChapterJS that made it. After updating the package, build again:
+
+```text
+✗ This build was made with chapterjs 0.1.2, and this is chapterjs 0.1.3.
+  Run "chapterjs build" again.
+```
+
+<Note>
+  If you build on your computer and upload the result, upload `.chapterjs/build` too (it is not in git), and use the same version of ChapterJS and of Node on both sides. The packages the bot uses stay in `node_modules`: production needs them installed.
+</Note>
+
+## Large bots
+
+A bot in thousands of servers runs on several processes by itself, one for every 4 shards and never more than the machine has CPUs. Pass `--processes` to choose:
+
+```bash
+chapterjs start --processes 8
+```
+
+Every process runs on the same machine. A machine with more CPUs and more memory is the way to grow; several machines are [not available yet](/not-yet).
+
+The bot adapts what it remembers to the memory it has, and only asks for more when it has nothing left to give up:
+
+```text
+⚠ The bot uses 1900 MB of the 2048 MB of memory it can use, and already remembers as little as it can: 18420 servers and 240000 channels, which it needs. Remembering less freed 12 MB. If your own code keeps things that only grow (a list, a Map), that is what fills it: look there first. Otherwise give the bot more memory: set NODE_OPTIONS=--max-old-space-size=4096 (in MB) on a machine that has that much.
+```
+
+What that message means, and what the bot remembers, is in [Memory](/memory).
+
+<CardGroup cols={2}>
+  <Card title="Troubleshooting" icon="bug" href="/run/troubleshooting">
+    Every message, and what to do about it.
+  </Card>
+  <Card title="CLI reference" icon="square-terminal" href="/reference/cli">
+    Every command, variable and exit code.
+  </Card>
+</CardGroup>

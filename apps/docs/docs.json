@@ -1,82 +1,185 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "chapterjs",
+  "theme": "luma",
+  "name": "ChapterJS",
+  "description": "The Discord framework: a folder of files becomes a fast, type-safe Discord bot.",
   "colors": {
-    "primary": "#5865F2",
-    "light": "#949CF7",
-    "dark": "#4752C4"
+    "primary": "#EA580C",
+    "light": "#FB923C",
+    "dark": "#C2410C"
   },
   "background": {
-    "decoration": "gradient",
     "color": {
-      "light": "#F5F6FC",
-      "dark": "#0B0D1E"
+      "light": "#FAFAF9",
+      "dark": "#0C0A09"
     }
   },
   "appearance": {
     "default": "dark"
   },
+  "fonts": {
+    "family": "Geist",
+    "heading": {
+      "family": "Bricolage Grotesque",
+      "weight": 700
+    }
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": {
+      "theme": {
+        "light": "github-light",
+        "dark": "vesper"
+      }
+    }
+  },
+  "thumbnails": {
+    "appearance": "dark"
+  },
   "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "/"
+  },
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Guide",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Get started",
+            "icon": "play",
+            "pages": [
+              "index",
+              "quickstart",
+              "setup/discord-application",
+              "setup/project-structure"
+            ]
+          },
+          {
+            "group": "Commands",
+            "icon": "terminal",
+            "pages": [
+              "commands/index",
+              "commands/options",
+              "commands/answering",
+              "commands/translations"
+            ]
+          },
+          {
+            "group": "Events",
+            "icon": "zap",
+            "pages": ["events/index", "events/messages"]
+          },
+          {
+            "group": "Messages and memory",
+            "icon": "message-square",
+            "pages": ["messages", "memory"]
+          },
+          {
+            "group": "Run your bot",
+            "icon": "rocket",
+            "pages": [
+              "run/dev",
+              "run/build",
+              "run/start",
+              "run/deploy",
+              "run/troubleshooting"
+            ]
+          },
+          {
+            "group": "More",
+            "icon": "compass",
+            "pages": ["not-yet", "from-discord-js"]
+          }
         ]
       },
       {
-        "group": "Essentials",
-        "pages": [
-          "dev",
-          "build",
-          "start",
-          "commands",
-          "events",
-          "memory"
-        ]
-      },
-      {
-        "group": "Reference",
-        "pages": [
-          "reference/overview",
-          "reference/guild",
-          "reference/member",
-          "reference/user",
-          "reference/role",
-          "reference/channels",
-          "reference/message",
-          "reference/sending-messages",
-          "reference/emojis-invites-webhooks",
-          "reference/permissions",
-          "reference/errors",
-          "reference/helpers",
-          "reference/values",
-          "reference/options",
-          "reference/data"
+        "tab": "Reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Reference",
+            "icon": "library",
+            "pages": ["reference/index"]
+          },
+          {
+            "group": "Your files",
+            "icon": "folder-tree",
+            "pages": [
+              "reference/command",
+              "reference/event",
+              "reference/events"
+            ]
+          },
+          {
+            "group": "Structures",
+            "icon": "boxes",
+            "pages": [
+              "reference/guild",
+              "reference/member",
+              "reference/user",
+              "reference/role",
+              {
+                "group": "Channels",
+                "icon": "hash",
+                "root": "reference/channels/index",
+                "pages": [
+                  "reference/channels/text",
+                  "reference/channels/voice",
+                  "reference/channels/category",
+                  "reference/channels/forum",
+                  "reference/channels/thread",
+                  "reference/channels/dm"
+                ]
+              },
+              "reference/message",
+              "reference/interaction",
+              "reference/emoji",
+              "reference/invite",
+              "reference/webhook"
+            ]
+          },
+          {
+            "group": "Types",
+            "icon": "braces",
+            "pages": [
+              "reference/message-options",
+              "reference/options",
+              "reference/data",
+              "reference/permissions",
+              "reference/enums",
+              "reference/helpers",
+              "reference/errors"
+            ]
+          },
+          {
+            "group": "CLI",
+            "icon": "square-terminal",
+            "pages": ["reference/cli"]
+          }
         ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "GitHub",
-          "href": "https://github.com/chapterjs/chapterjs",
-          "icon": "github"
+          "anchor": "Discord developer docs",
+          "href": "https://docs.discord.com/developers",
+          "icon": "external-link"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
   "navbar": {
     "links": [
       {
-        "label": "GitHub",
+        "type": "github",
         "href": "https://github.com/chapterjs/chapterjs"
       }
     ],
@@ -86,21 +189,65 @@
       "href": "/quickstart"
     }
   },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
-  },
   "footer": {
     "socials": {
       "github": "https://github.com/chapterjs/chapterjs"
+    },
+    "links": [
+      {
+        "header": "Guide",
+        "items": [
+          { "label": "Quickstart", "href": "/quickstart" },
+          { "label": "Commands", "href": "/commands" },
+          { "label": "Events", "href": "/events" },
+          { "label": "Run your bot", "href": "/run/dev" }
+        ]
+      },
+      {
+        "header": "Reference",
+        "items": [
+          { "label": "Your files", "href": "/reference/command" },
+          { "label": "Structures", "href": "/reference" },
+          { "label": "CLI", "href": "/reference/cli" },
+          { "label": "Errors", "href": "/reference/errors" }
+        ]
+      },
+      {
+        "header": "Elsewhere",
+        "items": [
+          { "label": "GitHub", "href": "https://github.com/chapterjs/chapterjs" },
+          { "label": "npm", "href": "https://www.npmjs.com/package/chapterjs" },
+          { "label": "Discord developer docs", "href": "https://docs.discord.com/developers" }
+        ]
+      }
+    ]
+  },
+  "redirects": [
+    { "source": "/dev", "destination": "/run/dev" },
+    { "source": "/build", "destination": "/run/build" },
+    { "source": "/start", "destination": "/run/start" },
+    { "source": "/reference/overview", "destination": "/reference" },
+    { "source": "/reference/values", "destination": "/reference/enums" },
+    { "source": "/reference/sending-messages", "destination": "/messages" },
+    { "source": "/reference/emojis-invites-webhooks", "destination": "/reference/emoji" }
+  ],
+  "seo": {
+    "indexing": "navigable",
+    "metatags": {
+      "og:site_name": "ChapterJS",
+      "og:type": "website",
+      "twitter:card": "summary_large_image"
     }
+  },
+  "search": {
+    "prompt": "Search, or ask how to do something..."
+  },
+  "errors": {
+    "404": {
+      "redirect": true
+    }
+  },
+  "contextual": {
+    "options": ["copy", "view", "claude", "chatgpt", "cursor", "vscode", "mcp"]
   }
 }

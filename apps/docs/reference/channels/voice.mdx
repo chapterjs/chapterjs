@@ -1,0 +1,52 @@
+---
+title: 'VoiceChannel'
+description: 'A voice or stage channel: bitrate, user limit, region and status'
+---
+
+A `VoiceChannel` is a voice or stage channel: people talk in it, and can write too. It is what `channel.isVoice()` gives.
+
+```ts
+import type { VoiceChannel } from 'chapterjs';
+
+async function openGame(channel: VoiceChannel, game: string) {
+  await channel.setStatus(`Playing ${game}`);
+  const seats = channel.userLimit === 0 ? 'no limit' : `${channel.userLimit} seats`;
+  await channel.send(`${channel} is open: ${seats}.`);
+}
+```
+
+<Note>
+  How to send, edit and read messages is in [Sending messages](/messages).
+</Note>
+
+## Properties
+
+It also has everything of [GuildChannel](/reference/channels#guildchannel) and [what channels with messages share](/reference/channels#channels-with-messages).
+
+<ResponseField name="bitrate" type="number">
+  The audio quality, in bits per second.
+</ResponseField>
+
+<ResponseField name="userLimit" type="number">
+  How many people can join; `0` means no limit.
+</ResponseField>
+
+<ResponseField name="rtcRegion" type="string | null">
+  The voice region of the channel; `null` when Discord picks it.
+</ResponseField>
+
+<ResponseField name="isStage" type="boolean">
+  Whether it is a stage channel, where a few speak and the others listen.
+</ResponseField>
+
+## Actions
+
+### setStatus()
+
+```ts
+setStatus(status: string | null, reason?: string): Promise<void>
+```
+
+Sets the status shown under the name of the voice channel; `null` removes it.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#set-voice-channel-status)

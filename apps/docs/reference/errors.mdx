@@ -1,9 +1,13 @@
 ---
 title: 'Errors'
-description: 'What is thrown when Discord refuses an action or cannot be reached'
+description: 'Catch what is thrown when Discord refuses an action, cannot be reached, or rejects the token, and know what the person sees'
 ---
 
-An action that fails throws an error. There are three kinds, all exported by `chapterjs`.
+An action that fails throws an error. There are three kinds, all exported by `chapterjs`, and you can tell them apart with `instanceof`.
+
+<Note>
+  What happens when your function throws without catching is in [Answering](/commands/answering) for commands and in [Events](/events) for events: the bot never stops, you get the error in your terminal with the file and the line.
+</Note>
 
 ```ts
 import { DiscordApiError, type GuildMember } from 'chapterjs';
@@ -22,51 +26,124 @@ async function warn(member: GuildMember, text: string) {
 
 ## DiscordApiError
 
-Discord answered, and refused: a missing permission, something that no longer exists, an invalid value...
+Discord answered a request with an error.
 
-| Property | Type | Description |
+It is thrown when Discord refuses what the bot asked: a missing permission, something that no longer exists, a value it does not accept. The request was received and understood; retrying it gives the same answer until something changes.
+
+<ResponseField name="name" type="'DiscordApiError'" required>What `instanceof` tells, as text.</ResponseField>
+<ResponseField name="message" type="string" required>What happened, with the reason Discord gave and the fields it refused: `Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)`, followed by one line per refused field when there are some.</ResponseField>
+<ResponseField name="status" type="number" required>The HTTP status of the response (403, 404...).</ResponseField>
+<ResponseField name="code" type="number" required>The JSON error code of Discord (50013 for "Missing Permissions"...), or 0 when the response had none.</ResponseField>
+<ResponseField name="fieldErrors" type="readonly DiscordFieldError[]" required>The fields of the request Discord refused, when it says which.</ResponseField>
+<ResponseField name="method" type="'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'" required>The HTTP method of the request that failed.</ResponseField>
+<ResponseField name="route" type="string" required>The path of the endpoint as written in the documentation.</ResponseField>
+
+### Codes you will meet
+
+Test `error.code`, never `error.message`: the text may change, the code does not.
+
+| Code | Discord says | Usually means |
 | --- | --- | --- |
-| `message` | `string` | What happened, with the reason Discord gave and the fields it refused. |
-| `status` | `number` | The HTTP status of the response (403, 404...). |
-| `code` | `number` | The JSON error code of Discord (50013 for "Missing Permissions"...), or 0 when the response had none. |
-| `fieldErrors` | `readonly DiscordFieldError[]` | The fields of the request Discord refused, when it says which. |
-| `method` | `HttpMethod` | The HTTP method of the request that failed. |
-| `route` | `string` | The path of the endpoint as written in the documentation. |
+| `10003` | Unknown channel | The channel was deleted |
+| `10007` | Unknown member | They left the server |
+| `10008` | Unknown message | The message was deleted |
+| `10026` | Unknown ban | The user is not banned |
+| `50001` | Missing access | The bot can't see this channel or server |
+| `50007` | Cannot send messages to this user | Their private messages are closed, or they share no server with the bot |
+| `50013` | You lack permissions to perform that action | The bot lacks a permission, or its highest role is too low |
+| `50035` | Invalid form body | A value was refused: look at `fieldErrors` |
+
+The full list is in the [Discord documentation](https://docs.discord.com/developers/topics/opcodes-and-status-codes#json-json-error-codes).
 
 ### DiscordFieldError
 
 One problem Discord found in a field of the request.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `path` | `string` | Where the problem is: `embeds[0].title`, or `` for the whole request. |
-| `code` | `string` | The kind of problem, as Discord names it (`BASE_TYPE_MAX_LENGTH`). |
-| `message` | `string` | What is wrong, in English. |
+<ResponseField name="path" type="string" required>Where the problem is: `embeds[0].title`, or empty (`''`) for the whole request.</ResponseField>
+<ResponseField name="code" type="string" required>The kind of problem, as Discord names it (`BASE_TYPE_MAX_LENGTH`).</ResponseField>
+<ResponseField name="message" type="string" required>What is wrong, in English.</ResponseField>
 
+```ts
+import { DiscordApiError, type TextChannel } from 'chapterjs';
 
-### Codes you will meet
+async function post(channel: TextChannel, title: string) {
+  try {
+    await channel.send({ embeds: [{ title }] });
+  } catch (error) {
+    if (error instanceof DiscordApiError && error.code === 50035) {
+      for (const field of error.fieldErrors) console.log(`${field.path}: ${field.message}`);
+      return;
+    }
+    throw error;
+  }
+}
+```
 
-| Code | Meaning |
-| --- | --- |
-| `10003` | Unknown channel: it was deleted |
-| `10007` | Unknown member: they left the server |
-| `10008` | Unknown message: it was deleted |
-| `10026` | Unknown ban: the user is not banned |
-| `50001` | Missing access: the bot can't see this |
-| `50007` | Cannot send messages to this user |
-| `50013` | Missing permissions: the bot lacks a permission, or its role is too low |
-| `50035` | Invalid form body: a value was refused, see `fieldErrors` |
-
-The full list is in the [Discord documentation](https://docs.discord.com/developers/topics/opcodes-and-status-codes#json-json-error-codes).
+[Discord documentation](https://docs.discord.com/developers/reference#error-messages)
 
 ## DiscordUnavailableError
 
-Discord could not be reached, or kept failing: no internet connection, an outage of Discord, a request that took too long. The framework already tried several times before throwing it.
+A request could not reach Discord, or Discord kept failing.
+
+It is thrown when there is no answer to get: no internet connection, an outage of Discord, a server error that persisted. The bot already retried before throwing it; retrying later may work.
+
+<ResponseField name="name" type="'DiscordUnavailableError'" required>What `instanceof` tells, as text.</ResponseField>
+<ResponseField name="message" type="string" required>`Discord could not be reached for GET /guilds/{guild.id}. Check your internet connection and https://discordstatus.com, then try again.`</ResponseField>
+<ResponseField name="method" type="'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'" required>The HTTP method of the request that failed.</ResponseField>
+<ResponseField name="route" type="string" required>The path of the endpoint as written in the documentation.</ResponseField>
+<ResponseField name="cause" type="unknown">The underlying error, when Node gave one.</ResponseField>
 
 ## InvalidTokenError
 
-Discord refused the bot token. Nothing can work until `BOT_TOKEN` is fixed in your `.env` file, so the framework stops sending requests.
+The bot token was refused: no request can succeed until it is fixed.
+
+It is thrown by every request once Discord refused the token: the bot stops sending anything, so a wrong token never floods Discord. Nothing in your code can fix it; `chapterjs dev` checks the token before connecting, so you normally see it there (see [Troubleshooting](/run/troubleshooting)).
+
+<ResponseField name="name" type="'InvalidTokenError'" required>What `instanceof` tells, as text.</ResponseField>
+<ResponseField name="message" type="string" required>`Discord refused the bot token. Copy it again from the Developer Portal (your application → Bot → Reset Token) into BOT_TOKEN in your .env file.`</ResponseField>
+
+## Catching
+
+Catch only what you expect, and let the rest through: an error you don't handle is reported with its file and line, which is what you want for a bug.
+
+```ts src/commands/kick.ts
+import { command, DiscordApiError } from 'chapterjs';
+
+export default command({
+  description: 'Kick a member',
+  options: { target: { type: 'user', description: 'Who to kick', required: true } },
+  permissions: ['KickMembers'],
+  async run({ interaction, guild, member, options }) {
+    try {
+      await guild.kick(options.target, `Kicked by ${member.displayName}`);
+      await interaction.reply(`${options.target} was kicked.`);
+    } catch (error) {
+      if (error instanceof DiscordApiError && error.code === 50013) {
+        await interaction.reply({ content: 'My role is below theirs, so I cannot kick them.', ephemeral: true });
+        return;
+      }
+      throw error;
+    }
+  },
+});
+```
+
+## What the person sees
+
+When `run` throws and you did not catch, the person who used the command gets a short, private answer, never the technical details:
+
+```text
+Something went wrong while running this command.
+```
+
+When the error is a `DiscordApiError` with code `50013` or `50001`, the answer says what is missing instead:
+
+```text
+I don't have the permission to do that here.
+```
+
+The error itself, with its file and line, goes to your terminal. See [Answering](/commands/answering).
 
 ## What never throws
 
-Rate limits are not errors: when the bot goes too fast, requests wait for their turn and then succeed.
+Rate limits are not errors: when the bot goes too fast, requests wait for their turn and then succeed. A temporary failure of Discord is retried before anything is thrown.

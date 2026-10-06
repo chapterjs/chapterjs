@@ -1,0 +1,65 @@
+---
+title: "What's not there yet"
+description: 'Know what ChapterJS does not do yet, how to recognise it, and what to do meanwhile'
+---
+
+ChapterJS is young. This page lists what it does not have yet, so that you do not look for it, and what to do meanwhile when there is something.
+
+<Note>
+  What exists is in the [reference](/reference): slash commands, events, and the structures they give you.
+</Note>
+
+## Buttons and select menus
+
+A message can contain [components](/reference/message-options#component): `channel.send()` and `interaction.reply()` accept them, and Discord shows them. But **nothing in your project runs when someone clicks one**: ChapterJS only routes slash commands, and a click is not one. The person sees "This interaction failed".
+
+Meanwhile: a slash command with [options](/commands/options) does what a button or a menu would. `choices` on a `string` option is a select menu people pick from.
+
+## Modals
+
+A form that opens when someone uses a command. Not available: there is no way to open one, and a submitted form would not reach your project.
+
+Meanwhile: the [options](/commands/options) of a command, with `required: true` for what must be filled in.
+
+## Autocomplete
+
+Options whose suggestions come from your bot while the person types. Not available: an option takes `choices`, declared once in the file.
+
+Meanwhile: `choices`, when the values are known in advance (25 at most).
+
+## Context menu commands
+
+Commands used by right-clicking a user or a message. Not available: a file of `src/commands/` is always a slash command.
+
+Meanwhile: a slash command with a `user` option, or a `string` option that takes the link of a message.
+
+## Scheduled tasks
+
+Something your bot does by itself, at a time or at intervals. There is no folder for it.
+
+Meanwhile: in a file of `src/events/ready/`, `setInterval` with what you want to run. Mind the [memory](/memory) of what you keep between runs, and know that `chapterjs dev` restarts the file on every save.
+
+## Presence and status
+
+Showing "Playing..." or "Listening to..." under the name of the bot, or marking it idle. Not available.
+
+## Other events
+
+The [events](/reference/events) your files can react to are the ones listed there: messages, members, servers, channels and roles. Reactions, voice, typing, threads joined and left, bans, invites, scheduled events and the others are not there yet.
+
+## A bot spread over several machines
+
+A large bot runs on [several processes of one machine](/run/start#large-bots) by itself. Running it on several machines at once is not available.
+
+## Choosing what the bot remembers
+
+How many members, users and messages the bot keeps in memory is decided by the files of your project and by the memory available: see [What the bot remembers](/memory). It is not a setting you can change.
+
+<CardGroup cols={2}>
+  <Card title="Coming from discord.js" icon="arrow-right" href="/from-discord-js">
+    Where each thing you know went.
+  </Card>
+  <Card title="Troubleshooting" icon="bug" href="/run/troubleshooting">
+    Every message of the CLI, and what people see on Discord.
+  </Card>
+</CardGroup>

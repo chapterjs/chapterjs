@@ -175,6 +175,7 @@ export class Channel extends IdStructure<RawChannel> {
 // What every channel with messages can do
 // ---------------------------------------------------------------------------
 
+/** What `fetchMessages()` takes: how many messages, and from where. */
 export interface FetchMessagesOptions {
   /** How many messages, from 1 to 100. Default: 50. */
   limit?: number;
@@ -186,6 +187,7 @@ export interface FetchMessagesOptions {
   around?: Snowflake | { id: Snowflake };
 }
 
+/** What every channel messages can be sent in has. */
 export interface TextBasedMethods {
   /** The messages of the channel the bot remembers. */
   readonly messages: ReadonlyMap<Snowflake, Message>;
@@ -197,7 +199,7 @@ export interface TextBasedMethods {
    */
   send(message: MessageInput): Promise<Message>;
   /**
-   * A message of the channel: from the cache, or else from Discord.
+   * A message of the channel: from what the bot remembers, or else from Discord.
    * @see https://docs.discord.com/developers/resources/message#get-channel-message
    */
   fetchMessage(id: Snowflake, options?: { force?: boolean }): Promise<Message>;
@@ -333,6 +335,7 @@ const textBasedMethods: TextBasedMethods &
 export interface PermissionOverwrite {
   /** The id of the role or of the member. */
   id: Snowflake;
+  /** Whether it applies to a role or to a member. */
   type: 'role' | 'member';
   /** What is allowed, whatever the server says. */
   allow: Permissions;
@@ -340,7 +343,9 @@ export interface PermissionOverwrite {
   deny: Permissions;
 }
 
+/** What `edit()` takes on a channel of a server. */
 export type GuildChannelEditOptions = Camelize<ModifyGuildChannelJSONParams>;
+/** What `createInvite()` takes. */
 export type InviteCreateOptions = Camelize<CreateChannelInviteJSONParams>;
 
 /**
@@ -539,6 +544,7 @@ export class GuildChannel extends Channel {
   }
 }
 
+/** What `startThread()` takes on a text channel. */
 export type ThreadCreateOptions = Camelize<StartThreadWithoutMessageJSONParams>;
 
 /** A text or announcement channel of a server. */
@@ -645,8 +651,10 @@ export class CategoryChannel extends GuildChannel {
   }
 }
 
+/** A tag the posts of a forum can have. */
 export type ForumTag = Camelize<RawForumTag>;
 
+/** What `createPost()` takes. */
 export interface ForumPostOptions {
   /** The title of the post. */
   name: string;
@@ -705,7 +713,9 @@ export class ForumChannel extends GuildChannel {
 // Threads and private conversations
 // ---------------------------------------------------------------------------
 
+/** What `edit()` takes on a thread. */
 export type ThreadEditOptions = Camelize<ModifyThreadJSONParams>;
+/** Someone in a thread, and since when. */
 export type ThreadMember = Camelize<Omit<RawThreadMember, 'member'>>;
 
 /**

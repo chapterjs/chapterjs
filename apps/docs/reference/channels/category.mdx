@@ -1,0 +1,30 @@
+---
+title: 'CategoryChannel'
+description: 'A category: the channels it groups'
+---
+
+A `CategoryChannel` is a category: it groups channels. It is what `channel.isCategory()` gives, and the `parent` of a channel of a server.
+
+```ts
+import type { CategoryChannel } from 'chapterjs';
+
+async function hide(category: CategoryChannel) {
+  const everyone = category.guild.everyoneRole;
+  await category.setPermissions(everyone, { deny: ['ViewChannel'] }, 'Category hidden');
+  for (const channel of category.children) {
+    await channel.setPermissions(everyone, { deny: ['ViewChannel'] }, 'Category hidden');
+  }
+}
+```
+
+<Note>
+  Where a channel is in the list, and how to change it, is in [Options](/reference/options#guildchanneleditoptions): `position` and `parentId`.
+</Note>
+
+## Properties
+
+It also has everything of [GuildChannel](/reference/channels#guildchannel). Messages can't be sent in a category.
+
+<ResponseField name="children" type="GuildChannel[]">
+  The channels of the category the bot knows, in order.
+</ResponseField>

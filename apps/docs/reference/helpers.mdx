@@ -1,54 +1,150 @@
 ---
 title: 'Helpers'
-description: 'Mentions, dates, ids and images'
+description: 'Mention users, channels, roles and commands, write dates everyone reads in their timezone, work with ids and image URLs'
 ---
 
-Small functions exported by `chapterjs` to write messages and work with ids.
+Small functions and types exported by `chapterjs` to write messages and work with ids and images.
+
+<Note>
+  How to send what they produce is in the [Messages](/messages) guide; everything a message can contain is in [Message options](/reference/message-options).
+</Note>
+
+```ts
+import { timestamp, TimestampStyle, type GuildMember } from 'chapterjs';
+
+function welcome(member: GuildMember) {
+  return `Welcome ${member}! You joined ${timestamp(member.joinedAt ?? new Date(), TimestampStyle.Relative)}.`;
+}
+```
 
 ## Mentions
 
-A structure put in a text becomes its mention: `` `${user}` `` is `<@id>`, `` `${channel}` `` is `<#id>`, `` `${role}` `` is `<@&id>`. When you only have an id, use these:
+A structure put in a text becomes its mention: `${user}` is `<@id>`, `${channel}` is `<#id>`, `${role}` is `<@&id>`. When you only have an id, use these functions. They build text; Discord turns it into a mention when the message is shown.
 
-| Function | Result | Shown by Discord as |
+### userMention()
+
+```ts
+userMention(userId: Snowflake): `<@${string}>`
+```
+
+`<@USER_ID>`: mentions a user.
+
+### channelMention()
+
+```ts
+channelMention(channelId: Snowflake): `<#${string}>`
+```
+
+`<#CHANNEL_ID>`: links a channel.
+
+### roleMention()
+
+```ts
+roleMention(roleId: Snowflake): `<@&${string}>`
+```
+
+`<@&ROLE_ID>`: mentions a role.
+
+### commandMention()
+
+```ts
+commandMention(name: string, commandId: Snowflake): `</${string}:${string}>`
+```
+
+`</NAME:COMMAND_ID>`: a clickable slash command. The name includes the subcommand group and subcommand when there are some (`"foo group bar"`).
+
+### emojiMention()
+
+```ts
+emojiMention(name: string, emojiId: Snowflake, animated?: boolean): string
+```
+
+`<:NAME:ID>` or `<a:NAME:ID>`: a custom emoji.
+
+### GuildNavigation
+
+Guild Navigation Types: links to a tab of the current server. Put the value in a message as it is.
+
+| Name | Value | Opens |
 | --- | --- | --- |
-| `userMention(id)` | `<@id>` | A mention of the user |
-| `channelMention(id)` | `<#id>` | A link to the channel |
-| `roleMention(id)` | `<@&id>` | A mention of the role |
-| `commandMention(name, id)` | `</name:id>` | A clickable slash command |
-| `emojiMention(name, id, animated?)` | `<:name:id>` | The custom emoji |
+| `GuildNavigation.Customize` | `'<id:customize>'` | The Channels & Roles tab, with the onboarding prompts |
+| `GuildNavigation.Browse` | `'<id:browse>'` | The Browse Channels tab |
+| `GuildNavigation.Guide` | `'<id:guide>'` | The Server Guide tab |
+| `GuildNavigation.LinkedRoles` | `'<id:linked-roles>'` | The Linked Roles tab |
 
-`GuildNavigation.Customize`, `.Browse`, `.Guide` and `.LinkedRoles` link to the matching tab of the current server.
+[Discord documentation](https://docs.discord.com/developers/reference#message-formatting)
 
 ## Dates
 
-`timestamp()` writes a date that each reader sees in their own timezone and language.
+### timestamp()
 
 ```ts
-import { timestamp, TimestampStyle } from 'chapterjs';
-
-const ends = new Date(Date.now() + 3600_000);
-const text = `The giveaway ends ${timestamp(ends, TimestampStyle.Relative)}`; // "ends in 1 hour"
+timestamp(date: Date | number, style?: TimestampStyle): string
 ```
 
-| Style | Example |
-| --- | --- |
-| `TimestampStyle.ShortTime` | 16:20 |
-| `TimestampStyle.MediumTime` | 16:20:30 |
-| `TimestampStyle.ShortDate` | 20/04/2021 |
-| `TimestampStyle.LongDate` | April 20, 2021 |
-| `TimestampStyle.LongDateShortTime` (default) | April 20, 2021 at 16:20 |
-| `TimestampStyle.FullDateShortTime` | Tuesday, April 20, 2021 at 16:20 |
-| `TimestampStyle.ShortDateShortTime` | 20/04/2021, 16:20 |
-| `TimestampStyle.ShortDateMediumTime` | 20/04/2021, 16:20:30 |
-| `TimestampStyle.Relative` | 4 years ago |
+`<t:TIMESTAMP>` or `<t:TIMESTAMP:STYLE>`: a date shown to each reader in their own timezone and language. Timestamps are expressed in seconds.
+
+A `number` is milliseconds since the Unix epoch, like `Date.now()`. Something that is not a date throws a `TypeError`:
+
+```text
+timestamp() needs a valid date.
+```
+
+### TimestampStyle
+
+How `timestamp()` is shown. Without a style, Discord uses `LongDateShortTime`.
+
+| Name | Value | Shown as |
+| --- | --- | --- |
+| `TimestampStyle.ShortTime` | `'t'` | 16:20 |
+| `TimestampStyle.MediumTime` | `'T'` | 16:20:30 |
+| `TimestampStyle.ShortDate` | `'d'` | 20/04/2021 |
+| `TimestampStyle.LongDate` | `'D'` | April 20, 2021 |
+| `TimestampStyle.LongDateShortTime` | `'f'` | April 20, 2021 at 16:20 (default) |
+| `TimestampStyle.FullDateShortTime` | `'F'` | Tuesday, April 20, 2021 at 16:20 |
+| `TimestampStyle.ShortDateShortTime` | `'s'` | 20/04/2021, 16:20 |
+| `TimestampStyle.ShortDateMediumTime` | `'S'` | 20/04/2021, 16:20:30 |
+| `TimestampStyle.Relative` | `'R'` | 4 years ago |
+
+[Discord documentation](https://docs.discord.com/developers/reference#message-formatting-timestamp-styles)
 
 ## Ids
 
-| Function | Description |
-| --- | --- |
-| `isSnowflake(value)` | Whether a value looks like a Discord id. Useful to check what a user typed. |
-| `snowflakeTimestamp(id)` | When the thing was created, in milliseconds. Structures already have `createdAt`. |
-| `snowflakeFromTimestamp(date)` | The smallest id created at a date: lets `before` and `after` options start from a date. |
+### Snowflake
+
+A Discord id: a 64-bit number serialized as a string.
+
+```ts
+type Snowflake = string
+```
+
+Every `id` is one, and every option that takes an id takes a `Snowflake`. It is text because the number is too big for a JavaScript `number`: never turn it into one.
+
+### isSnowflake()
+
+```ts
+isSnowflake(value: unknown): value is Snowflake
+```
+
+Whether a value looks like a Discord id: used to reject a wrong value (a name, a mention, a number) before it is sent to Discord.
+
+### snowflakeTimestamp()
+
+```ts
+snowflakeTimestamp(id: Snowflake): number
+```
+
+When the thing a snowflake identifies was created, in milliseconds since the Unix epoch: `(snowflake >> 22) + 1420070400000`.
+
+Structures already have `createdAt`; this is for an id alone.
+
+### snowflakeFromTimestamp()
+
+```ts
+snowflakeFromTimestamp(timestamp: number | Date): Snowflake
+```
+
+The smallest snowflake created at a given time: lets `before` / `after` pagination start from a date.
 
 ```ts
 import { snowflakeFromTimestamp, type TextChannel } from 'chapterjs';
@@ -59,15 +155,58 @@ async function sinceYesterday(channel: TextChannel) {
 }
 ```
 
+A date before Discord existed throws a `RangeError`:
+
+```text
+Discord ids start in 2015: the date is too early.
+```
+
+[Discord documentation](https://docs.discord.com/developers/reference#snowflakes)
+
 ## Images
 
-Methods that end with `URL` (`user.avatarURL()`, `guild.iconURL()`, `role.iconURL()`...) take the same options:
+### ImageOptions
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `format?` | `ImageFormat` | The file format. By default: WebP, which Discord recommends since it works for still and animated images, whatever was uploaded. |
-| `size?` | `ImageSize` | The size in pixels: a power of two between 16 and 4096. |
-| `animated?` | `boolean` | `false` to get the first frame of an animated image. By default an animated image stays animated. |
+What every method that ends with `URL` takes: `user.avatarURL()`, `member.avatarURL()`, `guild.iconURL()`, `guild.bannerURL()`, `guild.splashURL()`, `role.iconURL()`, `emoji.url()`...
 
+<ResponseField name="format" type="ImageFormat">The file format. By default: WebP, which Discord recommends since it works for still and animated images, whatever was uploaded.</ResponseField>
+<ResponseField name="size" type="ImageSize">The size in pixels: a power of two between 16 and 4096.</ResponseField>
+<ResponseField name="animated" type="boolean">`false` to get the first frame of an animated image. By default an animated image stays animated.</ResponseField>
 
-Sizes are powers of two from 16 to 4096: `16`, `32`, `64`, `128`, `256`, `512`, `1024`, `2048`, `4096`. Formats are `'webp'` (default), `'png'`, `'jpg'` and `'gif'`.
+```ts
+import type { User } from 'chapterjs';
+
+function bigAvatar(user: User) {
+  return user.avatarURL({ format: 'png', size: 1024 });
+}
+```
+
+What you get follows a few rules:
+
+- Asking for `'gif'` on an image that is not animated gives a PNG instead.
+- An animated image stays animated only in WebP (the default) or GIF; `animated: false` gives its first frame.
+- A wrong value throws a `RangeError` before any URL is built:
+
+```text
+"bmp" is not an image format. Use png, jpg, webp or gif.
+```
+
+```text
+100 is not an image size. Use a power of two between 16 and 4096 (64, 128, 256...).
+```
+
+### ImageFormat
+
+```ts
+type ImageFormat = 'png' | 'jpg' | 'jpeg' | 'webp' | 'gif'
+```
+
+### ImageSize
+
+Image size can be any power of two between 16 and 4096.
+
+```ts
+type ImageSize = 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096
+```
+
+[Discord documentation](https://docs.discord.com/developers/reference#image-formatting)

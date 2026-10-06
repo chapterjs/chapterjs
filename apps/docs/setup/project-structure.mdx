@@ -1,0 +1,196 @@
+---
+title: 'Project structure'
+description: 'What each folder and file of your project is for, and the two naming rules that let you organise them your way'
+---
+
+A project made with `create chapter` looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
+
+<Tree>
+  <Tree.Folder name="my-bot" defaultOpen>
+    <Tree.Folder name=".chapterjs" />
+    <Tree.Folder name="src" defaultOpen>
+      <Tree.Folder name="commands" defaultOpen>
+        <Tree.File name="ping.ts" highlight />
+      </Tree.Folder>
+      <Tree.Folder name="events" defaultOpen>
+        <Tree.Folder name="ready" defaultOpen>
+          <Tree.File name="online.ts" highlight />
+        </Tree.Folder>
+      </Tree.Folder>
+    </Tree.Folder>
+    <Tree.File name=".env" />
+    <Tree.File name=".env.example" />
+    <Tree.File name=".gitignore" />
+    <Tree.File name="package.json" />
+    <Tree.File name="tsconfig.json" />
+  </Tree.Folder>
+</Tree>
+
+## `src/`: where a file is says what it is
+
+ChapterJS never asks you to register anything. A file is a command or a reaction to an event because of **where it is**, like a route in a web framework:
+
+| Folder | A file in it is | What it exports |
+| --- | --- | --- |
+| `src/commands/` | A slash command, named after its path: `ping.ts` is `/ping`, `mod/ban.ts` is `/mod ban` | `command({ ... })` |
+| `src/events/<event>/` | One reaction to the event named by its folder: `memberJoin/welcome.ts` runs when someone joins | `event(({ ... }) => { ... })` |
+
+Both are imported from the same place, in every file:
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Replies with Pong!',
+  async run({ interaction }) {
+    await interaction.reply('Pong!');
+  },
+});
+```
+
+```ts src/events/memberJoin/welcome.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  await member.send(`Welcome to ${guild.name}!`);
+});
+```
+
+Any other folder of `src/` is yours: `src/lib/`, `src/db/`, whatever you like. ChapterJS only reads the folders above, and your files import the rest as usual.
+
+<Note>
+  How to write each kind of file is in [Commands](/commands) and [Events](/events).
+</Note>
+
+## Two naming rules
+
+Inside `src/commands/` and `src/events/`, two kinds of names are never part of a command or an event, so you can sort your files the way you like:
+
+<Tree>
+  <Tree.Folder name="src/commands" defaultOpen>
+    <Tree.File name="_embeds.ts" />
+    <Tree.Folder name="(fun)" defaultOpen>
+      <Tree.File name="ping.ts" />
+    </Tree.Folder>
+    <Tree.Folder name="(moderation)" defaultOpen>
+      <Tree.File name="_checks.ts" />
+      <Tree.File name="ban.ts" />
+      <Tree.File name="kick.ts" />
+      <Tree.Folder name="mod" defaultOpen>
+        <Tree.File name="warn.ts" />
+      </Tree.Folder>
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+- **A folder in parentheses only groups files.** `(fun)/ping.ts` is still `/ping`, and `(moderation)/mod/warn.ts` is `/mod warn`. Put as many as you want inside each other; Discord never sees them.
+- **A name starting with `_` is private.** `_embeds.ts` and `_checks.ts` are never read as a command or an event. Use them for the code several files share, and import them like any file: `import { canPunish } from './_checks'`.
+
+The same two rules apply in `src/events/`: `(logs)/messageDelete/log.ts` reacts to `messageDelete`.
+
+<Warning>
+  Two files can't be the same thing. `(fun)/ping.ts` and `(tools)/ping.ts` are both `/ping`: the second one is reported and left out.
+</Warning>
+
+## Imports
+
+Your files are TypeScript, run by Node directly. A relative import needs no extension, and a folder with an `index` file works too:
+
+<CodeGroup>
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+import { greet } from '../lib/greet'; // src/lib/greet.ts
+import { db } from '../db'; // src/db/index.ts
+
+export default command({
+  description: 'Says hello',
+  async run({ interaction, user }) {
+    db.visits += 1;
+    await interaction.reply(greet(user.displayName));
+  },
+});
+```
+
+```ts src/lib/greet.ts
+export function greet(name: string): string {
+  return `Hello ${name}!`;
+}
+```
+
+```ts src/db/index.ts
+export const db = { visits: 0 };
+```
+</CodeGroup>
+
+Writing the extension works as well: `'../lib/greet.ts'`.
+
+Packages from `node_modules` are imported as usual. The files you import are watched like the others: in [`chapterjs dev`](/run/dev), saving `src/lib/greet.ts` reloads every file that uses it.
+
+## `.chapterjs/`: generated, ignored, safe to delete
+
+This folder is written by ChapterJS, and git ignores it. It holds:
+
+| | What it is |
+| --- | --- |
+| `types/`, `projects/` | The types of your project: how `event` knows, in each folder, what its function receives. Your editor reads them. |
+| `cache/` | What was last registered on Discord, so starting your bot again costs no request. |
+| `build/` | Your compiled bot, written by [`chapterjs build`](/run/build). |
+
+It is written when you install your project (`postinstall` runs `chapterjs sync`) and every time `chapterjs dev` or `chapterjs build` starts. If your editor says that `event` does not exist, run `chapterjs sync`: see the [CLI reference](/reference/cli#chapterjs-sync).
+
+## `.env`
+
+Two values, read by [`chapterjs dev`](/run/dev); [`chapterjs start`](/run/start) only needs the first one:
+
+```bash .env
+BOT_TOKEN=
+DEV_GUILD_ID=
+```
+
+Where to find them is in [Your Discord application](/setup/discord-application). The real environment wins over the file: on a host, you give `BOT_TOKEN` in its settings and upload no `.env`.
+
+<Warning>
+  Your token is a password: never share it, and never commit `.env`. Projects created with `create chapter` already ignore it in git.
+</Warning>
+
+## `package.json`
+
+The scripts of your project run the [CLI](/reference/cli):
+
+| Script | Runs | When |
+| --- | --- | --- |
+| `dev` | `chapterjs dev` | While you write your bot |
+| `build` | `chapterjs build` | Before putting it online |
+| `start` | `chapterjs start` | On the machine that hosts it |
+| `typecheck` | `tsc -b` | To check the types of the whole project from a terminal |
+| `postinstall` | `chapterjs sync` | By itself, after each install |
+
+`chapterjs` is the only dependency of your bot. TypeScript and `@types/node` are development dependencies: they check your code, and are not needed to run it.
+
+## `tsconfig.json`
+
+It only holds compiler options and one reference to `./.chapterjs`, which is where the real projects are: one per conventional folder, so that `event` can be typed differently in each. Keep it that way.
+
+<Warning>
+  A plain `tsc` checks nothing in a ChapterJS project. Use the `typecheck` script, which runs `tsc -b`: that is what your editor follows too.
+</Warning>
+
+## With pnpm: one more file
+
+pnpm refuses to install a project that has esbuild somewhere in its dependencies (here, through `chapterjs`) until it is told whether esbuild's install script may run. It may not, and esbuild does not need it. `create chapter` writes the answer for you; in a project made another way, create it next to `package.json`:
+
+```yaml pnpm-workspace.yaml
+allowBuilds:
+  esbuild: false
+ignoredBuiltDependencies:
+  - esbuild
+```
+
+<CardGroup cols={2}>
+  <Card title="Commands" icon="terminal" href="/commands">
+    One file per slash command, options typed for you.
+  </Card>
+  <Card title="Events" icon="zap" href="/events">
+    A folder per event, as many files as you want.
+  </Card>
+</CardGroup>

@@ -1,0 +1,186 @@
+---
+title: 'Events'
+description: 'React to what happens on Discord: a new member, a deleted channel, a message'
+---
+
+An event is something that happens on Discord. To react to one, create a folder named after it in `src/events/` and put a file in it:
+
+```ts src/events/memberJoin/welcome.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  await member.send(`Welcome to ${guild.name}, ${member.displayName}!`);
+});
+```
+
+That is all. `chapterjs dev` finds the file and runs your function every time someone joins your test server. Nothing to register, no list to keep up to date, and no type to write: your editor already knows that `member` is a [`GuildMember`](/reference/member) and `guild` a [`Guild`](/reference/guild).
+
+## The folder is the event
+
+<Tree>
+  <Tree.Folder name="src/events" defaultOpen>
+    <Tree.Folder name="memberJoin" defaultOpen>
+      <Tree.File name="welcome.ts" highlight />
+      <Tree.File name="log.ts" />
+    </Tree.Folder>
+    <Tree.Folder name="messageCreate" defaultOpen>
+      <Tree.File name="ping.ts" />
+    </Tree.Folder>
+    <Tree.Folder name="ready" defaultOpen>
+      <Tree.File name="online.ts" />
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+- **The folder is the event.** Its name is one of the [events](/reference/events); a folder with another name is reported, with the closest event name when there is one.
+- **A file is one reaction.** Its name is yours to choose, and a folder holds as many files as you want: they all run.
+- **The import is the same everywhere.** `event` knows which folder the file is in, so in `src/events/memberJoin/` it gives your function a member, and in `src/events/roleDelete/` a role. The same line, `import { event } from 'chapterjs'`, works in every folder.
+
+Private files (`_format.ts`) and folders in parentheses (`(logs)/memberJoin/`) follow the [two naming rules](/setup/project-structure#two-naming-rules) of every conventional folder.
+
+<Info>
+  `event` is typed for each folder by the `.chapterjs/` folder of your project, written when you install it and every time `chapterjs dev` starts. If your editor says that `event` does not exist, run `chapterjs sync`.
+</Info>
+
+## Several files for one event
+
+When an event happens, every file of its folder runs, **at the same time and in no particular order**. A file never waits for another, and a file that fails never stops the others.
+
+Use one file per thing your bot does: `welcome.ts`, `log.ts`, `roles.ts`... When two steps must happen one after the other, keep them in the same file:
+
+```ts src/events/memberJoin/roles.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  const role = [...guild.roles.values()].find(role => role.name === 'Newcomer');
+  if (!role) return;
+  await member.addRole(role, 'Just joined');
+  await member.send(`You now have the ${role.name} role.`);
+});
+```
+
+Every file of a folder receives the same thing, and can read it but not change it: assigning to it (`context.role = ...`) throws, and the error is reported like any other.
+
+## What is never missing
+
+Your function receives [structures](/reference) you can read and act on. In a server, what must exist is always there, with no `?.` to write:
+
+- `member.guild`, `role.guild`, `channel.guild` for a channel of a server, `member.highestRole`;
+- `guild.me` (your bot as a member of the server), `guild.everyoneRole`;
+- `message.guild`, `message.member` and `message.channel` in the [events about messages](/events/messages).
+
+They stay there while your function runs, even if the person leaves or the channel is deleted in the meantime: your function keeps them as they were. The bot also keeps `guild.me` apart from [what it remembers](/memory), so it is there in a server of any size.
+
+What can be `null` is what may really not exist: a channel without a category (`channel.parent`), a message that was never edited (`message.editedAt`), a member count Discord never sent (`guild.memberCount`), a member the bot never saw in `memberLeave`.
+
+### What was deleted
+
+The events about something that no longer exists give its id, and the thing itself **as it was**:
+
+- `roleDelete`: `role` is always there, the bot knows every role of its servers.
+- `channelDelete`: `channel` is the channel or thread as it was.
+- `guildLeave`: `guild` is the server as it was.
+- `memberLeave`: `member` is `null` when the bot never saw that member. `user` is always there.
+
+```ts src/events/memberLeave/goodbye.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ user, guild, member }) => {
+  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+  if (!channel || !channel.isTextBased()) return;
+  const name = member?.displayName ?? user.displayName;
+  await channel.send(`${name} left ${guild.name}.`);
+});
+```
+
+## The `ready` event
+
+`ready` runs **once per start**, when the bot is connected and knows every server it is in. It is not an event of Discord: nothing can start it again, and saving a file in `chapterjs dev` never runs it a second time.
+
+```ts src/events/ready/online.ts
+import { event } from 'chapterjs';
+
+export default event(({ user, guilds }) => {
+  console.log(`${user.username} is online in ${guilds.size} server(s)`);
+});
+```
+
+## Options
+
+Some events take options, as the second argument of `event()`. Each file decides for itself: two files of the same folder can pass different options, and what your function receives follows them.
+
+```ts src/events/messageCreate/relay.ts
+import { event } from 'chapterjs';
+
+export default event(
+  ({ message }) => {
+    console.log(`${message.author.username}: ${message.content}`);
+  },
+  { bots: true }
+);
+```
+
+An option is `true` or `false`, or one word of a list. Your editor only offers the options of the event of the folder, and an option that does not exist, or a wrong value, is reported when the file loads, before the bot runs it. Today only the [events about messages](/events/messages) have options.
+
+## Intents: nothing to list
+
+Discord only sends a bot the events it asked for, through *intents*. You never write them: ChapterJS works them out from your folders, and tells you when it connects:
+
+```text
+ℹ Intents computed from your files: GUILDS, GUILD_MEMBERS
+```
+
+When you save a file that needs more, `chapterjs dev` reconnects by itself:
+
+```text
+↻ Your files now need more from Discord (GUILD_MESSAGES, MESSAGE_CONTENT): reconnecting...
+```
+
+Two of the intents your files can need are **privileged**: Discord asks you to enable them yourself, in the [Developer Portal](/setup/discord-application).
+
+| Folders | Option to enable |
+| --- | --- |
+| `memberJoin`, `memberUpdate`, `memberLeave` | **Server Members Intent** |
+| `messageCreate`, `messageUpdate` | **Message Content Intent**: without it, the messages of other people come without their text |
+
+When one is missing, `chapterjs dev` names the files that need it and gives you the link, then waits:
+
+```text
+⚠ Your files need an option that is not enabled for your bot:
+  - Server Members Intent, needed by src/events/memberJoin/welcome.ts
+  Enable it under "Privileged Gateway Intents", then save:
+  https://discord.com/developers/applications/123456789012345678/bot
+  Waiting for you to enable it...
+✓ Privileged intents enabled
+```
+
+<Info>
+  The command only waits when it runs in a terminal. Started by another program, it stops with the same explanation.
+</Info>
+
+## When your function fails
+
+An error in one of your functions never stops the bot, nor the other files. It is shown in your terminal with the file and the line, whether it is a bug of yours or Discord refusing what you asked:
+
+```text
+✗ src/events/memberJoin/welcome.ts:4 Discord refused POST /channels/{channel.id}/messages: Cannot send messages to this user (50007)
+```
+
+To handle a failure yourself, use `try` / `catch`: see [Errors](/reference/errors).
+
+## In dev, only your test server
+
+`chapterjs dev` runs your bot in [your test server only](/run/dev#only-your-test-server): what happens in other servers and in private messages is ignored, and the intents that only serve private messages are not asked for. With `chapterjs start`, your bot hears every server it is in and private messages too.
+
+<Note>
+  Every event, with what your function receives, is in the [reference](/reference/events). The types of `event()` are in [event()](/reference/event).
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Messages" icon="message-square" href="/events/messages">
+    Servers or private messages, bots or people: the events about messages and their options.
+  </Card>
+  <Card title="What your bot remembers" icon="brain" href="/memory">
+    Why reading a server or a member costs nothing, and how memory stays under control.
+  </Card>
+</CardGroup>

@@ -1,7 +1,9 @@
 ---
 title: 'Message'
-description: 'A message sent in a channel: reply, edit, react, pin'
+description: 'A message sent in a channel: what it contains, and how to reply, edit, react, pin and start a thread from it'
 ---
+
+A `Message` is a message sent in a channel. You get one from the [events about messages](/events/messages), from what `send()` and `reply()` return, and from `fetchMessage()` and `fetchMessages()` on a channel.
 
 ```ts
 import type { Message } from 'chapterjs';
@@ -15,59 +17,123 @@ async function onPing(message: Message) {
 }
 ```
 
+<Note>
+  How to send, edit and read messages is in [Sending messages](/messages); everything `reply()` and `edit()` accept is in [Message options](/reference/message-options).
+</Note>
+
 <Warning>
-  `message.content`, `embeds` and `attachments` are empty for messages of other people unless the **Message Content** intent is enabled for your bot. Messages that mention the bot, and private messages, always have their content.
+  `content`, `embeds` and `attachments` are empty for the messages of other people unless the **Message Content Intent** is enabled for your bot. Messages that mention the bot, and private messages, always have their content.
 </Warning>
 
 ## Properties
 
-| Property | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The unique id Discord gave it. |
-| `createdAt` | `Date` | When it was created: a Discord id contains its creation date. |
-| `author` | `User` | Who wrote the message. |
-| `mentions` | `readonly User[]` | The users mentioned in the message. |
-| `channelId` | `Snowflake` | The id of the channel of the message. |
-| `guildId` | `Snowflake \| null` | The id of the server; `null` for a private message. |
-| `channel` | `TextBasedChannel \| null` | The channel of the message, when it is known. |
-| `guild` | `Guild \| null` | The server of the message; `null` for a private message. |
-| `member` | `GuildMember \| null` | The author as a member of the server, when it is known. |
-| `content` | `string` | The text of the message. Empty when the bot is not allowed to read it: reading the messages of others needs the Message Content intent. |
-| `type` | `MessageType` | The kind of message, as a value of `MessageType` (a regular one, a reply, a join notice...). |
-| `editedAt` | `Date \| null` | When the message was last edited; `null` when it never was. |
-| `pinned` | `boolean` | Whether the message is pinned. |
-| `tts` | `boolean` | Whether the message was read aloud. |
-| `embeds` | `Embed[]` | The embeds of the message. |
-| `attachments` | `Attachment[]` | The files attached to the message. |
-| `reactions` | `Reaction[]` | The reactions on the message, one entry per emoji. |
-| `mentionsEveryone` | `boolean` | Whether the message mentions @everyone or @here. |
-| `mentionedRoleIds` | `readonly Snowflake[]` | The ids of the roles mentioned in the message. |
-| `flags` | `MessageFlagName[]` | The flags of the message, by name (`Ephemeral`, `SuppressEmbeds`...). |
-| `webhookId` | `Snowflake \| null` | The id of the webhook that sent the message, when one did. |
-| `repliedMessageId` | `Snowflake \| null` | The id of the message this one replies to, when it is a reply. |
-| `isFromUser` | `boolean` | Whether a person wrote it: not a bot, a webhook or Discord itself. |
-| `url` | `string` | The link that opens the message in Discord. |
+<ResponseField name="id" type="Snowflake">
+  The unique id Discord gave it.
+</ResponseField>
 
-### In a server, in private
+<ResponseField name="createdAt" type="Date">
+  When it was created: a Discord id contains its creation date.
+</ResponseField>
 
-The [events about messages](/events#private-messages) give a message that says where it comes from, so what they give is more precise than `Message`:
+<ResponseField name="author" type="User">
+  Who wrote the message.
+</ResponseField>
 
-| Type | What it is | What changes |
-| --- | --- | --- |
-| `GuildMessage` | A message of a server: its server is known. | `guildId` is a `Snowflake`, `guild` is a `Guild`, `channel` is a `GuildTextBasedChannel` |
-| `MemberMessage` | A message written in a server by one of its members: neither a private message nor the message of a webhook. | Like `GuildMessage`, and `member` is a `GuildMember` |
-| `DmMessage` | A private message, for a file that only receives those (`{ where: 'dm' }`). | `guild`, `guildId` and `member` do not exist; `channel` is a `DMChannel \| null` |
-| `PrivateMessage` | A private message, for a file that receives both kinds (`{ where: 'both' }`). | `guild`, `guildId` and `member` are `null`; `channel` is a `DMChannel \| null` |
+<ResponseField name="mentions" type="readonly User[]">
+  The users mentioned in the message.
+</ResponseField>
 
-You only need these names to type a function of your own:
+<ResponseField name="channelId" type="Snowflake">
+  The id of the channel of the message.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  The id of the server; `null` for a private message.
+</ResponseField>
+
+<ResponseField name="channel" type="TextBasedChannel | null">
+  The channel of the message, when it is known.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild | null">
+  The server of the message; `null` for a private message.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  The author as a member of the server, when it is known.
+</ResponseField>
+
+<ResponseField name="content" type="string">
+  The text of the message. Empty when the bot is not allowed to read it: reading the messages of others needs the Message Content intent.
+</ResponseField>
+
+<ResponseField name="type" type="MessageType">
+  The kind of message, as a value of [`MessageType`](/reference/enums#messagetype) (a regular one, a reply, a join notice...).
+</ResponseField>
+
+<ResponseField name="editedAt" type="Date | null">
+  When the message was last edited; `null` when it never was.
+</ResponseField>
+
+<ResponseField name="pinned" type="boolean">
+  Whether the message is pinned.
+</ResponseField>
+
+<ResponseField name="tts" type="boolean">
+  Whether the message was read aloud.
+</ResponseField>
+
+<ResponseField name="embeds" type="Embed[]">
+  The embeds of the message. Each entry is an [`Embed`](/reference/message-options#embed).
+</ResponseField>
+
+<ResponseField name="attachments" type="Attachment[]">
+  The files attached to the message. Each entry is an [`Attachment`](/reference/data#attachment).
+</ResponseField>
+
+<ResponseField name="reactions" type="Reaction[]">
+  The reactions on the message, one entry per emoji. Each entry is a [`Reaction`](/reference/data#reaction).
+</ResponseField>
+
+<ResponseField name="mentionsEveryone" type="boolean">
+  Whether the message mentions @everyone or @here.
+</ResponseField>
+
+<ResponseField name="mentionedRoleIds" type="readonly Snowflake[]">
+  The ids of the roles mentioned in the message.
+</ResponseField>
+
+<ResponseField name="flags" type="MessageFlagName[]">
+  The flags of the message, by name (`Ephemeral`, `SuppressEmbeds`...).
+</ResponseField>
+
+<ResponseField name="webhookId" type="Snowflake | null">
+  The id of the webhook that sent the message, when one did.
+</ResponseField>
+
+<ResponseField name="repliedMessageId" type="Snowflake | null">
+  The id of the message this one replies to, when it is a reply.
+</ResponseField>
+
+<ResponseField name="isFromUser" type="boolean">
+  Whether a person wrote it: not a bot, a webhook or Discord itself.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The link that opens the message in Discord.
+</ResponseField>
+
+## Helpers
+
+These read what the bot already knows: they never send a request.
+
+### toJSON()
 
 ```ts
-import type { MemberMessage } from 'chapterjs';
-
-export function xpFor(message: MemberMessage): number {
-  return message.member.roles.length + message.content.length;
-}
+toJSON(): object
 ```
+
+The data of Discord as a plain object, with camelCase names.
 
 ## Reading from Discord
 
@@ -78,6 +144,8 @@ fetch(): Promise<Message>
 ```
 
 Asks Discord for the latest version of the message.
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#get-channel-message)
 
 ### fetchReactionUsers()
 
@@ -97,7 +165,7 @@ The users who reacted with an emoji (100 at most per call).
 reply(message: MessageInput): Promise<Message>
 ```
 
-Answers the message, in the same channel.
+Answers the message, in the same channel. What it accepts is a [`MessageInput`](/reference/message-options#messageinput).
 
 [Discord documentation](https://docs.discord.com/developers/resources/message#create-message)
 
@@ -107,7 +175,7 @@ Answers the message, in the same channel.
 edit(message: string | MessageEditOptions): Promise<Message>
 ```
 
-Changes the message. Only the content, embeds, components and files of a message the bot wrote can change.
+Changes the message. Only the content, embeds, components and files of a message the bot wrote can change. The options are a [`MessageEditOptions`](/reference/message-options#messageeditoptions).
 
 [Discord documentation](https://docs.discord.com/developers/resources/message#edit-message)
 
@@ -184,20 +252,120 @@ Publishes a message of an announcement channel to the servers that follow it.
 ### startThread()
 
 ```ts
-startThread(options: Camelize<StartThreadFromMessageJSONParams>, reason?: string): Promise<ThreadChannel>
+startThread(
+  options: { name: string; autoArchiveDuration?: number; rateLimitPerUser?: number | null },
+  reason?: string
+): Promise<ThreadChannel>
 ```
 
 Starts a thread from the message.
 
+<ResponseField name="name" type="string" required>
+  The name of the thread, 1 to 100 characters.
+</ResponseField>
+
+<ResponseField name="autoArchiveDuration" type="number">
+  After how many minutes without activity the thread leaves the channel list: 60, 1440, 4320 or 10080.
+</ResponseField>
+
+<ResponseField name="rateLimitPerUser" type="number | null">
+  How many seconds a member waits between two messages (0 to 21600).
+</ResponseField>
+
 [Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-from-message)
 
+## Types
 
-## Emojis in reactions
+### GuildMessage
 
-Methods that take an emoji accept:
+A message of a server: its server is known. It is what the events about messages give for what happens in a server.
+
+<ResponseField name="guildId" type="Snowflake">
+  The id of the server.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  The server of the message.
+</ResponseField>
+
+<ResponseField name="channel" type="GuildTextBasedChannel">
+  The channel of the message.
+</ResponseField>
+
+### MemberMessage
+
+A message written in a server by one of its members: neither a private message nor the message of a webhook. It is what the events about messages give by default. It has everything of `GuildMessage`, and:
+
+<ResponseField name="member" type="GuildMember">
+  The author as a member of the server.
+</ResponseField>
+
+### PrivateMessage
+
+A private message, for a file that receives both kinds (`{ where: 'both' }`): there is no server, which is how it is told apart from a `GuildMessage`.
+
+<ResponseField name="guildId" type="null">
+  No server: it is a private message.
+</ResponseField>
+
+<ResponseField name="guild" type="null">
+  No server: it is a private message.
+</ResponseField>
+
+<ResponseField name="member" type="null">
+  No member: the author is `author`.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel | null">
+  The private conversation, when the bot knows it.
+</ResponseField>
+
+### DmMessage
+
+A private message, for a file that only receives those (`{ where: 'dm' }`): nothing about a server exists on it. `guildId`, `guild` and `member` are not even offered by your editor.
+
+<ResponseField name="channel" type="DMChannel | null">
+  The private conversation, when the bot knows it.
+</ResponseField>
+
+You only need these names to type a function of your own:
+
+```ts
+import type { MemberMessage } from 'chapterjs';
+
+export function xpFor(message: MemberMessage): number {
+  return message.member.roles.length + message.content.length;
+}
+```
+
+### EmojiInput
+
+```ts
+type EmojiInput = string | { id?: Snowflake | null; name?: string | null }
+```
+
+An emoji to react with: a standard one (`"👍"`), or a custom one. The methods that take one accept:
 
 - a standard emoji: `'👍'`
-- a custom emoji as Discord writes it: `'<:name:123456789012345678>'`
-- a custom emoji as an object: `{ id: '123456789012345678', name: 'name' }`, or a `GuildEmoji`
+- a custom emoji as Discord writes it: `'<:name:123456789012345678>'` (or `'<a:name:…>'` when animated)
+- a custom emoji as an object: `{ id: '123456789012345678', name: 'name' }`, or a [`GuildEmoji`](/reference/emoji)
 
-See [Sending messages](/reference/sending-messages) for everything `reply()` and `edit()` accept, and [Data](/reference/data) for the fields of `embeds`, `attachments` and `reactions`.
+An empty text is refused before anything is sent:
+
+```text
+The emoji is empty: pass one like "👍".
+```
+
+### MessageFlagName
+
+```ts
+type MessageFlagName = keyof typeof MessageFlags
+```
+
+The name of a flag of a message: a key of [`MessageFlags`](/reference/enums#messageflags). It is what `flags` lists.
+
+### Elsewhere
+
+- [`Attachment`](/reference/data#attachment) and [`Reaction`](/reference/data#reaction): the entries of `attachments` and `reactions`.
+- [`Embed`](/reference/message-options#embed): the entries of `embeds`, and what you send.
+- [`MessageInput`](/reference/message-options#messageinput) and [`MessageEditOptions`](/reference/message-options#messageeditoptions): what `reply()` and `edit()` take.

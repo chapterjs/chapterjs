@@ -12,6 +12,11 @@ import { guildOf } from './known.js';
 import type { Guild } from './guild.js';
 import type { GuildMember } from './member.js';
 
+/**
+ * What `edit()` takes on a role: only what is passed changes. Permissions
+ * are given by name, as a list of names or as a `Permissions` set.
+ * @see https://docs.discord.com/developers/resources/guild#modify-guild-role-json-params
+ */
 export type RoleEditOptions = Camelize<
   Omit<ModifyGuildRoleJSONParams, 'permissions'>
 > & {

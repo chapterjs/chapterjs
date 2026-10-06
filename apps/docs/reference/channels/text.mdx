@@ -1,0 +1,59 @@
+---
+title: 'TextChannel'
+description: 'A text or announcement channel of a server: topic, slowmode, threads and following'
+---
+
+A `TextChannel` is a text or announcement channel of a server. It is what `channel.isText()` gives, and the most common `channel` of a command or a message.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function openDiscussion(channel: TextChannel, subject: string) {
+  const thread = await channel.startThread({ name: subject, autoArchiveDuration: 1440 });
+  await thread.send(`Let's talk about ${subject} here.`);
+  if (channel.slowmode > 0) await channel.send(`Slowmode is on: one message every ${channel.slowmode} s.`);
+  return thread;
+}
+```
+
+<Note>
+  How to send, edit and read messages is in [Sending messages](/messages).
+</Note>
+
+## Properties
+
+It also has everything of [GuildChannel](/reference/channels#guildchannel) and [what channels with messages share](/reference/channels#channels-with-messages).
+
+<ResponseField name="topic" type="string | null">
+  The topic shown at the top of the channel.
+</ResponseField>
+
+<ResponseField name="slowmode" type="number">
+  How many seconds a member waits between two messages (slowmode).
+</ResponseField>
+
+<ResponseField name="isAnnouncement" type="boolean">
+  Whether it is an announcement channel, which servers can follow.
+</ResponseField>
+
+## Actions
+
+### startThread()
+
+```ts
+startThread(options: ThreadCreateOptions, reason?: string): Promise<ThreadChannel>
+```
+
+Starts a thread that is not attached to a message. To start one from a message, use `message.startThread()`. The options are a [`ThreadCreateOptions`](/reference/options#threadcreateoptions).
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-without-message)
+
+### follow()
+
+```ts
+follow(target: Snowflake | { id: Snowflake }, reason?: string): Promise<void>
+```
+
+Makes another channel receive what is published in this announcement channel.
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#follow-announcement-channel)

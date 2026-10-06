@@ -1,0 +1,64 @@
+---
+title: 'Coming from discord.js'
+description: 'Find where each thing you know from discord.js went, and what has no equivalent yet'
+---
+
+If you have written a bot with discord.js, most of what you know still holds: the servers, members, channels and messages are the same things, with the same names. What changes is how a bot is put together: there is no client to build, no listener to attach and no command to deploy. A file in the right folder is enough.
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Replies with Pong!',
+  async run({ interaction }) {
+    await interaction.reply('Pong!');
+  },
+});
+```
+
+## Where things went
+
+| In discord.js | In ChapterJS |
+| --- | --- |
+| `new Client({ intents })` and `client.login(token)` | Nothing to write: [`chapterjs dev`](/run/dev) connects the bot with the token of `.env` |
+| The list of intents | Computed from your files: a file in `src/events/memberJoin/` asks for the members, a `messageCreate` file for the messages. The privileged ones are [checked before connecting](/run/dev#what-it-checks-for-you) |
+| `client.on('guildMemberAdd', member => ...)` | A file in `src/events/memberJoin/`, any name: `export default event(async ({ member, guild }) => ...)`. See [Events](/events) |
+| `client.once('ready', ...)` | A file in `src/events/ready/`, which receives `user` (the bot) and `guilds` |
+| `SlashCommandBuilder` and a deploy script | `command({ description, options, run })` in `src/commands/`: the path is the name, and the command is registered when it changes. See [Commands](/commands) |
+| `interaction.options.getUser('target')` | `options.target`, already a `User`, typed from what you declared. See [Options](/commands/options) |
+| `interaction.reply()`, `deferReply()`, `editReply()`, `followUp()`, `deleteReply()` | `interaction.reply()`, `defer()`, `edit()`, `followUp()`, `delete()`. Deferring is done for you after 2 seconds. See [Answering](/commands/answering) |
+| `{ ephemeral: true }` or `MessageFlags.Ephemeral` | `{ ephemeral: true }` on the answer, or on the whole command |
+| `Guild`, `GuildMember`, `User`, `Role`, `Message` | The same names, with the same kind of properties and methods: [reference](/reference) |
+| `guild.members.fetch(id)` | `guild.fetchMember(id)`: what the bot remembers first, Discord otherwise; `{ force: true }` to ask Discord anyway |
+| `guild.members.cache`, `guild.channels.cache` | `guild.members`, `guild.channels`: readonly `Map`s. There is no `Collection`: use `Map` and arrays |
+| `member.permissions.has(PermissionsBitField.Flags.BanMembers)` | `member.permissions.has('BanMembers')`: a [`Permissions`](/reference/permissions) set, with names |
+| `new EmbedBuilder().setTitle(...)` | A plain object: `embeds: [{ title: '...', description: '...' }]`. See [Sending messages](/messages) |
+| `{ reason }` in an options object | A `reason` parameter: `member.kick('Spam')`, `member.ban({ reason: 'Spam' })` |
+| `client` in a handler | Nothing: your function receives what it needs (`guild`, `member`, `channel`...). The bot itself is `guild.me` in each server |
+| `interaction.guild`, `interaction.member` that may be `null` | In a command of servers, `guild`, `member` and `channel` are always there: no `?.` to write. See [Servers and private messages](/commands#servers-and-private-messages) |
+| `message.guild?.name` | `message.guild.name` in a `messageCreate` file: servers only by default. See [Servers only by default](/events#servers-only-by-default) |
+| `channel.isTextBased()`, `channel.type === ChannelType.GuildText` | `channel.isTextBased()`, `channel.isVoice()`, `channel.isThread()`... See [Channels](/reference/channels) |
+| `DiscordAPIError` with `code` | `DiscordApiError`, with `status`, `code` and the field errors: [Errors](/reference/errors) |
+| `nodemon` or restarting the bot | `chapterjs dev` reloads every file when it is saved, without disconnecting |
+| `tsc`, `ts-node`, `tsx` | Nothing: your files are TypeScript, run by Node. `chapterjs build` compiles them for production |
+| `ShardingManager` | `chapterjs start` runs the bot on several processes by itself. See [Large bots](/run/start#large-bots) |
+
+## What you do differently
+
+- **You never create anything.** A `Guild`, a `GuildMember` or a `Message` is given to your function; there is no `new`, and no `client` to get them from. A function of yours that needs one takes it as a parameter: `import type { Guild } from 'chapterjs'`.
+- **You never write a type.** What `run` receives is typed from what you declared; what an event function receives is typed from the folder of the file.
+- **You never register anything.** Commands reach Discord when they change, intents are computed, and the bot disconnects properly when you stop it.
+- **Nothing is `null` for the sake of it.** In a server, the server is there. `null` is kept for what may really not exist: a channel without category, a message never edited, a member the bot never saw.
+
+## What is not there yet
+
+Buttons, select menus, modals, autocomplete, context menu commands, scheduled tasks, presence, and events other than those of messages, members, servers, channels and roles: see [What's not there yet](/not-yet).
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    A bot online in a few minutes.
+  </Card>
+  <Card title="Reference" icon="book-open" href="/reference">
+    Every structure, property and method.
+  </Card>
+</CardGroup>

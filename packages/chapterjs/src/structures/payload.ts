@@ -15,13 +15,25 @@ import type { RawPollCreateRequest } from '../discord/types/poll.js';
 import type { RestFile } from '../rest/rest.js';
 import { toSnakeCase, type Camelize } from '../util/case.js';
 
-/** @see https://docs.discord.com/developers/resources/message#embed-object */
+/**
+ * A rich box in a message: title, description, fields, image...
+ * @see https://docs.discord.com/developers/resources/message#embed-object
+ */
 export type Embed = Camelize<RawEmbed>;
-/** @see https://docs.discord.com/developers/components/reference */
+/**
+ * A button, a select menu or a layout component of a message.
+ * @see https://docs.discord.com/developers/components/reference
+ */
 export type Component = Camelize<RawComponent>;
-/** @see https://docs.discord.com/developers/resources/message#allowed-mentions-object */
+/**
+ * Who a message is allowed to notify.
+ * @see https://docs.discord.com/developers/resources/message#allowed-mentions-object
+ */
 export type AllowedMentions = Camelize<RawAllowedMentions>;
-/** @see https://docs.discord.com/developers/resources/poll#poll-create-request-object */
+/**
+ * A poll to attach to a message.
+ * @see https://docs.discord.com/developers/resources/poll#poll-create-request-object
+ */
 export type PollInput = Camelize<RawPollCreateRequest>;
 
 /** A file to attach to a message. */
@@ -38,6 +50,7 @@ export interface FileInput {
   contentType?: string;
 }
 
+/** What a message can contain, and how it is sent. */
 export interface MessageOptions {
   /** The text of the message (up to 2000 characters). */
   content?: string;

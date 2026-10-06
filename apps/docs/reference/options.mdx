@@ -1,279 +1,281 @@
 ---
 title: 'Options'
-description: 'What the methods that create and edit things accept'
+description: 'Find every field you can pass to edit() and to the methods that create channels, threads, posts, roles and invites'
 ---
 
-The fields accepted by the methods that create or edit something. They are the ones of the Discord API, with camelCase names.
+The methods that create or change something take an options object. Its fields are the ones of Discord, written in camelCase; your editor completes them.
 
-A `?` after a name means the field can be left out. When editing, only what you pass changes; `null` removes a value where the type allows it.
+<Note>
+  These options belong to the actions of [Guild](/reference/guild), the [channels](/reference/channels) and [Role](/reference/role). What a message takes is in [Message options](/reference/message-options), what a member takes in [GuildMember](/reference/member#types).
+</Note>
 
-## Server options
+A few rules hold everywhere:
 
-### GuildEditOptions
+- When editing, only what you pass changes. `null` removes a value where the type allows it.
+- Images are data URIs: `data:image/png;base64,...`.
+- Ids are `Snowflake`s: the `id` of a structure, or the text copied from Discord.
+- Permissions are written by name (`'ManageThreads'`), never as numbers: see [Permissions](/reference/permissions).
 
-Accepted by `guild.edit()`. Images are data URIs: `data:image/png;base64,...`.
+```ts
+import type { Guild } from 'chapterjs';
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `name?` | `string` | Guild name |
-| `region?` | `string \| null` | Guild voice region id (deprecated) |
-| `verificationLevel?` | `VerificationLevel \| null` | Verification level |
-| `defaultMessageNotifications?` | `DefaultMessageNotificationLevel \| null` | Default message notification level |
-| `explicitContentFilter?` | `ExplicitContentFilterLevel \| null` | Explicit content filter level |
-| `afkChannelId?` | `Snowflake \| null` | Id for afk channel |
-| `afkTimeout?` | `number` | Afk timeout in seconds, can be set to: 60, 300, 900, 1800, 3600 |
-| `icon?` | `ImageData \| null` | Base64 1024x1024 png/jpeg/gif image for the guild icon (can be animated gif when the server has the `ANIMATED_ICON` feature) |
-| `splash?` | `ImageData \| null` | Base64 16:9 png/jpeg image for the guild splash (when the server has the `INVITE_SPLASH` feature) |
-| `discoverySplash?` | `ImageData \| null` | Base64 16:9 png/jpeg image for the guild discovery splash (when the server has the `DISCOVERABLE` feature) |
-| `banner?` | `ImageData \| null` | Base64 16:9 png/jpeg image for the guild banner (when the server has the `BANNER` feature; can be animated gif when the server has the `ANIMATED_BANNER` feature) |
-| `systemChannelId?` | `Snowflake \| null` | The id of the channel where guild notices such as welcome messages and boost events are posted |
-| `systemChannelFlags?` | `number` | System channel flags |
-| `rulesChannelId?` | `Snowflake \| null` | The id of the channel where Community guilds display rules and/or guidelines |
-| `publicUpdatesChannelId?` | `Snowflake \| null` | The id of the channel where admins and moderators of Community guilds receive notices from Discord |
-| `preferredLocale?` | `Locale \| null` | The preferred locale of a Community guild used in server discovery and notices from Discord; defaults to "en-US" |
-| `features?` | `GuildFeature[]` | Enabled guild features |
-| `description?` | `string \| null` | The description for the guild |
-| `premiumProgressBarEnabled?` | `boolean` | Whether the guild's boost progress bar should be enabled |
-| `safetyAlertsChannelId?` | `Snowflake \| null` | The id of the channel where admins and moderators of Community guilds receive safety alerts from Discord |
+async function setUp(guild: Guild) {
+  const role = await guild.createRole({ name: 'Helper', permissions: ['ManageMessages'] });
+  await guild.createChannel({ name: 'help', topic: `Ask ${role} anything` });
+}
+```
+
+## GuildEditOptions
+
+What `edit()` takes on a server: only what is passed changes. Images are data URIs (`data:image/png;base64,...`).
+
+```ts
+guild.edit(options: GuildEditOptions, reason?: string): Promise<Guild>
+```
+
+<ResponseField name="name" type="string">The name of the server.</ResponseField>
+<ResponseField name="verificationLevel" type="VerificationLevel | null">What Discord asks of new members before they can write: a value of [`VerificationLevel`](/reference/enums#verificationlevel).</ResponseField>
+<ResponseField name="defaultMessageNotifications" type="DefaultMessageNotificationLevel | null">Whether members get a notification for every message or only when they are mentioned, by default: a value of [`DefaultMessageNotificationLevel`](/reference/enums#defaultmessagenotificationlevel).</ResponseField>
+<ResponseField name="explicitContentFilter" type="ExplicitContentFilterLevel | null">Whose images and videos Discord scans for explicit content: a value of [`ExplicitContentFilterLevel`](/reference/enums#explicitcontentfilterlevel).</ResponseField>
+<ResponseField name="afkChannelId" type="Snowflake | null">The id of the voice channel inactive members are moved to.</ResponseField>
+<ResponseField name="afkTimeout" type="number">After how many seconds of inactivity a member is moved there: `60`, `300`, `900`, `1800` or `3600`.</ResponseField>
+<ResponseField name="icon" type="string | null">The icon: a 1024x1024 PNG, JPEG or GIF (an animated GIF only when the server has the `ANIMATED_ICON` feature).</ResponseField>
+<ResponseField name="splash" type="string | null">The background of the invite page: a 16:9 PNG or JPEG (when the server has the `INVITE_SPLASH` feature).</ResponseField>
+<ResponseField name="discoverySplash" type="string | null">The background shown in server discovery: a 16:9 PNG or JPEG (when the server has the `DISCOVERABLE` feature).</ResponseField>
+<ResponseField name="banner" type="string | null">The banner: a 16:9 PNG or JPEG (when the server has the `BANNER` feature; an animated GIF when it has the `ANIMATED_BANNER` feature).</ResponseField>
+<ResponseField name="systemChannelId" type="Snowflake | null">The id of the channel where Discord posts welcome messages and boost notices.</ResponseField>
+<ResponseField name="systemChannelFlags" type="number">Which of those notices are hidden, as a bit field.</ResponseField>
+<ResponseField name="rulesChannelId" type="Snowflake | null">The id of the channel that shows the rules, in a community server.</ResponseField>
+<ResponseField name="publicUpdatesChannelId" type="Snowflake | null">The id of the channel where the admins and moderators of a community server receive notices from Discord.</ResponseField>
+<ResponseField name="preferredLocale" type="Locale | null">The language of a community server, used in server discovery and in the notices Discord sends; `'en-US'` by default. A value of [`Locale`](/reference/enums#locale).</ResponseField>
+<ResponseField name="features" type="GuildFeature[]">The features enabled on the server: see [`GuildFeature`](/reference/guild#types).</ResponseField>
+<ResponseField name="description" type="string | null">The description of the server.</ResponseField>
+<ResponseField name="premiumProgressBarEnabled" type="boolean">Whether the boost progress bar is shown.</ResponseField>
+<ResponseField name="safetyAlertsChannelId" type="Snowflake | null">The id of the channel where the admins and moderators of a community server receive safety alerts from Discord.</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#modify-guild-json-params)
 
-### Scheduled event options
+## ChannelCreateOptions
 
-Accepted by `guild.createScheduledEvent()`.
+What `createChannel()` takes: a name, a type, and the settings of that kind of channel.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `channelId?` | `Snowflake` | The channel id of the scheduled event. |
-| `entityMetadata?` | `GuildScheduledEventEntityMetadata` | The entity metadata of the scheduled event |
-| `name` | `string` | The name of the scheduled event |
-| `privacyLevel` | `GuildScheduledEventPrivacyLevel` | The privacy level of the scheduled event |
-| `scheduledStartTime` | `ISO8601Timestamp` | The time to schedule the scheduled event |
-| `scheduledEndTime?` | `ISO8601Timestamp` | The time when the scheduled event is scheduled to end |
-| `description?` | `string` | The description of the scheduled event |
-| `entityType` | `GuildScheduledEventEntityType` | The entity type of the scheduled event |
-| `image?` | `ImageData` | The cover image of the scheduled event |
-| `recurrenceRule?` | `GuildScheduledEventRecurrenceRule` | The definition for how often this event should recur |
+```ts
+guild.createChannel(options: ChannelCreateOptions, reason?: string): Promise<GuildChannel>
+```
 
-[Discord documentation](https://docs.discord.com/developers/resources/guild-scheduled-event#create-guild-scheduled-event-json-params)
+Only `name` is needed: without a `type`, Discord creates a text channel. The other fields only apply to the kind of channel they describe.
 
-### Audit log filters
-
-Accepted by `guild.fetchAuditLog()`.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `userId?` | `Snowflake` | Entries from a specific user ID |
-| `actionType?` | `AuditLogEvent` | Entries for a specific audit log event |
-| `before?` | `Snowflake` | Entries with ID less than a specific audit log entry ID |
-| `after?` | `Snowflake` | Entries with ID greater than a specific audit log entry ID |
-| `limit?` | `number` | Maximum number of entries (between 1-100) to return, defaults to 50 |
-
-[Discord documentation](https://docs.discord.com/developers/resources/audit-log#get-guild-audit-log-query-string-params)
-
-## Channel options
-
-### ChannelCreateOptions
-
-Accepted by `guild.createChannel()`. Only `name` is required; which other fields apply depends on the `type`.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | Channel name (1-100 characters) |
-| `type?` | `ChannelType \| null` | The type of channel |
-| `topic?` | `string \| null` | Channel topic (0-1024 characters) |
-| `bitrate?` | `number \| null` | The bitrate (in bits per second) of the voice or stage channel; min 8000 |
-| `userLimit?` | `number \| null` | The user limit of the voice channel |
-| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600); bots, as well as users with the permission `BYPASS_SLOWMODE`, are unaffected |
-| `position?` | `number \| null` | Sorting position of the channel (channels with the same position are sorted by id) |
-| `permissionOverwrites?` | `Partial<PermissionOverwrite>[] \| null` | The channel's permission overwrites |
-| `parentId?` | `Snowflake \| null` | Id of the parent category for a channel |
-| `nsfw?` | `boolean \| null` | Whether the channel is age-restricted |
-| `rtcRegion?` | `string \| null` | Channel voice region id of the voice or stage channel, automatic when set to null |
-| `videoQualityMode?` | `VideoQualityMode \| null` | The camera video quality mode of the voice channel |
-| `defaultAutoArchiveDuration?` | `number \| null` | The default duration that the clients use (not the API) for newly created threads in the channel, in minutes, to automatically archive the thread after recent activity |
-| `defaultReactionEmoji?` | `DefaultReaction \| null` | Emoji to show in the add reaction button on a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel |
-| `availableTags?` | `ForumTag[] \| null` | Set of tags that can be used in a `GUILD_FORUM` or a `GUILD_MEDIA` channel |
-| `defaultSortOrder?` | `ForumSortOrderType \| null` | The default sort order type used to order posts in `GUILD_FORUM` and `GUILD_MEDIA` channels |
-| `defaultForumLayout?` | `ForumLayoutType \| null` | The default forum layout view used to display posts in `GUILD_FORUM` channels |
-| `defaultThreadRateLimitPerUser?` | `number \| null` | The initial `rate_limit_per_user` to set on newly created threads in a channel. this field is copied to the thread at creation time and does not live update. |
-| `flags?` | `number \| null` | Channel flags combined as a bitfield. |
+<ResponseField name="name" type="string" required>The name of the channel (1-100 characters).</ResponseField>
+<ResponseField name="type" type="ChannelType | null">The kind of channel: a value of [`ChannelType`](/reference/enums#channeltype).</ResponseField>
+<ResponseField name="topic" type="string | null">The topic shown at the top of the channel (0-1024 characters).</ResponseField>
+<ResponseField name="bitrate" type="number | null">The audio quality of a voice or stage channel, in bits per second; 8000 at least.</ResponseField>
+<ResponseField name="userLimit" type="number | null">How many people can join a voice channel.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Slowmode: how many seconds a member waits between two messages (0-21600). Bots and members with the `BypassSlowmode` permission are not affected.</ResponseField>
+<ResponseField name="position" type="number | null">Where the channel is in the list (channels with the same position are sorted by id).</ResponseField>
+<ResponseField name="permissionOverwrites" type="object[] | null">
+  What roles and members are allowed or denied in the channel.
+  <Expandable title="fields of an overwrite">
+    <ResponseField name="id" type="Snowflake">The id of the role or of the member.</ResponseField>
+    <ResponseField name="type" type="0 | 1">`0` for a role, `1` for a member.</ResponseField>
+    <ResponseField name="allow" type="string">What is allowed, as the text Discord expects: `new Permissions(['SendMessages']).toString()`.</ResponseField>
+    <ResponseField name="deny" type="string">What is denied, written the same way.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="parentId" type="Snowflake | null">The id of the category to put the channel in.</ResponseField>
+<ResponseField name="nsfw" type="boolean | null">Whether the channel is age-restricted.</ResponseField>
+<ResponseField name="rtcRegion" type="string | null">The voice region of a voice or stage channel; `null` lets Discord pick it.</ResponseField>
+<ResponseField name="videoQualityMode" type="VideoQualityMode | null">The camera quality of a voice channel: a value of [`VideoQualityMode`](/reference/enums#videoqualitymode).</ResponseField>
+<ResponseField name="defaultAutoArchiveDuration" type="number | null">After how many minutes without activity the Discord app suggests archiving a new thread of the channel.</ResponseField>
+<ResponseField name="defaultReactionEmoji" type="object | null">
+  The emoji of the "add reaction" button on the posts of a forum or media channel.
+  <Expandable title="fields">
+    <ResponseField name="emojiId" type="Snowflake | null">The id of a custom emoji of the server.</ResponseField>
+    <ResponseField name="emojiName" type="string | null">A standard emoji, as its character.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[] | null">The tags the posts of a forum or media channel can have: see [`ForumTag`](/reference/data#forumtag).</ResponseField>
+<ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">How the posts of a forum or media channel are ordered: a value of [`ForumSortOrderType`](/reference/enums#forumsortordertype).</ResponseField>
+<ResponseField name="defaultForumLayout" type="ForumLayoutType | null">How the posts of a forum are displayed: a value of [`ForumLayoutType`](/reference/enums#forumlayouttype).</ResponseField>
+<ResponseField name="defaultThreadRateLimitPerUser" type="number | null">The slowmode given to new threads of the channel. It is copied when the thread is created and does not follow later changes.</ResponseField>
+<ResponseField name="flags" type="number | null">The flags of the channel, as a bit field.</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#create-guild-channel-json-params)
 
-### GuildChannelEditOptions
+## GuildChannelEditOptions
 
-Accepted by `channel.edit()` on a channel of a server.
+What `edit()` takes on a channel of a server.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `name?` | `string` | 1-100 character channel name |
-| `type?` | `ChannelType` | The type of channel; only conversion between text and announcement is supported and only in guilds with the "NEWS" feature |
-| `position?` | `number \| null` | The position of the channel in the left-hand listing (channels with the same position are sorted by id) |
-| `topic?` | `string \| null` | 0-1024 character channel topic (0-4096 characters for `GUILD_FORUM` and `GUILD_MEDIA` channels) |
-| `nsfw?` | `boolean \| null` | Whether the channel is age-restricted |
-| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600); bots, as well as users with the permission `BYPASS_SLOWMODE`, are unaffected |
-| `bitrate?` | `number \| null` | The bitrate (in bits per second) of the voice or stage channel; min 8000 |
-| `userLimit?` | `number \| null` | The user limit of the voice or stage channel, max 99 for voice channels and 10,000 for stage channels (0 refers to no limit) |
-| `permissionOverwrites?` | `Partial<PermissionOverwrite>[] \| null` | Channel or category-specific permissions |
-| `parentId?` | `Snowflake \| null` | Id of the new parent category for a channel |
-| `rtcRegion?` | `string \| null` | Channel voice region id, automatic when set to null |
-| `videoQualityMode?` | `VideoQualityMode \| null` | The camera video quality mode of the voice channel |
-| `defaultAutoArchiveDuration?` | `number \| null` | The default duration that the clients use (not the API) for newly created threads in the channel, in minutes, to automatically archive the thread after recent activity |
-| `flags?` | `number` | Channel flags combined as a bitfield. |
-| `availableTags?` | `ForumTag[]` | The set of tags that can be used in a `GUILD_FORUM` or a `GUILD_MEDIA` channel; limited to 20 |
-| `defaultReactionEmoji?` | `DefaultReaction \| null` | The emoji to show in the add reaction button on a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel |
-| `defaultThreadRateLimitPerUser?` | `number` | The initial `rate_limit_per_user` to set on newly created threads in a channel. this field is copied to the thread at creation time and does not live update. |
-| `defaultSortOrder?` | `ForumSortOrderType \| null` | The default sort order type used to order posts in `GUILD_FORUM` and `GUILD_MEDIA` channels |
-| `defaultForumLayout?` | `ForumLayoutType` | The default forum layout type used to display posts in `GUILD_FORUM` channels |
+```ts
+channel.edit(options: GuildChannelEditOptions, reason?: string): Promise<this>
+```
+
+It works on every channel of a server that is not a thread: text, voice, category and forum channels. A field that does not apply to the kind of channel is refused by Discord.
+
+<ResponseField name="name" type="string">The name of the channel (1-100 characters).</ResponseField>
+<ResponseField name="type" type="ChannelType">The kind of channel: a value of [`ChannelType`](/reference/enums#channeltype). Only a text channel can become an announcement channel and back, in a server that has the `NEWS` feature.</ResponseField>
+<ResponseField name="position" type="number | null">Where the channel is in the list (channels with the same position are sorted by id).</ResponseField>
+<ResponseField name="topic" type="string | null">The topic shown at the top of the channel: 0-1024 characters, or 0-4096 for a forum or media channel.</ResponseField>
+<ResponseField name="nsfw" type="boolean | null">Whether the channel is age-restricted.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Slowmode: how many seconds a member waits between two messages (0-21600). Bots and members with the `BypassSlowmode` permission are not affected.</ResponseField>
+<ResponseField name="bitrate" type="number | null">The audio quality of a voice or stage channel, in bits per second; 8000 at least.</ResponseField>
+<ResponseField name="userLimit" type="number | null">How many people can join: up to 99 in a voice channel, 10,000 in a stage channel; `0` means no limit.</ResponseField>
+<ResponseField name="permissionOverwrites" type="object[] | null">What roles and members are allowed or denied in the channel or the category: the same objects as in [`ChannelCreateOptions`](#channelcreateoptions).</ResponseField>
+<ResponseField name="parentId" type="Snowflake | null">The id of the category to move the channel to.</ResponseField>
+<ResponseField name="rtcRegion" type="string | null">The voice region of the channel; `null` lets Discord pick it.</ResponseField>
+<ResponseField name="videoQualityMode" type="VideoQualityMode | null">The camera quality of a voice channel: a value of [`VideoQualityMode`](/reference/enums#videoqualitymode).</ResponseField>
+<ResponseField name="defaultAutoArchiveDuration" type="number | null">After how many minutes without activity the Discord app suggests archiving a new thread of the channel.</ResponseField>
+<ResponseField name="flags" type="number">The flags of the channel, as a bit field.</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[]">The tags the posts of a forum or media channel can have, 20 at most: see [`ForumTag`](/reference/data#forumtag).</ResponseField>
+<ResponseField name="defaultReactionEmoji" type="object | null">The emoji of the "add reaction" button on the posts of a forum or media channel: `{ emojiId, emojiName }`, as in [`ChannelCreateOptions`](#channelcreateoptions).</ResponseField>
+<ResponseField name="defaultThreadRateLimitPerUser" type="number">The slowmode given to new threads of the channel. It is copied when the thread is created and does not follow later changes.</ResponseField>
+<ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">How the posts of a forum or media channel are ordered: a value of [`ForumSortOrderType`](/reference/enums#forumsortordertype).</ResponseField>
+<ResponseField name="defaultForumLayout" type="ForumLayoutType">How the posts of a forum are displayed: a value of [`ForumLayoutType`](/reference/enums#forumlayouttype).</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/channel#modify-channel-json-params-guild-channel)
 
-### InviteCreateOptions
+## ThreadCreateOptions
 
-Accepted by `channel.createInvite()`.
+What `startThread()` takes on a text channel.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `maxAge?` | `number` | Duration of invite in seconds before expiry, or 0 for never. between 0 and 604800 (7 days) |
-| `maxUses?` | `number` | Max number of uses or 0 for unlimited. between 0 and 100 |
-| `temporary?` | `boolean` | Whether this invite only grants temporary membership |
-| `unique?` | `boolean` | If true, don't try to reuse a similar invite (useful for creating many unique one time use invites) |
-| `targetType?` | `InviteTargetType` | The type of target for this voice channel invite |
-| `targetUserId?` | `Snowflake` | The id of the user whose stream to display for this invite, required if `target_type` is 1, the user must be streaming in the channel |
-| `targetApplicationId?` | `Snowflake` | The id of the embedded application to open for this invite, required if `target_type` is 2, the application must have the `EMBEDDED` flag |
-| `targetUserIds?` | `Snowflake[]` | An array of IDs of all users able to see and accept this invite. Max of 1000 IDs |
-| `roleIds?` | `Snowflake[]` | The role ID(s) for roles in the guild given to the users that accept this invite |
+```ts
+textChannel.startThread(options: ThreadCreateOptions, reason?: string): Promise<ThreadChannel>
+```
 
-[Discord documentation](https://docs.discord.com/developers/resources/channel#create-channel-invite-jsonform-params)
+To start a thread from a message, use `message.startThread()` instead: see [Message](/reference/message).
 
-### Webhook options
-
-Accepted by `channel.createWebhook()`. `webhook.edit()` accepts the same fields, all optional, plus `channelId` to move it.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | Name of the webhook (1-80 characters) |
-| `avatar?` | `ImageData \| null` | Image for the default webhook avatar |
-
-[Discord documentation](https://docs.discord.com/developers/resources/webhook#create-webhook-json-params)
-
-## Thread options
-
-### ThreadCreateOptions
-
-Accepted by `channel.startThread()`.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | 1-100 character channel name |
-| `autoArchiveDuration?` | `number` | The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity, can be set to: 60, 1440, 4320, 10080 |
-| `type?` | `ChannelType` | The type of thread to create |
-| `invitable?` | `boolean` | Whether non-moderators can add other non-moderators to a thread; only available when creating a private thread |
-| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600) |
+<ResponseField name="name" type="string" required>The name of the thread (1-100 characters).</ResponseField>
+<ResponseField name="autoArchiveDuration" type="number">After how many minutes without activity the thread leaves the channel list: `60`, `1440`, `4320` or `10080`.</ResponseField>
+<ResponseField name="type" type="ChannelType">The kind of thread: `ChannelType.PublicThread`, `ChannelType.PrivateThread` or `ChannelType.AnnouncementThread` (see [`ChannelType`](/reference/enums#channeltype)).</ResponseField>
+<ResponseField name="invitable" type="boolean">Whether members who are not moderators can add other members to the thread. Only for a private thread.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Slowmode: how many seconds a member waits between two messages (0-21600).</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-without-message-json-params)
 
-### Thread from a message
+## ThreadEditOptions
 
-Accepted by `message.startThread()`.
+What `edit()` takes on a thread.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `name` | `string` | 1-100 character channel name |
-| `autoArchiveDuration?` | `number` | The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity, can be set to: 60, 1440, 4320, 10080 |
-| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600) |
+```ts
+thread.edit(options: ThreadEditOptions, reason?: string): Promise<this>
+```
 
-[Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-from-message-json-params)
+`thread.archive()` and `thread.unarchive()` are shortcuts for `{ archived: true }` and `{ archived: false }`.
 
-### ThreadEditOptions
-
-Accepted by `thread.edit()`.
-
-| Field | Type | Description |
-| --- | --- | --- |
-| `name?` | `string` | 1-100 character channel name |
-| `archived?` | `boolean` | Whether the thread is archived |
-| `autoArchiveDuration?` | `number` | The thread will stop showing in the channel list after `auto_archive_duration` minutes of inactivity, can be set to: 60, 1440, 4320, 10080 |
-| `locked?` | `boolean` | Whether the thread is locked; when a thread is locked, only users with MANAGE_THREADS can unarchive it |
-| `invitable?` | `boolean` | Whether non-moderators can add other non-moderators to a thread; only available on private threads |
-| `rateLimitPerUser?` | `number \| null` | Amount of seconds a user has to wait before sending another message (0-21600); bots, as well as users with the permission `BYPASS_SLOWMODE`, are unaffected |
-| `flags?` | `number` | Channel flags combined as a bitfield; `PINNED` can only be set for threads in forum and media channels |
-| `appliedTags?` | `Snowflake[]` | The IDs of the set of tags that have been applied to a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel; limited to 5 |
+<ResponseField name="name" type="string">The name of the thread (1-100 characters).</ResponseField>
+<ResponseField name="archived" type="boolean">Whether the thread is archived.</ResponseField>
+<ResponseField name="autoArchiveDuration" type="number">After how many minutes without activity the thread leaves the channel list: `60`, `1440`, `4320` or `10080`.</ResponseField>
+<ResponseField name="locked" type="boolean">Whether the thread is locked: only members with the `ManageThreads` permission can then unarchive it.</ResponseField>
+<ResponseField name="invitable" type="boolean">Whether members who are not moderators can add other members to the thread. Only for a private thread.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Slowmode: how many seconds a member waits between two messages (0-21600). Bots and members with the `BypassSlowmode` permission are not affected.</ResponseField>
+<ResponseField name="flags" type="number">The flags of the thread, as a bit field. Only a post of a forum or media channel can be pinned this way.</ResponseField>
+<ResponseField name="appliedTags" type="Snowflake[]">The ids of the tags of a post of a forum or media channel, 5 at most.</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/channel#modify-channel-json-params-thread)
 
-## Role options
+## ForumPostOptions
 
-### RoleCreateOptions
+What `createPost()` takes.
 
-Accepted by `guild.createRole()`. Every field is optional.
+```ts
+forum.createPost(options: ForumPostOptions, reason?: string): Promise<ThreadChannel>
+```
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `name?` | `string` | Name of the role, max 100 characters |
-| `color?` | `number` | **Deprecated** RGB color value |
-| `colors?` | `RoleColors` | The role's colors |
-| `hoist?` | `boolean` | Whether the role should be displayed separately in the sidebar |
-| `icon?` | `ImageData \| null` | The role's icon image (if the guild has the `ROLE_ICONS` feature) |
-| `unicodeEmoji?` | `string \| null` | The role's unicode emoji as a standard emoji (if the guild has the `ROLE_ICONS` feature) |
-| `mentionable?` | `boolean` | Whether the role should be mentionable |
-| `permissions?` | `PermissionResolvable` | What the role allows: a name, a list of names or a `Permissions` set. |
+<ResponseField name="name" type="string" required>The title of the post.</ResponseField>
+<ResponseField name="message" type="MessageInput" required>The first message of the post: a text, or everything a message can contain (see [`MessageInput`](/reference/message-options#messageinput)).</ResponseField>
+<ResponseField name="appliedTags" type="Snowflake[]">The ids of the tags of the post.</ResponseField>
+<ResponseField name="autoArchiveDuration" type="60 | 1440 | 4320 | 10080">After how many minutes without activity the post is archived.</ResponseField>
+<ResponseField name="slowmode" type="number">Slowmode of the post, in seconds.</ResponseField>
+
+The message is checked like any other before it is sent: see [Message options](/reference/message-options).
+
+[Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-in-forum-or-media-channel-jsonform-params)
+
+## RoleCreateOptions
+
+What `createRole()` takes. Permissions are given by name, as a list of names or as a `Permissions` set.
+
+```ts
+guild.createRole(options?: RoleCreateOptions, reason?: string): Promise<Role>
+```
+
+Every field can be left out: `guild.createRole()` creates a role with the defaults of Discord.
+
+<ResponseField name="name" type="string">The name of the role, 100 characters at most.</ResponseField>
+<ResponseField name="permissions" type="PermissionResolvable | string">What the role allows: a name, a list of names, a `Permissions` set, or the text Discord uses. See [`PermissionResolvable`](/reference/permissions#permissionresolvable).</ResponseField>
+<ResponseField name="colors" type="object">
+  The colors of the role.
+  <Expandable title="fields">
+    <ResponseField name="primaryColor" type="number" required>The main color, as a number (`0xff0000` for red).</ResponseField>
+    <ResponseField name="secondaryColor" type="number | null" required>A second color: the role is then shown as a gradient between the two.</ResponseField>
+    <ResponseField name="tertiaryColor" type="number | null" required>A third color: the gradient then becomes holographic.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="hoist" type="boolean">Whether members with the role are shown apart in the member list.</ResponseField>
+<ResponseField name="icon" type="string | null">The icon of the role, as a data URI (when the server has the `ROLE_ICONS` feature).</ResponseField>
+<ResponseField name="unicodeEmoji" type="string | null">A standard emoji shown as the icon of the role (when the server has the `ROLE_ICONS` feature).</ResponseField>
+<ResponseField name="mentionable" type="boolean">Whether everyone can mention the role.</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/guild#create-guild-role-json-params)
 
-`role.edit()` accepts the same fields.
+## RoleEditOptions
 
-### colors
+What `edit()` takes on a role: only what is passed changes. Permissions are given by name, as a list of names or as a `Permissions` set.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `primaryColor` | `number` | The primary color for the role |
-| `secondaryColor` | `number \| null` | The secondary color for the role, this will make the role a gradient between the other provided colors |
-| `tertiaryColor` | `number \| null` | The tertiary color for the role, this will turn the gradient into a holographic style |
+```ts
+role.edit(options: RoleEditOptions, reason?: string): Promise<Role>
+```
 
-[Discord documentation](https://docs.discord.com/developers/topics/permissions#role-object-role-colors-object)
+<ResponseField name="name" type="string">The name of the role, 100 characters at most.</ResponseField>
+<ResponseField name="permissions" type="PermissionResolvable | string">What the role allows: a name, a list of names, a `Permissions` set, or the text Discord uses. It replaces the permissions of the role: start from `role.permissions.add()` or `.remove()` to change one. See [`PermissionResolvable`](/reference/permissions#permissionresolvable).</ResponseField>
+<ResponseField name="colors" type="object">The colors of the role: `{ primaryColor, secondaryColor, tertiaryColor }`, as in [`RoleCreateOptions`](#rolecreateoptions).</ResponseField>
+<ResponseField name="hoist" type="boolean">Whether members with the role are shown apart in the member list.</ResponseField>
+<ResponseField name="icon" type="string">The icon of the role, as a data URI (when the server has the `ROLE_ICONS` feature).</ResponseField>
+<ResponseField name="unicodeEmoji" type="string">A standard emoji shown as the icon of the role (when the server has the `ROLE_ICONS` feature).</ResponseField>
+<ResponseField name="mentionable" type="boolean">Whether everyone can mention the role.</ResponseField>
 
-## Shared objects
+[Discord documentation](https://docs.discord.com/developers/resources/guild#modify-guild-role-json-params)
 
-### permissionOverwrites
+## InviteCreateOptions
 
-`type` is `0` for a role and `1` for a member; `allow` and `deny` are permissions as text: `new Permissions([...]).toString()`.
+What `createInvite()` takes.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | Role or user id |
-| `type` | `PermissionOverwriteType` | Either 0 (role) or 1 (member) |
-| `allow` | `string` | Permission bit set |
-| `deny` | `string` | Permission bit set |
+```ts
+channel.createInvite(options?: InviteCreateOptions, reason?: string): Promise<Invite>
+```
 
-[Discord documentation](https://docs.discord.com/developers/resources/channel#overwrite-object-overwrite-structure)
+Every field can be left out: `channel.createInvite()` creates an invite with the defaults of Discord.
 
-### availableTags
+<ResponseField name="maxAge" type="number">After how many seconds the invite expires, from 0 (never) to 604800 (7 days).</ResponseField>
+<ResponseField name="maxUses" type="number">How many times it can be used, from 0 (no limit) to 100.</ResponseField>
+<ResponseField name="temporary" type="boolean">Whether the invite only grants a temporary membership: members who join with it are kicked when they go offline.</ResponseField>
+<ResponseField name="unique" type="boolean">`true` to always create a new link, instead of reusing a similar one that already exists. Useful for many one-time links.</ResponseField>
+<ResponseField name="targetType" type="1 | 2">What a voice channel invite opens: `1` a stream, `2` an embedded activity.</ResponseField>
+<ResponseField name="targetUserId" type="Snowflake">The id of the user whose stream to show. Needed when `targetType` is `1`; the user must be streaming in the channel.</ResponseField>
+<ResponseField name="targetApplicationId" type="Snowflake">The id of the activity to open. Needed when `targetType` is `2`; the application must have the `EMBEDDED` flag.</ResponseField>
+<ResponseField name="targetUserIds" type="Snowflake[]">The ids of the only users who can see and accept the invite, 1000 at most.</ResponseField>
+<ResponseField name="roleIds" type="Snowflake[]">The ids of the roles given to whoever joins with the invite.</ResponseField>
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `Snowflake` | The id of the tag |
-| `name` | `string` | The name of the tag (0-20 characters) |
-| `moderated` | `boolean` | Whether this tag can only be added to or removed from threads by a member with the `MANAGE_THREADS` permission |
-| `emojiId` | `Snowflake \| null` | The id of a guild's custom emoji * |
-| `emojiName` | `string \| null` | The unicode character of the emoji * |
+[Discord documentation](https://docs.discord.com/developers/resources/channel#create-channel-invite-jsonform-params)
 
-[Discord documentation](https://docs.discord.com/developers/resources/channel#forum-tag-object-forum-tag-structure)
+## FetchMessagesOptions
 
-### defaultReactionEmoji
+What `fetchMessages()` takes: how many messages, and from where.
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `emojiId` | `Snowflake \| null` | The id of a guild's custom emoji |
-| `emojiName` | `string \| null` | The unicode character of the emoji |
+```ts
+channel.fetchMessages(options?: FetchMessagesOptions): Promise<Message[]>
+```
 
-[Discord documentation](https://docs.discord.com/developers/resources/channel#default-reaction-object-default-reaction-structure)
+<ResponseField name="limit" type="number">How many messages, from 1 to 100. Default: 50.</ResponseField>
+<ResponseField name="before" type="Snowflake | { id: Snowflake }">Only messages before this one.</ResponseField>
+<ResponseField name="after" type="Snowflake | { id: Snowflake }">Only messages after this one.</ResponseField>
+<ResponseField name="around" type="Snowflake | { id: Snowflake }">Messages around this one.</ResponseField>
 
-### entityMetadata
+`limit` is checked before anything is sent. A wrong one throws a `RangeError`:
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `location?` | `string` | Location of the event (1-100 characters) |
+```text
+limit is a whole number between 1 and 100, got 500.
+```
 
-[Discord documentation](https://docs.discord.com/developers/resources/guild-scheduled-event#guild-scheduled-event-object-guild-scheduled-event-entity-metadata)
+To start from a date rather than from a message, turn the date into an id with [`snowflakeFromTimestamp()`](/reference/helpers#snowflakefromtimestamp).
+
+[Discord documentation](https://docs.discord.com/developers/resources/message#get-channel-messages-query-string-params)
