@@ -82,4 +82,43 @@ export const Limits = {
   Nickname: 32,
   /** A timeout can't end more than 28 days from now, in milliseconds. */
   TimeoutMaxDuration: 28 * 24 * 60 * 60 * 1000,
+  /** @see https://docs.discord.com/developers/components/reference#anatomy-of-a-component-custom-id */
+  CustomId: 100,
+  /** @see https://docs.discord.com/developers/components/reference#component-object */
+  MessageComponents: 40,
+  /** @see https://docs.discord.com/developers/components/reference#action-row */
+  ActionRowButtons: 5,
+  /** @see https://docs.discord.com/developers/components/reference#button-button-structure */
+  ButtonLabel: 80,
+  ButtonUrl: 512,
+  /** @see https://docs.discord.com/developers/components/reference#string-select-string-select-structure */
+  SelectOptions: 25,
+  SelectPlaceholder: 150,
+  /** The label, the value and the description of one option of a menu. */
+  SelectOptionText: 100,
+  SelectValues: 25,
+  /** The characters of every text of a message built with components. */
+  TextDisplayTotal: 4000,
+  /** @see https://docs.discord.com/developers/components/reference#section-section-structure */
+  SectionTexts: 3,
+  /** @see https://docs.discord.com/developers/components/reference#media-gallery-media-gallery-structure */
+  MediaGalleryItems: 10,
+  MediaDescription: 1024,
+  /** @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal */
+  ModalTitle: 45,
+  ModalFields: 5,
+  /** @see https://docs.discord.com/developers/components/reference#label-label-structure */
+  LabelText: 45,
+  LabelDescription: 100,
+  /** @see https://docs.discord.com/developers/components/reference#text-input-text-input-structure */
+  TextInputLength: 4000,
+  TextInputPlaceholder: 100,
+  /** @see https://docs.discord.com/developers/components/reference#file-upload-file-upload-structure */
+  FileUploadMax: 10,
+  FileUploadTypes: 10,
+  /** @see https://docs.discord.com/developers/components/reference#radio-group-structure */
+  RadioOptionsMin: 2,
+  RadioOptions: 10,
+  /** @see https://docs.discord.com/developers/components/reference#checkbox-group-structure */
+  CheckboxOptions: 10,
 } as const;

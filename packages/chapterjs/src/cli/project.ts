@@ -5,9 +5,38 @@
 
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setPublicDir } from '../assets/asset.js';
+import { listPublic, publicDeclarations } from '../assets/public.js';
+import { eventTypedFolders } from '../events/types.js';
+import { writeGenerated } from '../loader/generated.js';
 import { commandsConvention } from '../commands/convention.js';
 import { CommandRouter } from '../commands/router.js';
 import { findConflicts, type CommandEntry } from '../commands/tree.js';
+import {
+  componentsConvention,
+  findDuplicates,
+} from '../components/convention.js';
+import { ComponentRouter, type ComponentEntry } from '../components/router.js';
+import { tasksConvention } from '../tasks/convention.js';
+import {
+  DEFAULT_PRESENCE,
+  presenceConvention,
+  type LoadedPresence,
+} from '../presence/convention.js';
+import {
+  assembleMessages,
+  commandsDeclarations,
+  languagesConvention,
+  messagesDeclarations,
+  type LanguageEntry,
+} from '../messages/convention.js';
+import { translation, type LoadedMessages } from '../messages/translate.js';
+import { translateCommand, unknownCommands } from '../messages/commands.js';
+import {
+  TimerScheduler,
+  type Scheduler,
+  type TaskEntry,
+} from '../tasks/scheduler.js';
 import { createBot, type Bot, type BotOptions } from '../core/bot.js';
 import { watchMemory } from '../core/memory.js';
 import { GatewayIntent, type GatewayIntentName } from '../discord/intents.js';
@@ -22,6 +51,7 @@ import {
 } from '../events/router.js';
 import { GatewayFatalError, SessionLimitError } from '../gateway/errors.js';
 import {
+  listFolder,
   loadBuilt,
   loadFolder,
   type BuiltFile,
@@ -51,8 +81,52 @@ export interface ProjectOptions {
   deferAfter?: number;
 }
 
+/**
+ * Writes the types of a project (`.chapterjs/`): one project per typed
+ * folder, and what every file gets, like the files of `public/`. With
+ * the commands as they loaded, a language file only offers the ones
+ * without `description` in their file, and `t` is typed from the default
+ * language; without them (`sync`, which runs nothing), every command is
+ * offered and the first language file types `t`.
+ * @returns how many files were written
+ */
+export async function writeTypes(
+  cwd: string,
+  commands?: ReadonlyMap<string, CommandEntry>,
+  messages?: LoadedMessages | null
+): Promise<number> {
+  const [files, languages, commandFiles] = await Promise.all([
+    listPublic(cwd),
+    listFolder(cwd, languagesConvention),
+    listFolder(cwd, commandsConvention),
+  ]);
+  return writeGenerated(
+    cwd,
+    eventTypedFolders(),
+    publicDeclarations(files) +
+      messagesDeclarations(
+        languages,
+        messages ? messages.files.get(messages.default) : undefined
+      ),
+    // Only language files use it, and they are in the main project.
+    commandsDeclarations(
+      commandFiles.map(({ file }) => ({
+        file,
+        described: commands?.get(file)?.command.described ?? false,
+      }))
+    )
+  );
+}
+
 /** The conventional folders of a project: one per feature. */
-export const CONVENTIONS = [eventsConvention, commandsConvention] as const;
+export const CONVENTIONS = [
+  eventsConvention,
+  commandsConvention,
+  componentsConvention,
+  tasksConvention,
+  presenceConvention,
+  languagesConvention,
+] as const;
 
 /** What a bot of the project is connected with. */
 export interface ConnectOptions {
@@ -77,6 +151,12 @@ export interface Project {
   /** The last version of each file that loaded: what the bot runs. */
   readonly events: ReadonlyMap<string, LoadedEvent>;
   readonly commands: ReadonlyMap<string, CommandEntry>;
+  readonly components: ReadonlyMap<string, ComponentEntry>;
+  readonly tasks: ReadonlyMap<string, TaskEntry>;
+  /** What `src/presence.ts` declares, or `null` without that file. */
+  readonly presence: LoadedPresence | null;
+  /** The languages of `src/messages/`, assembled, or `null` without any. */
+  readonly messages: LoadedMessages | null;
   /**
    * Loads every file (again). A file that fails is returned; it keeps its
    * last working version when it had one.
@@ -84,7 +164,7 @@ export interface Project {
   load(): Promise<FailedFile[]>;
   /** Shows a failure with its file and line. */
   report(failure: FailedFile): void;
-  /** "2 commands, 3 events loaded". */
+  /** "2 commands, 3 events, 4 components, a presence loaded". */
   summary(): string;
   isEmpty(): boolean;
   /** The files that make an intent necessary. */
@@ -99,6 +179,19 @@ export interface Project {
   connect(options: ConnectOptions): Promise<Bot>;
   /** Runs the files of the `ready` event: the bot knows its servers. */
   ready(bot: Bot): void;
+  /**
+   * Gives the bot the presence of the project as it is now (Discord's
+   * default without a presence file). Nothing is sent when it did not
+   * change since the bot was given one.
+   */
+  applyPresence(bot: Bot): boolean;
+  /**
+   * Starts the tasks of the project, with the bot `current` returns (none
+   * while it reconnects). Only one process of a bot runs them.
+   */
+  startTasks(current: () => Bot | null): void;
+  /** Stops the tasks: nothing runs after this. */
+  stopTasks(): void;
   /** Looks after the memory of the bot `current` returns. */
   watchMemory(current: () => Bot | null): { stop(): void };
 }
@@ -126,6 +219,8 @@ const megabytes = (bytes: number): string =>
 
 export function createProject(options: ProjectOptions): Project {
   const { cwd, log } = options;
+  // Where `asset()` reads the files of the project from.
+  setPublicDir(cwd);
   const report = ({ file, error }: FailedFile): void => {
     const where = locate(error, cwd);
     log.error(
@@ -139,15 +234,29 @@ export function createProject(options: ProjectOptions): Project {
         `A ${event} event was not given to your files: Discord did not let the bot read the channel it happened in (${messageOf(error)}).`
       )
   );
-  const commandRouter = new CommandRouter({
-    onError: (file, error) => report({ file, error }),
-    onWarning: (file, message) => log.warn(`${file} ${message}`),
+  const reporter = {
+    onError: (file: string, error: unknown) => report({ file, error }),
+    onWarning: (file: string, message: string) =>
+      log.warn(`${file} ${message}`),
     ...(options.deferAfter === undefined
       ? {}
       : { deferAfter: options.deferAfter }),
-  });
+  };
+  const commandRouter = new CommandRouter(reporter);
+  const componentRouter = new ComponentRouter(reporter);
+  const scheduler: Scheduler = new TimerScheduler(reporter);
   let events = new Map<string, LoadedEvent>();
   let commands = new Map<string, CommandEntry>();
+  let components = new Map<string, ComponentEntry>();
+  let tasks = new Map<string, TaskEntry>();
+  let presence: LoadedPresence | null = null;
+  let messages: LoadedMessages | null = null;
+  /** The last version of each language file that loaded. */
+  let languages = new Map<string, LanguageEntry>();
+  /** The bot running the files now, to give it what a reload changes. */
+  let running: Bot | null = null;
+  /** The presence each bot was given last, to send only what changed. */
+  const given = new WeakMap<Bot, string>();
   let lost = false;
   const count = (size: number, one: string, many: string): string =>
     `${size} ${size === 1 ? one : many}`;
@@ -159,18 +268,45 @@ export function createProject(options: ProjectOptions): Project {
     get commands() {
       return commands;
     },
+    get components() {
+      return components;
+    },
+    get tasks() {
+      return tasks;
+    },
+    get presence() {
+      return presence;
+    },
+    get messages() {
+      return messages;
+    },
     report,
     async load() {
       const { built } = options;
-      const [eventFiles, commandFiles] = await Promise.all(
+      const [
+        eventFiles,
+        commandFiles,
+        componentFiles,
+        taskFiles,
+        presenceFiles,
+        messageFiles,
+      ] = await Promise.all(
         built
           ? [
               loadBuilt(eventsConvention, built),
               loadBuilt(commandsConvention, built),
+              loadBuilt(componentsConvention, built),
+              loadBuilt(tasksConvention, built),
+              loadBuilt(presenceConvention, built),
+              loadBuilt(languagesConvention, built),
             ]
           : [
               loadFolder(cwd, eventsConvention),
               loadFolder(cwd, commandsConvention),
+              loadFolder(cwd, componentsConvention),
+              loadFolder(cwd, tasksConvention),
+              loadFolder(cwd, presenceConvention),
+              loadFolder(cwd, languagesConvention),
             ]
       );
       const nextEvents = new Map<string, LoadedEvent>();
@@ -193,18 +329,126 @@ export function createProject(options: ProjectOptions): Project {
       }
       const { valid, conflicts } = findConflicts(entries);
       commands = new Map(valid.map(entry => [entry.file, entry]));
+
+      const pieces: ComponentEntry[] = componentFiles.loaded.map(
+        ({ file, value }) => ({ file, component: value })
+      );
+      for (const { file } of componentFiles.failed) {
+        const previous = components.get(file);
+        if (previous) pieces.push(previous);
+      }
+      const unique = findDuplicates(pieces);
+      components = new Map(unique.valid.map(entry => [entry.file, entry]));
+      componentRouter.set(components.values());
+
+      const nextTasks = new Map<string, TaskEntry>();
+      for (const { file, value } of taskFiles.loaded) {
+        nextTasks.set(file, { file, task: value });
+      }
+      for (const { file } of taskFiles.failed) {
+        const previous = tasks.get(file);
+        if (previous) nextTasks.set(file, previous);
+      }
+      tasks = nextTasks;
+      scheduler.set(tasks.values());
+
+      // One presence file. A second one (another extension) is left out.
+      const [first, ...extra] = presenceFiles.loaded;
+      if (first) presence = first.value;
+      else if (presenceFiles.failed.length === 0) presence = null;
+      const twice = extra.map(({ file }) => ({
+        file,
+        error: new TypeError(
+          `There are two presence files: ${first!.file} is used, keep only one.`
+        ),
+      }));
+      const nextLanguages = new Map<string, LanguageEntry>();
+      for (const { file, value } of messageFiles.loaded) {
+        nextLanguages.set(file, { file, language: value });
+      }
+      for (const { file } of messageFiles.failed) {
+        const previous = languages.get(file);
+        if (previous) nextLanguages.set(file, previous);
+      }
+      const previousLanguages = languages;
+      languages = nextLanguages;
+      let assembled = assembleMessages([...languages.values()]);
+      // A language that no longer matches the others keeps its last version
+      // that did, like a file that no longer loads.
+      const restored = assembled.failed.filter(({ file }) => {
+        const previous = previousLanguages.get(file);
+        return previous !== undefined && previous !== languages.get(file);
+      });
+      if (restored.length > 0) {
+        for (const { file } of restored) {
+          languages.set(file, previousLanguages.get(file)!);
+        }
+        const again = assembleMessages([...languages.values()]);
+        assembled = {
+          messages: again.messages,
+          failed: [
+            ...assembled.failed,
+            ...again.failed.filter(
+              ({ file }) => !assembled.failed.some(one => one.file === file)
+            ),
+          ],
+        };
+      }
+      messages = assembled.messages;
+      if (running) running.ctx.messages = messages;
+
+      // A command has its texts in its file, or in the language files: the
+      // languages give them to the ones without, and a command that can't
+      // be described is left out.
+      const badTexts: FailedFile[] = [...assembled.failed];
+      if (messages) {
+        const paths = new Set(
+          [...commands.values()].map(entry => entry.command.path.join('/'))
+        );
+        for (const { file, path } of unknownCommands(messages, paths)) {
+          badTexts.push({
+            file,
+            error: new TypeError(
+              `"commands" translates "${path}", which is not a command of this project${paths.size > 0 ? ` (its commands are: ${[...paths].join(', ')})` : ''}. The key is the path of the command file, like 'ping' or 'mod/ban'.`
+            ),
+          });
+        }
+      }
+      for (const [file, entry] of commands) {
+        const { command, failed } = translateCommand(
+          file,
+          entry.command,
+          messages
+        );
+        badTexts.push(...failed);
+        if (command) commands.set(file, { ...entry, command });
+        else commands.delete(file);
+      }
       commandRouter.set(commands.values());
       return [
         ...eventFiles.failed,
         ...commandFiles.failed,
-        ...conflicts.map(({ file, message }) => ({
+        ...componentFiles.failed,
+        ...taskFiles.failed,
+        ...presenceFiles.failed,
+        ...messageFiles.failed,
+        ...badTexts,
+        ...twice,
+        ...[...conflicts, ...unique.conflicts].map(({ file, message }) => ({
           file,
           error: new TypeError(message),
         })),
       ];
     },
     summary() {
-      if (events.size === 0 && commands.size === 0) {
+      if (
+        events.size === 0 &&
+        commands.size === 0 &&
+        components.size === 0 &&
+        tasks.size === 0 &&
+        presence === null &&
+        messages === null
+      ) {
         return 'Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/';
       }
       return `${[
@@ -212,9 +456,25 @@ export function createProject(options: ProjectOptions): Project {
           ? [count(commands.size, 'command', 'commands')]
           : []),
         ...(events.size > 0 ? [count(events.size, 'event', 'events')] : []),
+        ...(components.size > 0
+          ? [count(components.size, 'component', 'components')]
+          : []),
+        ...(tasks.size > 0 ? [count(tasks.size, 'task', 'tasks')] : []),
+        ...(presence ? ['a presence'] : []),
+        ...(messages
+          ? [
+              `messages in ${count(messages.locales.size, 'language', 'languages')}`,
+            ]
+          : []),
       ].join(', ')} loaded`;
     },
-    isEmpty: () => events.size === 0 && commands.size === 0,
+    isEmpty: () =>
+      events.size === 0 &&
+      commands.size === 0 &&
+      components.size === 0 &&
+      tasks.size === 0 &&
+      presence === null &&
+      messages === null,
     filesNeeding: intent =>
       [...events.values()]
         .filter(({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0)
@@ -230,6 +490,7 @@ export function createProject(options: ProjectOptions): Project {
           (connection.privateEvents === false ? ~PRIVATE_INTENTS : ~0),
         guildFilter: connection.guildFilter,
         privateEvents: connection.privateEvents,
+        presence: presence?.raw,
         shards: connection.shards,
         identifyGate: connection.identifyGate,
         ...(connection.identifyInterval === undefined
@@ -251,10 +512,10 @@ export function createProject(options: ProjectOptions): Project {
             before: info.before as unknown[] | undefined,
           });
           if (event === 'INTERACTION_CREATE') {
-            commandRouter.dispatch(
-              created.ctx,
-              data as GatewayDispatchEvents['INTERACTION_CREATE']
-            );
+            const interaction =
+              data as GatewayDispatchEvents['INTERACTION_CREATE'];
+            commandRouter.dispatch(created.ctx, interaction);
+            componentRouter.dispatch(created.ctx, interaction);
           }
         },
         onEvent(event) {
@@ -274,13 +535,42 @@ export function createProject(options: ProjectOptions): Project {
           }
         },
       });
+      given.set(created, presence?.key ?? '');
+      created.ctx.messages = messages;
+      running = created;
       await created.connect();
       return created;
     },
+    applyPresence(bot) {
+      const key = presence?.key ?? '';
+      if (given.get(bot) === key) return false;
+      given.set(bot, key);
+      bot.setPresence(presence?.raw ?? DEFAULT_PRESENCE);
+      return true;
+    },
     ready(bot) {
       const user = bot.ctx.cache.users.get(bot.ctx.self!.userId)!;
-      router.emit('ready', { user, guilds: bot.ctx.cache.guilds });
+      router.emit('ready', {
+        user,
+        guilds: bot.ctx.cache.guilds,
+        ...translation(bot.ctx, null),
+      } as never);
     },
+    startTasks(current) {
+      scheduler.start(() => {
+        const bot = current();
+        if (!bot?.ctx.self) return null;
+        const user = bot.ctx.cache.users.get(bot.ctx.self.userId);
+        return user
+          ? {
+              user,
+              guilds: bot.ctx.cache.guilds,
+              ...translation(bot.ctx, null),
+            }
+          : null;
+      });
+    },
+    stopTasks: () => scheduler.stop(),
     // The bot looks after its own memory: it remembers less before memory
     // is full, and only speaks up when it can't give up anything more.
     watchMemory: current =>

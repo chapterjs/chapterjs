@@ -2,9 +2,12 @@
 // expects. Used by everything that sends a message: channels, replies,
 // webhooks, and later interactions.
 
+import { isAssetFile, readAsset, type AssetFile } from '../assets/asset.js';
+import { isEmbedFile, type EmbedFile } from '../components/embed.js';
+import type { MessageComponent } from '../components/instance.js';
+import { renderComponents } from '../components/render.js';
 import { Limits } from '../discord/api.js';
 import type { Snowflake } from '../discord/types/common.js';
-import type { RawComponent } from '../discord/types/component.js';
 import {
   MessageFlags,
   type CreateMessageJSONParams,
@@ -14,17 +17,14 @@ import {
 import type { RawPollCreateRequest } from '../discord/types/poll.js';
 import type { RestFile } from '../rest/rest.js';
 import { toSnakeCase, type Camelize } from '../util/case.js';
+import type { Translator } from '../messages/messages.js';
+import { missingTranslator } from '../messages/translate.js';
 
 /**
  * A rich box in a message: title, description, fields, image...
  * @see https://docs.discord.com/developers/resources/message#embed-object
  */
 export type Embed = Camelize<RawEmbed>;
-/**
- * A button, a select menu or a layout component of a message.
- * @see https://docs.discord.com/developers/components/reference
- */
-export type Component = Camelize<RawComponent>;
 /**
  * Who a message is allowed to notify.
  * @see https://docs.discord.com/developers/resources/message#allowed-mentions-object
@@ -54,12 +54,15 @@ export interface FileInput {
 export interface MessageOptions {
   /** The text of the message (up to 2000 characters). */
   content?: string;
-  /** Up to 10 embeds. */
-  embeds?: Embed[];
-  /** Buttons, select menus and layout components. */
-  components?: Component[];
-  /** Up to 10 files to attach. */
-  files?: FileInput[];
+  /** Up to 10 embeds: written here, or files of `src/components/embeds/`. */
+  embeds?: (Embed | EmbedFile<[]>)[];
+  /**
+   * Buttons, select menus and layout components, made by ChapterJS: the
+   * files of `src/components/` and `row()`, `text()`, `container()`...
+   */
+  components?: MessageComponent[];
+  /** Up to 10 files to attach: their content, or `asset()` for a file of `public/`. */
+  files?: (FileInput | AssetFile)[];
   /** Who the message is allowed to notify. */
   allowedMentions?: AllowedMentions;
   /** The ids of up to 3 stickers of the server. */
@@ -97,6 +100,63 @@ export interface BuiltMessage {
 
 const count = (text: string | undefined): number => text?.trim().length ?? 0;
 
+/**
+ * Checks one embed against the limits of Discord. `name` is how the embed
+ * is called in messages ("embed 1", "this embed").
+ * @returns how many characters it holds, which add up per message
+ * @see https://docs.discord.com/developers/resources/message#embed-object-embed-limits
+ */
+export function checkEmbed(embed: Embed, name: string): number {
+  if (typeof embed !== 'object' || embed === null) {
+    throw new TypeError(
+      `${name} is an object like { title: '...' }, got ${embed === null ? 'null' : typeof embed}.`
+    );
+  }
+  let total = 0;
+  const check = (what: string, text: string | undefined, max: number) => {
+    const length = count(text);
+    total += length;
+    if (length > max) {
+      throw new RangeError(
+        `The ${what} of ${name} is ${length} characters long: Discord accepts ${max} at most.`
+      );
+    }
+  };
+  check('title', embed.title, Limits.EmbedTitle);
+  check('description', embed.description, Limits.EmbedDescription);
+  check('footer text', embed.footer?.text, Limits.EmbedFooterText);
+  check('author name', embed.author?.name, Limits.EmbedAuthorName);
+  const fields = embed.fields ?? [];
+  if (fields.length > Limits.EmbedFields) {
+    throw new RangeError(
+      `${name[0]!.toUpperCase()}${name.slice(1)} has ${fields.length} fields: Discord accepts ${Limits.EmbedFields} at most.`
+    );
+  }
+  fields.forEach((field, at) => {
+    check(`name of field ${at + 1}`, field.name, Limits.EmbedFieldName);
+    check(`value of field ${at + 1}`, field.value, Limits.EmbedFieldValue);
+  });
+  return total;
+}
+
+/** The embeds of a message, with the files of `src/components/embeds/` called. */
+function resolveEmbeds(embeds: readonly (Embed | EmbedFile<[]>)[]): Embed[] {
+  if (!Array.isArray(embeds)) {
+    throw new TypeError(
+      `The embeds of a message are a list, got ${typeof embeds}.`
+    );
+  }
+  return embeds.map((embed, index) => {
+    if (isEmbedFile(embed)) return embed();
+    if (typeof embed === 'function') {
+      throw new TypeError(
+        `Embed ${index + 1} of the message is a function: an embed is an object like { title: '...' }, or a file of src/components/embeds/.`
+      );
+    }
+    return embed;
+  });
+}
+
 function checkEmbeds(embeds: Embed[]): void {
   if (embeds.length > Limits.MessageEmbeds) {
     throw new RangeError(
@@ -105,29 +165,7 @@ function checkEmbeds(embeds: Embed[]): void {
   }
   let total = 0;
   embeds.forEach((embed, index) => {
-    const check = (what: string, text: string | undefined, max: number) => {
-      const length = count(text);
-      total += length;
-      if (length > max) {
-        throw new RangeError(
-          `The ${what} of embed ${index + 1} is ${length} characters long: Discord accepts ${max} at most.`
-        );
-      }
-    };
-    check('title', embed.title, Limits.EmbedTitle);
-    check('description', embed.description, Limits.EmbedDescription);
-    check('footer text', embed.footer?.text, Limits.EmbedFooterText);
-    check('author name', embed.author?.name, Limits.EmbedAuthorName);
-    const fields = embed.fields ?? [];
-    if (fields.length > Limits.EmbedFields) {
-      throw new RangeError(
-        `Embed ${index + 1} has ${fields.length} fields: Discord accepts ${Limits.EmbedFields} at most.`
-      );
-    }
-    fields.forEach((field, at) => {
-      check(`name of field ${at + 1}`, field.name, Limits.EmbedFieldName);
-      check(`value of field ${at + 1}`, field.value, Limits.EmbedFieldValue);
-    });
+    total += checkEmbed(embed, `embed ${index + 1}`);
   });
   if (total > Limits.EmbedTotal) {
     throw new RangeError(
@@ -142,7 +180,14 @@ function checkEmbeds(embeds: Embed[]): void {
  */
 export function buildMessage(
   input: MessageInput,
-  { edit = false }: { edit?: boolean } = {}
+  {
+    t = missingTranslator(null),
+    edit = false,
+  }: {
+    /** `t` for who will read the message: what its components may be computed from. */
+    t?: Translator;
+    edit?: boolean;
+  } = {}
 ): BuiltMessage {
   if (typeof input === 'string') input = { content: input };
   if (typeof input !== 'object' || input === null) {
@@ -150,7 +195,8 @@ export function buildMessage(
       `A message is a text or an object like { content: "Hello" }, got ${input === null ? 'null' : typeof input}.`
     );
   }
-  const { content, embeds, components, files, stickers, poll } = input;
+  const { content, components, files, stickers, poll } = input;
+  const embeds = input.embeds ? resolveEmbeds(input.embeds) : undefined;
 
   if (content !== undefined && typeof content !== 'string') {
     throw new TypeError(
@@ -163,6 +209,17 @@ export function buildMessage(
     );
   }
   if (embeds) checkEmbeds(embeds);
+  const rendered = components ? renderComponents(components, t) : undefined;
+  if (rendered?.v2 && (count(content) > 0 || embeds?.length)) {
+    throw new TypeError(
+      'A message built with texts, sections, galleries, files, separators or containers takes no content and no embeds: Discord shows components only. Put the text in text() and the embed in a container().'
+    );
+  }
+  if (rendered?.v2 && poll) {
+    throw new TypeError(
+      "A message built with components only can't have a poll."
+    );
+  }
   if (stickers && stickers.length > Limits.MessageStickers) {
     throw new RangeError(
       `A message has ${Limits.MessageStickers} stickers at most, got ${stickers.length}.`
@@ -176,7 +233,7 @@ export function buildMessage(
   const empty =
     count(content) === 0 &&
     !embeds?.length &&
-    !components?.length &&
+    !rendered?.raw.length &&
     !files?.length &&
     !stickers?.length &&
     !poll;
@@ -189,7 +246,7 @@ export function buildMessage(
   const body: CreateMessageJSONParams = {};
   if (content !== undefined) body.content = content;
   if (embeds) body.embeds = toSnakeCase<RawEmbed[]>(embeds);
-  if (components) body.components = toSnakeCase<RawComponent[]>(components);
+  if (rendered) body.components = rendered.raw;
   if (input.allowedMentions) {
     body.allowed_mentions = toSnakeCase<RawAllowedMentions>(
       input.allowedMentions
@@ -201,6 +258,8 @@ export function buildMessage(
   let flags = 0;
   if (input.silent) flags |= MessageFlags.SuppressNotifications;
   if (input.suppressEmbeds) flags |= MessageFlags.SuppressEmbeds;
+  // Discord wants to be told when a message is made of components only.
+  if (rendered?.v2) flags |= MessageFlags.IsComponentsV2;
   if (flags !== 0 || (edit && input.suppressEmbeds === false)) {
     body.flags = flags;
   }
@@ -218,12 +277,37 @@ export function buildMessage(
           'Every file needs a name with its extension, like "chart.png".'
         );
       }
+      if (isAssetFile(file)) {
+        return {
+          name: file.name,
+          data: () => readAsset(file),
+          contentType: file.contentType,
+        };
+      }
+      if (
+        typeof file.data === 'function' ||
+        (typeof file.data !== 'string' && typeof file.data !== 'object') ||
+        file.data === null
+      ) {
+        throw new TypeError(
+          `The data of the file ${file.name} is its content (a text, a Buffer, an ArrayBuffer or a Blob), or asset('...') for a file of public/.`
+        );
+      }
       return {
         name: file.name,
         data: file.data,
         contentType: file.contentType,
       };
     });
+    const names = new Set<string>();
+    for (const { name } of restFiles) {
+      if (names.has(name)) {
+        throw new TypeError(
+          `Two files of the message are named ${name}: Discord tells them apart by their name. Give one another name (asset(path, { name: '...' })).`
+        );
+      }
+      names.add(name);
+    }
     // Each file is described by the attachment whose id is its index.
     // https://docs.discord.com/developers/reference#uploading-files
     body.attachments = files.map((file, index) => ({

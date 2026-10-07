@@ -1,0 +1,110 @@
+---
+title: 'Tasks'
+description: 'Make your bot do something by itself, every so often or at given times, with one file per task'
+---
+
+A task is a file of `src/tasks/`. It says when to run and what to do; ChapterJS runs it once the bot is connected, and keeps running it for as long as the bot is online.
+
+```ts src/tasks/report.ts
+import { task } from 'chapterjs';
+
+export default task({
+  cron: '0 9 * * 1',
+  timezone: 'Europe/Paris',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+      if (general?.isText()) await general.send(`Good morning! We are ${guild.memberCount ?? '?'} here.`);
+    }
+  },
+});
+```
+
+That is all: every Monday at 9:00 in Paris, the task runs with the servers the bot is in. The name of the file is the name of the task, and nothing else has to be registered.
+
+<Note>
+  Everything a task file declares is in the [reference](/reference/task).
+</Note>
+
+## Every so often
+
+`every` is a duration: a number and a unit, `s`, `m`, `h` or `d`. The task runs at that interval, counted from the moment the bot connects.
+
+```ts src/tasks/cleanup.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '30m',
+  async run({ guilds }) {
+    console.log(`Checking ${guilds.size} servers`);
+  },
+});
+```
+
+`'30s'`, `'10m'`, `'2h'`, `'1d'` and `'1h30m'` all work; once per second is the fastest.
+
+## At given times
+
+`cron` is a standard cron expression: minute, hour, day of month, month and day of week.
+
+| Write | Runs |
+| --- | --- |
+| `'0 9 * * *'` | Every day at 9:00 |
+| `'*/15 * * * *'` | Every 15 minutes |
+| `'0 9 * * 1-5'` | Weekdays at 9:00 |
+| `'30 18 * * fri'` | Fridays at 18:30 |
+| `'0 0 1 * *'` | The first of each month at midnight |
+| `'0 12 1,15 * *'` | The 1st and the 15th at noon |
+
+Without `timezone`, the task follows the clock of the machine the bot runs on. With one (`'Europe/Paris'`, `'America/New_York'`...), it follows that clock, changes of daylight saving time included: a time that does not exist that day is skipped, a time that comes twice runs once.
+
+A cron that is wrong, or that never happens (`'0 0 31 2 *'`), is an error when the file loads, with what to write.
+
+## Running right away
+
+`onStart: true` also runs the task once as soon as the bot is connected, without waiting for its first time:
+
+```ts src/tasks/status.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '1h',
+  onStart: true,
+  run({ user, guilds, now }) {
+    console.log(`${now.toISOString()}: ${user.username} is in ${guilds.size} servers`);
+  },
+});
+```
+
+## What run receives
+
+| Field | What it is |
+| --- | --- |
+| `user` | The bot itself, a [User](/reference/user) |
+| `guilds` | The servers the bot is in, as the [`ready` event](/reference/events#ready) gives them |
+| `now` | When this run was due, a `Date` |
+
+## When a run takes long, or fails
+
+A run that is still going when the next time comes is not started twice: that time is skipped, and your terminal says so.
+
+```text
+⚠ src/tasks/report.ts report was still running when its next time came (every 1s): that run was skipped.
+```
+
+A run that throws is reported with the file and the line, and the task keeps its next time. Nothing stops the bot.
+
+While the bot reconnects to Discord, a task that is due is skipped and said; it runs again at its next time.
+
+## In development, in production
+
+In `chapterjs dev`, saving a task file replaces what it does without changing when: a task that runs every hour keeps its next time through the reload. Changing `every` or `cron` counts the task again from the save. In `chapterjs start`, a bot split over [several processes](/run/start#large-bots) runs each task once, in its first process.
+
+<CardGroup cols={2}>
+  <Card title="task() reference" icon="clock" href="/reference/task">
+    Every field of a task file, and what run receives.
+  </Card>
+  <Card title="Sending messages" icon="mail" href="/messages">
+    What a task can post, and where.
+  </Card>
+</CardGroup>

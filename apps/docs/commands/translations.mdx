@@ -35,6 +35,10 @@ export default command({
 
 That is all: a French speaker sees `/saluer qui ton` and picks "Chaleureux"; your code still receives `options.who` and `'warm'`.
 
+<Info>
+  `locales` is what Discord shows before the command is used. A command without `description` in its file has them in the `commands` of the [language files](/translated-messages#the-names-and-descriptions-of-commands) of `src/messages/` instead, next to the texts of the bot: a command has its texts in one place, and the editor only offers there the commands their file does not describe. What your bot answers is translated with `t`.
+</Info>
+
 <Note>
   The shape of `locales` is in the [reference](/reference/command#commandlocales).
 </Note>

@@ -31,10 +31,14 @@ import {
 } from './rate-limiter.js';
 
 /** A file to upload with a request. */
+/** The content of a file, or how to read it when it is sent. */
+export type RestFileData = Blob | Uint8Array | ArrayBuffer | string;
+
 export interface RestFile {
   /** The name of the file, with its extension: `chart.png`. */
   name: string;
-  data: Blob | Uint8Array | ArrayBuffer | string;
+  /** The content, or a function that reads it when the request is sent. */
+  data: RestFileData | (() => Promise<RestFileData>);
   /** The media type; guessed by Discord from the name when missing. */
   contentType?: string;
   /**
@@ -106,16 +110,16 @@ function toQueryString(query: unknown): string {
   return text === '' ? '' : `?${text}`;
 }
 
-function toBlob(file: RestFile): Blob {
-  if (file.data instanceof Blob) {
+function toBlob(file: RestFile, data: RestFileData): Blob {
+  if (data instanceof Blob) {
     return file.contentType
-      ? new Blob([file.data], { type: file.contentType })
-      : file.data;
+      ? new Blob([data], { type: file.contentType })
+      : data;
   }
   const part =
-    typeof file.data === 'string' || file.data instanceof ArrayBuffer
-      ? file.data
-      : new Uint8Array(file.data);
+    typeof data === 'string' || data instanceof ArrayBuffer
+      ? data
+      : new Uint8Array(data);
   return new Blob([part], file.contentType ? { type: file.contentType } : {});
 }
 
@@ -177,6 +181,15 @@ export class RestClient implements Rest {
     // Built once: a retry sends the same thing.
     let body: string | (() => FormData) | undefined;
     if (options.files && options.files.length > 0) {
+      // A file read on demand is read once, now: a retry sends the same.
+      const blobs = await Promise.all(
+        options.files.map(async file =>
+          toBlob(
+            file,
+            typeof file.data === 'function' ? await file.data() : file.data
+          )
+        )
+      );
       const files = options.files;
       const json =
         options.body === undefined ? undefined : JSON.stringify(options.body);
@@ -184,7 +197,7 @@ export class RestClient implements Rest {
         const form = new FormData();
         if (json !== undefined) form.set('payload_json', json);
         files.forEach((file, index) => {
-          form.set(file.field ?? `files[${index}]`, toBlob(file), file.name);
+          form.set(file.field ?? `files[${index}]`, blobs[index]!, file.name);
         });
         return form;
       };

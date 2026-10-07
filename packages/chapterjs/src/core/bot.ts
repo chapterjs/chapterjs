@@ -41,7 +41,7 @@ export interface BotOptions {
   /** The version of the framework. */
   version: string;
   intents: number;
-  presence?: RawGatewayPresenceUpdate;
+  presence?: RawGatewayPresenceUpdate | undefined;
   cache?: CacheOptions;
   shards?: GatewayOptions['shards'];
   identifyGate?: GatewayOptions['identifyGate'];
@@ -96,6 +96,13 @@ export interface Bot {
   connect(): Promise<void>;
   /** Disconnects cleanly: the bot goes offline right away. */
   close(): Promise<void>;
+  /**
+   * Changes what the bot shows under its name (its status and activity)
+   * on every shard of this process. Discord's limit on presence updates is
+   * respected: when it is reached, the latest presence is sent as soon as
+   * it allows.
+   */
+  setPresence(presence: RawGatewayPresenceUpdate): void;
 }
 
 /** The server a gateway event belongs to, when it belongs to one. */
@@ -237,5 +244,6 @@ export function createBot(options: BotOptions): Bot {
       guildsTimer = null;
       await gateway.close();
     },
+    setPresence: presence => gateway.setPresence(presence),
   };
 }

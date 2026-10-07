@@ -99,9 +99,30 @@ The process you start checks everything once, for all the processes of the bot, 
   ✗ The bot needs to start 1 session(s) but Discord only allows 0 more until 10/7/2026, 9:00:00 AM. Going over that limit makes Discord reset the bot token, so the bot is not started. This usually means it was restarted too many times: wait, then start it again.
   ```
 
-## Your test server stays yours
+## A second bot for development
 
-Add `DEV_GUILD_ID` next to `BOT_TOKEN` in production too, with the same value as on your computer:
+<Info>
+  **We recommend two applications from the start: one bot for development on your computer, one bot for production.** Discord has no way to keep what one bot does on your computer apart from what it does for everyone: its commands, its presence, its settings and its limits are the bot's, in every server at once.
+</Info>
+
+If you have one application only, make a second one for your computer: open the [Developer Portal](https://discord.com/developers/applications), click **New Application** again (name it after your bot, with "dev" in the name), and copy the token of its **Bot** page into the `.env` of your computer. Production keeps the token of the first application.
+
+```bash .env on your computer
+BOT_TOKEN=the token of the dev application
+DEV_GUILD_ID=
+```
+
+Add the dev bot to your test server (`chapterjs dev` prints the link) and enable the same privileged intents on it when your files need some: `chapterjs dev` says which ones. From then on, the two bots have nothing in common:
+
+- your test server only shows the commands of the dev bot, exactly as your files declare them, and never one twice;
+- the presence, the privileged intents and the token of production stay as they are while you try things;
+- Discord counts what each bot does on its own: the sessions it may start per day, the requests it may send.
+
+The rest of this page about dev is for one bot doing both.
+
+## One bot for dev and production
+
+A bot in production and `chapterjs dev` can also share one token. Add `DEV_GUILD_ID` next to `BOT_TOKEN` in production too, with the same value as on your computer:
 
 ```bash .env
 BOT_TOKEN=
@@ -115,17 +136,19 @@ Production then leaves that server alone, and you can keep working with `chapter
 
 They never answer the same thing. Without `DEV_GUILD_ID`, production runs every server, your test server included.
 
-### Commands are shown once
+What one bot can't separate:
 
-Your test server gets the commands of everyone, like any server. `chapterjs dev` does not add them a second time: it only registers there the commands that are **new or different** in your project. Used in your test server, a command always runs the code on your computer.
+- **Commands.** Your test server shows the commands of everyone, like any server. `chapterjs dev` does not add them a second time: it only registers there the commands that are **new or different** in your project. Used in your test server, a command always runs the code on your computer. While you are changing a command that is already in production, your test server shows it twice (yours, and the one everyone has), and `chapterjs dev` tells you once:
 
-While you are changing a command that is already in production, your test server shows it twice (yours, and the one everyone has), and `chapterjs dev` tells you once:
+  ```text
+  ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
+  ```
 
-```text
-ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
-```
+  A command for everyone belongs to the bot, not to a server: Discord gives no way to hide it in one server, and removing it would remove it for everyone. That is why two bots is the way to never see that.
 
-Discord gives no way to hide one of the two. To never see that, use a second bot for development: another application in the Developer Portal, and its token in the `.env` of your computer.
+- **The presence.** `src/presence.ts` is sent by both, for one bot: Discord does not say which of the two it shows. The one you try on your computer may be seen by everyone.
+- **The Developer Portal.** A privileged intent you enable to try an event is enabled for production too, and resetting the token stops production.
+- **The limits.** The sessions a bot may start per day and the requests it may send are counted for the bot: what `chapterjs dev` uses is taken from production.
 
 ## Large bots
 

@@ -62,7 +62,7 @@ export interface ShardOptions {
   /** The WSS URL given by Get Gateway Bot. */
   url: string;
   /** The presence the bot has as soon as it is connected. */
-  presence?: RawGatewayPresenceUpdate;
+  presence?: RawGatewayPresenceUpdate | undefined;
   /** Decides when this shard may identify. */
   identifyGate: IdentifyGate;
   /** Called for every event Discord dispatches, in order. */
@@ -74,6 +74,8 @@ export interface ShardOptions {
   onEvent?: (event: ShardEvent) => void;
   /** Milliseconds to wait before the nth try in a row. Only tests change it. */
   backoff?: (attempt: number) => number;
+  /** The window of the presence update limit, in ms. Only tests change it. */
+  presenceWindow?: number | undefined;
 }
 
 /**
@@ -89,6 +91,12 @@ const SEND_RESERVE = 5;
  * @see https://docs.discord.com/developers/events/gateway#sending-events
  */
 const MAX_PAYLOAD_BYTES = 4096;
+/**
+ * "Clients may only update their game status 5 times per 20 seconds."
+ * @see https://docs.discord.com/developers/events/gateway-events#update-presence
+ */
+const PRESENCE_LIMIT = 5;
+const PRESENCE_WINDOW = 20_000;
 /**
  * The code used to close a connection the shard wants to resume: any code
  * but 1000 and 1001 keeps the session alive.
@@ -133,6 +141,13 @@ export class Shard {
   #retryTimer: NodeJS.Timeout | null = null;
   /** When the last events were sent, to respect the send limit. */
   readonly #sent: number[] = [];
+  // The presence: what Identify sends, and what Update Presence changes.
+  #presence: RawGatewayPresenceUpdate | undefined;
+  /** Whether the current presence still has to be sent to Discord. */
+  #presencePending = false;
+  /** When the last presence updates were sent, to respect their limit. */
+  readonly #presenceSent: number[] = [];
+  #presenceTimer: NodeJS.Timeout | null = null;
   // Who is waiting for the shard to be ready.
   #readyWaiters: { resolve: () => void; reject: (error: Error) => void }[] = [];
   #fatal: Error | null = null;
@@ -140,6 +155,7 @@ export class Shard {
   constructor(options: ShardOptions) {
     this.id = options.id;
     this.#options = options;
+    this.#presence = options.presence;
   }
 
   get status(): ShardStatus {
@@ -191,6 +207,44 @@ export class Shard {
       await sleep(this.#sent[0]! + SEND_WINDOW - now);
     }
     this.#write(text);
+  }
+
+  /**
+   * Changes the presence of the bot on this shard. It is sent right away
+   * when the shard is ready and Discord's limit allows it, otherwise as
+   * soon as one of them does (only the latest presence is sent then); a
+   * session started later identifies with it.
+   * @see https://docs.discord.com/developers/events/gateway-events#update-presence
+   */
+  setPresence(presence: RawGatewayPresenceUpdate): void {
+    this.#presence = presence;
+    this.#presencePending = true;
+    this.#flushPresence();
+  }
+
+  #flushPresence(): void {
+    if (!this.#presencePending || this.#presenceTimer) return;
+    // Not connected: the next Identify carries it, or Resumed calls again.
+    if (this.#status !== 'ready') return;
+    const now = Date.now();
+    const window = this.#options.presenceWindow ?? PRESENCE_WINDOW;
+    const sent = this.#presenceSent;
+    while (sent.length > 0 && now - sent[0]! >= window) sent.shift();
+    if (sent.length >= PRESENCE_LIMIT) {
+      this.#presenceTimer = setTimeout(
+        () => {
+          this.#presenceTimer = null;
+          this.#flushPresence();
+        },
+        sent[0]! + window - now
+      );
+      return;
+    }
+    this.#presencePending = false;
+    sent.push(now);
+    this.#write(
+      JSON.stringify({ op: GatewayOpcode.PresenceUpdate, d: this.#presence })
+    );
   }
 
   /**
@@ -310,8 +364,10 @@ export class Shard {
         device: 'chapterjs',
       },
       shard: [this.id, this.#options.count],
-      ...(this.#options.presence ? { presence: this.#options.presence } : {}),
+      ...(this.#presence ? { presence: this.#presence } : {}),
     };
+    // The new session starts with the current presence.
+    this.#presencePending = false;
     this.#write(JSON.stringify({ op: GatewayOpcode.Identify, d: identify }));
   }
 
@@ -336,6 +392,9 @@ export class Shard {
         resumed: event === 'RESUMED',
       });
       for (const waiter of this.#readyWaiters.splice(0)) waiter.resolve();
+      // A presence changed while disconnected: a resumed session kept the
+      // old one.
+      this.#flushPresence();
     }
   }
 
@@ -449,6 +508,8 @@ export class Shard {
     this.#stopHeartbeat();
     if (this.#retryTimer) clearTimeout(this.#retryTimer);
     this.#retryTimer = null;
+    if (this.#presenceTimer) clearTimeout(this.#presenceTimer);
+    this.#presenceTimer = null;
     this.#ws = null;
     for (const waiter of this.#readyWaiters.splice(0)) waiter.reject(error);
   }

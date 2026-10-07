@@ -27,7 +27,9 @@ import { GuildEmoji } from '../src/structures/emoji.js';
 import { Guild } from '../src/structures/guild.js';
 import {
   CommandInteraction,
+  ComponentInteraction,
   Interaction,
+  ModalInteraction,
 } from '../src/structures/interaction.js';
 import { Invite } from '../src/structures/invite.js';
 import { GuildMember } from '../src/structures/member.js';
@@ -174,6 +176,8 @@ const structures: {
   { type: Message, pages: ['reference/message.mdx'] },
   { type: Interaction, pages: ['reference/interaction.mdx'] },
   { type: CommandInteraction, pages: ['reference/interaction.mdx'] },
+  { type: ComponentInteraction, pages: ['reference/interaction.mdx'] },
+  { type: ModalInteraction, pages: ['reference/interaction.mdx'] },
   { type: Channel, pages: ['reference/channels/index.mdx'] },
   ...(
     [
@@ -219,24 +223,16 @@ describe.each(structures.map(entry => [entry.type.name, entry] as const))(
       ).toContain(property);
     });
 
-    // The index of the channels describes what every kind shares, so a
-    // method of one kind of channel may be a heading there.
+    // A page shared by several classes (the index of the channels, the
+    // interactions) may have a heading for a method of any of them.
     const own = [
       ...(site.get(pagesOf[0]!) ?? '').matchAll(/^#{3,4} ([\w]+)\(\)/gm),
     ].map(match => match[1]!);
-    const known = pagesOf.includes('reference/channels/index.mdx')
-      ? new Set(
-          [
-            Channel,
-            TextChannel,
-            VoiceChannel,
-            CategoryChannel,
-            ForumChannel,
-            ThreadChannel,
-            DMChannel,
-          ].flatMap(type => membersOf(type).methods)
-        )
-      : new Set(methods);
+    const known = new Set(
+      structures
+        .filter(entry => entry.pages.includes(pagesOf[0]!))
+        .flatMap(entry => membersOf(entry.type).methods)
+    );
     it.each(own.length > 0 ? own : ['toJSON'])(
       'describes no method %s() that does not exist',
       method => {
@@ -300,6 +296,14 @@ describe.skipIf(process.platform === 'win32')('the samples', () => {
         : `${code}\nexport {};\n`;
       writeFileSync(file, module);
       origin.set(path, page);
+    }
+    // The files of public/ a sample sends must exist, to be typed.
+    for (const { code } of all) {
+      for (const match of code.matchAll(/asset\('([^']+)'/g)) {
+        const file = join(cwd, 'public', match[1]!);
+        mkdirSync(dirname(file), { recursive: true });
+        writeFileSync(file, '');
+      }
     }
     cpSync(
       join(packageDir, '../create-chapter/templates/default/tsconfig.json'),

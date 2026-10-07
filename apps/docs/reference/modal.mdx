@@ -1,0 +1,353 @@
+---
+title: 'modal()'
+description: 'Everything a form file declares, every kind of field, and what the run function receives for each'
+---
+
+`modal()` is what a file of `src/components/modals/` exports by default. It takes one object, `ModalConfig`, and types `fields` in `run` from it.
+
+```ts src/components/modals/feedback.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Feedback',
+  fields: {
+    text: { type: 'text', label: 'What do you think?', style: 'paragraph' },
+  },
+  async run({ interaction, fields }) {
+    await interaction.reply({ content: `Thanks! You wrote: ${fields.text}`, ephemeral: true });
+  },
+});
+```
+
+<Note>
+  How to write a form, open it and read what was filled in is in the [guide](/components/modals). This page lists what exists. The place (`where`, `PlaceOf`...) is on the [button() page](/reference/button#the-place).
+</Note>
+
+## modal()
+
+```ts
+modal<Fields extends ModalFields, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ModalConfig<Fields, Data, Where>): ModalFile<Fields, Data>
+```
+
+Declares a form. Export the result as the default export of a file of `src/components/modals/`: the path of the file is what tells the form apart, so you never write an id.
+
+### ModalFile
+
+What `modal()` returns: the default export of a modal file. Import it where someone uses a command or a component, and open it: `interaction.showModal(report({ userId }))`, or `interaction.showModal(feedback)` for a form without data.
+
+```ts
+type ModalFile<Fields extends ModalFields = ModalFields, Data extends DataShape = {}> = { readonly config: unknown } &
+  ({} extends Data
+    ? ((options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
+    : {} extends DataInputOf<Data>
+      ? ((data?: DataInputOf<Data>, options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
+      : (data: DataInputOf<Data>, options?: ModalInstanceOptions<Fields>) => ModalComponent)
+```
+
+<ResponseField name="config" type="unknown">
+  What the file gave to `modal()`, not checked yet.
+</ResponseField>
+
+### ModalInstanceOptions
+
+What a form is opened with: its data, and what some fields hold.
+
+<ResponseField name="values" type="ModalPrefill<Fields>">
+  What some fields hold when the form opens.
+</ResponseField>
+
+### ModalPrefill
+
+What a form can hold when it opens: a value for some of its fields. A `string` for a `text`, a list of values for a `select` or `checkboxes`, one value for a `radio`, a `boolean` for a `checkbox`. The other kinds of fields can't be filled in advance.
+
+## ModalConfig
+
+What a modal file gives to `modal()`.
+
+<ResponseField name="title" type="DynamicText" required>
+  The title of the form (45 characters at most): written as is, or a function of `t` and the data, run when the form opens. See [DynamicText](/reference/messages#dynamictext).
+</ResponseField>
+
+<ResponseField name="fields" type="ModalFields" required>
+  The fields, by name (1 to 5). `run` receives them under the same names.
+</ResponseField>
+
+<ResponseField name="run" type="(context: ModalContext<Fields, Data, Where>) => unknown" required>
+  What to do when someone sends the form.
+</ResponseField>
+
+<ResponseField name="data" type="DataShape">
+  What the form carries from the code that opens it to the code that runs when it is sent: a name and a kind for each value. Given when the form is opened, received typed in `run`.
+</ResponseField>
+
+<ResponseField name="where" type="ComponentWhere">
+  Where the form can be sent from: `'guild'` (servers, the default), `'dm'` (private messages with the bot) or `'both'`. What `run` receives follows it.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean">
+  Make the answers of the form only visible to who sent it. When a component of a message only the person sees opened it, they already are.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal)
+
+## Fields
+
+### ModalFields
+
+```ts
+type ModalFields = Readonly<Record<string, ModalField>>
+```
+
+The fields of a form, by name (5 at most). A name is how your code reads the field (`fields.reason`): letters, digits and `_`.
+
+### ModalField
+
+```ts
+type ModalField = TextField | SelectField | EntityField | FilesField | RadioField | CheckboxesField | CheckboxField | NoteField
+```
+
+One field of a form. Every field but a note has:
+
+<ResponseField name="label" type="DynamicText" required>
+  The name of the field, above it (45 characters at most): written as is, or a function of `t` and the data, run when the form opens.
+</ResponseField>
+
+<ResponseField name="description" type="DynamicText">
+  A help text under the label (100 characters at most): a text, or a function of `t` and the data.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#label)
+
+### TextField
+
+A text the person types.
+
+<ResponseField name="type" type="'text'" required>
+  The kind of field: a text.
+</ResponseField>
+
+<ResponseField name="style" type="'short' | 'paragraph'">
+  One line (`'short'`, the default) or several (`'paragraph'`).
+</ResponseField>
+
+<ResponseField name="placeholder" type="DynamicText">
+  The text shown while the field is empty (100 characters at most): a text, or a function of `t` and the data.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether the person must fill it in. `true` by default.
+</ResponseField>
+
+<ResponseField name="minLength" type="number">
+  The shortest text accepted, in characters (0 to 4000).
+</ResponseField>
+
+<ResponseField name="maxLength" type="number">
+  The longest text accepted, in characters (1 to 4000).
+</ResponseField>
+
+<ResponseField name="value" type="string">
+  What the field holds when the form opens (4000 characters at most).
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#text-input)
+
+### SelectField
+
+A menu of texts you declare.
+
+<ResponseField name="type" type="'select'" required>
+  The kind of field: a menu of texts.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  The options (25 at most), written like the options of a [select menu](/reference/select#selectoptions).
+</ResponseField>
+
+<ResponseField name="placeholder" type="DynamicText">
+  The text shown when nothing is picked (150 characters at most): a text, or a function of `t` and the data.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  How many options must be picked at least (0 to 25). 1 by default.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  How many options can be picked at most (1 to 25). 1 by default.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether something must be picked. `true` by default.
+</ResponseField>
+
+### EntityField
+
+A menu of users, roles, users and roles, or channels of the server.
+
+<ResponseField name="type" type="'user' | 'role' | 'mentionable' | 'channel'" required>
+  The kind of field: what Discord lists.
+</ResponseField>
+
+<ResponseField name="placeholder" type="DynamicText">
+  The text shown when nothing is picked (150 characters at most): a text, or a function of `t` and the data.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  How many things must be picked at least (0 to 25). 1 by default.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  How many things can be picked at most (1 to 25). 1 by default.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether something must be picked. `true` by default.
+</ResponseField>
+
+<ResponseField name="channelTypes" type="readonly ChannelType[]">
+  For a menu of channels: the kinds of channels listed. All by default.
+</ResponseField>
+
+### FilesField
+
+Files the person uploads.
+
+<ResponseField name="type" type="'files'" required>
+  The kind of field: files to upload.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  How many files must be uploaded at least (0 to 10). 1 by default.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  How many files can be uploaded at most (1 to 10). 1 by default.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether files must be uploaded. `true` by default.
+</ResponseField>
+
+<ResponseField name="fileTypes" type="readonly string[]">
+  The kinds of files accepted: `'image'`, `'video'`, `'audio'`, or extensions like `'.pdf'` (10 at most).
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#file-upload)
+
+### RadioField
+
+One choice among a few, shown as radio buttons.
+
+<ResponseField name="type" type="'radio'" required>
+  The kind of field: one choice among 2 to 10.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  The choices (2 to 10), written like the options of a select menu.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether a choice must be made. `true` by default.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#radio-group)
+
+### CheckboxesField
+
+Several choices among a few, shown as checkboxes.
+
+<ResponseField name="type" type="'checkboxes'" required>
+  The kind of field: several choices among 1 to 10.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  The choices (1 to 10), written like the options of a select menu.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  How many must be checked at least (0 to 10). 1 by default.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  How many can be checked at most (1 to 10). All by default.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Whether something must be checked. `true` by default.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#checkbox-group)
+
+### CheckboxField
+
+One checkbox: yes or no.
+
+<ResponseField name="type" type="'checkbox'" required>
+  The kind of field: one checkbox.
+</ResponseField>
+
+<ResponseField name="default" type="boolean">
+  Whether it is checked when the form opens.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#checkbox)
+
+### NoteField
+
+A text shown in the form, which nobody fills in.
+
+<ResponseField name="type" type="'note'" required>
+  The kind of field: a text to read.
+</ResponseField>
+
+<ResponseField name="content" type="DynamicText" required>
+  The text, with Markdown: written as is, or a function of `t` and the data.
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/components/reference#text-display)
+
+## What run receives
+
+### ModalContext
+
+What `run` receives when the form is sent: the place as [PlaceOf](/reference/button#placeof) gives it with a [ModalInteraction](/reference/interaction#modalinteraction), and:
+
+<ResponseField name="user" type="User" required>
+  Who sent the form.
+</ResponseField>
+
+<ResponseField name="fields" type="FieldValuesOf<Fields>" required>
+  What the person filled in.
+</ResponseField>
+
+<ResponseField name="data" type="DataValuesOf<Data>" required>
+  What the form carries, as declared in `data`.
+</ResponseField>
+
+<ResponseField name="message" type="Message | null" required>
+  The message whose button or menu opened the form; `null` when a command did.
+</ResponseField>
+
+### FieldValuesOf
+
+```ts
+type FieldValuesOf<Fields extends ModalFields> = { [Name in keyof Fields]: FieldValue<Fields[Name]> }
+```
+
+What the person filled in, typed field by field. Notes are not there.
+
+### FieldValue
+
+What `run` receives for a field, from its declaration:
+
+| Field | `FieldValue` |
+| --- | --- |
+| `TextField` | `string`, or `string \| undefined` with `required: false` |
+| `SelectField` | `OptionValue<Options>[]` |
+| `EntityField` | `User[]`, `Role[]`, `(User \| Role)[]` or `Channel[]` |
+| `FilesField` | [`Attachment`](/reference/data#attachment)`[]` |
+| `RadioField` | `OptionValue<Options>`, or `\| undefined` with `required: false` |
+| `CheckboxesField` | `OptionValue<Options>[]` |
+| `CheckboxField` | `boolean` |
+
+[Discord documentation](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-modal-submit-data-structure)

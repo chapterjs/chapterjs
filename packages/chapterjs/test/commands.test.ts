@@ -777,7 +777,7 @@ export default command({
     [
       'src/commands/bad.ts',
       `import { command } from 'chapterjs';\nexport default command({ run() {} } as never);\n`,
-      /✗ src\/commands\/bad\.ts this command needs a description: a short text that says what it is for/,
+      /✗ src\/commands\/bad\.ts This command has no description: write it in src\/messages\/en-US\.ts \(commands: \{ "bad": \{ description: '\.\.\.' \} \}\), or in the file \(description: '\.\.\.'\)\./,
     ],
     [
       'src/commands/bad.ts',

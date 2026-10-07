@@ -5,10 +5,13 @@ import {
   EditOriginalInteractionResponse,
   GetOriginalInteractionResponse,
 } from '../discord/endpoints.js';
+import type { ModalComponent } from '../components/instance.js';
+import { renderedOf } from '../components/instance.js';
 import type { Locale, Snowflake } from '../discord/types/common.js';
 import {
   InteractionCallbackType,
   type RawInteraction,
+  type RawInteractionCallbackModalData,
 } from '../discord/types/interaction.js';
 import { MessageFlags } from '../discord/types/message.js';
 import type { Camelize } from '../util/case.js';
@@ -28,9 +31,28 @@ import {
   type MessageEditOptions,
   type MessageOptions,
 } from './payload.js';
+import { resolve } from '../components/instance.js';
+import { translatorOf } from '../messages/translate.js';
+import type { Translator } from '../messages/messages.js';
 import type { User } from './user.js';
 
-export type InteractionData = Omit<RawInteraction, 'user' | 'member'>;
+export type InteractionData = Omit<
+  RawInteraction,
+  'user' | 'member' | 'message'
+>;
+
+/** Only the framework reads how far an interaction was answered. */
+export let isUpdating: (interaction: Interaction) => boolean;
+/** Answers with a change of the message: see `ComponentInteraction.update()`. */
+let updateMessage: (
+  interaction: Interaction,
+  message: string | MessageEditOptions
+) => Promise<Message>;
+let deferUpdateMessage: (interaction: Interaction) => Promise<void>;
+let openModal: (
+  interaction: Interaction,
+  form: ModalComponent
+) => Promise<void>;
 
 /** An answer to an interaction: its text, or its options. */
 export type InteractionReply = string | InteractionReplyOptions;
@@ -57,9 +79,117 @@ export class Interaction extends IdStructure<InteractionData> {
   /** Who did it. */
   readonly user: User;
   readonly #ephemeral: boolean;
-  #state: 'waiting' | 'deferred' | 'answered' = 'waiting';
+  /**
+   * `deferred`: "thinking…" is shown, the answer is a new message.
+   * `updating`: the answer is a change of the message of the component,
+   * nothing is shown meanwhile.
+   */
+  #state: 'waiting' | 'deferred' | 'updating' | 'answered' = 'waiting';
   /** Answers are sent one after the other, in the order they were asked. */
   #queue: Promise<void> = Promise.resolve();
+
+  static {
+    isUpdating = interaction => interaction.#state === 'updating';
+    updateMessage = (interaction, message) => {
+      const { body, files } = buildMessage(message, {
+        edit: true,
+        t: interaction.#t(interaction.#ephemeral),
+      });
+      return interaction.#run(async () => {
+        const { rest, entities } = ctxOf(interaction);
+        const {
+          id,
+          token,
+          application_id: applicationId,
+        } = dataOf(interaction);
+        if (
+          interaction.#state === 'answered' ||
+          interaction.#state === 'deferred'
+        ) {
+          throw new Error(
+            'This interaction was already answered: the message can no longer be changed through it. Use interaction.message.edit() to change the message, or interaction.followUp() to send another one.'
+          );
+        }
+        if (interaction.#state === 'updating') {
+          const raw = await rest.request(
+            EditOriginalInteractionResponse,
+            [applicationId, token],
+            { body, files, auth: false }
+          );
+          interaction.#state = 'answered';
+          return entities.message(raw, interaction.guildId ?? undefined);
+        }
+        const response = await rest.request(
+          CreateInteractionResponse,
+          [id, token],
+          {
+            body: { type: InteractionCallbackType.UpdateMessage, data: body },
+            query: { with_response: true },
+            files,
+            auth: false,
+          }
+        );
+        interaction.#state = 'answered';
+        const raw =
+          response?.resource?.message ??
+          (await rest.request(
+            GetOriginalInteractionResponse,
+            [applicationId, token],
+            { auth: false }
+          ));
+        return entities.message(raw, interaction.guildId ?? undefined);
+      });
+    };
+    deferUpdateMessage = interaction =>
+      interaction.#run(async () => {
+        if (interaction.#state !== 'waiting') return;
+        const { id, token } = dataOf(interaction);
+        await ctxOf(interaction).rest.request(
+          CreateInteractionResponse,
+          [id, token],
+          {
+            body: { type: InteractionCallbackType.DeferredUpdateMessage },
+            auth: false,
+          }
+        );
+        interaction.#state = 'updating';
+      });
+    openModal = (interaction, form) => {
+      const rendered = renderedOf(form, 'The form given to showModal()');
+      if (rendered.kind !== 'modal') {
+        throw new TypeError(
+          `showModal() opens a form of src/components/modals/, got a ${rendered.kind}.`
+        );
+      }
+      return interaction.#run(async () => {
+        if (interaction.#state !== 'waiting') {
+          throw new Error(
+            'A form can only be the first answer to an interaction: call interaction.showModal() before reply() or defer(), and the framework waits for it.'
+          );
+        }
+        const { id, token } = dataOf(interaction);
+        await ctxOf(interaction).rest.request(
+          CreateInteractionResponse,
+          [id, token],
+          {
+            body: {
+              type: InteractionCallbackType.Modal,
+              // A form is seen by the person alone: in their language.
+              data: resolve(
+                rendered,
+                translatorOf(ctxOf(interaction), {
+                  person: interaction.locale,
+                  ephemeral: true,
+                })
+              ).raw as RawInteractionCallbackModalData,
+            },
+            auth: false,
+          }
+        );
+        interaction.#state = 'answered';
+      });
+    };
+  }
 
   constructor(
     ctx: Context,
@@ -117,7 +247,7 @@ export class Interaction extends IdStructure<InteractionData> {
 
   /** Whether `defer()` was called and the answer is still to come. */
   get deferred(): boolean {
-    return this.#state === 'deferred';
+    return this.#state === 'deferred' || this.#state === 'updating';
   }
 
   /** The data of the interaction, without its token: a token is a secret. */
@@ -142,6 +272,15 @@ export class Interaction extends IdStructure<InteractionData> {
     }
   }
 
+  /** `t` for an answer: the person when they alone see it, else the server. */
+  #t(ephemeral: boolean | undefined): Translator {
+    return translatorOf(ctxOf(this), {
+      person: this.locale,
+      guild: this.guild,
+      ephemeral: ephemeral ?? this.#ephemeral,
+    }) as Translator;
+  }
+
   #flags(ephemeral: boolean | undefined, flags = 0): number {
     return (ephemeral ?? this.#ephemeral)
       ? flags | MessageFlags.Ephemeral
@@ -156,7 +295,9 @@ export class Interaction extends IdStructure<InteractionData> {
   reply(message: InteractionReply): Promise<Message> {
     const options =
       typeof message === 'string' ? { content: message } : message;
-    const { body, files } = buildMessage(options);
+    const { body, files } = buildMessage(options, {
+      t: this.#t(options.ephemeral),
+    });
     return this.#run(async () => {
       const { rest, entities } = ctxOf(this);
       const { id, token, application_id: applicationId } = dataOf(this);
@@ -164,6 +305,24 @@ export class Interaction extends IdStructure<InteractionData> {
         throw new Error(
           'This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer.'
         );
+      }
+      if (this.#state === 'updating') {
+        // The pending answer is a change of the message of the component:
+        // a new message is a follow-up, which looks the same to the person.
+        const raw = await rest.request(
+          CreateFollowupMessage,
+          [applicationId, token],
+          {
+            body: {
+              ...body,
+              flags: this.#flags(options.ephemeral, body.flags),
+            },
+            files,
+            auth: false,
+          }
+        );
+        this.#state = 'answered';
+        return entities.message(raw, this.guildId ?? undefined);
       }
       if (this.#state === 'deferred') {
         // Whether the answer is ephemeral was decided when deferring.
@@ -228,7 +387,10 @@ export class Interaction extends IdStructure<InteractionData> {
    * @see https://docs.discord.com/developers/interactions/receiving-and-responding#edit-original-interaction-response
    */
   edit(message: string | MessageEditOptions): Promise<Message> {
-    const { body, files } = buildMessage(message, { edit: true });
+    const { body, files } = buildMessage(message, {
+      edit: true,
+      t: this.#t(undefined),
+    });
     return this.#run(async () => {
       if (this.#state === 'waiting') {
         throw new Error(
@@ -254,7 +416,9 @@ export class Interaction extends IdStructure<InteractionData> {
   followUp(message: InteractionReply): Promise<Message> {
     const options =
       typeof message === 'string' ? { content: message } : message;
-    const { body, files } = buildMessage(options);
+    const { body, files } = buildMessage(options, {
+      t: this.#t(options.ephemeral),
+    });
     return this.#run(async () => {
       if (this.#state === 'waiting') {
         throw new Error(
@@ -305,6 +469,116 @@ export class CommandInteraction extends Interaction {
   ) {
     super(ctx, data, user, options);
     this.commandName = options.commandName;
+  }
+
+  /**
+   * Opens a form, as the answer: `showModal(report({ userId }))`, with a
+   * form of `src/components/modals/`. It must be the first answer, and the
+   * person has as long as they want to fill it in.
+   * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal
+   */
+  showModal(form: ModalComponent): Promise<void> {
+    return openModal(this, form);
+  }
+}
+
+/**
+ * Someone clicked a button or picked something in a select menu of a
+ * message of the bot. It can answer like a command, or change the message
+ * the component is on.
+ * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-message-component-data-structure
+ */
+export class ComponentInteraction extends Interaction {
+  /** The message the component is on. */
+  readonly message: Message;
+
+  constructor(
+    ctx: Context,
+    data: InteractionData,
+    user: User,
+    options: { ephemeral?: boolean; message: Message }
+  ) {
+    super(ctx, data, user, options);
+    this.message = options.message;
+  }
+
+  /**
+   * Changes the message the component is on, as the answer: its text, its
+   * embeds, its components, its files. Only what you pass changes;
+   * `components: []` removes the buttons and menus.
+   * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-interaction-callback-type
+   */
+  update(message: string | MessageEditOptions): Promise<Message> {
+    return updateMessage(this, message);
+  }
+
+  /**
+   * Tells Discord the message will change later: the person sees nothing
+   * meanwhile, and `update()` can then take up to 15 minutes. The
+   * framework does it by itself when an answer takes long.
+   */
+  deferUpdate(): Promise<void> {
+    return deferUpdateMessage(this);
+  }
+
+  /**
+   * Opens a form, as the answer: `showModal(report({ userId }))`, with a
+   * form of `src/components/modals/`. It must be the first answer.
+   * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal
+   */
+  showModal(form: ModalComponent): Promise<void> {
+    return openModal(this, form);
+  }
+}
+
+/**
+ * Someone sent a form of the bot. It can answer like a command; when a
+ * button or a menu opened the form, it can also change their message.
+ * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-modal-submit-data-structure
+ */
+export class ModalInteraction extends Interaction {
+  /** The message whose button or menu opened the form; `null` when a command did. */
+  readonly message: Message | null;
+
+  constructor(
+    ctx: Context,
+    data: InteractionData,
+    user: User,
+    options: { ephemeral?: boolean; message: Message | null }
+  ) {
+    super(ctx, data, user, options);
+    this.message = options.message;
+  }
+
+  /**
+   * Changes the message whose button or menu opened the form, as the
+   * answer. Only what you pass changes.
+   * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-interaction-callback-type
+   */
+  update(message: string | MessageEditOptions): Promise<Message> {
+    if (!this.message) {
+      return Promise.reject(
+        new Error(
+          'This form was opened by a command, not by a button or a menu: there is no message to change. Use interaction.reply().'
+        )
+      );
+    }
+    return updateMessage(this, message);
+  }
+
+  /**
+   * Tells Discord the message that opened the form will change later: the
+   * person sees nothing meanwhile.
+   */
+  deferUpdate(): Promise<void> {
+    if (!this.message) {
+      return Promise.reject(
+        new Error(
+          'This form was opened by a command, not by a button or a menu: there is no message to change. Use interaction.defer().'
+        )
+      );
+    }
+    return deferUpdateMessage(this);
   }
 }
 

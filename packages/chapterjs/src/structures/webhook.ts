@@ -12,6 +12,7 @@ import { toSnakeCase, type Camelize } from '../util/case.js';
 import { ctxOf, dataOf, IdStructure } from './base.js';
 import type { Message } from './message.js';
 import { buildMessage, type MessageOptions } from './payload.js';
+import { translatorOf } from '../messages/translate.js';
 
 /** What a message posted with a webhook can contain. */
 export interface WebhookMessageOptions extends Omit<MessageOptions, 'replyTo'> {
@@ -68,7 +69,11 @@ export class Webhook extends IdStructure<Omit<RawWebhook, 'user'>> {
     }
     const options =
       typeof message === 'string' ? { content: message } : message;
-    const { body, files } = buildMessage(options);
+    const { body, files } = buildMessage(options, {
+      t: translatorOf(ctxOf(this), {
+        guild: this.guildId ? ctxOf(this).cache.guilds.get(this.guildId) : null,
+      }),
+    });
     const raw = await rest.request(ExecuteWebhook, [this.id, token], {
       body: {
         ...body,

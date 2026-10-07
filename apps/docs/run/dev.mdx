@@ -45,6 +45,10 @@ DEV_GUILD_ID=
 
 Where to find them is in [Your Discord application](/setup/discord-application). A value set in the real environment wins over the file.
 
+<Info>
+  **`BOT_TOKEN` is the token of a dev application, not of the bot that goes online for everyone.** We recommend two applications from the start: one bot for your computer, one bot for production. With one bot for both, your test server shows every command you are changing twice, and the presence, the privileged intents and the token of production are shared with what you try. How to set it up: [A second bot for development](/run/start#a-second-bot-for-development).
+</Info>
+
 Without the file, the command stops before anything else:
 
 ```text
@@ -168,7 +172,7 @@ A command that production already shows for everyone, exactly as your file decla
 ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
 ```
 
-How dev and production share one bot is in [chapterjs start](/run/start#your-test-server-stays-yours).
+A dev application never shows that: see [A second bot for development](/run/start#a-second-bot-for-development).
 
 ## Only your test server
 

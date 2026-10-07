@@ -4,3 +4,4 @@
 
 export * from './index.js';
 export { event } from './events/event.js';
+export { asset } from './assets/asset.js';

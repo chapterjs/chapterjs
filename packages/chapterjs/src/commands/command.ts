@@ -19,10 +19,15 @@ import type { GuildMember } from '../structures/member.js';
 import type { Attachment } from '../structures/message.js';
 import type { Role } from '../structures/role.js';
 import type { User } from '../structures/user.js';
+import type { TranslationContext } from '../messages/messages.js';
 
 interface OptionBase {
-  /** What the option is for, shown under its name (1-100 characters). */
-  description: string;
+  /**
+   * What the option is for, shown under its name (1-100 characters). Here
+   * when the command has its `description` here; otherwise in the default
+   * language file of `src/messages/`.
+   */
+  description?: string;
   /** Whether the user must fill it in. By default it is optional. */
   required?: boolean;
 }
@@ -211,19 +216,25 @@ export type CommandContext<
   options: OptionValuesOf<Options>;
   /** Who used the command. */
   user: User;
-} & (Where extends 'guild'
-  ? CommandInGuild
-  : Where extends 'dm'
-    ? CommandInDm
-    : CommandInGuild | CommandInPrivate);
+} & TranslationContext &
+  (Where extends 'guild'
+    ? CommandInGuild
+    : Where extends 'dm'
+      ? CommandInDm
+      : CommandInGuild | CommandInPrivate);
 
 /** What a command file gives to `command()`: what the command is and does. */
 export interface CommandConfig<
   Options extends CommandOptions = CommandOptions,
   Where extends CommandWhere = 'guild',
 > {
-  /** What the command does, shown under its name (1-100 characters). */
-  description: string;
+  /**
+   * What the command does, shown under its name (1-100 characters). Here,
+   * with `locales` for its translations; or left out, and every text of
+   * the command (description, options, their choices, translations) comes
+   * from the language files of `src/messages/`. One or the other.
+   */
+  description?: string;
   /** What the user can fill in (25 options at most). */
   options?: Options;
   /**
@@ -253,9 +264,12 @@ export interface CommandConfig<
 }
 
 /** What `command()` returns: the default export of a command file. */
-export interface CommandFile {
+export interface CommandFile<
+  Options extends CommandOptions = CommandOptions,
+  Where extends CommandWhere = CommandWhere,
+> {
   /** What the file gave to `command()`, not checked yet. */
-  readonly config: unknown;
+  readonly config: CommandConfig<Options, Where>;
 }
 
 const BRAND = Symbol.for('chapterjs.command');
@@ -279,7 +293,7 @@ const BRAND = Symbol.for('chapterjs.command');
 export function command<
   const Options extends CommandOptions = {},
   const Where extends CommandWhere = 'guild',
->(config: CommandConfig<Options, Where>): CommandFile {
+>(config: CommandConfig<Options, Where>): CommandFile<Options, Where> {
   return Object.freeze({ [BRAND]: true, config });
 }
 

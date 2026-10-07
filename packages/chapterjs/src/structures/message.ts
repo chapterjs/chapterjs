@@ -42,6 +42,7 @@ import {
   type MessageEditOptions,
   type MessageInput,
 } from './payload.js';
+import { translatorOf } from '../messages/translate.js';
 import type { User } from './user.js';
 
 /** What the message stores: users are kept as structures, not copies. */
@@ -241,7 +242,10 @@ export class Message extends IdStructure<MessageData> {
    */
   async edit(message: string | MessageEditOptions): Promise<Message> {
     const { rest, entities } = ctxOf(this);
-    const { body, files } = buildMessage(message, { edit: true });
+    const { body, files } = buildMessage(message, {
+      edit: true,
+      t: translatorOf(ctxOf(this), { guild: this.guild }),
+    });
     const raw = await rest.request(EditMessage, [this.channelId, this.id], {
       body,
       files,
@@ -375,7 +379,12 @@ export async function sendMessage(
   message: MessageInput,
   guildId?: Snowflake
 ): Promise<Message> {
-  const { body, files } = buildMessage(message);
+  const { body, files } = buildMessage(message, {
+    // What the server reads, or the default language in private messages.
+    t: translatorOf(ctx, {
+      guild: guildId ? ctx.cache.guilds.get(guildId) : null,
+    }),
+  });
   const raw = await ctx.rest.request(CreateMessage, [channelId], {
     body,
     files,
