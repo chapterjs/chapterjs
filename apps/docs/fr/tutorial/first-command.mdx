@@ -1,0 +1,100 @@
+---
+title: 'Votre première commande'
+description: 'Écrire /dice de zéro, comprendre chaque ligne, et voir ce que le framework et l’éditeur vérifient pour vous'
+---
+
+Le modèle vous a donné `/ping`. Écrivez maintenant une commande à vous, `/dice`, qui lance un dé. Ce sont quatre lignes de logique, et c’est l’occasion de comprendre chaque partie d’un fichier de commande : ce qu’il déclare, ce que reçoit `run`, et ce qui se passe quand quelque chose ne va pas.
+
+## Le fichier
+
+Créez `src/commands/dice.ts` :
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Lance un dé à six faces',
+  async run({ interaction, user }) {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    await interaction.reply(`${user.displayName} a fait ${roll}.`);
+  },
+});
+```
+
+Enregistrez-le pendant que le bot tourne. Le terminal dit :
+
+```text
+↻ Reloaded in 15 ms, 2 commands, 1 event, 1 component, a presence, messages in 2 languages loaded
+↻ Commands updated on Discord
+```
+
+Tapez `/dice` sur votre serveur de test. Elle est là, avec sa description sous son nom, et elle répond.
+
+## Ligne par ligne
+
+**`import { command } from 'chapterjs'`.** La fonction qui fabrique une commande. Elle prend un objet qui décrit la commande et renvoie quelque chose que le framework reconnaît comme tel.
+
+**`export default`.** Le fichier remet sa commande au framework par son export par défaut. Un fichier de `src/commands/` doit exporter exactement cela ; un fichier qui exporte autre chose est refusé avec un message qui dit quoi écrire.
+
+**`description`.** Le texte que Discord affiche sous le nom dans le menu `/`, de 1 à 100 caractères. En plus de `run`, c’est la seule chose dont une commande a besoin. (Le `/ping` du modèle n’en a pas dans son fichier parce que les fichiers de langue la donnent ; c’est un chapitre plus loin.)
+
+**`async run({ interaction, user })`.** La fonction qui tourne quand quelqu’un utilise la commande. Elle reçoit un objet, et vous en sortez ce dont vous avez besoin : ici `interaction`, l’utilisation de la commande, et `user`, la personne qui l’a utilisée. Les pages suivantes passent en revue tout ce que contient cet objet.
+
+**`interaction.reply(...)`.** La réponse. Discord l’affiche sous la commande, avec le nom de la personne qui l’a utilisée.
+
+**`await`.** Envoyer la réponse est une requête à Discord, qui prend du temps. `await` l’attend, et permet au framework de savoir quand votre fonction a vraiment terminé. Mettez toujours `await` devant ce que vous demandez à Discord : une erreur dans une requête que vous n’avez pas attendue est signalée sans la ligne de votre code qui l’a causée.
+
+## La commande doit répondre
+
+Discord attend une réponse à chaque utilisation d’une commande, et affiche à la personne « L’application ne répond pas » quand rien ne vient. Essayez : commentez la ligne `reply`, enregistrez, et utilisez `/dice`.
+
+```text
+⚠ src/commands/dice.ts /dice finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.
+```
+
+Le framework ne peut pas répondre à votre place (il ne sait pas quoi dire), mais il vous le dit tout de suite, avec le fichier. Remettez la ligne.
+
+## Ce qui est vérifié avant que Discord ne le voie
+
+Discord a des règles pour les commandes : un nom est en minuscules, avec uniquement des lettres, des chiffres, `-` et `_`, 32 caractères au plus ; une description fait de 1 à 100 caractères ; et ainsi de suite. En enfreindre une ferait refuser par Discord toute la liste de vos commandes. Alors le framework vérifie chaque fichier quand il le charge, et explique avec vos mots.
+
+Renommez le fichier en `Dice.ts` et enregistrez :
+
+```text
+✗ src/commands/Dice.ts "Dice" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most. The path of the file is the name of the command.
+```
+
+Remettez le nom. Supprimez maintenant `description` et enregistrez :
+
+```text
+✗ src/commands/dice.ts This command has no description: write it in src/messages/en-US.ts (commands: { "dice": { description: '...' } }), or in the file (description: '...').
+```
+
+À chaque fois, le fichier est mis de côté jusqu’à ce qu’il soit corrigé, et les autres commandes continuent de fonctionner. La plupart de ces erreurs sont soulignées dans votre éditeur avant même d’enregistrer : `command()` n’accepte que ce qui existe.
+
+## Pourquoi des commandes slash et pas des messages
+
+Un type de bot plus ancien lit chaque message et réagit à ceux qui commencent par `!`, comme `!dice`. ChapterJS ne le fait pas pour les commandes, et Discord le déconseille, pour de bonnes raisons :
+
+- Une commande slash est **découvrable** : les gens tapent `/` et voient ce que sait faire le bot, avec des descriptions et des options, sans lire une page d’aide.
+- Discord **valide** ce que tapent les gens avant de l’envoyer au bot : une option manquante ou une mauvaise valeur n’atteint jamais votre code.
+- Lire chaque message demande le **Message Content Intent**, un intent privilégié, alors que les commandes slash n’ont besoin de rien.
+- Discord n’affiche une commande qu’aux personnes qui ont les **permissions** qu’elle demande.
+
+Vous lirez quand même des messages dans un chapitre suivant, pour ce qui n’est pas une commande, comme réagir à un mot.
+
+## Récapitulatif
+
+- Une commande est un fichier de `src/commands/` avec `export default command({ description, run })`.
+- `run` reçoit un objet ; sortez-en `interaction`, `user` et le reste.
+- `await interaction.reply(...)` répond ; une commande qui ne répond pas déclenche un avertissement avec le fichier.
+- Chaque règle de Discord est vérifiée au chargement du fichier, avec un message qui dit quoi écrire.
+
+<CardGroup cols={2}>
+  <Card title="Options" icon="list" href="/fr/tutorial/options">
+    Laisser les gens choisir le nombre de faces, et le recevoir typé.
+  </Card>
+  <Card title="Guide : Commandes" icon="book-open" href="/fr/commands">
+    Sous-commandes, permissions, messages privés, en bref.
+  </Card>
+</CardGroup>

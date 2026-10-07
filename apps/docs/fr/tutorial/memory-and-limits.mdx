@@ -1,0 +1,70 @@
+---
+title: 'Mémoire et limites'
+description: 'Ce dont votre bot se souvient pour que lire ne coûte rien, comment il garde sa mémoire sous contrôle, et les limites de Discord qu’il gère sans vous'
+---
+
+Deux choses se passent derrière vos fichiers qui méritent d’être comprises une fois, pour que rien ne vous surprenne plus tard : ce que le bot garde en mémoire, et les limites que Discord impose à chaque bot. Aucune ne demande une ligne de code de votre part.
+
+## Ce dont le bot se souvient
+
+Dans [Ce que vous recevez](/fr/tutorial/what-you-receive), lire `guild.name` ou `member.roles` ne coûtait aucune requête. C’est parce que le bot **se souvient** de ce que Discord lui dit : à la connexion, Discord décrit chaque serveur où il se trouve, puis envoie chaque changement. Le bot garde cela en mémoire et répond à partir de là.
+
+Tout n’est pas gardé, et ce qui l’est suit vos fichiers, comme les intents :
+
+| Quoi | Combien | Pourquoi |
+| --- | --- | --- |
+| Serveurs, salons, fils, rôles, emojis personnalisés | Tous | Peu nombreux, et tout le reste y fait référence |
+| Votre bot en tant que membre de chaque serveur | Toujours | `guild.me` ne manque jamais |
+| Membres | Les 100 vus le plus récemment dans chaque serveur ; 1000 quand un fichier de `src/events/memberLeave/` en a besoin | Un serveur peut en avoir des millions ; un bot a rarement besoin des silencieux |
+| Utilisateurs | Chacun de ceux qu’il a rencontrés | Ils viennent avec les membres et les messages |
+| Messages | Aucun | De loin ce qui arrive le plus, et la plupart des bots ne relisent jamais un vieux message |
+
+« Vu » veut dire que Discord vient d’envoyer ce membre : il a écrit, utilisé une commande, est arrivé ou a changé.
+
+Cela a deux conséquences pour votre code, toutes deux déjà rencontrées dans ce tutoriel :
+
+- **Rien ne dépend du fait qu’un membre soit en mémoire.** Ce qui vient avec un événement ou une commande est toujours là : l’auteur d’un message, qui a utilisé une commande, le membre qui est arrivé. `guild.members` est ce que sait le bot, pas tout le monde ; pour obtenir un membre précis, `guild.fetchMember()` demande à Discord quand il le faut.
+- **« Tel qu’il était » en dépend.** `member` dans `memberLeave` est `null` quand le bot n’a jamais vu cette personne ; `message` dans `messageDelete` est `null` puisqu’aucun message n’est gardé.
+
+## Comment la mémoire reste sous contrôle
+
+Un bot présent dans beaucoup de serveurs peut quand même remplir la mémoire de son processus. Avant que cela n’arrive, le bot se souvient de moins de choses de lui-même : il regarde sa mémoire toutes les 30 secondes, et quand elle reste au-dessus de 80 % de ce que Node peut utiliser, il divise par deux ce qu’il garde (50 membres par serveur au lieu de 100, puis 25...) et vous le dit avec `ℹ`. Quand la mémoire va mieux, il remonte, et le dit. Les serveurs, salons et rôles ne sont jamais touchés.
+
+C’est seulement quand il se souvient déjà du minimum possible et que la mémoire est toujours pleine qu’il vous demande quelque chose, une fois :
+
+```text
+⚠ The bot uses 1990 MB of the 2048 MB of memory it can use, and already remembers as little as it can: 1840 servers and 61200 channels, which it needs. Remembering less freed 35 MB. If your own code keeps things that only grow (a list, a Map), that is what fills it: look there first. Otherwise give the bot more memory: set NODE_OPTIONS=--max-old-space-size=4096 (in MB) on a machine that has that much.
+```
+
+Le nombre après « freed » vous dit où va la mémoire. **Peu**, comme ici : ce n’est pas le bot qui la remplit ; cherchez dans votre propre code une liste ou une `Map` à laquelle vous ajoutez sans jamais la vider (une `Map` de délais qui n’oublie jamais, un journal gardé en mémoire). **Beaucoup**, et toujours pleine : votre bot est gros ; donnez-lui plus de mémoire.
+
+## Les limites de Discord
+
+Discord se protège des bots qui demandent trop. Chacune de ces limites est gérée par le framework, et listée ici pour que vous la reconnaissiez si elle apparaît un jour dans un message :
+
+| Limite | Ce que fait le framework |
+| --- | --- |
+| **Limites de débit** : un bot ne peut envoyer qu’un certain nombre de requêtes par seconde, par salon, par serveur | Les requêtes attendent leur tour toutes seules. Une rafale de `send()` part aussi vite que Discord le permet, jamais plus vite, et rien n’est perdu. |
+| **3 secondes** pour répondre à une interaction | Différée pour vous au bout de 2 secondes. |
+| **Tailles** : 2000 caractères par message, 256 par titre d’embed, 25 options, 100 caractères de données par bouton... | Vérifiées avant l’envoi, avec la limite dans l’erreur. |
+| **Changements de présence** : quelques-uns par minute | Seul le dernier est envoyé, quand il peut l’être. |
+| **Sessions** : un bot ne peut se connecter qu’un certain nombre de fois par jour | Le bot refuse de démarrer quand il dépasserait, puisque Discord réinitialise le token d’un bot qui dépasse. |
+| **Gros bots** : une seule connexion ne peut pas porter trop de serveurs | Le bot demande à Discord combien de connexions (shards) il lui faut et les ouvre. |
+| **Intents privilégiés** | Demandés seulement quand un fichier en a besoin ; le terminal attend l’interrupteur. |
+
+La seule limite qu’il vous revient de respecter est celle que Discord applique aux **personnes** : un bot qui notifie, publie ou modifie trop est retiré par ceux qui l’ont ajouté. Le framework ne peut pas vous aider pour cela.
+
+## Récapitulatif
+
+- Le bot se souvient entièrement des serveurs, salons et rôles ; en partie des membres ; pas du tout des messages. Lire ne coûte rien, et ce qui vient avec un événement est toujours là.
+- Il libère de la mémoire de lui-même et vous le dit ; il ne demande que quand il n’a plus rien à céder.
+- Limites de débit, tailles, les 3 secondes, sessions et shards sont gérés : vous n’écrivez jamais de code pour eux.
+
+<CardGroup cols={2}>
+  <Card title="Compiler" icon="wrench" href="/fr/tutorial/build">
+    Vérifier tout le bot et le compiler pour la production.
+  </Card>
+  <Card title="Guide : Ce dont votre bot se souvient" icon="book-open" href="/fr/memory">
+    La même chose, avec chaque message.
+  </Card>
+</CardGroup>

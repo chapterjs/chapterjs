@@ -1,0 +1,94 @@
+---
+title: 'Comment fonctionne un bot'
+description: 'Ce qu’est un bot Discord, comment il parle à Discord, et ce que ChapterJS fait pour vous'
+---
+
+Avant d’écrire une ligne de code, il aide de se représenter ce qu’est un bot. La plupart du vocabulaire des chapitres suivants vient d’ici : application, token, événements, commandes, intents. Rien de tout cela n’est difficile, et une fois que vous voyez comment les pièces s’emboîtent, le reste du tutoriel consiste à remplir les cases.
+
+## Un bot est un programme qui parle à Discord
+
+Un bot Discord est fait de deux choses :
+
+1. **Un compte bot sur Discord.** Il ressemble à un membre de votre serveur, avec un nom et un avatar, et une étiquette « BOT » à côté de son nom. Discord le crée pour vous quand vous créez une *application* dans le Developer Portal. Seul, il ne fait rien : c’est un compte sans personne derrière.
+2. **Un programme, qui tourne quelque part.** Sur votre ordinateur pendant que vous l’écrivez, sur un serveur qui reste allumé une fois terminé. Ce programme se connecte avec le compte bot et décide de ce que fait le bot. C’est ce programme que vous écrivez avec ChapterJS.
+
+Quand on dit « le bot est en ligne », cela veut dire que le programme tourne et qu’il est connecté. Quand vous arrêtez le programme, le bot passe hors ligne, comme une personne qui ferme Discord.
+
+<Info>
+  C’est pour cela qu’un bot a besoin d’une machine qui reste allumée pour être disponible pour tout le monde : votre ordinateur qui se met en veille emporte le bot avec lui. Les derniers chapitres du tutoriel en parlent.
+</Info>
+
+## Le token : le mot de passe du bot
+
+Pour que votre programme se connecte avec le compte bot, il lui faut le **token** du bot. C’est une longue suite de lettres et de chiffres que Discord vous donne une seule fois dans le Developer Portal. Qui le possède peut faire tourner un programme en tant que votre bot, dans tous les serveurs où il se trouve.
+
+Traitez-le comme un mot de passe : ne le partagez jamais, ne le collez jamais dans un endroit public, ne le mettez jamais dans votre code. Dans un projet ChapterJS, il vit dans un fichier appelé `.env`, que git ignore. S’il fuit, vous le réinitialisez dans le Developer Portal et l’ancien cesse de fonctionner partout.
+
+## Deux façons de parler à Discord
+
+Votre programme et Discord échangent des informations dans deux sens.
+
+**Discord dit à votre bot ce qui se passe : les événements.** Quand quelqu’un rejoint un serveur, écrit un message ou utilise une de vos commandes, Discord envoie un *événement* à votre bot. Votre bot garde en permanence une connexion ouverte avec Discord, comme une ligne téléphonique qui ne raccroche jamais, et les événements arrivent dessus. Avec ChapterJS, vous réagissez à un événement en mettant un fichier dans un dossier qui porte son nom, comme `src/events/memberJoin/`.
+
+**Votre bot demande à Discord de faire des choses : les actions.** Envoyer un message, donner un rôle, bannir quelqu’un : chacune de ces choses est une *requête* que votre bot envoie à Discord, et Discord répond s’il l’a faite. Avec ChapterJS, ce sont des méthodes de ce que reçoit votre fonction : `channel.send()`, `member.addRole()`, `member.ban()`.
+
+```text
+         événements (ce qui se passe)
+Discord  ───────────────────────────▶  votre bot
+         ◀───────────────────────────
+          actions (ce qu’il faut faire)
+```
+
+Les deux passent par internet, donc les deux peuvent échouer ou être lents. C’est une des choses qu’un framework gère pour vous.
+
+## Les intents : dire à Discord ce dont vous avez besoin
+
+Un serveur actif produit énormément d’événements : chaque message, chaque indicateur de saisie, chaque changement de statut. Tout envoyer à chaque bot serait du gaspillage, alors quand un bot se connecte, il dit à Discord quels types d’événements il veut. Ces types s’appellent des **intents**.
+
+Quelques intents sont **privilégiés** : ils donnent accès à des choses plus personnelles, comme le texte de chaque message ou la liste complète des membres. Pour ceux-là, Discord vous demande d’activer une option dans le Developer Portal, pour confirmer que vous en avez vraiment besoin.
+
+Avec ChapterJS, vous ne listez jamais les intents vous-même. Le framework lit vos dossiers : un fichier dans `src/events/memberJoin/` veut dire que vous avez besoin de connaître les membres, donc il demande cela. Quand un intent privilégié manque, il vous dit quel fichier en a besoin et vous donne le lien pour l’activer.
+
+## Les commandes slash : enregistrées, puis utilisées
+
+Une **commande slash**, c’est ce que les gens tapent après `/` dans Discord : `/ping`, `/ban @quelqu’un`. Discord les affiche dans un menu avec leur description et leurs options, et vérifie ce que la personne a tapé avant de l’envoyer au bot.
+
+Pour que ce menu existe, le bot doit d’abord **enregistrer** ses commandes auprès de Discord : envoyer la liste des noms, descriptions et options. Ensuite, chaque fois que quelqu’un en utilise une, Discord envoie au bot un événement appelé *interaction*, et le bot a quelques secondes pour répondre.
+
+ChapterJS enregistre vos commandes pour vous : un fichier dans `src/commands/` est une commande, et le framework envoie la liste à Discord quand elle a changé. Vous n’écrivez que ce que fait la commande.
+
+## L’endroit où tourne votre bot compte
+
+En développement, vous voulez essayer des choses vite, sur un serveur où les erreurs sont sans conséquence. En production, vous voulez que le bot soit le même pour chaque serveur, sans surprise. Les deux ont des besoins différents, alors un projet ChapterJS a deux façons de tourner :
+
+| | Pendant que vous l’écrivez | Une fois terminé |
+| --- | --- | --- |
+| Commande | `chapterjs dev` | `chapterjs start` |
+| Où | Votre serveur de test uniquement | Chaque serveur où se trouve le bot |
+| Quand vous enregistrez un fichier | Le bot utilise la nouvelle version tout de suite | Rien, jusqu’à ce que vous recompiliez et relanciez |
+| Quand un fichier est cassé | La dernière version qui fonctionnait continue de tourner | La compilation le refuse avant que quoi que ce soit soit en ligne |
+
+Vous utiliserez la première pendant la plus grande partie de ce tutoriel, et la seconde dans les derniers chapitres.
+
+## Ce que ChapterJS fait pour vous
+
+Un bot doit garder sa connexion en vie, demander les bons intents, enregistrer les commandes, répondre aux interactions à temps, respecter les limites que Discord fixe au nombre de requêtes qu’un bot peut envoyer, se souvenir de ce qu’on lui a dit pour ne pas le redemander, et se rétablir quand le réseau tombe. Tout cela est identique pour chaque bot, alors le framework s’en charge, et vous ne le voyez jamais.
+
+Ce qui reste pour vous, c’est la partie qui vous appartient : ce que le bot dit et fait. Elle prend la forme de fichiers dans des dossiers conventionnels. L’endroit où se trouve un fichier dit ce qu’il est : il n’y a donc rien à enregistrer, rien à lister, et aucun type à écrire.
+
+## Récapitulatif
+
+- Un bot, c’est un compte sur Discord plus un programme qui se connecte avec, grâce à un **token** qui est un mot de passe.
+- Discord envoie des **événements** à votre bot ; votre bot envoie des **actions** à Discord.
+- Les **intents** disent quels événements vous voulez ; quelques-uns sont privilégiés et demandent d’activer une option dans le Developer Portal.
+- Les **commandes slash** sont enregistrées auprès de Discord, puis utilisées ; chaque utilisation est une **interaction** à laquelle répondre.
+- `chapterjs dev` fait tourner votre bot sur votre serveur de test pendant que vous l’écrivez ; `chapterjs start` le fait tourner pour tout le monde.
+
+<CardGroup cols={2}>
+  <Card title="Les outils" icon="wrench" href="/fr/tutorial/tools">
+    Installer Node.js et choisir un gestionnaire de paquets.
+  </Card>
+  <Card title="Votre application Discord" icon="bot" href="/fr/tutorial/discord-application">
+    Créer le compte bot et récupérer son token.
+  </Card>
+</CardGroup>

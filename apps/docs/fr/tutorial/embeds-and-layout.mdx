@@ -1,0 +1,110 @@
+---
+title: 'Embeds et mise en page'
+description: 'Écrire un embed une fois et le réutiliser partout, et construire des messages avec des textes, des sections, des galeries et des conteneurs'
+---
+
+Les embeds étaient écrits sur place dans [Envoyer des messages](/fr/tutorial/sending-messages). Quand le même embed sert à une commande, un événement et un bouton, l’écrire trois fois est une erreur qui attend son heure. Cette page le déplace dans un fichier, puis montre l’autre façon qu’a Discord de mettre en page un message.
+
+## Un fichier d’embed
+
+Un embed utilisé à plusieurs endroits est un fichier de `src/components/embeds/`. C’est une fonction de ce qu’il affiche, ou l’embed lui-même quand il ne change jamais. Créez `src/components/embeds/card.ts` :
+
+```ts src/components/embeds/card.ts
+import { embed, type GuildMember } from 'chapterjs';
+
+export default embed((member: GuildMember) => ({
+  title: member.displayName,
+  description: `Membre de ${member.guild.name} depuis le ${member.joinedAt?.toDateString() ?? 'un moment'}.`,
+  color: member.highestRole.color || 0xc026d3,
+  thumbnail: { url: member.avatarURL() },
+  fields: [
+    { name: 'Rôles', value: member.roles.map(role => role.name).join(', ') || 'aucun', inline: true },
+    { name: 'Le plus haut', value: member.highestRole.name, inline: true },
+  ],
+}));
+```
+
+Puis utilisez-le depuis une commande :
+
+```ts src/commands/card.ts
+import { command } from 'chapterjs';
+import card from '../components/embeds/card';
+
+export default command({
+  description: 'Affiche votre carte de membre',
+  async run({ interaction, member }) {
+    await interaction.reply({ embeds: [card(member)] });
+  },
+});
+```
+
+Et depuis l’événement d’accueil, de la même façon : `channel.send({ embeds: [card(member)] })`. `card(member)` renvoie l’embed, vérifié par rapport aux limites de Discord au moment de l’envoi. Un fichier d’embed est une fonction comme une autre, à une différence près : il est vérifié et typé comme un embed. Un titre de plus de 256 caractères, une couleur qui n’est pas un nombre, sont des erreurs avec la limite dans le message.
+
+Contrairement aux boutons et aux formulaires, un embed n’est jamais cliqué, donc il n’a ni `run` ni chemin à renvoyer : le dossier n’est là que pour que les embeds vivent avec les autres pièces réutilisables.
+
+<Info>
+  `member.avatarURL()` est l’image du membre, et `member.highestRole.color` la couleur de son rôle le plus haut, sous forme de nombre ; `0` veut dire pas de couleur, d’où le `||`. Le paramètre typé, `member: GuildMember`, est le seul endroit de ce tutoriel où vous écrivez un type : un fichier d’embed est une fonction de ce que vous voulez lui donner, alors vous dites ce qu’il prend.
+</Info>
+
+## Des messages faits de composants
+
+Discord a une seconde façon de mettre en page un message, sans `content` ni `embeds` : un message fait uniquement de **composants**. Des textes, des sections avec une miniature ou un bouton à côté, des galeries d’images, des séparateurs, et des conteneurs avec une ligne de couleur comme un embed. Ils s’écrivent avec des helpers importés de `chapterjs`, là où est le message :
+
+```ts src/commands/profile-card.ts
+import { command, container, section, separator, text, thumbnail } from 'chapterjs';
+
+export default command({
+  description: 'Affiche votre profil',
+  async run({ interaction, member }) {
+    await interaction.reply({
+      components: [
+        container(
+          [
+            section(
+              [`## ${member.displayName}`, `Arrivé le ${member.joinedAt?.toDateString() ?? 'il y a un moment'}`],
+              thumbnail(member.avatarURL())
+            ),
+            separator(),
+            text(`${member.roles.length} rôles, le plus haut : ${member.highestRole.name}`),
+          ],
+          { color: 0xc026d3 }
+        ),
+      ],
+    });
+  },
+});
+```
+
+Dès qu’un message contient l’une de ces pièces, Discord n’affiche que des composants : `content` et `embeds` sont refusés, et le framework le dit avant l’envoi. Mettez le texte dans `text()`, qui accepte le Markdown, et l’apparence d’un embed dans un `container()`.
+
+| Helper | Ce que c’est |
+| --- | --- |
+| `text(content)` | Un texte, avec du Markdown. Tous les textes d’un message font 4000 caractères au total. |
+| `section(texts, accessory)` | 1 à 3 textes avec un bouton ou une `thumbnail()` à côté |
+| `thumbnail(url)` | Une petite image, à côté d’une section |
+| `gallery(items)` | 1 à 10 images ou vidéos en grille |
+| `file(name)` | Un fichier envoyé avec le message, affiché là où il est placé |
+| `separator()` | De l’espace entre deux pièces, avec une ligne par défaut |
+| `container(children, { color })` | Un cadre autour de textes, sections, rangées, galeries, fichiers et séparateurs |
+| `row(components)` | Une rangée de 5 boutons au plus, ou un menu, quand vous voulez choisir les rangées vous-même |
+
+Les boutons et menus de `src/components/` y vont aussi, dans une `row()` ou seuls comme accessoire d’une section. Un message contient 40 composants au plus, ceux qui sont imbriqués compris.
+
+## Lequel utiliser
+
+Les embeds sont plus simples et suffisent pour la plupart des choses : un titre, quelques champs, une image. Les messages en composants sont pour les mises en page qu’un embed ne sait pas faire : un bouton à côté d’un paragraphe, plusieurs images en grille, un fichier affiché à un endroit précis. Prenez les embeds par défaut, et passez aux helpers de mise en page quand un embed ne suffit plus.
+
+## Récapitulatif
+
+- Un embed utilisé plusieurs fois est un fichier de `src/components/embeds/` : une fonction de ce qu’il affiche, ou l’embed lui-même.
+- `text()`, `section()`, `container()` et les autres construisent un message fait de composants, sans `content` ni `embeds`.
+- Les deux sont vérifiés par rapport aux limites de Discord avant tout envoi.
+
+<CardGroup cols={2}>
+  <Card title="Les tâches" icon="clock" href="/fr/tutorial/tasks">
+    Faire faire quelque chose au bot tout seul, régulièrement ou à des heures données.
+  </Card>
+  <Card title="Guide : Embeds et mise en page" icon="book-open" href="/fr/components/embeds">
+    Chaque helper, en bref.
+  </Card>
+</CardGroup>

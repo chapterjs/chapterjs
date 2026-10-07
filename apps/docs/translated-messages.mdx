@@ -55,7 +55,7 @@ That is all: a person whose Discord is in French reads "Bienvenue…", anyone el
 ## The files
 
 - **The name of the file is the language**, as the [`Locale`](/reference/enums#locale) values write it: `en-US.ts`, `fr.ts`, `de.ts`, `es-ES.ts`, `pt-BR.ts`, `ja.ts`… A name Discord does not know is refused before the file even runs, with the list.
-- **`default: true`** marks the language used when the one of a person or of a server is not there. Exactly one file says so; with a single file, it goes without saying.
+- **`default: true`** marks the language used when the one of a person or of a server is not there. Exactly one file says so; with a single file, it goes without saying. When two files say so, both are underlined in the editor, on their `default: true`, once `chapterjs dev` or `chapterjs build` ran the files: hover it to read which other file says it.
 - **The default language has every text**: `t` offers its keys, and a language that does not have one of them answers with the text of the default language. A text in another language that the default one does not have, or a `{name}` that became `{nom}`, is reported on that file, with the key: the language is left out until it matches again, and the others keep working.
 - **A placeholder** is a name between braces, made of letters, digits and `_`: `{name}`, `{count}`. It takes a text or a number. A number is written the way the language writes numbers (`1,234` in English, `1 234` in French, `1.234` in German): give it as a text to keep it as is, like a year or an id.
 - **A brace written as is** is doubled: `'{{name}}'` shows `{name}`.
@@ -205,7 +205,7 @@ A command, an option or a choice that the project does not have is an error on t
 
 ## In development
 
-In `chapterjs dev`, saving a language file changes its texts at once, and the commands are registered again when what Discord shows of them changed. A file that does not load, or no longer matches the default language, is reported with what is wrong, and that language keeps its last texts that worked. When the first language is added, the last one removed, or another file becomes the default one, the types of `t` follow:
+In `chapterjs dev`, saving a language file changes its texts at once, and the commands are registered again when what Discord shows of them changed. A file that does not load, or no longer matches the default language, is reported with what is wrong, and that language keeps its last texts that worked. When the first language is added, the last one removed, or another file becomes the default one, the types of `t` follow (and two files saying `default: true` are both underlined):
 
 ```text
 ↻ Types updated

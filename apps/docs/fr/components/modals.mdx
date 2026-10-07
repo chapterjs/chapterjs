@@ -1,0 +1,149 @@
+---
+title: 'Formulaires'
+description: 'Ouvrir un formulaire dans Discord depuis une commande ou un bouton, et recevoir ce qui a été rempli, typé champ par champ'
+---
+
+Un formulaire (Discord l’appelle un modal) est un fichier de `src/components/modals/`. Déclarez ses champs ; `run` les reçoit sous les mêmes noms, typés d’après leur sorte.
+
+```ts src/components/modals/feedback.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Votre avis',
+  fields: {
+    text: { type: 'text', label: 'Qu’en pensez-vous ?', style: 'paragraph' },
+    rating: { type: 'radio', label: 'Note', options: ['Good', 'Okay', 'Bad'] },
+  },
+  async run({ interaction, fields }) {
+    await interaction.reply({ content: `${fields.rating} : ${fields.text}`, ephemeral: true });
+  },
+});
+```
+
+Une commande ou un bouton l’ouvre avec `interaction.showModal()` :
+
+```ts src/commands/feedback.ts
+import { command } from 'chapterjs';
+import feedback from '../components/modals/feedback';
+
+export default command({
+  description: 'Envoie votre avis',
+  async run({ interaction }) {
+    await interaction.showModal(feedback);
+  },
+});
+```
+
+C’est tout : `fields.text` est un `string` et `fields.rating` vaut `'Good' | 'Okay' | 'Bad'`. Un formulaire doit être la première réponse à une interaction ; la personne a ensuite tout le temps qu’elle veut pour le remplir.
+
+<Note>
+  Chaque sorte de champ et les types derrière sont dans la [référence](/fr/reference/modal). L’`interaction` d’un formulaire est une [ModalInteraction](/fr/reference/interaction#modalinteraction).
+</Note>
+
+## Les champs
+
+Un formulaire a de 1 à 5 champs, chacun avec un `label` (45 caractères au plus) et une `description` facultative. Ce que reçoit `run` suit la sorte :
+
+| `type` | Ce que c’est | `fields.name` est |
+| --- | --- | --- |
+| `'text'` | Un texte, sur une ligne (`style: 'short'`) ou plusieurs (`'paragraph'`) | `string` |
+| `'select'` | Un menu d’`options`, écrites comme les [options d’un menu déroulant](/fr/components/selects#les-options) | Une liste des valeurs |
+| `'user'`, `'role'`, `'mentionable'`, `'channel'` | Un menu rempli par Discord | `User[]`, `Role[]`, `(User | Role)[]`, `Channel[]` |
+| `'files'` | Des fichiers à téléverser | [Attachment](/fr/reference/data#attachment)`[]` |
+| `'radio'` | Un choix parmi 2 à 10 `options` | Une valeur |
+| `'checkboxes'` | Plusieurs choix parmi 1 à 10 `options` | Une liste des valeurs |
+| `'checkbox'` | Oui ou non | `boolean` |
+| `'note'` | Un texte à lire, que personne ne remplit | Absent |
+
+Chaque champ est obligatoire sauf s’il dit `required: false` ; un `text` ou un `radio` qui n’est pas obligatoire est alors `string | undefined`. `min` et `max` disent combien peuvent être choisis ou téléversés ; `minLength` et `maxLength` quelle longueur peut avoir un texte.
+
+```ts src/components/modals/report.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Signaler un problème',
+  data: { channelId: 'string' },
+  fields: {
+    intro: { type: 'note', content: 'Dites-nous ce qui s’est passé. Un modérateur lit chaque signalement.' },
+    reason: { type: 'text', label: 'Que s’est-il passé ?', style: 'paragraph', minLength: 20 },
+    who: { type: 'user', label: 'Qui était impliqué ?', max: 3, required: false },
+    proof: { type: 'files', label: 'Captures d’écran', fileTypes: ['image'], max: 5, required: false },
+    urgent: { type: 'checkbox', label: 'Urgent', description: 'Notifier les modérateurs maintenant' },
+  },
+  async run({ interaction, fields, data, guild }) {
+    const logs = guild.channels.get(data.channelId);
+    if (logs?.isText()) {
+      await logs.send({
+        content: `${fields.urgent ? '@here ' : ''}Signalement de ${interaction.user} : ${fields.reason}`,
+        files: [],
+      });
+    }
+    await interaction.reply({ content: 'Merci, les modérateurs ont été prévenus.', ephemeral: true });
+  },
+});
+```
+
+## Ouvrir un formulaire depuis un bouton
+
+Un bouton ou un menu peut aussi ouvrir un formulaire. Le formulaire connaît alors le message du bouton (`message`), et peut le modifier avec `update()` au lieu d’envoyer un nouveau message :
+
+```ts src/components/buttons/rename.ts
+import { button } from 'chapterjs';
+import rename from '../modals/rename';
+
+export default button({
+  label: 'Renommer',
+  data: { channelId: 'string' },
+  async run({ interaction, data }) {
+    await interaction.showModal(rename({ channelId: data.channelId }));
+  },
+});
+```
+
+```ts src/components/modals/rename.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Renommer le salon',
+  data: { channelId: 'string' },
+  fields: {
+    name: { type: 'text', label: 'Nouveau nom', maxLength: 100 },
+  },
+  async run({ interaction, fields, data, guild }) {
+    const channel = guild.channels.get(data.channelId);
+    if (channel) await channel.edit({ name: fields.name });
+    await interaction.update({ content: `Renommé en #${fields.name}.`, components: [] });
+  },
+});
+```
+
+`data` fonctionne comme les données d’un bouton : données à l’ouverture du formulaire, reçues typées dans `run`.
+
+## Ce que contient un formulaire à l’ouverture
+
+Là où vous ouvrez le formulaire, `values` remplit certains champs à l’avance : un texte, les options choisies d’un menu, d’un radio ou de cases à cocher, ou si une case est cochée.
+
+```ts src/components/buttons/edit.ts
+import { button } from 'chapterjs';
+import feedback from '../modals/feedback';
+
+export default button({
+  label: 'Modifier mon avis',
+  async run({ interaction }) {
+    await interaction.showModal(feedback({ values: { text: 'C’était super jusqu’à...', rating: 'Okay' } }));
+  },
+});
+```
+
+## D’où un formulaire est envoyé
+
+Un formulaire a un `where` comme une commande (`'guild'` par défaut, `'dm'` ou `'both'`), qui décide de ce que reçoit `run` à propos de l’endroit. Les réponses fonctionnent comme celles d’une commande : `reply()`, `defer()`, `edit()`, `followUp()`, `delete()`, plus `update()` et `deferUpdate()` quand un bouton ou un menu a ouvert le formulaire. Ouvrir un formulaire depuis un formulaire n’est pas possible : Discord n’en ouvre un qu’en réponse à une commande ou à un composant.
+
+<CardGroup cols={2}>
+  <Card title="Embeds et mise en page" icon="layout-template" href="/fr/components/embeds">
+    Réutiliser un embed, et construire des messages avec des textes, des sections et des conteneurs.
+  </Card>
+  <Card title="Répondre" icon="message-circle-reply" href="/fr/commands/answering">
+    Quand différer, réponses privées, ce que voit la personne quand run échoue.
+  </Card>
+</CardGroup>

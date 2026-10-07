@@ -43,7 +43,9 @@ What a file of `src/messages/` gives to `language()`.
 <ResponseField name="default" type="boolean">
   Whether this is the language used when the one of a person or of a server is
   not in `src/messages/`. Exactly one file says so; with one file, it goes
-  without saying.
+  without saying. Once the files ran (`chapterjs dev`, `chapterjs build`), a
+  second file saying so is a type error on the `default: true` of both,
+  naming the other file.
 </ResponseField>
 
 <ResponseField name="commands" type="CommandsTranslations">
@@ -102,6 +104,7 @@ What the bot answers by itself, when it can't run what was asked: where a comman
 | `authorOnly`        | "Only the person who used the command can use this {what}."                                                                                                              |
 | `failed`            | "Something went wrong while running this {what}."                                                                                                                        |
 | `missingPermission` | "I don't have the permission to do that here."                                                                                                                           |
+| `cooldown`          | "You can use this {what} again {when}." (a `cooldown` not over yet); `{when}` is a Discord timestamp, shown as "in 5 seconds" (or a date and time past 15 minutes) in the language of the person. |
 | `needsPermissions`  | "You need the {permissions} permission to use this command." A plural of `count`, how many permissions are missing; `{permissions}` is their names, separated by commas. |
 
 ### CommandsTranslations

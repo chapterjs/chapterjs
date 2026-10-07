@@ -1,0 +1,190 @@
+---
+title: 'Boutons'
+description: 'Ajouter des boutons à vos messages, lancer du code quand on clique, et modifier le message sur lequel ils sont'
+---
+
+Un bouton est un fichier de `src/components/buttons/`. Il dit à quoi ressemble le bouton et quoi faire quand quelqu’un clique dessus ; vous n’écrivez jamais d’identifiant.
+
+```ts src/components/buttons/again.ts
+import { button } from 'chapterjs';
+
+const again = button({
+  label: 'Encore',
+  data: { count: 'number' },
+  async run({ interaction, data }) {
+    const count = data.count + 1;
+    await interaction.update({
+      content: `Pong ! ×${count}`,
+      components: [again({ count })],
+    });
+  },
+});
+
+export default again;
+```
+
+Importez-le là où vous envoyez un message, et donnez-lui ses données :
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+import again from '../components/buttons/again';
+
+export default command({
+  description: 'Répond Pong !',
+  async run({ interaction }) {
+    await interaction.reply({
+      content: 'Pong !',
+      components: [again({ count: 1 })],
+    });
+  },
+});
+```
+
+C’est tout : le chemin du fichier (`buttons/again`) est ce que Discord renvoie quand on clique sur le bouton, avec les données que transporte le bouton. ChapterJS trouve le fichier, vérifie que les données correspondent toujours, et lance votre fonction avec `data.count` sous forme de nombre. Les boutons qui se suivent sont mis en rangées pour vous, 5 par rangée.
+
+<Note>
+  Tout ce que déclare un fichier de bouton, et les types derrière, sont dans la
+  [référence](/fr/reference/button). L’`interaction` d’un bouton est une
+  [ComponentInteraction](/fr/reference/interaction#componentinteraction).
+</Note>
+
+## Ce que transporte un bouton
+
+`data` est ce que le bouton garde entre le message qui l’affiche et le clic : un nom et une sorte pour chaque valeur, `'string'`, `'number'` ou `'boolean'`. Vous donnez les valeurs quand vous mettez le bouton dans un message ; `run` les reçoit typées, quoi qu’il se soit passé entre-temps (un redémarrage, un autre processus). Discord les garde dans le bouton lui-même, donc il n’y a rien à stocker.
+
+Une valeur peut avoir une valeur par défaut, ce qui la rend facultative là où le bouton est mis dans un message : `data: { page: { type: 'number', default: 1 } }`. Alors `next()`, `next({})` et `next` seul transportent `page: 1`, `next({ page: 7 })` transporte 7, et `run` reçoit toujours un nombre. Une mauvaise valeur par défaut (`default: 'one'` sur un `'number'`) est soulignée, et refusée au chargement du fichier.
+
+```ts src/components/buttons/ban.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Bannir',
+  style: 'danger',
+  data: { userId: 'string', days: 'number' },
+  async run({ interaction, data, guild }) {
+    await guild.ban(data.userId, { deleteMessageSeconds: data.days * 86_400 });
+    await interaction.update({ content: 'Banni.', components: [] });
+  },
+});
+```
+
+```ts src/commands/mod/ban.ts
+import { command } from 'chapterjs';
+import ban from '../../components/buttons/ban';
+
+export default command({
+  description: 'Bannit un membre, après confirmation',
+  options: {
+    who: { type: 'user', description: 'Qui bannir', required: true },
+  },
+  async run({ interaction, options }) {
+    await interaction.reply({
+      content: `Bannir ${options.who} ?`,
+      components: [ban({ userId: options.who.id, days: 1 })],
+    });
+  },
+});
+```
+
+Discord donne 100 caractères à l’identifiant d’un bouton et à ses données ensemble. En transporter trop est une erreur à l’endroit où le bouton est fabriqué, avec la place qu’il reste :
+
+```text
+The data of buttons/ban is 95 characters long once encoded, and Discord leaves 88 for it (its id is buttons/ban, 11 characters, out of 100). Carry less: an id instead of a name, or a shorter file name.
+```
+
+Un bouton sans `data` s’utilise tel quel, sans l’appeler : `components: [confirm]`.
+
+## Son apparence
+
+`label`, `emoji`, `style` (`'primary'`, `'secondary'`, `'success'` ou `'danger'`) et `disabled` sont l’apparence du bouton. Le fichier donne l’apparence par défaut ; là où vous mettez le bouton dans un message, un second argument la change pour ce message seulement :
+
+```ts src/components/buttons/next.ts
+import { button } from 'chapterjs';
+
+const next = button({
+  label: 'Suivant',
+  emoji: '➡️',
+  style: 'secondary',
+  data: { page: 'number' },
+  async run({ interaction, data }) {
+    const page = data.page + 1;
+    const last = page >= 5;
+    await interaction.update({
+      content: `Page ${page} sur 5`,
+      components: [
+        next({ page }, { disabled: last, label: last ? 'Fin' : 'Suivant' }),
+      ],
+    });
+  },
+});
+
+export default next;
+```
+
+Un bouton qui ouvre un lien n’a pas de fichier : rien ne tourne dans votre bot quand on clique dessus. Écrivez-le là où est le message, avec `linkButton()` :
+
+```ts src/commands/docs.ts
+import { command, linkButton } from 'chapterjs';
+
+export default command({
+  description: 'Renvoie vers la documentation',
+  async run({ interaction }) {
+    await interaction.reply({
+      content: 'Tout est expliqué ici :',
+      components: [
+        linkButton({ label: 'Documentation', url: 'https://chapterjs.dev' }),
+      ],
+    });
+  },
+});
+```
+
+## Répondre à un clic
+
+L’`interaction` d’un bouton a tout ce qu’a l’interaction d’une commande (`reply()`, `defer()`, `edit()`, `followUp()`, `delete()`), plus trois choses :
+
+| Méthode | Ce qu’elle fait |
+| --- | --- |
+| `interaction.update(message)` | Modifie le message sur lequel est le bouton. `components: []` retire les boutons. |
+| `interaction.deferUpdate()` | Répond par rien : le message reste tel quel, et `update()` peut venir plus tard. |
+| `interaction.showModal(form)` | Ouvre un [formulaire](/fr/components/modals). |
+
+`interaction.message` est le message sur lequel est le bouton, sous forme de [Message](/fr/reference/message).
+
+Discord veut une réponse en moins de 3 secondes. Après 2 secondes sans réponse, ChapterJS répond que rien ne change pour l’instant, la personne ne voit rien, et votre `update()` ou `reply()` la complète plus tard. Un bouton qui se termine sans répondre déclenche un avertissement dans votre terminal, puisque la personne lit « Échec de l’interaction » :
+
+```text
+⚠ src/components/buttons/silent.ts buttons/silent finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run, or interaction.deferUpdate() to change nothing.
+```
+
+## Qui peut cliquer
+
+Par défaut, tous ceux qui voient le message peuvent cliquer. `who: 'author'` réserve un bouton à la personne qui a utilisé la commande à laquelle le message répond ; n’importe qui d’autre lit « Only the person who used the command can use this button. », en privé.
+
+```ts src/components/buttons/cancel.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Annuler',
+  style: 'secondary',
+  who: 'author',
+  async run({ interaction }) {
+    await interaction.update({ content: 'Annulé.', components: [] });
+  },
+});
+```
+
+Comme une commande, un bouton a un `where` (`'guild'` par défaut, `'dm'` ou `'both'`), qui décide de ce que reçoit `run` à propos de l’endroit : voir [Serveurs et messages privés](/fr/commands#serveurs-et-messages-privés), cela fonctionne de la même façon.
+
+## Quand le fichier change
+
+Un bouton reste dans les messages où il a été envoyé. Quand son fichier est renommé ou supprimé, un clic sur un vieux message répond « This button is not available any more. » ; quand ses `data` ont changé de forme, « This button is out of date. ». Votre bot ne plante jamais pour un bouton qu’il ne connaît plus.
+
+<CardGroup cols={2}>
+  <Card title="Menus déroulants" icon="list" href="/fr/components/selects">
+    Laisser les gens choisir parmi des options, des utilisateurs, des rôles ou des salons.
+  </Card>
+  <Card title="Formulaires" icon="clipboard-list" href="/fr/components/modals">
+    Demander du texte et des choix dans un formulaire qui s’ouvre dans Discord.
+  </Card>
+</CardGroup>

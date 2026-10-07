@@ -1,0 +1,267 @@
+---
+title: 'GuildMember'
+description: 'Lire le surnom, les rôles et les permissions d’un membre et le modérer : exclusion temporaire, expulsion, bannissement'
+---
+
+Un `GuildMember` est un [utilisateur](/fr/reference/user) en tant que membre d’un serveur : la même personne a un seul `User`, et un `GuildMember` par serveur où elle se trouve. Vous en obtenez un comme `member` d’une [commande](/fr/reference/interaction) utilisée sur un serveur, avec les événements sur les membres et les messages, et depuis `guild.members` ou `guild.fetchMember()`.
+
+```ts
+import type { GuildMember } from 'chapterjs';
+
+async function mute(member: GuildMember, moderator: GuildMember) {
+  if (!moderator.permissions.has('ModerateMembers')) return 'Vous n’avez pas le droit de faire cela.';
+  if (!moderator.isHigherThan(member)) return 'Vous ne pouvez exclure que les membres en dessous de vous.';
+  await member.timeout(10 * 60 * 1000, `Exclu par ${moderator.displayName}`);
+  return `${member.displayName} est exclu pour 10 minutes.`;
+}
+```
+
+<Note>
+  Comment vos fonctions reçoivent un membre est dans [Commandes](/fr/commands) et [Événements](/fr/events). De quels membres le bot se souvient est dans [Mémoire](/fr/memory).
+</Note>
+
+## Propriétés
+
+<ResponseField name="guildId" type="Snowflake">
+  L’identifiant du serveur.
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  Le compte du membre.
+</ResponseField>
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant de l’utilisateur.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  Le serveur où se trouve le membre.
+</ResponseField>
+
+<ResponseField name="nick" type="string | null">
+  Le surnom du membre sur ce serveur, quand il en a un.
+</ResponseField>
+
+<ResponseField name="displayName" type="string">
+  Le nom à afficher : le surnom, sinon le nom d’affichage, sinon le nom d’utilisateur.
+</ResponseField>
+
+<ResponseField name="roleIds" type="readonly Snowflake[]">
+  Les identifiants des rôles du membre (@everyone n’est pas listé).
+</ResponseField>
+
+<ResponseField name="roles" type="Role[]">
+  Les rôles du membre, @everyone compris, le plus haut en premier.
+</ResponseField>
+
+<ResponseField name="highestRole" type="Role">
+  Le rôle le plus haut du membre dans la hiérarchie ; @everyone au moins.
+</ResponseField>
+
+<ResponseField name="joinedAt" type="Date | null">
+  Quand le membre a rejoint le serveur.
+</ResponseField>
+
+<ResponseField name="boostingSince" type="Date | null">
+  Depuis quand le membre booste le serveur.
+</ResponseField>
+
+<ResponseField name="pending" type="boolean">
+  Si le membre n’a pas encore passé le filtrage d’adhésion.
+</ResponseField>
+
+<ResponseField name="timeoutUntil" type="Date | null">
+  Jusqu’à quand le membre est exclu temporairement ; `null` quand il ne l’est pas.
+</ResponseField>
+
+<ResponseField name="isTimedOut" type="boolean">
+  Si le membre est exclu temporairement en ce moment.
+</ResponseField>
+
+<ResponseField name="isOwner" type="boolean">
+  Si le serveur appartient au membre.
+</ResponseField>
+
+<ResponseField name="permissions" type="Permissions">
+  Ce que le membre peut faire sur le serveur (les salons peuvent le changer : voir `permissionsIn`). Voir [Permissions](/fr/reference/permissions).
+</ResponseField>
+
+## Helpers
+
+Ils lisent ce dont le bot se souvient : ils n’envoient jamais de requête.
+
+### permissionsIn()
+
+```ts
+permissionsIn(channel: GuildChannel): Permissions
+```
+
+Ce que le membre peut faire dans un salon du serveur.
+
+### avatarURL()
+
+```ts
+avatarURL(options?: ImageOptions): string
+```
+
+L’avatar du membre sur ce serveur, sinon celui de son compte. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### isHigherThan()
+
+```ts
+isHigherThan(other: GuildMember): boolean
+```
+
+Si ce membre est au-dessus d’un autre dans la hiérarchie des rôles, ce qui permet de l’expulser, de le bannir ou de le renommer.
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/permissions#permission-hierarchy)
+
+### hasRole()
+
+```ts
+hasRole(role: Snowflake | Role): boolean
+```
+
+Si le membre a un rôle.
+
+### toString()
+
+```ts
+toString(): string
+```
+
+`<@id>` : mentionne le membre quand il est mis dans un message.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+## Actions
+
+### edit()
+
+```ts
+edit(options: MemberEditOptions, reason?: string): Promise<GuildMember>
+```
+
+Modifie le membre. Voir [MemberEditOptions](#membereditoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#modify-guild-member)
+
+### setNick()
+
+```ts
+setNick(nick: string | null, reason?: string): Promise<GuildMember>
+```
+
+Change le surnom du membre ; `null` le retire.
+
+### addRole()
+
+```ts
+addRole(role: Snowflake | Role, reason?: string): Promise<void>
+```
+
+Donne un rôle au membre.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#add-guild-member-role)
+
+### removeRole()
+
+```ts
+removeRole(role: Snowflake | Role, reason?: string): Promise<void>
+```
+
+Retire un rôle au membre.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#remove-guild-member-role)
+
+### timeout()
+
+```ts
+timeout(duration: number, reason?: string): Promise<GuildMember>
+```
+
+Empêche le membre d’écrire, de réagir et de parler pendant un moment. `duration` est la durée, en millisecondes (28 jours au plus).
+
+### removeTimeout()
+
+```ts
+removeTimeout(reason?: string): Promise<GuildMember>
+```
+
+Met fin à l’exclusion temporaire du membre.
+
+### kick()
+
+```ts
+kick(reason?: string): Promise<void>
+```
+
+Retire le membre du serveur ; il peut revenir avec une invitation.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#remove-guild-member)
+
+### ban()
+
+```ts
+ban(options?: BanOptions): Promise<void>
+```
+
+Bannit le membre du serveur. Voir [BanOptions](#banoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#create-guild-ban)
+
+### send()
+
+```ts
+send(message: MessageInput): Promise<Message>
+```
+
+Envoie un message privé au membre. Voir [MessageInput](/fr/reference/message-options#messageinput).
+
+## Types
+
+### BanOptions
+
+Ce que prend `ban()`, sur un membre ou sur un [serveur](/fr/reference/guild#ban). Chaque champ peut être laissé de côté.
+
+<ResponseField name="reason" type="string">
+  Pourquoi, affiché dans le journal d’audit du serveur.
+</ResponseField>
+
+<ResponseField name="deleteMessageSeconds" type="number">
+  Supprime aussi les messages que l’utilisateur a envoyés pendant les dernières secondes données : de 0 (par défaut, rien) à 604800 (7 jours).
+</ResponseField>
+
+### MemberEditOptions
+
+Ce que prend `edit()`. Chaque champ peut être laissé de côté : seul ce que vous passez change.
+
+<ResponseField name="nick" type="string | null">
+  Le surnom ; `null` le retire.
+</ResponseField>
+
+<ResponseField name="roles" type="(Snowflake | Role)[]">
+  Remplace tous les rôles du membre.
+</ResponseField>
+
+<ResponseField name="mute" type="boolean">
+  Rend le membre muet dans les salons vocaux.
+</ResponseField>
+
+<ResponseField name="deaf" type="boolean">
+  Rend le membre sourd dans les salons vocaux.
+</ResponseField>
+
+<ResponseField name="voiceChannel" type="Snowflake | { id: Snowflake } | null">
+  Déplace le membre vers un autre salon vocal ; `null` le déconnecte.
+</ResponseField>
+
+<ResponseField name="timeoutUntil" type="Date | null">
+  Jusqu’à quand le membre est exclu temporairement ; `null` met fin à l’exclusion.
+</ResponseField>

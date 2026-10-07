@@ -1,0 +1,371 @@
+---
+title: 'Message'
+description: 'Un message envoyé dans un salon : ce qu’il contient, et comment y répondre, le modifier, y réagir, l’épingler et démarrer un fil depuis lui'
+---
+
+Un `Message` est un message envoyé dans un salon. Vous en obtenez un depuis les [événements sur les messages](/fr/events/messages), depuis ce que renvoient `send()` et `reply()`, et depuis `fetchMessage()` et `fetchMessages()` sur un salon.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function onPing(message: Message) {
+  if (!message.isFromUser) return; // ignore les bots, les webhooks et les messages système
+  if (message.content !== '!ping') return;
+
+  const reply = await message.reply('Pong !');
+  await reply.react('🏓');
+}
+```
+
+<Note>
+  Comment envoyer, modifier et lire des messages est dans [Envoyer des messages](/fr/messages) ; tout ce qu’acceptent `reply()` et `edit()` est dans [Options des messages](/fr/reference/message-options).
+</Note>
+
+<Warning>
+  `content`, `embeds` et `attachments` sont vides pour les messages des autres sauf si le **Message Content Intent** est activé pour votre bot. Les messages qui mentionnent le bot, et les messages privés, ont toujours leur contenu.
+</Warning>
+
+## Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand il a été créé : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="author" type="User">
+  Qui a écrit le message.
+</ResponseField>
+
+<ResponseField name="mentions" type="readonly User[]">
+  Les utilisateurs mentionnés dans le message.
+</ResponseField>
+
+<ResponseField name="channelId" type="Snowflake">
+  L’identifiant du salon du message.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  L’identifiant du serveur ; `null` pour un message privé.
+</ResponseField>
+
+<ResponseField name="channel" type="TextBasedChannel | null">
+  Le salon du message, quand il est connu.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild | null">
+  Le serveur du message ; `null` pour un message privé.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  L’auteur en tant que membre du serveur, quand il est connu.
+</ResponseField>
+
+<ResponseField name="content" type="string">
+  Le texte du message. Vide quand le bot n’a pas le droit de le lire : lire les messages des autres demande le Message Content Intent.
+</ResponseField>
+
+<ResponseField name="type" type="MessageType">
+  La sorte de message, sous forme de valeur de [`MessageType`](/fr/reference/enums#messagetype) (un message normal, une réponse, un avis d’arrivée...).
+</ResponseField>
+
+<ResponseField name="editedAt" type="Date | null">
+  Quand le message a été modifié pour la dernière fois ; `null` quand il ne l’a jamais été.
+</ResponseField>
+
+<ResponseField name="pinned" type="boolean">
+  Si le message est épinglé.
+</ResponseField>
+
+<ResponseField name="tts" type="boolean">
+  Si le message a été lu à voix haute.
+</ResponseField>
+
+<ResponseField name="embeds" type="Embed[]">
+  Les embeds du message. Chaque entrée est un [`Embed`](/fr/reference/message-options#embed).
+</ResponseField>
+
+<ResponseField name="attachments" type="Attachment[]">
+  Les fichiers joints au message. Chaque entrée est un [`Attachment`](/fr/reference/data#attachment).
+</ResponseField>
+
+<ResponseField name="reactions" type="Reaction[]">
+  Les réactions sur le message, une entrée par emoji. Chaque entrée est une [`Reaction`](/fr/reference/data#reaction).
+</ResponseField>
+
+<ResponseField name="mentionsEveryone" type="boolean">
+  Si le message mentionne @everyone ou @here.
+</ResponseField>
+
+<ResponseField name="mentionedRoleIds" type="readonly Snowflake[]">
+  Les identifiants des rôles mentionnés dans le message.
+</ResponseField>
+
+<ResponseField name="flags" type="MessageFlagName[]">
+  Les drapeaux du message, par nom (`Ephemeral`, `SuppressEmbeds`...).
+</ResponseField>
+
+<ResponseField name="webhookId" type="Snowflake | null">
+  L’identifiant du webhook qui a envoyé le message, quand c’en est un.
+</ResponseField>
+
+<ResponseField name="repliedMessageId" type="Snowflake | null">
+  L’identifiant du message auquel celui-ci répond, quand c’est une réponse.
+</ResponseField>
+
+<ResponseField name="isFromUser" type="boolean">
+  Si une personne l’a écrit : pas un bot, un webhook ou Discord lui-même.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Le lien qui ouvre le message dans Discord.
+</ResponseField>
+
+## Helpers
+
+Ils lisent ce que le bot sait déjà : ils n’envoient jamais de requête.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+## Lire depuis Discord
+
+### fetch()
+
+```ts
+fetch(): Promise<Message>
+```
+
+Demande à Discord la dernière version du message.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#get-channel-message)
+
+### fetchReactionUsers()
+
+```ts
+fetchReactionUsers(emoji: EmojiInput, options?: { limit?: number; after?: Snowflake }): Promise<User[]>
+```
+
+Les utilisateurs qui ont réagi avec un emoji (100 au plus par appel).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#get-reactions)
+
+## Actions
+
+### reply()
+
+```ts
+reply(message: MessageInput): Promise<Message>
+```
+
+Répond au message, dans le même salon. Ce qu’elle accepte est un [`MessageInput`](/fr/reference/message-options#messageinput).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#create-message)
+
+### edit()
+
+```ts
+edit(message: string | MessageEditOptions): Promise<Message>
+```
+
+Modifie le message. Seuls le contenu, les embeds, les composants et les fichiers d’un message écrit par le bot peuvent changer. Les options sont un [`MessageEditOptions`](/fr/reference/message-options#messageeditoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#edit-message)
+
+### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Supprime le message.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#delete-message)
+
+### react()
+
+```ts
+react(emoji: EmojiInput): Promise<void>
+```
+
+Ajoute une réaction du bot au message.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#create-reaction)
+
+### removeReaction()
+
+```ts
+removeReaction(emoji: EmojiInput, user?: Snowflake | { id: Snowflake }): Promise<void>
+```
+
+Retire une réaction : celle du bot, ou celle de l’utilisateur donné.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#delete-user-reaction)
+
+### clearReactions()
+
+```ts
+clearReactions(emoji?: EmojiInput): Promise<void>
+```
+
+Retire toutes les réactions du message, ou toutes celles d’un emoji.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#delete-all-reactions)
+
+### pin()
+
+```ts
+pin(reason?: string): Promise<void>
+```
+
+Épingle le message dans son salon.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#pin-message)
+
+### unpin()
+
+```ts
+unpin(reason?: string): Promise<void>
+```
+
+Désépingle le message.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#unpin-message)
+
+### crosspost()
+
+```ts
+crosspost(): Promise<Message>
+```
+
+Publie un message d’un salon d’annonces vers les serveurs qui le suivent.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#crosspost-message)
+
+### startThread()
+
+```ts
+startThread(
+  options: { name: string; autoArchiveDuration?: number; rateLimitPerUser?: number | null },
+  reason?: string
+): Promise<ThreadChannel>
+```
+
+Démarre un fil depuis le message.
+
+<ResponseField name="name" type="string" required>
+  Le nom du fil, de 1 à 100 caractères.
+</ResponseField>
+
+<ResponseField name="autoArchiveDuration" type="number">
+  Au bout de combien de minutes sans activité le fil quitte la liste des salons : 60, 1440, 4320 ou 10080.
+</ResponseField>
+
+<ResponseField name="rateLimitPerUser" type="number | null">
+  Combien de secondes un membre attend entre deux messages (0 à 21600).
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#start-thread-from-message)
+
+## Types
+
+### GuildMessage
+
+Un message d’un serveur : son serveur est connu. C’est ce que donnent les événements sur les messages pour ce qui se passe sur un serveur.
+
+<ResponseField name="guildId" type="Snowflake">
+  L’identifiant du serveur.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  Le serveur du message.
+</ResponseField>
+
+<ResponseField name="channel" type="GuildTextBasedChannel">
+  Le salon du message.
+</ResponseField>
+
+### MemberMessage
+
+Un message écrit sur un serveur par un de ses membres : ni un message privé ni le message d’un webhook. C’est ce que donnent les événements sur les messages par défaut. Il a tout ce qu’a `GuildMessage`, et :
+
+<ResponseField name="member" type="GuildMember">
+  L’auteur en tant que membre du serveur.
+</ResponseField>
+
+### PrivateMessage
+
+Un message privé, pour un fichier qui reçoit les deux sortes (`{ where: 'both' }`) : il n’y a pas de serveur, ce qui permet de le distinguer d’un `GuildMessage`.
+
+<ResponseField name="guildId" type="null">
+  Pas de serveur : c’est un message privé.
+</ResponseField>
+
+<ResponseField name="guild" type="null">
+  Pas de serveur : c’est un message privé.
+</ResponseField>
+
+<ResponseField name="member" type="null">
+  Pas de membre : l’auteur est `author`.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel | null">
+  La conversation privée, quand le bot la connaît.
+</ResponseField>
+
+### DmMessage
+
+Un message privé, pour un fichier qui ne reçoit que ceux-là (`{ where: 'dm' }`) : rien qui concerne un serveur n’existe dessus. `guildId`, `guild` et `member` ne sont même pas proposés par votre éditeur.
+
+<ResponseField name="channel" type="DMChannel | null">
+  La conversation privée, quand le bot la connaît.
+</ResponseField>
+
+Vous n’avez besoin de ces noms que pour typer une fonction à vous :
+
+```ts
+import type { MemberMessage } from 'chapterjs';
+
+export function xpFor(message: MemberMessage): number {
+  return message.member.roles.length + message.content.length;
+}
+```
+
+### EmojiInput
+
+```ts
+type EmojiInput = string | { id?: Snowflake | null; name?: string | null }
+```
+
+Un emoji avec lequel réagir : un emoji standard (`"👍"`), ou un emoji personnalisé. Les méthodes qui en prennent un acceptent :
+
+- un emoji standard : `'👍'`
+- un emoji personnalisé tel que l’écrit Discord : `'<:name:123456789012345678>'` (ou `'<a:name:…>'` quand il est animé)
+- un emoji personnalisé sous forme d’objet : `{ id: '123456789012345678', name: 'name' }`, ou un [`GuildEmoji`](/fr/reference/emoji)
+
+Un texte vide est refusé avant tout envoi :
+
+```text
+The emoji is empty: pass one like "👍".
+```
+
+### MessageFlagName
+
+```ts
+type MessageFlagName = keyof typeof MessageFlags
+```
+
+Le nom d’un drapeau d’un message : une clé de [`MessageFlags`](/fr/reference/enums#messageflags). C’est ce que liste `flags`.
+
+### Ailleurs
+
+- [`Attachment`](/fr/reference/data#attachment) et [`Reaction`](/fr/reference/data#reaction) : les entrées de `attachments` et `reactions`.
+- [`Embed`](/fr/reference/message-options#embed) : les entrées de `embeds`, et ce que vous envoyez.
+- [`MessageInput`](/fr/reference/message-options#messageinput) et [`MessageEditOptions`](/fr/reference/message-options#messageeditoptions) : ce que prennent `reply()` et `edit()`.

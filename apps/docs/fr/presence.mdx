@@ -1,0 +1,80 @@
+---
+title: 'Présence'
+description: 'Afficher ce que fait votre bot sous son nom, avec un seul fichier'
+---
+
+La présence de votre bot est ce que Discord affiche sous son nom dans la liste des membres : son statut (la pastille de couleur) et ce qu’il fait. C’est un seul fichier, `src/presence.ts`.
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  status: 'online',
+  activity: { type: 'watching', name: 'le serveur' },
+});
+```
+
+C’est tout : dès que le bot est connecté, il est en ligne et « Regarde le serveur ». Sans ce fichier, le bot est en ligne et n’affiche rien. Les deux champs sont facultatifs : un `status` seul, ou une `activity` seule, fonctionne.
+
+<Note>
+  Tout ce que déclare le fichier est dans la [référence](/fr/reference/presence).
+</Note>
+
+## Statut
+
+| Écrivez | Affiché |
+| --- | --- |
+| `'online'` | Une pastille verte (par défaut) |
+| `'idle'` | Une lune orange |
+| `'dnd'` | Une pastille rouge, « ne pas déranger » |
+| `'invisible'` | Hors ligne, alors que le bot continue de tourner |
+
+## Activité
+
+`type` dit comment Discord la formule, `name` est le texte qui suit.
+
+| Type | Affiché |
+| --- | --- |
+| `'playing'` | Joue à _name_ |
+| `'listening'` | Écoute _name_ |
+| `'watching'` | Regarde _name_ |
+| `'competing'` | Participe à _name_ |
+| `'custom'` | _name_, seul |
+| `'streaming'` | Streame _name_, avec un lien vers le stream |
+
+Une activité `'streaming'` a besoin de l’`url` du stream, et Discord n’accepte qu’un lien Twitch ou YouTube :
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  activity: {
+    type: 'streaming',
+    name: 'la finale',
+    url: 'https://twitch.tv/someone',
+  },
+});
+```
+
+Un statut ou un type qui n’est pas dans ces listes, un `name` vide, ou une `url` sur un autre type, est une erreur au chargement du fichier, avec quoi écrire.
+
+## En développement
+
+Dans `chapterjs dev`, enregistrer `src/presence.ts` change la présence immédiatement, sans se reconnecter :
+
+```text
+↻ Presence updated
+```
+
+Un fichier qui ne se charge pas est signalé avec ce qui ne va pas, et le bot garde la dernière présence qui fonctionnait. Supprimer le fichier remet le bot en ligne sans rien afficher. Discord accepte quelques changements de présence par minute : quand vous enregistrez plus vite que cela, seule la dernière est envoyée, quand elle peut l’être.
+
+La présence est celle du bot, pas du serveur. Avec un seul bot pour le dev et la production, ce que vous essayez ici peut être montré à tout le monde : voir [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement).
+
+<CardGroup cols={2}>
+  <Card title="Référence : presence()" icon="activity" href="/fr/reference/presence">
+    Chaque champ du fichier de présence.
+  </Card>
+  <Card title="Tâches" icon="clock" href="/fr/tasks">
+    Ce que votre bot fait tout seul, régulièrement.
+  </Card>
+</CardGroup>

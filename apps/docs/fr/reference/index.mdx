@@ -1,0 +1,120 @@
+---
+title: 'Vue d’ensemble'
+description: 'Trouver chaque propriété et méthode de ce que reçoivent vos fonctions : serveurs, membres, salons, messages'
+---
+
+ChapterJS donne à votre code des **structures** : un serveur, un membre, un salon, un message... Chacune a des propriétés à lire et des méthodes pour agir. Tout est typé, donc votre éditeur complète les noms et souligne les erreurs avant que le bot ne tourne. Vous ne créez jamais une structure : vos [commandes](/fr/commands), vos [événements](/fr/events) et vos [composants](/fr/components) les reçoivent.
+
+<Note>
+  Cet onglet liste tout. Comment écrire un bot avec est dans le guide, en commençant par le [démarrage rapide](/fr/quickstart).
+</Note>
+
+## Les structures
+
+<CardGroup cols={2}>
+  <Card title="Guild" icon="server" href="/fr/reference/guild">
+    Un serveur : ses membres, rôles, salons, bannissements.
+  </Card>
+  <Card title="GuildMember" icon="users" href="/fr/reference/member">
+    Un utilisateur dans un serveur : surnom, rôles, permissions, modération.
+  </Card>
+  <Card title="User" icon="user" href="/fr/reference/user">
+    Un compte Discord, le même dans chaque serveur.
+  </Card>
+  <Card title="Role" icon="shield-check" href="/fr/reference/role">
+    Un rôle d’un serveur : permissions, position, membres.
+  </Card>
+  <Card title="Salons" icon="hash" href="/fr/reference/channels">
+    Salons textuels, vocaux, catégories, forums, fils et salons privés.
+  </Card>
+  <Card title="Message" icon="message-square" href="/fr/reference/message">
+    Un message : répondre, modifier, réagir, épingler.
+  </Card>
+  <Card title="Interaction" icon="zap" href="/fr/reference/interaction">
+    Quelqu’un a utilisé une commande, un bouton, un menu ou un formulaire, et attend une réponse.
+  </Card>
+  <Card title="GuildEmoji" icon="smile" href="/fr/reference/emoji">
+    Un emoji personnalisé d’un serveur.
+  </Card>
+  <Card title="Invite" icon="link" href="/fr/reference/invite">
+    Une invitation vers un serveur.
+  </Card>
+  <Card title="Webhook" icon="webhook" href="/fr/reference/webhook">
+    Un moyen de publier dans un salon sous n’importe quel nom.
+  </Card>
+</CardGroup>
+
+Ce avec quoi s’écrivent vos fichiers a ses propres pages : [command()](/fr/reference/command), [event()](/fr/reference/event) et [chaque événement](/fr/reference/events), [button()](/fr/reference/button), [select()](/fr/reference/select), [modal()](/fr/reference/modal), [embed()](/fr/reference/embed), la [mise en page](/fr/reference/layout) d’un message et [task()](/fr/reference/task). Les types partagés ont chacun une page : [options des messages](/fr/reference/message-options), [options](/fr/reference/options), [données](/fr/reference/data), [permissions](/fr/reference/permissions), [énumérations](/fr/reference/enums), [helpers](/fr/reference/helpers) et [erreurs](/fr/reference/errors).
+
+## Trois règles
+
+<Steps>
+  <Step title="Une propriété ne coûte jamais rien">
+    `guild.name`, `member.roles`, `guild.channels`... lisent ce dont le bot se souvient. Elles sont instantanées et n’envoient jamais de requête à Discord.
+  </Step>
+  <Step title="Une méthode fetch demande à Discord">
+    Les méthodes qui commencent par `fetch` renvoient une promesse. Quand elles récupèrent une seule chose par son identifiant, elles regardent d’abord ce dont le bot se souvient et ne demandent à Discord que si elle n’y est pas. Passez `{ force: true }` pour demander à Discord quand même.
+  </Step>
+  <Step title="Les autres méthodes agissent">
+    `member.ban()`, `channel.send()`, `message.delete()`... font quelque chose sur Discord et renvoient une promesse. Mettez toujours `await` devant.
+  </Step>
+</Steps>
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function example(guild: Guild) {
+  console.log(guild.name, guild.roles.size); // instantané
+  const owner = await guild.fetchOwner(); // en mémoire, sinon demandé à Discord
+  await owner.send(`Bonjour de la part de ${guild.name} !`); // fait sur Discord
+}
+```
+
+## Les noms sont en camelCase
+
+Discord nomme ses champs comme `rate_limit_per_user`. Dans ChapterJS, vous lisez et écrivez toujours `rateLimitPerUser` : le framework traduit dans les deux sens, à l’intérieur des embeds et des options aussi.
+
+## Les listes sont des Maps
+
+`guild.members`, `guild.roles`, `guild.channels`, `channel.messages`... sont des [`Map`](https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Global_Objects/Map) JavaScript que vous pouvez seulement lire, avec l’identifiant comme clé :
+
+```ts
+import type { Guild } from 'chapterjs';
+
+function example(guild: Guild) {
+  const role = guild.roles.get('123456789012345678');
+  const names = [...guild.channels.values()].map(channel => channel.name);
+  return { role, names };
+}
+```
+
+Ce que contient une `Map` est ce dont le bot se souvient, ce qui n’est pas toujours tout : voir [Mémoire](/fr/memory).
+
+## Les identifiants
+
+Un identifiant Discord (un `Snowflake`) est un texte fait de chiffres, comme `'175928847299117063'`. Ne le stockez jamais sous forme de nombre : il est trop grand et perdrait en précision.
+
+Partout où une méthode prend un utilisateur, un rôle, un salon ou un message, vous pouvez passer son identifiant ou la structure elle-même.
+
+## La raison
+
+Les actions que les modérateurs peuvent voir dans le journal d’audit du serveur prennent une `reason`, qui y est affichée :
+
+```ts
+import type { GuildMember } from 'chapterjs';
+
+async function example(member: GuildMember) {
+  await member.kick('Spam de liens d’invitation');
+  await member.ban({ reason: 'Raid', deleteMessageSeconds: 3600 });
+}
+```
+
+## Les limites sont vérifiées pour vous
+
+Ce que vous passez est vérifié avant d’être envoyé : un message trop long, une taille d’image qui n’existe pas ou une exclusion de plus de 28 jours lève une erreur qui dit quelle est la limite. Les limites de débit de Discord sont gérées par le framework : une requête attend son tour.
+
+Quand Discord refuse une action (une permission manquante, quelque chose qui n’existe plus...), la méthode lève une erreur : voir [Erreurs](/fr/reference/errors).
+
+## Afficher dans la console
+
+`console.log(guild)` affiche le nom de la classe et les données de la structure avec des noms en camelCase. `toJSON()` renvoie ces données sous forme d’objet simple. Aucun des deux n’affiche de secret : un [webhook](/fr/reference/webhook) laisse son token de côté.

@@ -1,0 +1,132 @@
+---
+title: 'chapterjs build'
+description: 'Vérifier chaque fichier de votre bot et le compiler en un seul fichier pour la production'
+---
+
+`chapterjs build` vérifie votre bot et le compile pour la production. Tout ce qui peut être faux dans vos fichiers est trouvé ici, avant que quoi que ce soit ne soit en ligne. C’est ce que lance le script `build` de votre projet :
+
+<CodeGroup>
+```bash pnpm
+pnpm build
+```
+
+```bash npm
+npm run build
+```
+
+```bash yarn
+yarn build
+```
+
+```bash bun
+bun run build
+```
+</CodeGroup>
+
+```text
+✓ Types checked
+✓ Built in .chapterjs/build: 4 commands, 6 events (18 kB)
+ℹ Run chapterjs start to put it online.
+```
+
+C’est tout : [`chapterjs start`](/fr/run/start) fait tourner ce qui a été compilé. La compilation n’a pas besoin de token et ne parle jamais à Discord : lancez-la n’importe où, aussi souvent que vous voulez.
+
+<Note>Les codes de sortie et ce qu’écrit la commande sont dans la [référence du CLI](/fr/reference/cli#chapterjs-build).</Note>
+
+## Ce qu’elle fait
+
+<Steps>
+  <Step title="Vérifie les types">
+    Ce que souligne votre éditeur, pour tout le projet d’un coup, avec le TypeScript installé dans votre projet (`tsc -b`). Une erreur arrête la compilation :
+
+    ```text
+    ✗ Your project has type errors, so it was not built:
+      src/commands/ban.ts(12,25): error TS18047: 'message.member' is possibly 'null'.
+    ```
+
+    Sans TypeScript, ou sans `tsconfig.json`, la compilation le dit et continue :
+
+    ```text
+    ℹ Types were not checked: TypeScript is not installed in this project (or it has no tsconfig.json).
+    ```
+  </Step>
+  <Step title="Lance chaque fichier une fois">
+    Chaque commande et chaque événement est chargé et vérifié, comme le fait `chapterjs dev` quand vous enregistrez : un fichier dans le mauvais dossier, une option sans description, deux fichiers qui sont la même commande... Chaque fichier cassé est signalé, puis la compilation s’arrête :
+
+    ```text
+    ✗ src/commands/poll.ts The default export of this file must be what command() returns: import { command } from 'chapterjs'; export default command({ description: '...', run({ interaction }) { ... } })
+    ✗ This file can't run, so your bot was not built. Fix it and build again: chapterjs dev shows the same errors while you write.
+    ```
+
+    Avec plusieurs, la dernière ligne les compte : `✗ These 2 files can't run, so your bot was not built. Fix them and build again: ...`.
+  </Step>
+  <Step title="Compile votre bot">
+    Tout votre bot devient **un seul fichier JavaScript**, `.chapterjs/build/bot.js` :
+
+    - chaque commande et événement, avec ce qu’ils importent de votre projet ;
+    - seulement ce qui est utilisé : le code que rien n’appelle est laissé de côté ;
+    - compact, mais avec les noms que vous avez écrits, et une correspondance vers vos fichiers.
+
+    Un fichier que le compilateur ne sait pas lire arrête la compilation de la même façon, avec `can't be compiled` dans la dernière ligne.
+  </Step>
+  <Step title="Lance ce qu’elle a compilé">
+    Le fichier compilé est chargé une fois, exactement comme la production le chargera. Un fichier qui tourne depuis `src/` mais pas une fois compilé arrête la compilation avec `can't run once compiled` dans la dernière ligne.
+  </Step>
+</Steps>
+
+Une compilation qui échoue ne laisse rien derrière elle : la compilation précédente est supprimée avant de compiler, pour qu’il n’y ait jamais un bot à moitié compilé à lancer par erreur.
+
+La compilation écrit aussi `.chapterjs/build/build.json` : la version de ChapterJS qui l’a faite, une empreinte de `src/` et combien de commandes et d’événements elle contient. `chapterjs start` le lit pour savoir si la compilation est celle à lancer.
+
+## La production fait tourner la compilation, pas vos fichiers
+
+Une fois compilé, votre bot ne change pas quand vous modifiez un fichier. Les changements passent en ligne la prochaine fois que vous compilez et relancez ; d’ici là, `chapterjs start` vous le rappelle :
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+Vous pouvez donc continuer à travailler dans le même dossier pendant que votre bot tourne. Une compilation faite par une autre version de ChapterJS n’est pas lancée du tout :
+
+```text
+✗ This build was made with chapterjs 0.1.2, and this is chapterjs 0.1.3.
+  Run "chapterjs build" again.
+```
+
+## Les erreurs nomment toujours vos fichiers
+
+Le fichier compilé n’est pas fait pour être lu, mais vous n’avez jamais à le faire : quand quelque chose échoue en production, l’erreur nomme le fichier et la ligne **que vous avez écrits**, parce que la compilation garde une correspondance entre le fichier compilé et vos sources.
+
+```text
+✗ src/lib/levels.ts:42 Cannot read properties of undefined (reading 'xp')
+```
+
+Les noms de vos fonctions et variables sont gardés aussi.
+
+## Ce qui est dans la compilation
+
+| | Dans la compilation |
+| --- | --- |
+| Vos commandes et événements | Oui |
+| Ce qu’ils importent de votre projet, où que ce soit | Oui |
+| Les fichiers et dossiers qui commencent par `_`, quand quelque chose les importe | Oui |
+| Les paquets que vous avez installés | Non : ils restent dans `node_modules`, dont la production a aussi besoin |
+| Les fichiers que votre code lit en tournant (un JSON ouvert avec `readFile`, une image...) | Non : gardez-les à côté de votre projet |
+| Vos sources | Non : la correspondance ne contient que des noms de fichiers et des lignes |
+
+## Rien à installer
+
+La compilation est faite par [esbuild](https://esbuild.github.io), fourni avec ChapterJS : votre projet n’a rien à ajouter, et rien à configurer. Il n’est chargé que par `chapterjs build` : faire tourner votre bot n’en a jamais besoin.
+
+<Note>
+  Avec **pnpm**, un projet a besoin d’un fichier de plus, sinon pnpm refuse de l’installer : esbuild vient avec un script d’installation, et pnpm veut qu’on lui dise quoi en faire. `create chapter` écrit ce fichier pour vous ; dans un projet créé autrement, voir [Structure du projet](/fr/setup/project-structure#avec-pnpm--un-fichier-de-plus).
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="chapterjs start" icon="rocket" href="/fr/run/start">
+    Faire tourner pour tout le monde le bot que vous avez compilé.
+  </Card>
+  <Card title="Déployer" icon="server" href="/fr/run/deploy">
+    Mettre votre bot sur une machine qui reste allumée.
+  </Card>
+</CardGroup>

@@ -1,0 +1,141 @@
+---
+title: 'Répondre'
+description: 'Répondre une fois à une commande, garder la réponse privée, prendre son temps, la modifier ensuite, et savoir ce que voit la personne quand votre code échoue'
+---
+
+Jusqu’ici, `interaction.reply()` répondait avec un texte. Cette page parle de tout ce qu’une réponse peut être d’autre : privée, différée, modifiée, suivie d’une autre. Et du cas que vous rencontrerez tôt ou tard : votre code lève une erreur, et quelqu’un attend de l’autre côté.
+
+## Une réponse, puis des suites
+
+Une utilisation d’une commande reçoit **une** réponse, avec `reply()`. Ensuite, `followUp()` envoie un autre message, `edit()` modifie la réponse, et `delete()` la supprime. Voici l’ensemble :
+
+| Méthode | Ce qu’elle fait |
+| --- | --- |
+| `interaction.reply(message)` | Répond. Une fois par utilisation de la commande. |
+| `interaction.defer()` | Dit à Discord que la réponse arrive (voir plus bas). |
+| `interaction.edit(message)` | Modifie la réponse. |
+| `interaction.followUp(message)` | Envoie un autre message, après la réponse. |
+| `interaction.delete()` | Supprime la réponse. |
+
+Appeler `reply()` deux fois est une erreur, et le framework le dit avec la ligne et quoi faire à la place :
+
+```text
+✗ src/commands/dice.ts:8 This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer.
+```
+
+Chacune de ces méthodes prend ce que prend n’importe quel message : un texte, ou un objet avec `content`, `embeds`, `files`, `components`... Une page plus loin passe tout cela en revue.
+
+## Réponses privées
+
+Parfois, seule la personne devrait voir la réponse : une confirmation, une erreur, un secret. Passez `ephemeral: true`, et Discord montre le message à elle seule, avec une mention « Seul(e) vous pouvez voir ceci » et un moyen de le faire disparaître.
+
+```ts src/commands/secret-number.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Vous donne un nombre secret',
+  async run({ interaction }) {
+    const number = Math.floor(Math.random() * 100);
+    await interaction.reply({ content: `Votre nombre est ${number}. Gardez-le !`, ephemeral: true });
+    await interaction.followUp({ content: 'Personne d’autre ne l’a vu.', ephemeral: true });
+  },
+});
+```
+
+Quand toutes les réponses d’une commande sont privées, mettez `ephemeral: true` sur la commande elle-même plutôt que sur chaque appel. Cela dit aussi au framework, avant même que `run` ne commence, que tout ce qu’il envoie pour cette commande est pour la personne seule, ce qui compte pour la langue de la réponse dans un chapitre suivant.
+
+```ts src/commands/mynumber.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Vous donne un nombre secret',
+  ephemeral: true,
+  async run({ interaction }) {
+    await interaction.reply(`Votre nombre est ${Math.floor(Math.random() * 100)}.`);
+  },
+});
+```
+
+## Quand la réponse prend du temps
+
+Discord veut une réponse en moins de **3 secondes**, sinon il affiche à la personne « L’application ne répond pas ». Une requête vers un autre site, un gros calcul ou quelques requêtes à Discord à la suite peuvent prendre plus longtemps.
+
+**Vous n’avez pas à vous en soucier.** Après 2 secondes sans réponse, le framework dit à Discord que la réponse arrive : la personne voit « réfléchit… », et votre `reply()` la complète quand elle arrive, jusqu’à 15 minutes plus tard.
+
+```ts src/commands/slow.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Prend son temps',
+  async run({ interaction }) {
+    await sleep(5_000); // quelque chose de lent : une requête vers un site, par exemple
+    await interaction.reply('Désolé pour l’attente !');
+  },
+});
+```
+
+Utilisez `/slow` : au bout de deux secondes, « réfléchit… », puis la réponse. Si vous préférez afficher « réfléchit… » tout de suite, appelez vous-même `interaction.defer()` au début de `run`.
+
+<Info>
+  Le fait qu’une réponse différée soit privée se décide au moment où elle est différée. Pour une commande lente dont la réponse doit être privée, mettez `ephemeral: true` sur la commande, ou appelez vous-même `interaction.defer({ ephemeral: true })` : quand le framework diffère pour vous, il ne connaît que ce que déclare la commande.
+</Info>
+
+## Modifier la réponse
+
+`edit()` modifie la réponse qui a été envoyée. Seul ce que vous passez change :
+
+```ts src/commands/countdown3.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Compte à rebours depuis 3',
+  async run({ interaction }) {
+    await interaction.reply('3...');
+    for (const step of ['2...', '1...', 'Partez !']) {
+      await sleep(1000);
+      await interaction.edit(step);
+    }
+  },
+});
+```
+
+`edit()` et `delete()` fonctionnent pendant 15 minutes après l’utilisation de la commande ; au-delà, Discord oublie l’interaction.
+
+## Quand votre code échoue
+
+Votre code lèvera une erreur un jour : un bug, ou Discord qui refuse quelque chose. Ce qui se passe alors mérite d’être connu, parce que quelqu’un attend dans Discord.
+
+- **La personne** reçoit une réponse courte et privée : « Something went wrong while running this command. » Si le bot manquait d’une permission, la phrase le dit à la place : « I don’t have the permission to do that here. » Jamais de trace d’erreur, jamais de mot technique. (Ces phrases sont en anglais par défaut ; le chapitre sur les traductions montre comment les traduire.)
+- **Vous** recevez l’erreur dans votre terminal, avec le fichier et la ligne :
+
+```text
+✗ src/commands/whois.ts:11 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+```
+
+- **Le bot** continue de tourner. Une commande qui échoue n’arrête jamais rien d’autre.
+
+Essayez : ajoutez `throw new Error('oups')` au début de `run` dans `/dice`, enregistrez, et utilisez la commande. Puis retirez-le.
+
+<Tip>
+  Gardez la ligne de votre code dans l’erreur : enchaînez avec `await`, pas avec `.then()`. Une erreur dans quelque chose que vous avez attendu est signalée avec la ligne qui l’a attendu.
+</Tip>
+
+Pour gérer un échec vous-même, entourez la partie risquée d’un `try` / `catch`. Les erreurs de Discord sont des `DiscordApiError`, avec un `code` qui dit ce qui s’est passé ; la page [Ce que vous recevez](/fr/tutorial/what-you-receive) en montre une.
+
+## Récapitulatif
+
+- `reply()` une fois, puis `followUp()`, `edit()`, `delete()`.
+- `ephemeral: true` rend un message privé ; sur la commande, il rend chaque réponse privée.
+- Après 2 secondes, le framework diffère pour vous ; `defer()` le fait tout de suite.
+- Quand `run` lève une erreur, la personne reçoit une réponse simple, vous recevez le fichier et la ligne, le bot continue.
+
+<CardGroup cols={2}>
+  <Card title="Ce que vous recevez" icon="box" href="/fr/tutorial/what-you-receive">
+    Utilisateurs, membres, serveurs, salons : ce qu’ils vous disent et ce qu’ils savent faire.
+  </Card>
+  <Card title="Guide : Répondre" icon="book-open" href="/fr/commands/answering">
+    La même chose, en bref.
+  </Card>
+</CardGroup>

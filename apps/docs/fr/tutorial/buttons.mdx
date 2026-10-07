@@ -1,0 +1,143 @@
+---
+title: 'Les boutons'
+description: 'Mettre un bouton sous un message, y transporter des données, lancer du code quand on clique, et décider qui peut cliquer'
+---
+
+Un message peut porter des boutons. Quand quelqu’un clique sur l’un d’eux, Discord envoie une interaction à votre bot, comme pour une commande, et votre bot répond. Cette page ajoute un bouton « Relancer » à `/dice`, et explique comment un clic retrouve le chemin de votre code.
+
+## Un bouton est un fichier
+
+Un bouton est un fichier de `src/components/buttons/`. Il dit à quoi ressemble le bouton et quoi faire quand on clique dessus. Créez `src/components/buttons/reroll.ts` :
+
+```ts src/components/buttons/reroll.ts
+import { button } from 'chapterjs';
+
+const reroll = button({
+  label: 'Relancer',
+  emoji: '🎲',
+  data: { sides: 'number' },
+  async run({ interaction, user, data }) {
+    const roll = Math.floor(Math.random() * data.sides) + 1;
+    await interaction.update({
+      content: `${user.displayName} a fait ${roll} sur un d${data.sides}.`,
+      components: [reroll({ sides: data.sides })],
+    });
+  },
+});
+
+export default reroll;
+```
+
+Puis mettez-le dans la réponse de `/dice` :
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+import reroll from '../components/buttons/reroll';
+
+export default command({
+  description: 'Lance un dé',
+  options: {
+    sides: { type: 'integer', description: 'Combien de faces', min: 2, max: 100 },
+  },
+  async run({ interaction, user, options }) {
+    const sides = options.sides ?? 6;
+    const roll = Math.floor(Math.random() * sides) + 1;
+    await interaction.reply({
+      content: `${user.displayName} a fait ${roll} sur un d${sides}.`,
+      components: [reroll({ sides })],
+    });
+  },
+});
+```
+
+Utilisez `/dice sides:20` : la réponse a un bouton. Cliquez dessus : le message change pour un nouveau lancer, avec le bouton toujours là.
+
+## Comment un clic retrouve votre fichier
+
+Quand Discord affiche un bouton, il doit se souvenir duquel il s’agit, pour qu’un clic soit renvoyé au bon bot avec le bon sens. Discord le fait avec un court texte attaché au bouton, que le bot choisit, et qu’il récupère au clic.
+
+Dans ChapterJS, **ce texte est le chemin du fichier** : `buttons/reroll`. Vous ne l’écrivez jamais, vous ne le voyez jamais, et il ne peut pas entrer en collision avec un autre bouton, puisque deux fichiers ne peuvent pas avoir le même chemin. Quand le clic revient, le framework lit le chemin, trouve le fichier, et lance son `run`. C’est la même règle que pour les commandes : l’endroit où est le fichier dit ce qu’il est.
+
+## Les données : ce que transporte un bouton
+
+Le bouton doit savoir combien de faces a le dé, et rien n’est stocké nulle part entre le message et le clic. Alors le bouton le **transporte** : `data: { sides: 'number' }` déclare une valeur, `reroll({ sides })` la donne quand le bouton est mis dans un message, et `run` la reçoit sous la forme `data.sides`, typée comme un nombre.
+
+Où vit-elle ? Dans le bouton lui-même, à côté du chemin, dans le message sur Discord. Cela la rend :
+
+- **Sans état.** Redémarrez le bot, et un clic sur un message vieux d’une semaine transporte toujours `sides`. Rien à stocker, rien à nettoyer.
+- **Limitée.** Discord donne 100 caractères au chemin et aux données ensemble. Transportez des identifiants, pas des noms ; un nombre, pas un objet entier. En transporter trop est une erreur à l’endroit où le bouton est fabriqué, avec la place qu’il reste.
+- **Typée.** `data` a trois sortes : `'string'`, `'number'` et `'boolean'`. `reroll({ sides: 'six' })` est souligné dans l’éditeur.
+
+Un bouton sans `data` se met dans un message tel quel, sans l’appeler : `components: [close]`.
+
+## Répondre à un clic
+
+L’`interaction` d’un bouton a tout ce qu’a celle d’une commande (`reply()`, `defer()`, `edit()`, `followUp()`, `delete()`), plus trois choses qui n’ont de sens que pour un clic :
+
+| Méthode | Ce qu’elle fait |
+| --- | --- |
+| `interaction.update(message)` | Modifie le message sur lequel est le bouton. `components: []` retire les boutons. |
+| `interaction.deferUpdate()` | Répond par rien : le message reste tel quel. |
+| `interaction.showModal(form)` | Ouvre un formulaire (une page plus loin). |
+
+`update()` est ce que vous voulez la plupart du temps : la personne a cliqué sur un message, et s’attend à ce que ce message change, pas à ce qu’un nouveau apparaisse. `interaction.message` est ce message, sous forme de `Message`.
+
+Comme pour une commande, un clic doit recevoir une réponse en moins de 3 secondes, et le framework diffère pour vous au bout de 2, d’une façon que la personne ne voit pas. Un bouton dont le `run` se termine sans répondre déclenche un avertissement dans votre terminal, puisque la personne lit « Échec de l’interaction ».
+
+## Qui peut cliquer
+
+Par défaut, tous ceux qui voient le message peuvent cliquer. Pour un bouton qui appartient à la personne qui a utilisé la commande, `who: 'author'` : n’importe qui d’autre lit « Only the person who used the command can use this button. » en privé, et `run` ne démarre jamais. Voici un bouton « Fermer » qui retire le message :
+
+```ts src/components/buttons/close.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Fermer',
+  style: 'secondary',
+  who: 'author',
+  async run({ interaction }) {
+    await interaction.update({ content: 'Fermé.', components: [] });
+  },
+});
+```
+
+`style` vaut `'primary'` (bleu), `'secondary'` (gris), `'success'` (vert) ou `'danger'` (rouge). Le fichier donne l’apparence par défaut ; là où vous mettez le bouton dans un message, un second argument la change pour ce message : `reroll({ sides }, { disabled: true })`.
+
+Un bouton qui ne fait qu’ouvrir un lien ne lance rien dans votre bot, donc il n’a pas de fichier : `linkButton({ label: 'Docs', url: 'https://...' })`, écrit là où est le message.
+
+## Les rangées
+
+Discord met les boutons en rangées de 5 au plus. Vous ne fabriquez jamais les rangées vous-même : les boutons qui se suivent dans `components` sont mis en rangées pour vous, 5 par rangée, et un menu prend une rangée entière. Pour choisir les rangées vous-même, `row([...])` existe.
+
+## Quand un fichier change
+
+Un bouton vit dans les messages où il a été envoyé, bien après que vous avez changé votre code. Le framework gère chaque cas sans jamais planter :
+
+| Ce qui a changé | Un clic sur un vieux message répond |
+| --- | --- |
+| Le fichier a été renommé ou supprimé | « This button is not available any more. » |
+| Ses `data` ont changé de forme (une valeur ajoutée, retirée ou d’une autre sorte) | « This button is out of date. » |
+| Seul `run` a changé | Lance le nouveau code, avec les anciennes données |
+
+## Points d’attention
+
+- **`update()` une fois, comme `reply()`.** Après, l’interaction a reçu sa réponse ; utilisez `interaction.message.edit()` pour un second changement.
+- **Transportez des identifiants.** `data: { userId: 'string' }`, puis `guild.fetchMember(data.userId)` dans `run`, plutôt que de transporter un nom qui peut changer et prend de la place.
+- **Le rechargement à chaud ne demande rien.** Le fichier de commande importe le fichier du bouton ; enregistrer l’un ou l’autre recharge les deux ensemble.
+- **Les boutons ont aussi un `where`**, comme les commandes, qui décide de ce que reçoit `run` à propos de l’endroit.
+
+## Récapitulatif
+
+- Un bouton est un fichier de `src/components/buttons/` ; son chemin est ce que renvoie un clic.
+- `data` est ce que transporte le bouton dans le message, typé, et survit aux redémarrages.
+- `update()` modifie le message sur lequel est le bouton ; `who: 'author'` le réserve à la personne.
+- Les vieux messages reçoivent une réponse simple quand le fichier a changé.
+
+<CardGroup cols={2}>
+  <Card title="Les menus déroulants" icon="list" href="/fr/tutorial/selects">
+    Laisser les gens choisir parmi des options, des utilisateurs, des rôles ou des salons.
+  </Card>
+  <Card title="Guide : Boutons" icon="book-open" href="/fr/components">
+    La même chose, en bref.
+  </Card>
+</CardGroup>

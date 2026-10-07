@@ -67,6 +67,12 @@ export interface FrameworkTexts {
   /** "I don't have the permission to do that here." */
   missingPermission: string;
   /**
+   * "You can use this {what} again {when}." (a `cooldown` not over yet);
+   * `{when}` is a Discord timestamp, shown as "in 5 seconds" (or a date
+   * and time past 15 minutes) in the language of the person.
+   */
+  cooldown: string;
+  /**
    * "You need the {permissions} permission to use this command." A plural
    * of `count`, how many permissions are missing; `{permissions}` is their
    * names, separated by commas.

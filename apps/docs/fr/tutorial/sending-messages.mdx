@@ -1,0 +1,212 @@
+---
+title: 'Envoyer des messages'
+description: 'Envoyer un texte, un embed, un fichier ou un sondage où vous voulez, mentionner sans notifier tout le monde, et modifier, supprimer ou réagir à un message'
+---
+
+Un bot passe sa vie à envoyer des messages. Ils prennent tous la même chose, où qu’ils aillent : un texte, ou un objet avec tout ce qu’un message peut contenir. Cette page passe en revue ce que cet objet peut contenir, et ce que vous pouvez faire d’un message une fois envoyé.
+
+## Où va un message
+
+Tout ce qui peut recevoir un message a un `send()` :
+
+| Vous avez | Écrivez |
+| --- | --- |
+| Un salon (`channel`, `message.channel`, un de `guild.channels`) | `channel.send(...)` |
+| Un message auquel répondre | `message.reply(...)` |
+| Une personne à qui écrire en privé | `user.send(...)`, `member.send(...)` |
+| Une commande à laquelle répondre | `interaction.reply(...)` |
+
+Voici `/say`, qui publie dans le salon de la commande sans montrer qui l’a demandé :
+
+```ts src/commands/say.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Fait dire quelque chose au bot ici',
+  permissions: ['ManageMessages'],
+  options: {
+    text: { type: 'string', description: 'Quoi dire', required: true, maxLength: 2000 },
+  },
+  async run({ interaction, channel, options }) {
+    await channel.send(options.text);
+    await interaction.reply({ content: 'C’est dit.', ephemeral: true });
+  },
+});
+```
+
+`channel.send()` publie dans le salon ; `interaction.reply()` doit quand même répondre à la commande, ici par un « C’est dit. » privé pour que le salon n’affiche que le texte. Une commande doit toujours répondre, même quand son vrai travail était un `send()` ailleurs.
+
+## Ce qu’un message peut contenir
+
+Un texte est le message le plus simple. Pour davantage, passez un objet :
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function release(channel: TextChannel) {
+  await channel.send({
+    content: 'Une nouvelle version est sortie : https://example.com/changelog',
+    silent: true, // pas de son de notification
+    suppressEmbeds: true, // pas d’aperçu du lien
+  });
+}
+```
+
+Un message a besoin d’au moins un de ces champs : `content`, `embeds`, `files`, `components`, `poll`, ou un sticker. Un texte fait 2000 caractères au plus. Tout est vérifié **avant** que le message parte : un texte trop long ou trop d’embeds est une erreur dans votre code avec un message clair, pas un refus de Discord.
+
+## Les embeds
+
+Un embed est l’encadré avec une ligne de couleur sur le côté que les bots utilisent pour un contenu riche : un titre, une description, des champs en colonnes, une image, un pied. Jusqu’à 10 par message.
+
+```ts src/commands/serverinfo.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Affiche des informations sur ce serveur',
+  async run({ interaction, guild }) {
+    const icon = guild.iconURL();
+    await interaction.reply({
+      embeds: [
+        {
+          title: guild.name,
+          description: guild.description ?? 'Pas de description.',
+          color: 0xc026d3,
+          thumbnail: icon ? { url: icon } : undefined,
+          fields: [
+            { name: 'Membres', value: String(guild.memberCount ?? '?'), inline: true },
+            { name: 'Rôles', value: String(guild.roles.size), inline: true },
+            { name: 'Salons', value: String(guild.channels.size), inline: true },
+          ],
+          footer: { text: `Créé le ${guild.createdAt.toDateString()}` },
+        },
+      ],
+    });
+  },
+});
+```
+
+`color` est un nombre écrit en hexadécimal : `0xc026d3` est un violet. Discord limite ce que contient un embed (256 caractères pour un titre, 25 champs, 6000 caractères pour tous les embeds d’un message...) ; dépasser une limite lève une erreur avant tout envoi, avec le champ et la limite.
+
+## Les fichiers de public/
+
+Les images et documents qu’envoie votre bot vivent dans le dossier `public/` de votre projet. Mettez-y une image, par exemple `public/images/welcome.png`, et envoyez-la avec `asset()` :
+
+```ts src/commands/banner.ts
+import { asset, command } from 'chapterjs';
+
+export default command({
+  description: 'Affiche la bannière du serveur',
+  async run({ interaction }) {
+    await interaction.reply({
+      files: [asset('images/welcome.png')],
+      embeds: [{ title: 'Bienvenue !', image: { url: 'attachment://welcome.png' } }],
+    });
+  },
+});
+```
+
+Tapez `asset('` dans votre éditeur : il liste les fichiers de `public/`, et souligne un chemin qui n’existe pas. Le fichier est lu quand le message est envoyé. `chapterjs dev` surveille le dossier, donc un fichier que vous ajoutez est proposé tout de suite :
+
+```text
+↻ public/ changed: types updated
+```
+
+Un embed peut afficher un fichier du message avec `attachment://` suivi du nom du fichier. Un fichier fabriqué par votre code (un journal, un graphique) se donne avec son contenu : `files: [{ name: 'log.txt', data: text }]`.
+
+## Les mentions, sans notifier tout le monde
+
+Une mention est un texte. Mettez une structure dans une chaîne de modèle (`${member}`, `${channel}`, `${role}`) ou utilisez les helpers (`userMention(id)`, `roleMention(id)`, `channelMention(id)`), et Discord l’affiche.
+
+Par défaut, un message **notifie** tous ceux qu’il mentionne, @everyone et les rôles compris. C’est rarement ce que vous voulez quand le texte vient de quelqu’un d’autre : un bot qui répète « @everyone » notifie tout le serveur. `allowedMentions` dit qui reçoit vraiment une notification, quoi que contienne le texte :
+
+```ts src/commands/quote.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Répète un texte sans notifier personne',
+  options: {
+    text: { type: 'string', description: 'Le texte', required: true, maxLength: 1900 },
+  },
+  async run({ interaction, user, options }) {
+    await interaction.reply({
+      content: `${user} dit : ${options.text}`,
+      allowedMentions: { users: [user.id] }, // seul l’auteur est notifié, quoi que contienne le texte
+    });
+  },
+});
+```
+
+`parse: []` ne notifie personne ; `users` et `roles` listent les identifiants qui peuvent être notifiés ; `repliedUser: false` sur une réponse épargne l’auteur du message auquel on répond. Le helper `timestamp(date)` écrit une date que Discord affiche dans le fuseau horaire de chaque lecteur, et `timestamp(date, 'R')` sous la forme « il y a 3 minutes ».
+
+## Les sondages
+
+Un sondage est une question avec jusqu’à 10 réponses ; les gens votent dans Discord et il se ferme au bout de `duration` heures.
+
+```ts src/commands/pizza.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Pose une question sur ce soir',
+  async run({ interaction }) {
+    await interaction.reply({
+      poll: {
+        question: { text: 'Pizza ou pâtes ce soir ?' },
+        answers: [
+          { answerId: 1, pollMedia: { text: 'Pizza', emoji: { name: '🍕' } } },
+          { answerId: 2, pollMedia: { text: 'Pâtes', emoji: { name: '🍝' } } },
+        ],
+        duration: 2,
+        allowMultiselect: false,
+      },
+    });
+  },
+});
+```
+
+## Une fois envoyé
+
+Chaque `send()` renvoie le `Message` envoyé, pour que vous puissiez en faire davantage :
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function announceAndPin(channel: TextChannel, text: string) {
+  const message = await channel.send(text);
+  await message.react('📌');
+  await message.pin('Annonce');
+  await message.edit(`${text}\n(épinglé)`);
+}
+```
+
+| Méthode | Ce qu’elle fait |
+| --- | --- |
+| `message.edit(...)` | Modifie un message écrit par le bot. Seul ce que vous passez change. |
+| `message.delete(reason?)` | Le supprime ; la raison va dans le journal d’audit. |
+| `message.react(emoji)` | Ajoute une réaction : un emoji standard, ou un emoji personnalisé du serveur. |
+| `message.pin()`, `unpin()` | L’épingle dans son salon. |
+| `message.reply(...)` | Y répond, avec l’original affiché au-dessus. |
+
+Pour lire ce qui a été dit avant, `channel.fetchMessages({ limit: 50 })` demande à Discord les derniers messages (100 au plus par appel), et `channel.bulkDelete(messages)` en supprime beaucoup d’un coup (Discord refuse en masse les messages de plus de deux semaines, qui sont laissés de côté).
+
+## Points d’attention
+
+- **Une commande répond quand même.** Quand le travail est un `send()` ailleurs, répondez aussi à l’interaction, en privé si le salon doit rester propre.
+- **Ne répétez jamais le texte de quelqu’un sans `allowedMentions`.** C’est le moyen le plus simple de laisser n’importe qui notifier @everyone par votre bot.
+- **Tout est vérifié avant de partir.** Une limite de Discord est une erreur qui contient la limite, depuis votre code, pas un mystérieux « Invalid Form Body » de Discord.
+- **Seuls les messages du bot peuvent être modifiés.** Supprimer le message de quelqu’un d’autre demande la permission Gérer les messages.
+
+## Récapitulatif
+
+- `send()` sur un salon, un utilisateur ou un membre ; `reply()` sur un message ou une interaction ; tous prennent la même chose.
+- Un message contient `content`, `embeds`, `files`, `components`, `poll` ; il lui en faut au moins un.
+- `asset('chemin')` envoie un fichier de `public/`, avec l’éditeur qui les liste.
+- `allowedMentions` décide qui est notifié ; `send()` renvoie le message, pour le modifier, y réagir, l’épingler.
+
+<CardGroup cols={2}>
+  <Card title="Les événements" icon="zap" href="/fr/tutorial/events">
+    Réagir quand quelqu’un arrive, quand un rôle change, quand le bot se connecte.
+  </Card>
+  <Card title="Guide : Envoyer des messages" icon="book-open" href="/fr/messages">
+    Tout ce que prend un message, en bref.
+  </Card>
+</CardGroup>

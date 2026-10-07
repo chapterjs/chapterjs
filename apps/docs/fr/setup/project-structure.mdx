@@ -1,0 +1,239 @@
+---
+title: 'Structure du projet'
+description: 'À quoi sert chaque dossier et fichier de votre projet, et les deux règles de nommage qui vous laissent les organiser à votre façon'
+---
+
+Un projet créé avec `create chapter` ressemble à ceci. Tout ce que fait votre bot vit dans `src/` ; le reste est de la configuration que vous touchez rarement.
+
+<Tree>
+  <Tree.Folder name="my-bot" defaultOpen>
+    <Tree.Folder name=".chapterjs" />
+    <Tree.Folder name="public" />
+    <Tree.Folder name="src" defaultOpen>
+      <Tree.Folder name="commands" defaultOpen>
+        <Tree.File name="ping.ts" highlight />
+      </Tree.Folder>
+      <Tree.Folder name="components" defaultOpen>
+        <Tree.Folder name="buttons" defaultOpen>
+          <Tree.File name="again.ts" highlight />
+        </Tree.Folder>
+      </Tree.Folder>
+      <Tree.Folder name="events" defaultOpen>
+        <Tree.Folder name="ready" defaultOpen>
+          <Tree.File name="online.ts" highlight />
+        </Tree.Folder>
+      </Tree.Folder>
+      <Tree.Folder name="tasks" />
+      <Tree.Folder name="messages" defaultOpen>
+        <Tree.File name="en-US.ts" highlight />
+        <Tree.File name="fr.ts" highlight />
+      </Tree.Folder>
+      <Tree.File name="presence.ts" highlight />
+    </Tree.Folder>
+    <Tree.File name=".env" />
+    <Tree.File name=".env.example" />
+    <Tree.File name=".gitignore" />
+    <Tree.File name="package.json" />
+    <Tree.File name="tsconfig.json" />
+  </Tree.Folder>
+</Tree>
+
+## `src/` : l’endroit où est un fichier dit ce qu’il est
+
+ChapterJS ne vous demande jamais d’enregistrer quoi que ce soit. Un fichier est une commande ou une réaction à un événement à cause de **l’endroit où il se trouve**, comme une route dans un framework web :
+
+| Dossier | Un fichier dedans est | Ce qu’il exporte |
+| --- | --- | --- |
+| `src/commands/` | Une commande slash, nommée d’après son chemin : `ping.ts` est `/ping`, `mod/ban.ts` est `/mod ban` | `command({ ... })` |
+| `src/events/<event>/` | Une réaction à l’événement nommé par son dossier : `memberJoin/welcome.ts` tourne quand quelqu’un arrive | `event(({ ... }) => { ... })` |
+| `src/components/buttons/`, `selects/`, `modals/`, `embeds/` | Un bouton, un menu déroulant, un formulaire ou un embed, distingués par leur chemin : `buttons/again.ts` est le bouton que Discord renvoie sous le nom `buttons/again` | `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed({ ... })` |
+| `src/tasks/` | Quelque chose que le bot fait tout seul, régulièrement ou à des heures données : `report.ts` est la tâche `report` | `task({ ... })` |
+| `src/presence.ts` | Le seul fichier qui dit ce que le bot affiche sous son nom : son statut et ce qu’il fait | `presence({ ... })` |
+| `src/messages/` | Une langue du bot par fichier, nommé d’après elle : `fr.ts` est le français ; chaque fonction reçoit alors `t` | `language({ ... })` |
+
+Tous s’importent du même endroit, dans chaque fichier :
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Répond Pong !',
+  async run({ interaction }) {
+    await interaction.reply('Pong !');
+  },
+});
+```
+
+```ts src/events/memberJoin/welcome.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  await member.send(`Bienvenue sur ${guild.name} !`);
+});
+```
+
+```ts src/components/buttons/again.ts
+import { button } from 'chapterjs';
+
+const again = button({
+  label: 'Encore',
+  data: { count: 'number' },
+  async run({ interaction, data }) {
+    const count = data.count + 1;
+    await interaction.update({
+      content: `Pong ! ×${count}`,
+      components: [again({ count })],
+    });
+  },
+});
+
+export default again;
+```
+
+Tout autre dossier de `src/` est à vous : `src/lib/`, `src/db/`, ce que vous voulez. ChapterJS ne lit que les dossiers ci-dessus, et vos fichiers importent le reste comme d’habitude.
+
+<Note>
+  Comment écrire chaque sorte de fichier est dans [Commandes](/fr/commands), [Événements](/fr/events),
+  [Boutons](/fr/components) et [Tâches](/fr/tasks).
+</Note>
+
+## Deux règles de nommage
+
+Dans `src/commands/`, `src/events/`, `src/components/` et `src/tasks/`, deux sortes de noms ne font jamais partie d’une commande, d’un événement, d’un composant ou d’une tâche, pour que vous puissiez ranger vos fichiers comme vous voulez :
+
+<Tree>
+  <Tree.Folder name="src/commands" defaultOpen>
+    <Tree.File name="_embeds.ts" />
+    <Tree.Folder name="(fun)" defaultOpen>
+      <Tree.File name="ping.ts" />
+    </Tree.Folder>
+    <Tree.Folder name="(moderation)" defaultOpen>
+      <Tree.File name="_checks.ts" />
+      <Tree.File name="ban.ts" />
+      <Tree.File name="kick.ts" />
+      <Tree.Folder name="mod" defaultOpen>
+        <Tree.File name="warn.ts" />
+      </Tree.Folder>
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+- **Un dossier entre parenthèses ne fait que regrouper des fichiers.** `(fun)/ping.ts` est toujours `/ping`, et `(moderation)/mod/warn.ts` est `/mod warn`. Imbriquez-en autant que vous voulez ; Discord ne les voit jamais.
+- **Un nom qui commence par `_` est privé.** `_embeds.ts` et `_checks.ts` ne sont jamais lus comme une commande ou un événement. Utilisez-les pour le code que plusieurs fichiers partagent, et importez-les comme n’importe quel fichier : `import { canPunish } from './_checks'`.
+
+Les deux mêmes règles s’appliquent dans `src/events/`, où `(logs)/messageDelete/log.ts` réagit à `messageDelete`, et dans `src/components/`, où `(mod)/buttons/ban.ts` est le bouton `buttons/ban`.
+
+<Warning>
+  Deux fichiers ne peuvent pas être la même chose. `(fun)/ping.ts` et `(tools)/ping.ts` sont
+  tous les deux `/ping` : le second est signalé et mis de côté.
+</Warning>
+
+## Les imports
+
+Vos fichiers sont en TypeScript, exécutés directement par Node. Un import relatif n’a pas besoin d’extension, et un dossier avec un fichier `index` fonctionne aussi :
+
+<CodeGroup>
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+import { greet } from '../lib/greet'; // src/lib/greet.ts
+import { db } from '../db'; // src/db/index.ts
+
+export default command({
+  description: 'Dit bonjour',
+  async run({ interaction, user }) {
+    db.visits += 1;
+    await interaction.reply(greet(user.displayName));
+  },
+});
+```
+
+```ts src/lib/greet.ts
+export function greet(name: string): string {
+  return `Bonjour ${name} !`;
+}
+```
+
+```ts src/db/index.ts
+export const db = { visits: 0 };
+```
+
+</CodeGroup>
+
+Écrire l’extension fonctionne aussi : `'../lib/greet.ts'`.
+
+Les paquets de `node_modules` s’importent comme d’habitude. Les fichiers que vous importez sont surveillés comme les autres : dans [`chapterjs dev`](/fr/run/dev), enregistrer `src/lib/greet.ts` recharge chaque fichier qui l’utilise.
+
+## `public/` : les fichiers qu’envoie votre bot
+
+Images, documents, sons : mettez-les dans `public/`, dans les dossiers que vous voulez, et envoyez-en un avec `asset('photos/monday.png')` dans les `files` d’un message. Votre éditeur liste les fichiers du dossier pendant que vous tapez, et `chapterjs dev` tient cette liste à jour pendant que vous ajoutez des fichiers. Un fichier est lu quand le message est envoyé. Voir [Fichiers](/fr/messages#fichiers).
+
+## `.chapterjs/` : généré, ignoré, supprimable
+
+Ce dossier est écrit par ChapterJS, et git l’ignore. Il contient :
+
+| | Ce que c’est |
+| --- | --- |
+| `types/`, `projects/` | Les types de votre projet : comment `event` sait, dans chaque dossier, ce que reçoit sa fonction, et comment `asset()` connaît les fichiers de `public/`. Votre éditeur les lit. |
+| `cache/` | Ce qui a été enregistré en dernier sur Discord, pour que relancer votre bot ne coûte aucune requête. |
+| `build/` | Votre bot compilé, écrit par [`chapterjs build`](/fr/run/build). |
+
+Il est écrit quand vous installez votre projet (`postinstall` lance `chapterjs sync`) et à chaque démarrage de `chapterjs dev` ou `chapterjs build`. Si votre éditeur dit que `event` n’existe pas, lancez `chapterjs sync` : voir la [référence du CLI](/fr/reference/cli#chapterjs-sync).
+
+## `.env`
+
+Deux valeurs, lues par [`chapterjs dev`](/fr/run/dev) ; [`chapterjs start`](/fr/run/start) n’a besoin que de la première :
+
+```bash .env
+BOT_TOKEN=
+DEV_GUILD_ID=
+```
+
+Où les trouver est dans [Votre application Discord](/fr/setup/discord-application). Le vrai environnement l’emporte sur le fichier : sur un hébergeur, vous donnez `BOT_TOKEN` dans ses réglages et n’envoyez aucun `.env`.
+
+<Warning>
+  Votre token est un mot de passe : ne le partagez jamais, et ne commitez jamais `.env`. Les projets
+  créés avec `create chapter` l’ignorent déjà dans git.
+</Warning>
+
+## `package.json`
+
+Les scripts de votre projet lancent le [CLI](/fr/reference/cli) :
+
+| Script | Lance | Quand |
+| --- | --- | --- |
+| `dev` | `chapterjs dev` | Pendant que vous écrivez votre bot |
+| `build` | `chapterjs build` | Avant de le mettre en ligne |
+| `start` | `chapterjs start` | Sur la machine qui l’héberge |
+| `typecheck` | `tsc -b` | Pour vérifier les types de tout le projet depuis un terminal |
+| `postinstall` | `chapterjs sync` | Tout seul, après chaque installation |
+
+`chapterjs` est la seule dépendance de votre bot. TypeScript et `@types/node` sont des dépendances de développement : ils vérifient votre code, et ne sont pas nécessaires pour le faire tourner.
+
+## `tsconfig.json`
+
+Il ne contient que des options du compilateur et une référence à `./.chapterjs`, où se trouvent les vrais projets : un par dossier conventionnel, pour que `event` puisse être typé différemment dans chacun. Gardez-le ainsi.
+
+<Warning>
+  Un simple `tsc` ne vérifie rien dans un projet ChapterJS. Utilisez le script `typecheck`,
+  qui lance `tsc -b` : c’est aussi ce que suit votre éditeur.
+</Warning>
+
+## Avec pnpm : un fichier de plus
+
+pnpm refuse d’installer un projet qui a esbuild quelque part dans ses dépendances (ici, via `chapterjs`) tant qu’on ne lui a pas dit si le script d’installation d’esbuild peut tourner. Il ne le peut pas, et esbuild n’en a pas besoin. `create chapter` écrit la réponse pour vous ; dans un projet créé autrement, créez-le à côté de `package.json` :
+
+```yaml pnpm-workspace.yaml
+allowBuilds:
+  esbuild: false
+ignoredBuiltDependencies:
+  - esbuild
+```
+
+<CardGroup cols={2}>
+  <Card title="Commandes" icon="terminal" href="/fr/commands">
+    Un fichier par commande slash, options typées pour vous.
+  </Card>
+  <Card title="Événements" icon="zap" href="/fr/events">
+    Un dossier par événement, autant de fichiers que vous voulez.
+  </Card>
+</CardGroup>

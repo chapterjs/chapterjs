@@ -1,0 +1,149 @@
+---
+title: 'Erreurs'
+description: 'Attraper ce qui est levé quand Discord refuse une action, ne peut pas être joint, ou rejette le token, et savoir ce que voit la personne'
+---
+
+Une action qui échoue lève une erreur. Il y en a trois sortes, toutes exportées par `chapterjs`, et vous pouvez les distinguer avec `instanceof`.
+
+<Note>
+  Ce qui se passe quand votre fonction lève une erreur sans l’attraper est dans [Répondre](/fr/commands/answering) pour les commandes et dans [Événements](/fr/events) pour les événements : le bot ne s’arrête jamais, vous recevez l’erreur dans votre terminal avec le fichier et la ligne.
+</Note>
+
+```ts
+import { DiscordApiError, type GuildMember } from 'chapterjs';
+
+async function warn(member: GuildMember, text: string) {
+  try {
+    await member.send(text);
+    return true;
+  } catch (error) {
+    // 50007 : cet utilisateur n’accepte pas les messages privés.
+    if (error instanceof DiscordApiError && error.code === 50007) return false;
+    throw error; // tout le reste est un vrai problème
+  }
+}
+```
+
+## DiscordApiError
+
+Discord a répondu à une requête par une erreur.
+
+Elle est levée quand Discord refuse ce que le bot a demandé : une permission manquante, quelque chose qui n’existe plus, une valeur qu’il n’accepte pas. La requête a été reçue et comprise ; la relancer donne la même réponse tant que rien ne change.
+
+<ResponseField name="name" type="'DiscordApiError'" required>Ce que dit `instanceof`, sous forme de texte.</ResponseField>
+<ResponseField name="message" type="string" required>Ce qui s’est passé, avec la raison donnée par Discord et les champs qu’il a refusés : `Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)`, suivi d’une ligne par champ refusé quand il y en a.</ResponseField>
+<ResponseField name="status" type="number" required>Le statut HTTP de la réponse (403, 404...).</ResponseField>
+<ResponseField name="code" type="number" required>Le code d’erreur JSON de Discord (50013 pour « Missing Permissions »...), ou 0 quand la réponse n’en avait pas.</ResponseField>
+<ResponseField name="fieldErrors" type="readonly DiscordFieldError[]" required>Les champs de la requête que Discord a refusés, quand il dit lesquels.</ResponseField>
+<ResponseField name="method" type="'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'" required>La méthode HTTP de la requête qui a échoué.</ResponseField>
+<ResponseField name="route" type="string" required>Le chemin de l’endpoint tel qu’écrit dans la documentation.</ResponseField>
+
+### Codes que vous rencontrerez
+
+Testez `error.code`, jamais `error.message` : le texte peut changer, le code non.
+
+| Code | Discord dit | Veut généralement dire |
+| --- | --- | --- |
+| `10003` | Unknown channel | Le salon a été supprimé |
+| `10007` | Unknown member | Il a quitté le serveur |
+| `10008` | Unknown message | Le message a été supprimé |
+| `10026` | Unknown ban | L’utilisateur n’est pas banni |
+| `50001` | Missing access | Le bot ne peut pas voir ce salon ou ce serveur |
+| `50007` | Cannot send messages to this user | Ses messages privés sont fermés, ou il ne partage aucun serveur avec le bot |
+| `50013` | You lack permissions to perform that action | Le bot n’a pas une permission, ou son rôle le plus haut est trop bas |
+| `50035` | Invalid form body | Une valeur a été refusée : regardez `fieldErrors` |
+
+La liste complète est dans la [documentation de Discord](https://docs.discord.com/developers/topics/opcodes-and-status-codes#json-json-error-codes).
+
+### DiscordFieldError
+
+Un problème que Discord a trouvé dans un champ de la requête.
+
+<ResponseField name="path" type="string" required>Où est le problème : `embeds[0].title`, ou vide (`''`) pour toute la requête.</ResponseField>
+<ResponseField name="code" type="string" required>La sorte de problème, telle que la nomme Discord (`BASE_TYPE_MAX_LENGTH`).</ResponseField>
+<ResponseField name="message" type="string" required>Ce qui ne va pas, en anglais.</ResponseField>
+
+```ts
+import { DiscordApiError, type TextChannel } from 'chapterjs';
+
+async function post(channel: TextChannel, title: string) {
+  try {
+    await channel.send({ embeds: [{ title }] });
+  } catch (error) {
+    if (error instanceof DiscordApiError && error.code === 50035) {
+      for (const field of error.fieldErrors) console.log(`${field.path}: ${field.message}`);
+      return;
+    }
+    throw error;
+  }
+}
+```
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#error-messages)
+
+## DiscordUnavailableError
+
+Une requête n’a pas pu atteindre Discord, ou Discord a échoué à répétition.
+
+Elle est levée quand il n’y a aucune réponse à obtenir : pas de connexion internet, une panne de Discord, une erreur serveur qui a persisté. Le bot a déjà réessayé avant de la lever ; réessayer plus tard peut fonctionner.
+
+<ResponseField name="name" type="'DiscordUnavailableError'" required>Ce que dit `instanceof`, sous forme de texte.</ResponseField>
+<ResponseField name="message" type="string" required>`Discord could not be reached for GET /guilds/{guild.id}. Check your internet connection and https://discordstatus.com, then try again.`</ResponseField>
+<ResponseField name="method" type="'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'" required>La méthode HTTP de la requête qui a échoué.</ResponseField>
+<ResponseField name="route" type="string" required>Le chemin de l’endpoint tel qu’écrit dans la documentation.</ResponseField>
+<ResponseField name="cause" type="unknown">L’erreur sous-jacente, quand Node en a donné une.</ResponseField>
+
+## InvalidTokenError
+
+Le token du bot a été refusé : aucune requête ne peut réussir tant que ce n’est pas corrigé.
+
+Elle est levée par chaque requête une fois que Discord a refusé le token : le bot cesse d’envoyer quoi que ce soit, donc un mauvais token n’inonde jamais Discord. Rien dans votre code ne peut la corriger ; `chapterjs dev` vérifie le token avant de se connecter, donc vous la voyez normalement là (voir [Dépannage](/fr/run/troubleshooting)).
+
+<ResponseField name="name" type="'InvalidTokenError'" required>Ce que dit `instanceof`, sous forme de texte.</ResponseField>
+<ResponseField name="message" type="string" required>`Discord refused the bot token. Copy it again from the Developer Portal (your application → Bot → Reset Token) into BOT_TOKEN in your .env file.`</ResponseField>
+
+## Attraper
+
+N’attrapez que ce que vous attendez, et laissez passer le reste : une erreur que vous ne gérez pas est signalée avec son fichier et sa ligne, ce qui est ce que vous voulez pour un bug.
+
+```ts src/commands/kick.ts
+import { command, DiscordApiError } from 'chapterjs';
+
+export default command({
+  description: 'Expulse un membre',
+  options: { target: { type: 'user', description: 'Qui expulser', required: true } },
+  permissions: ['KickMembers'],
+  async run({ interaction, guild, member, options }) {
+    try {
+      await guild.kick(options.target, `Expulsé par ${member.displayName}`);
+      await interaction.reply(`${options.target} a été expulsé.`);
+    } catch (error) {
+      if (error instanceof DiscordApiError && error.code === 50013) {
+        await interaction.reply({ content: 'Mon rôle est en dessous du sien, je ne peux pas l’expulser.', ephemeral: true });
+        return;
+      }
+      throw error;
+    }
+  },
+});
+```
+
+## Ce que voit la personne
+
+Quand `run` lève une erreur que vous n’avez pas attrapée, la personne qui a utilisé la commande reçoit une réponse courte et privée, jamais les détails techniques :
+
+```text
+Something went wrong while running this command.
+```
+
+Quand l’erreur est une `DiscordApiError` avec le code `50013` ou `50001`, la réponse dit ce qui manque à la place :
+
+```text
+I don't have the permission to do that here.
+```
+
+L’erreur elle-même, avec son fichier et sa ligne, va dans votre terminal. Voir [Répondre](/fr/commands/answering). Les deux phrases peuvent être traduites dans les fichiers de langue de `src/messages/` : voir [Ce que le bot répond de lui-même](/fr/translated-messages#ce-que-le-bot-répond-de-lui-même).
+
+## Ce qui ne lève jamais d’erreur
+
+Les limites de débit ne sont pas des erreurs : quand le bot va trop vite, les requêtes attendent leur tour puis réussissent. Un échec temporaire de Discord est réessayé avant que quoi que ce soit ne soit levé.

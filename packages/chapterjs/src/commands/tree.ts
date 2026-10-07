@@ -72,7 +72,8 @@ function withLocales<T extends object>(
 
 function toOption(
   option: LoadedOption,
-  locales: OptionLocales | undefined
+  locales: OptionLocales | undefined,
+  autocomplete: boolean
 ): RawApplicationCommandOption {
   const raw: RawApplicationCommandOption = withLocales(
     {
@@ -84,6 +85,9 @@ function toOption(
     locales?.descriptions
   );
   if (option.required) raw.required = true;
+  // Discord then asks the bot for suggestions while the person types.
+  // https://docs.discord.com/developers/interactions/application-commands#autocomplete
+  if (autocomplete) raw.autocomplete = true;
   if ('choices' in option && option.choices) {
     const entries: [string, string | number][] = Array.isArray(option.choices)
       ? option.choices.map((value: string | number) => [String(value), value])
@@ -181,7 +185,11 @@ export function buildCommands(
 ): CommandPayload[] {
   const optionsOf = (command: LoadedCommand): RawApplicationCommandOption[] =>
     command.options.map(option =>
-      toOption(option, command.optionLocales[option.name])
+      toOption(
+        option,
+        command.optionLocales[option.name],
+        option.name in command.autocomplete
+      )
     );
   const sub = (command: LoadedCommand): RawApplicationCommandOption =>
     withLocales(

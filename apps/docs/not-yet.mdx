@@ -11,12 +11,6 @@ ChapterJS is young. This page lists what it does not have yet, so that you do no
   translated messages and the structures they give you.
 </Note>
 
-## Autocomplete
-
-Options whose suggestions come from your bot while the person types. Not available: an option takes `choices`, declared once in the file.
-
-Meanwhile: `choices`, when the values are known in advance (25 at most).
-
 ## Context menu commands
 
 Commands used by right-clicking a user or a message. Not available: a file of `src/commands/` is always a slash command.
@@ -34,12 +28,6 @@ Meanwhile: a file of `src/events/messageCreate/` that reads `message.content`. I
 Asking a question with a message, then waiting for the next message, reaction or click of the same person. Not available: a function answers, then ends.
 
 Meanwhile: a button or a menu of `src/components/` that carries what it needs in its `data`. Its file runs when the person clicks, however long after, even after a restart: see [Components](/components).
-
-## Cooldowns
-
-Refusing a command to a person or a server that used it a moment ago. Not available: a command has no setting for it.
-
-Meanwhile: a `Map` of the last uses, kept in a file starting with `_` and imported by the command. It starts empty on every restart, and `chapterjs dev` reloads it on every save.
 
 ## Storing data
 

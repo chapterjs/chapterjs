@@ -84,7 +84,7 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     A file you saved can't run: the first line names it, with the line and what is wrong. Your bot is still online with the last version of that file that worked. Fix the file and save: it reloads. A file that never worked is left out until it does.
   </Accordion>
   <Accordion title="✗ src/…:line … (while the bot runs)">
-    One of your functions threw: the line names the file and the line in your code, and the rest is the error. Nothing else stops. For a command, the person got a short private answer. See [when your function fails](/commands#when-your-function-fails).
+    One of your functions threw: the line names the file and the line in your code, and the rest is the error. Nothing else stops. For a command, the person got a short private answer. See [when your function fails](/commands/answering#when-your-function-fails).
   </Accordion>
   <Accordion title="↻ Your files now need more from Discord (…): reconnecting...">
     A file you added listens to something the connection was not asked for (a new event folder). ChapterJS reconnects by itself with what is needed and says `✓ Reconnected, … loaded`; if that needs a privileged intent, see above.
@@ -194,6 +194,9 @@ Every message of ChapterJS says what happened, then what to do. This page gather
   </Accordion>
   <Accordion title="You need the … permission to use this command.">
     The person lacks a permission the command asks for with `permissions`, where they used it. See [Who can use a command](/commands#who-can-use-a-command).
+  </Accordion>
+  <Accordion title="You can use this command again in …">
+    The command has a `cooldown`, and the person used it too soon. That is what you asked for: see [Cooldowns](/commands#cooldowns). The answer deletes itself when the cooldown ends; past 15 minutes it shows the date and time instead.
   </Accordion>
   <Accordion title="These answers are in English">
     The phrases the bot answers by itself can be translated in the language files of `src/messages/`: see [What the bot answers by itself](/translated-messages#what-the-bot-answers-by-itself).

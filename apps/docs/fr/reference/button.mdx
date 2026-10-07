@@ -1,0 +1,273 @@
+---
+title: 'button()'
+description: 'Tout ce que déclare un fichier de bouton, ce que reçoit sa fonction run, et les types partagés par chaque composant interactif'
+---
+
+`button()` est ce qu’un fichier de `src/components/buttons/` exporte par défaut. Elle prend un objet, `ButtonConfig`, et type `run` d’après lui.
+
+```ts src/components/buttons/confirm.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Confirmer',
+  style: 'success',
+  async run({ interaction }) {
+    await interaction.update({ content: 'Confirmé !', components: [] });
+  },
+});
+```
+
+<Note>
+  Comment écrire un bouton, y transporter des données et répondre à un clic est dans le [guide](/fr/components). Cette page liste ce qui existe.
+</Note>
+
+## button()
+
+```ts
+button<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ButtonConfig<Data, Where>): ButtonFile<Data>
+```
+
+Déclare un bouton. Exportez le résultat comme export par défaut d’un fichier de `src/components/buttons/` : le chemin du fichier est ce qui distingue le bouton, donc vous n’écrivez jamais d’identifiant.
+
+`Data` et `Where` sont déduits de ce que vous passez : vous ne les écrivez jamais.
+
+### ButtonFile
+
+Ce que renvoie `button()` : l’export par défaut d’un fichier de bouton. Importez-le là où vous envoyez un message, et appelez-le avec les données que transporte le bouton (`ban({ userId })`) ; un bouton sans données s’utilise tel quel (`confirm`), ou s’appelle avec une apparence (`confirm({ disabled: true })`).
+
+```ts
+type ButtonFile<Data extends DataShape = {}> = { readonly config: unknown } &
+  ({} extends Data
+    ? ((look?: ButtonLook) => ButtonComponent) & ButtonComponent
+    : {} extends DataInputOf<Data>
+      ? ((data?: DataInputOf<Data>, look?: ButtonLook) => ButtonComponent) & ButtonComponent
+      : (data: DataInputOf<Data>, look?: ButtonLook) => ButtonComponent)
+```
+
+<ResponseField name="config" type="unknown">
+  Ce que le fichier a donné à `button()`, pas encore vérifié.
+</ResponseField>
+
+## ButtonConfig
+
+Ce qu’un fichier de bouton donne à `button()`. Il a chaque champ de [`ButtonLook`](#buttonlook) et d’[`InteractiveConfig`](#interactiveconfig), plus :
+
+<ResponseField name="run" type="(context: ButtonContext<Data, Where>) => unknown" required>
+  Ce qu’il faut faire quand quelqu’un clique sur le bouton.
+</ResponseField>
+
+Un bouton a besoin d’un `label` ou d’un `emoji`.
+
+### ButtonLook
+
+L’apparence d’un bouton. Tout est facultatif quand il est mis dans un message : ce que dit le fichier est la valeur par défaut.
+
+<ResponseField name="label" type="DynamicText<Data>">
+  Le texte sur le bouton (80 caractères au plus) : écrit tel quel, ou une fonction de `t` et des données, lancée au moment de l’envoi du message. Voir [DynamicText](/fr/reference/messages#dynamictext).
+</ResponseField>
+
+<ResponseField name="emoji" type="EmojiInput">
+  Un emoji sur le bouton, avant l’étiquette.
+</ResponseField>
+
+<ResponseField name="style" type="ButtonStyleName">
+  La couleur du bouton. `'primary'` par défaut.
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean">
+  Affiche le bouton grisé, impossible à cliquer.
+</ResponseField>
+
+### ButtonStyleName
+
+```ts
+type ButtonStyleName = 'primary' | 'secondary' | 'success' | 'danger'
+```
+
+La couleur d’un bouton : `'primary'` (blurple), `'secondary'` (gris), `'success'` (vert) ou `'danger'` (rouge). Les boutons de lien et premium se fabriquent avec [`linkButton()`](/fr/reference/layout#linkbutton) et [`premiumButton()`](/fr/reference/layout#premiumbutton).
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#button-button-styles)
+
+## ButtonContext
+
+Ce que reçoit `run` quand on clique sur le bouton : tout ce qu’a [InteractiveContext](#interactivecontext), et l’endroit tel que le donne [PlaceOf](#placeof) pour `Where`, avec une [ComponentInteraction](/fr/reference/interaction#componentinteraction).
+
+```ts
+type ButtonContext<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'> =
+  InteractiveContext<Data> & PlaceOf<Where, ComponentInteraction>
+```
+
+## Partagé par les boutons et les menus déroulants
+
+### InteractiveConfig
+
+Ce que déclare chaque composant interactif, en plus de son apparence.
+
+<ResponseField name="data" type="DataShape">
+  Ce que le composant transporte depuis le message qui l’affiche jusqu’au code qui tourne quand on l’utilise : un nom et une sorte pour chaque valeur (`{ userId: 'string', page: 'number' }`). Donné quand le composant est mis dans un message, reçu typé dans `run`. Discord le garde dans le composant lui-même, donc il survit aux redémarrages.
+</ResponseField>
+
+<ResponseField name="where" type="ComponentWhere">
+  Où le composant peut être utilisé : `'guild'` (sur les serveurs, par défaut), `'dm'` (en messages privés avec le bot) ou `'both'`. Ce que reçoit `run` suit.
+</ResponseField>
+
+<ResponseField name="who" type="ComponentWho">
+  Qui peut l’utiliser : `'everyone'` (par défaut) ou seulement l’auteur (`'author'`) de la commande à laquelle le message répond.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean">
+  Rendre les réponses du composant visibles seulement par qui l’a utilisé. Sur un message que seule la personne voit (une réponse éphémère), elles le sont déjà.
+</ResponseField>
+
+### InteractiveContext
+
+Ce que chaque composant interactif donne à son `run`, en plus de l’endroit.
+
+<ResponseField name="user" type="User">
+  Qui l’a utilisé.
+</ResponseField>
+
+<ResponseField name="message" type="Message">
+  Le message sur lequel est le composant.
+</ResponseField>
+
+Chaque composant reçoit aussi `t` quand le projet a une langue dans `src/messages/` : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
+
+<ResponseField name="data" type="DataValuesOf<Data>">
+  Ce que transporte le composant, tel que déclaré dans `data`.
+</ResponseField>
+
+### ComponentWhere
+
+```ts
+type ComponentWhere = 'guild' | 'dm' | 'both'
+```
+
+Où un composant peut être utilisé : dans les messages des serveurs (`'guild'`), en messages privés avec le bot (`'dm'`), ou les deux. Un composant est là où est le message qui le contient : ceci dit où votre code s’y attend.
+
+### ComponentWho
+
+```ts
+type ComponentWho = 'everyone' | 'author'
+```
+
+Qui peut utiliser un composant : tous ceux qui voient le message (`'everyone'`, par défaut), ou seulement l’auteur (`'author'`), la personne qui a utilisé la commande à laquelle le message répond. Toute autre personne reçoit un refus privé.
+
+## Les données
+
+### DataKind
+
+```ts
+type DataKind = 'string' | 'number' | 'boolean'
+```
+
+Les sortes de valeurs qu’un composant peut transporter dans ses `data`.
+
+### DataField
+
+```ts
+type DataField = DataKind | { type: 'string'; default?: string } | { type: 'number'; default?: number } | { type: 'boolean'; default?: boolean }
+```
+
+Une valeur que transporte un composant : sa sorte, ou sa sorte avec une valeur par défaut, ce qui la rend facultative là où le composant est mis dans un message.
+
+### DataShape
+
+```ts
+type DataShape = Readonly<Record<string, DataField>>
+```
+
+Ce que transporte un composant : un nom pour chaque valeur, et sa sorte.
+
+### DataValuesOf
+
+```ts
+type DataValuesOf<Shape extends DataShape> = { [Name in keyof Shape]: string | number | boolean }
+```
+
+Les valeurs d’une déclaration `data`, typées d’après elle : ce que reçoivent `run` et les textes du composant. Une valeur avec une valeur par défaut est toujours là.
+
+### DataInputOf
+
+```ts
+type DataInputOf<Shape extends DataShape> = { [Name in keyof Shape]: string | number | boolean }
+```
+
+Ce qu’un message donne à un composant : les valeurs de ses `data`, celles qui ont une valeur par défaut étant facultatives.
+
+## L’endroit
+
+Ce que reçoit `run` à propos de l’endroit où le composant a été utilisé suit `where`, comme pour une [commande](/fr/reference/command#commandcontext). Les mêmes types servent aux formulaires, avec une `ModalInteraction`.
+
+### PlaceOf
+
+```ts
+type PlaceOf<Where extends ComponentWhere, I extends Interaction> =
+  Where extends 'guild' ? PlaceInGuild<I>
+  : Where extends 'dm' ? PlaceInDm<I>
+  : PlaceInGuild<I> | PlaceInPrivate<I>
+```
+
+Ce que reçoit `run` à propos de l’endroit où il a été utilisé, selon `where`.
+
+### PlaceInGuild
+
+Ce que reçoit `run` à propos de l’endroit, sur un serveur.
+
+<ResponseField name="interaction" type="InGuild<I>" required>
+  L’interaction, avec son serveur, son membre et son salon jamais `null`.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où il a été utilisé.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember" required>
+  Qui l’a utilisé, en tant que membre du serveur.
+</ResponseField>
+
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon où il a été utilisé.
+</ResponseField>
+
+### PlaceInPrivate
+
+Ce que reçoit `run` à propos de l’endroit, dans un message privé, quand il fonctionne aussi sur les serveurs (`where: 'both'`).
+
+<ResponseField name="interaction" type="InPrivate<I>" required>
+  L’interaction, avec `guildId`, `guild` et `member` à `null`.
+</ResponseField>
+
+<ResponseField name="guild" type="null" required>
+  Pas de serveur : il a été utilisé dans un message privé.
+</ResponseField>
+
+<ResponseField name="member" type="null" required>
+  Pas de membre : la personne est `user`.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  La conversation privée où il a été utilisé.
+</ResponseField>
+
+### PlaceInDm
+
+Ce que reçoit `run` à propos de l’endroit, quand il ne fonctionne qu’en messages privés (`where: 'dm'`).
+
+<ResponseField name="interaction" type="InDm<I>" required>
+  L’interaction, sur laquelle rien qui concerne un serveur n’existe.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  La conversation privée où il a été utilisé.
+</ResponseField>
+
+### InGuild, InPrivate, InDm
+
+```ts
+type InGuild<I extends Interaction> = I & { guildId: string; guild: Guild; member: GuildMember; channel: GuildTextBasedChannel }
+type InPrivate<I extends Interaction> = I & { guildId: null; guild: null; member: null; channel: DMChannel }
+type InDm<I extends Interaction> = Omit<I, 'guildId' | 'guild' | 'member' | 'channel'> & { channel: DMChannel }
+```
+
+Une interaction vue depuis un serveur, depuis un message privé pour quelque chose qui fonctionne aussi sur les serveurs, et depuis un message privé pour quelque chose qui ne fonctionne que là.

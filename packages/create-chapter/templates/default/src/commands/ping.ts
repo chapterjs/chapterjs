@@ -16,14 +16,22 @@ export default command({
   },
 });
 
-// A command can ask for options, typed for you in `run`:
+// A command can ask for options, typed for you in `run`, suggest values
+// while the person types, and make each person wait between two uses:
 //
 // export default command({
 //   description: 'Says hello to someone',
+//   cooldown: '10s',
 //   options: {
 //     who: { type: 'user', description: 'Who to greet', required: true },
+//     greeting: { type: 'string', description: 'How to greet' },
+//   },
+//   autocomplete: {
+//     // Called while the person types in "greeting", with what they typed.
+//     greeting: ({ value }) =>
+//       ['Hello', 'Hi', 'Hey'].filter(word => word.startsWith(value)),
 //   },
 //   async run({ interaction, options }) {
-//     await interaction.reply(`Hello ${options.who}!`);
+//     await interaction.reply(`${options.greeting ?? 'Hello'} ${options.who}!`);
 //   },
 // });

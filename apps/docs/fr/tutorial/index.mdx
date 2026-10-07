@@ -1,0 +1,66 @@
+---
+title: 'Bienvenue'
+description: 'Ce que ce tutoriel enseigne, à qui il s’adresse et comment le lire'
+---
+
+Ce tutoriel vous emmène de zéro à un bot Discord en ligne pour tout le monde, une étape à la fois. Il part du principe que vous n’avez jamais écrit de bot. Si vous connaissez un peu JavaScript, vous avez tout ce qu’il faut ; si vous n’avez jamais entendu parler de l’API de Discord, des intents ou des commandes slash, aucun problème : chaque mot est expliqué la première fois qu’il apparaît.
+
+Lisez-le dans l’ordre. Chaque page s’appuie sur la précédente, et chaque page se termine par un court récapitulatif de ce que vous avez appris et de ce qui vient ensuite.
+
+## Ce que vous allez construire
+
+Au fil des pages, vous écrivez un petit bot pour un serveur communautaire. À la fin, il :
+
+- répond à des commandes slash comme `/dice` et `/whois`, avec des options que les gens remplissent ;
+- accueille les nouveaux membres et garde un œil sur les messages ;
+- affiche des boutons, des menus déroulants et des formulaires, et réagit quand on les utilise ;
+- publie un rapport tout seul chaque matin ;
+- parle anglais et français, selon qui le lit ;
+- tourne sur une machine qui reste allumée, pour chaque serveur qui l’ajoute.
+
+Chaque élément est un fichier que vous ajoutez à votre projet. Rien de ce que vous écrivez dans un chapitre n’est à réécrire dans un chapitre suivant.
+
+## À qui il s’adresse
+
+À vous, si l’une de ces phrases est vraie :
+
+- Vous voulez un bot pour votre serveur et vous n’en avez jamais écrit.
+- Vous connaissez JavaScript (variables, fonctions, `async` et `await`) et voulez vous en servir pour quelque chose de concret.
+- Vous avez utilisé une autre bibliothèque Discord et voulez comprendre la logique de ChapterJS, sans lire sa référence d’abord.
+
+Vous n’avez pas besoin de connaître TypeScript. Vos fichiers sont des fichiers TypeScript, mais vous n’écrivez jamais un type vous-même : le framework les écrit pour vous, et votre éditeur s’en sert pour souligner les erreurs avant même que le bot tourne. Vous verrez ce que cela veut dire dès la première commande.
+
+## Comment le lire
+
+Chaque chapitre a la même forme :
+
+1. **Ce que vous allez faire, et pourquoi.** Un bot a des pièces qui bougent ; savoir pourquoi une étape existe, c’est ce qui permet de s’en souvenir.
+2. **Un fichier complet qui fonctionne tel quel.** Copiez-le dans votre projet, enregistrez, et essayez-le sur votre serveur de test. Rien n’est laissé en exercice.
+3. **Points d’attention.** Les erreurs que tout le monde fait une fois, et ce que le bot vous dit quand vous les faites.
+4. **Un récapitulatif.**
+
+Deux autres onglets se trouvent à côté de celui-ci, en haut de la page :
+
+| Onglet | À quoi il sert |
+| --- | --- |
+| **Guide** | Une page par fonctionnalité, droit au but, quand vous savez déjà ce que vous voulez faire. |
+| **Référence** | Chaque champ, chaque méthode, chaque type, quand vous cherchez quelque chose de précis. |
+
+Ce tutoriel renvoie aux deux quand un détail en vaut la peine. Vous n’en avez jamais besoin pour suivre.
+
+<Info>
+  Les commandes à taper dans un terminal sont données pour les quatre gestionnaires de paquets (pnpm, npm, yarn, bun). Choisissez l’onglet de celui que vous utilisez, et gardez-le : en mélanger deux dans un même projet provoque des erreurs déroutantes.
+</Info>
+
+## Par où commencer
+
+Si vous n’avez encore rien, commencez par la page suivante, qui explique ce qu’est un bot et comment il parle à Discord. Si vous avez déjà une application Discord et un serveur de test, vous pouvez aller directement à [Créer le projet](/fr/tutorial/create-project) ; les explications que vous sautez sont courtes, et vous pourrez y revenir.
+
+<CardGroup cols={2}>
+  <Card title="Comment fonctionne un bot" icon="lightbulb" href="/fr/tutorial/how-a-bot-works">
+    Ce qu’est un bot, et ce qui se passe entre Discord et votre programme.
+  </Card>
+  <Card title="Les outils" icon="wrench" href="/fr/tutorial/tools">
+    Node.js, un gestionnaire de paquets, un éditeur : les installer et les vérifier.
+  </Card>
+</CardGroup>

@@ -1,0 +1,87 @@
+---
+title: 'Ce qui n’est pas encore là'
+description: 'Savoir ce que ChapterJS ne fait pas encore, comment le reconnaître, et quoi faire en attendant'
+---
+
+ChapterJS est jeune. Cette page liste ce qu’il n’a pas encore, pour que vous ne le cherchiez pas, et quoi faire en attendant quand il y a quelque chose.
+
+<Note>
+  Ce qui existe est dans la [référence](/fr/reference) : commandes slash, événements,
+  composants (boutons, menus déroulants, formulaires, embeds), tâches, la présence,
+  messages traduits et les structures qu’ils vous donnent.
+</Note>
+
+## Commandes de menu contextuel
+
+Des commandes utilisées par un clic droit sur un utilisateur ou un message. Pas disponible : un fichier de `src/commands/` est toujours une commande slash.
+
+En attendant : une commande slash avec une option `user`, ou une option `string` qui prend le lien d’un message.
+
+## Commandes à préfixe
+
+Des commandes écrites dans un message, comme `!ban` ou `?help`. Pas disponible : un fichier de `src/commands/` est toujours une commande slash, enregistrée auprès de Discord.
+
+En attendant : un fichier de `src/events/messageCreate/` qui lit `message.content`. Il a besoin du [Message Content Intent](/fr/events/messages#message-content-intent), et la personne n’a rien de ce que donne une commande slash : pas de liste d’options, pas d’aide à la saisie, pas de vérification des permissions avant que votre fonction ne tourne.
+
+## Attendre une réponse
+
+Poser une question par un message, puis attendre le prochain message, la prochaine réaction ou le prochain clic de la même personne. Pas disponible : une fonction répond, puis se termine.
+
+En attendant : un bouton ou un menu de `src/components/` qui transporte ce qu’il lui faut dans ses `data`. Son fichier tourne quand la personne clique, aussi longtemps après que ce soit, même après un redémarrage : voir [Composants](/fr/components).
+
+## Stocker des données
+
+Un endroit où garder ce qu’apprend votre bot : scores, réglages, avertissements. Pas disponible : rien ne survit à un redémarrage sauf les `data` d’un [composant](/fr/components), qui vivent dans le message lui-même.
+
+En attendant : un fichier JSON écrit avec `node:fs`, ou n’importe quelle base de données faite pour Node.
+
+## D’autres événements
+
+Les [événements](/fr/reference/events) auxquels vos fichiers peuvent réagir sont ceux listés là : messages, membres, serveurs, salons et rôles. Les réactions, les votes d’un sondage, les fils, le vocal, la saisie, les bannissements, les invitations, les événements programmés et les autres ne sont pas encore là. Votre bot peut réagir, démarrer un fil ou joindre un sondage à un message : il n’est pas prévenu quand quelqu’un d’autre le fait.
+
+## Vocal
+
+Rejoindre un salon vocal, jouer ou enregistrer du son. Pas disponible.
+
+## Applications installées par l’utilisateur
+
+Un bot qu’une personne ajoute à son propre compte, pour utiliser ses commandes dans chaque serveur et en messages privés. Pas disponible : un bot s’ajoute à un serveur, et c’est là que sont ses commandes.
+
+## Premium et droits d’accès
+
+[`premiumButton()`](/fr/reference/layout#premiumbutton) ouvre la boutique de votre bot. Savoir qui s’est abonné, et être prévenu quand quelqu’un le fait, n’est pas disponible.
+
+## Journal d’audit, événements programmés, stickers et modération automatique
+
+Ce que votre bot en lit est de la [donnée simple](/fr/reference/data), sans rien à faire dessus : aucune action pour en créer, modifier ou supprimer.
+
+## Un bot réparti sur plusieurs machines
+
+Un gros bot tourne tout seul sur [plusieurs processus d’une machine](/fr/run/start#gros-bots). Le faire tourner sur plusieurs machines à la fois n’est pas disponible.
+
+## Choisir ce dont le bot se souvient
+
+Le nombre de membres, d’utilisateurs et de messages que le bot garde en mémoire est décidé par les fichiers de votre projet et par la mémoire disponible : voir [Ce dont le bot se souvient](/fr/memory). Ce n’est pas un réglage que vous pouvez changer.
+
+## Un fichier de configuration
+
+Il n’y a pas de `chapterjs.config.ts` : ce que fait votre bot vient des fichiers de `src/`, et ce dont il a besoin pour tourner vient de [`.env`](/fr/setup/project-structure#env). C’est aussi pour cela qu’un projet a un seul token et un seul serveur de test.
+
+## Tester votre bot
+
+Faire tourner vos fonctions dans un test, sans Discord. Pas disponible : rien dans ChapterJS n’est fait pour un lanceur de tests.
+
+En attendant : gardez ce qui peut être testé dans des fichiers qui commencent par `_` (le texte d’une réponse, un calcul), et testez-les seuls. Les fichiers de `src/commands/`, `src/events/`, `src/components/` et `src/tasks/` restent minces.
+
+## Partager des fichiers entre bots
+
+Publier vos commandes ou événements sous forme de paquet, pour les utiliser dans un autre projet. Pas disponible : un fichier n’est chargé que depuis le `src/` du projet.
+
+<CardGroup cols={2}>
+  <Card title="Référence" icon="library" href="/fr/reference">
+    Tout ce qui existe aujourd’hui, structure par structure.
+  </Card>
+  <Card title="Dépannage" icon="bug" href="/fr/run/troubleshooting">
+    Chaque message du CLI, et ce que les gens voient sur Discord.
+  </Card>
+</CardGroup>

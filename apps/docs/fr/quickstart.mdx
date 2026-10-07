@@ -1,0 +1,137 @@
+---
+title: 'Démarrage rapide'
+description: 'Créer un bot, le lancer sur votre serveur de test et modifier sa première commande, en quelques minutes'
+---
+
+Il vous faut [Node.js](https://nodejs.org) 22.18 ou plus récent, une application Discord avec un bot, et un serveur pour tester. Si vous n’avez pas encore l’application, [Votre application Discord](/fr/setup/discord-application) montre comment en créer une : cela prend deux minutes et vous donne les deux valeurs de l’étape 2.
+
+<Steps>
+  <Step title="Créer le projet">
+    Lancez la commande de votre gestionnaire de paquets :
+
+    <CodeGroup>
+    ```bash pnpm
+    pnpm create chapter
+    ```
+
+    ```bash npm
+    npm create chapter@latest
+    ```
+
+    ```bash yarn
+    yarn create chapter
+    ```
+
+    ```bash bun
+    bun create chapter
+    ```
+    </CodeGroup>
+
+    Elle vous pose jusqu’à trois questions :
+
+    1. **Où créer le projet** : un nom de dossier comme `my-bot`, ou `.` pour le dossier courant. Le dossier doit être nouveau ou vide.
+    2. **Quel gestionnaire de paquets utiliser** : seuls ceux installés sur votre ordinateur peuvent être choisis, et celui avec lequel vous avez lancé la commande est sélectionné par défaut.
+    3. **Quel modèle utiliser**.
+
+    Une question qui n’a qu’une réponse possible est sautée : avec un seul gestionnaire de paquets installé, il est utilisé et on vous le dit ; de même pour le modèle tant qu’il n’y en a qu’un.
+
+    Le modèle est copié, les dépendances sont installées, et la suite est affichée.
+
+    <Tip>
+      Passez le nom du dossier pour sauter la première question : `pnpm create chapter my-bot`.
+    </Tip>
+
+  </Step>
+  <Step title="Lui donner votre bot">
+    Dans le nouveau dossier, copiez `.env.example` vers `.env` et remplissez les deux valeurs :
+
+    ```bash .env
+    BOT_TOKEN=
+    DEV_GUILD_ID=
+    ```
+
+    - `BOT_TOKEN` : le token de votre bot, depuis la page **Bot** de votre application dans le [Developer Portal](https://discord.com/developers/applications). Utilisez une **application de dev**, pas celle qui sera en ligne pour tout le monde : voir [Votre application Discord](/fr/setup/discord-application).
+    - `DEV_GUILD_ID` : l’identifiant de votre serveur de test.
+
+    Où trouver les deux est expliqué dans [Votre application Discord](/fr/setup/discord-application).
+
+    <Warning>
+      Votre token est un mot de passe : ne le partagez jamais, et ne commitez jamais `.env`. Le projet l’ignore déjà dans git.
+    </Warning>
+
+  </Step>
+  <Step title="Le lancer">
+    <CodeGroup>
+    ```bash pnpm
+    pnpm dev
+    ```
+
+    ```bash npm
+    npm run dev
+    ```
+
+    ```bash yarn
+    yarn dev
+    ```
+
+    ```bash bun
+    bun dev
+    ```
+    </CodeGroup>
+
+    Votre bot se connecte à votre serveur de test :
+
+    ```text
+    ✓ Connected to My Server as my-bot
+    ℹ Intents computed from your files: GUILDS
+    ✓ 1 command, 1 event loaded
+    my-bot is online in 1 server(s)
+    ✓ Commands updated on My Server
+    ```
+
+    La quatrième ligne est affichée par l’événement `ready` du modèle, `src/events/ready/online.ts`.
+
+    Si le bot n’est pas encore dans votre serveur de test, la commande affiche un lien qui l’y ajoute et vous attend. Si un de vos fichiers a besoin d’une option qui n’est pas activée pour votre bot, elle dit laquelle et où l’activer, et attend aussi. Chaque message dit quoi faire : voir [chapterjs dev](/fr/run/dev).
+
+  </Step>
+  <Step title="Essayer votre première commande">
+    Le modèle est fourni avec une commande, `/ping` :
+
+    ```ts src/commands/ping.ts
+    import { command } from 'chapterjs';
+
+    export default command({
+      description: 'Répond Pong !',
+      async run({ interaction }) {
+        await interaction.reply('Pong !');
+      },
+    });
+    ```
+
+    Tapez `/ping` sur votre serveur de test : le bot répond « Pong ! ». Changez maintenant la réponse et enregistrez le fichier :
+
+    ```text
+    ↻ Reloaded in 12 ms, 1 command, 1 event loaded
+    ```
+
+    Utilisez à nouveau `/ping` : elle répond avec le nouveau texte.
+
+  </Step>
+</Steps>
+
+C’est tout. Le chemin du fichier est le nom de la commande : `src/commands/ping.ts` est `/ping`, et rien ne l’enregistre. ChapterJS lit le fichier, présente la commande à Discord et lance `run` quand quelqu’un l’utilise. Le dossier d’un événement fonctionne de la même façon : chaque fichier de `src/events/ready/` tourne quand le bot est connecté.
+
+Pour ajouter une commande, ajoutez un fichier dans `src/commands/`. Pour réagir à quelque chose qui se passe sur Discord, ajoutez un dossier qui porte son nom dans `src/events/` et un fichier dedans. Ce qui va où est dans [Structure du projet](/fr/setup/project-structure).
+
+Quand votre bot est prêt pour tout le monde, mettez-le sur une machine qui reste allumée : voir [Déployer](/fr/run/deploy).
+
+<Note>Tout ce que fait la commande `chapterjs` est dans la [référence du CLI](/fr/reference/cli).</Note>
+
+<CardGroup cols={2}>
+  <Card title="Structure du projet" icon="folder-tree" href="/fr/setup/project-structure">
+    À quoi sert chaque dossier et fichier de votre projet.
+  </Card>
+  <Card title="Commandes" icon="terminal" href="/fr/commands">
+    Un fichier par commande slash, options typées pour vous.
+  </Card>
+</CardGroup>

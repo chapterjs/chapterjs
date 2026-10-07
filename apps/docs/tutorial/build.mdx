@@ -1,0 +1,99 @@
+---
+title: 'Building'
+description: 'Check every file and the types of your bot, and compile it into one file that production runs'
+---
+
+Your bot works on your computer with `chapterjs dev`. Putting it online for everyone is two steps: **build** it, then **start** it on a machine that stays on. This page is the first step, and the reasons behind it.
+
+## Why a build
+
+`chapterjs dev` runs your files as they are, reloads them on save, and keeps a broken file's last working version. That is right while you write. In production, the opposite is right: nothing should change under the bot, and a broken file should never be online at all. So production runs a **build**: a snapshot of your bot, checked from top to bottom and compiled into one file. If a file can't run, there is no build, and nothing goes online by mistake.
+
+## Run it
+
+<CodeGroup>
+```bash pnpm
+pnpm build
+```
+
+```bash npm
+npm run build
+```
+
+```bash yarn
+yarn build
+```
+
+```bash bun
+bun run build
+```
+
+</CodeGroup>
+
+```text
+✓ Types checked
+✓ Built in .chapterjs/build: 8 commands, 6 events, 7 components, 2 tasks, a presence, messages in 2 languages (31 kB)
+ℹ Run chapterjs start to put it online.
+```
+
+The build needs no token and never talks to Discord: run it anywhere, as often as you want.
+
+## What it does
+
+<Steps>
+  <Step title="Checks the types">
+    What your editor underlines, for the whole project at once, with the TypeScript of your project. One error stops the build:
+
+    ```text
+    ✗ Your project has type errors, so it was not built:
+      src/commands/warn.ts(12,25): error TS18047: 'member' is possibly 'null'.
+    ```
+
+    This is the moment the "no type to write" of the editor pays off: every mistake it could underline is caught here, before anything is online. The `typecheck` script of your project runs the same check alone.
+
+  </Step>
+  <Step title="Runs every file once">
+    Each command, event, component, task and language file is loaded and checked, exactly as `chapterjs dev` does when you save: a name Discord refuses, an option without description, two files that are the same command. Each broken file is reported, then the build stops.
+  </Step>
+  <Step title="Compiles the bot">
+    Everything becomes one JavaScript file, `.chapterjs/build/bot.js`: your files, what they import from your project, and nothing that is not used. The names you wrote are kept, with a map back to your files, so that an error in production still says `src/commands/warn.ts:12`.
+  </Step>
+  <Step title="Runs what it compiled">
+    The compiled file is loaded once, as production will load it. A file that runs from `src/` but not once compiled stops the build.
+  </Step>
+</Steps>
+
+A build that fails leaves nothing behind: the previous build is removed first, so there is never a half-built bot to start by mistake.
+
+## What is in the build, and what is not
+
+|                                                                          | In the build                                                |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Your commands, events, components, tasks, presence, languages            | Yes                                                         |
+| What they import from your project, wherever it is                       | Yes                                                         |
+| Packages you installed                                                   | No: they stay in `node_modules`, which production needs too |
+| Files your code reads while running (a JSON, a database file, `public/`) | No: keep them next to the project                           |
+| Your sources                                                             | No: the map only holds file names and lines                 |
+
+The compiling is done by esbuild, which comes with ChapterJS: nothing to install, nothing to configure, and it is only loaded by `chapterjs build`.
+
+## Points of attention
+
+- **The build is a snapshot.** Once built, editing a file changes nothing until you build again. `chapterjs start` reminds you when the sources changed since the build.
+- **A build belongs to a version of ChapterJS.** After updating the package, build again; a build from another version is refused with what to run.
+- **Keep TypeScript installed where you build.** Without it, the build says `ℹ Types were not checked` and goes on: the first line of defense is gone.
+
+## Recap
+
+- `chapterjs build` checks the types, runs every file, compiles the bot into `.chapterjs/build`, and runs the result once.
+- Any invalid file fails the build; a failed build leaves nothing.
+- Production runs the build, not your files.
+
+<CardGroup cols={2}>
+  <Card title="Going online" icon="rocket" href="/tutorial/deploy">
+    Start the build on a machine that stays on, with the production application.
+  </Card>
+  <Card title="Guide: chapterjs build" icon="book-open" href="/run/build">
+    The same, with every message.
+  </Card>
+</CardGroup>

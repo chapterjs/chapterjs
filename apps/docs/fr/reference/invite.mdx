@@ -1,0 +1,97 @@
+---
+title: 'Invite'
+description: 'Lire le lien, les utilisations et l’expiration d’une invitation, et la supprimer'
+---
+
+Une `Invite` est une invitation vers un serveur. Vous en obtenez une depuis `channel.createInvite()`, `channel.fetchInvites()` ou `guild.fetchInvites()`.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function invite(channel: TextChannel) {
+  const invite = await channel.createInvite({ maxAge: 3600, maxUses: 1, unique: true });
+  return invite.url; // https://discord.gg/...
+}
+```
+
+<Note>
+  Ce que prend `createInvite()` est dans [InviteCreateOptions](/fr/reference/options#invitecreateoptions). Quels salons peuvent en créer une est dans [Salons](/fr/reference/channels).
+</Note>
+
+## Propriétés
+
+<ResponseField name="inviter" type="User | null">
+  Qui a créé l’invitation, quand Discord le dit.
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Le code unique de l’invitation (`discord.gg/code`).
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Le lien à partager.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  L’identifiant du serveur vers lequel mène l’invitation.
+</ResponseField>
+
+<ResponseField name="channelId" type="Snowflake | null">
+  L’identifiant du salon vers lequel mène l’invitation.
+</ResponseField>
+
+<ResponseField name="expiresAt" type="Date | null">
+  Quand l’invitation cesse de fonctionner ; `null` quand elle ne cesse jamais.
+</ResponseField>
+
+<ResponseField name="uses" type="number | null">
+  Combien de fois l’invitation a été utilisée, quand Discord le dit.
+</ResponseField>
+
+<ResponseField name="maxUses" type="number | null">
+  Combien de fois l’invitation peut être utilisée ; `0` veut dire pas de limite.
+</ResponseField>
+
+<ResponseField name="temporary" type="boolean">
+  Si les membres arrivés avec elle sont expulsés quand ils se déconnectent.
+</ResponseField>
+
+<Info>
+  Une invitation n’a ni `id` ni `createdAt` : Discord l’identifie par son `code`.
+</Info>
+
+## Helpers
+
+Ils lisent ce dont le bot se souvient : ils n’envoient jamais de requête.
+
+### toString()
+
+```ts
+toString(): string
+```
+
+Le lien à partager.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+## Actions
+
+### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Supprime l’invitation : son lien cesse de fonctionner.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/invite#delete-invite)
+
+## Types
+
+`InviteCreateOptions` est dans [Options](/fr/reference/options#invitecreateoptions).

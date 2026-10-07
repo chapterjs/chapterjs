@@ -1,0 +1,183 @@
+---
+title: 'select()'
+description: 'Tout ce que déclare un fichier de menu déroulant, les trois façons d’écrire les options, et ce que reçoit la fonction run'
+---
+
+`select()` est ce qu’un fichier de `src/components/selects/` exporte par défaut. Elle prend un objet, `SelectConfig`, et type `values` dans `run` d’après lui.
+
+```ts src/components/selects/color.ts
+import { select } from 'chapterjs';
+
+export default select({
+  placeholder: 'Choisissez une couleur',
+  options: { Rouge: 'red', Bleu: 'blue' },
+  async run({ interaction, value }) {
+    await interaction.update({ content: `Vous avez choisi ${value}.`, components: [] });
+  },
+});
+```
+
+<Note>
+  Comment écrire un menu et l’afficher est dans le [guide](/fr/components/selects). Cette page liste ce qui existe. Ce qu’un menu partage avec un bouton (`data`, `where`, `who`, l’endroit) est sur la [page de button()](/fr/reference/button#partagé-par-les-boutons-et-les-menus-déroulants).
+</Note>
+
+## select()
+
+```ts
+select<Options extends SelectOptions, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: StringSelectConfig<Options, Data, Where>): SelectFile<Data>
+select<Type extends EntitySelectType, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: EntitySelectConfig<Type, Data, Where>): SelectFile<Data>
+```
+
+Déclare un menu déroulant. Exportez le résultat comme export par défaut d’un fichier de `src/components/selects/` : le chemin du fichier est ce qui distingue le menu, donc vous n’écrivez jamais d’identifiant.
+
+### SelectFile
+
+Ce que renvoie `select()` : l’export par défaut d’un fichier de menu. Importez-le là où vous envoyez un message, et appelez-le avec les données qu’il transporte ; un menu sans données s’utilise tel quel, ou s’appelle avec ce qu’il faut afficher.
+
+```ts
+type SelectFile<Data extends DataShape = {}> = { readonly config: unknown } &
+  ({} extends Data
+    ? ((options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
+    : {} extends DataInputOf<Data>
+      ? ((data?: DataInputOf<Data>, options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
+      : (data: DataInputOf<Data>, options?: SelectInstanceOptions) => SelectComponent)
+```
+
+<ResponseField name="config" type="unknown">
+  Ce que le fichier a donné à `select()`, pas encore vérifié.
+</ResponseField>
+
+## SelectConfig
+
+Ce qu’un fichier de menu donne à `select()` : un menu de textes, ou d’éléments du serveur.
+
+```ts
+type SelectConfig = StringSelectConfig | EntitySelectConfig
+```
+
+Les deux ont chaque champ d’[InteractiveConfig](/fr/reference/button#interactiveconfig) et de [SelectLook](#selectlook), plus :
+
+<ResponseField name="min" type="number">
+  Combien d’éléments doivent être choisis au moins (0 à 25). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  Combien d’éléments peuvent être choisis au plus (1 à 25). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="run" type="(context: SelectContext<Picked, Data, Where>) => unknown" required>
+  Ce qu’il faut faire quand quelque chose est choisi.
+</ResponseField>
+
+### StringSelectConfig
+
+Un menu de textes que vous déclarez.
+
+<ResponseField name="type" type="'string'">
+  La sorte de menu : des textes que vous déclarez, ce qui est la valeur par défaut.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  Les options (25 au plus) : une liste de textes, un objet de ce qui est affiché vers ce que reçoit votre code, ou une liste de `RichOption`.
+</ResponseField>
+
+### EntitySelectConfig
+
+Un menu d’utilisateurs, de rôles, d’utilisateurs et rôles, ou de salons du serveur.
+
+<ResponseField name="type" type="EntitySelectType" required>
+  La sorte de menu : ce que liste Discord.
+</ResponseField>
+
+<ResponseField name="channelTypes" type="readonly ChannelType[]">
+  Pour un menu de salons : les sortes de salons listées. Toutes par défaut.
+</ResponseField>
+
+### SelectType, EntitySelectType
+
+```ts
+type SelectType = 'string' | 'user' | 'role' | 'mentionable' | 'channel'
+type EntitySelectType = 'user' | 'role' | 'mentionable' | 'channel'
+```
+
+Les sortes de menus : des textes que vous déclarez, ou des éléments du serveur.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#string-select)
+
+## SelectLook
+
+L’apparence d’un menu déroulant.
+
+<ResponseField name="placeholder" type="DynamicText<Data>">
+  Le texte affiché quand rien n’est choisi (150 caractères au plus) : écrit tel quel, ou une fonction de `t` et des données, lancée au moment de l’envoi du message. Voir [DynamicText](/fr/reference/messages#dynamictext).
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean">
+  Affiche le menu grisé, impossible à utiliser.
+</ResponseField>
+
+### SelectInstanceOptions
+
+Ce qu’un message peut changer quand il affiche un menu : tout ce qu’a `SelectLook`, plus :
+
+<ResponseField name="defaults" type="readonly (string | { id: Snowflake })[]">
+  Ce qui est sélectionné quand le menu apparaît : les valeurs des options pour un menu de textes, les identifiants (ou les éléments eux-mêmes) pour les autres.
+</ResponseField>
+
+## Les options
+
+### SelectOptions
+
+```ts
+type SelectOptions = readonly string[] | Readonly<Record<string, string>> | readonly RichOption[]
+```
+
+Les options d’un menu : une liste de textes (chacun affiché et reçu tel quel), un objet dont les clés sont ce qui est affiché et les valeurs ce que reçoit votre code, ou une liste de `RichOption` pour des descriptions et des emojis. Le même type sert aux champs `select`, `radio` et `checkboxes` d’un [formulaire](/fr/reference/modal).
+
+### RichOption
+
+Une option d’un menu, avec tout ce que Discord en affiche.
+
+<ResponseField name="label" type="DynamicText<Data>" required>
+  Ce que voit la personne (100 caractères au plus) : un texte, ou une fonction de `t` et des données.
+</ResponseField>
+
+<ResponseField name="value" type="string" required>
+  Ce que reçoit votre code (100 caractères au plus).
+</ResponseField>
+
+<ResponseField name="description" type="DynamicText<Data>">
+  Une seconde ligne sous l’étiquette (100 caractères au plus) : un texte, ou une fonction de `t` et des données.
+</ResponseField>
+
+<ResponseField name="emoji" type="EmojiInput">
+  Un emoji avant l’étiquette.
+</ResponseField>
+
+<ResponseField name="default" type="boolean">
+  Affiche l’option comme choisie quand le menu apparaît.
+</ResponseField>
+
+### OptionValue
+
+```ts
+type OptionValue<Options extends SelectOptions> = string
+```
+
+Ce que reçoit `run` pour une option choisie, typé d’après la déclaration : l’union des textes d’une liste, des valeurs d’un objet, ou de la `value` de chaque `RichOption`.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#string-select-select-option-structure)
+
+## SelectContext
+
+Ce que reçoit `run` quand quelque chose est choisi : tout ce qu’a [InteractiveContext](/fr/reference/button#interactivecontext), l’endroit tel que le donne [PlaceOf](/fr/reference/button#placeof) avec une [ComponentInteraction](/fr/reference/interaction#componentinteraction), et :
+
+<ResponseField name="values" type="Picked[]" required>
+  Ce qui a été choisi, dans l’ordre du menu.
+</ResponseField>
+
+<ResponseField name="value" type="Picked | undefined" required>
+  Le premier élément choisi ; `undefined` quand rien ne l’a été (un menu avec `min: 0`).
+</ResponseField>
+
+`Picked` est `OptionValue<Options>` pour un menu de textes, `User` pour `'user'`, `Role` pour `'role'`, `User | Role` pour `'mentionable'` et `Channel` pour `'channel'`.

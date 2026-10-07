@@ -1,0 +1,549 @@
+---
+title: 'Guild'
+description: 'Tout lire d’un serveur et gérer ses membres, rôles, salons et bannissements'
+---
+
+Un `Guild` est un serveur (« guild » est le nom que Discord donne aux serveurs dans son API). Vous en obtenez un comme `guild` d’une [commande](/fr/reference/interaction) utilisée sur un serveur, avec les événements qui s’y produisent, et comme `member.guild`, `role.guild` ou `channel.guild`.
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function describe(guild: Guild) {
+  const owner = await guild.fetchOwner();
+  return `${guild.name} a ${guild.memberCount} membres et appartient à ${owner.displayName}.`;
+}
+```
+
+<Note>
+  Comment vos fonctions reçoivent un serveur est dans [Commandes](/fr/commands) et [Événements](/fr/events). Ce dont un serveur se souvient de ses membres, et pourquoi pas de tous, est dans [Mémoire](/fr/memory).
+</Note>
+
+## Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand il a été créé : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Le nom du serveur.
+</ResponseField>
+
+<ResponseField name="description" type="string | null">
+  La description du serveur, quand il en a une.
+</ResponseField>
+
+<ResponseField name="ownerId" type="Snowflake">
+  L’identifiant de l’utilisateur à qui appartient le serveur.
+</ResponseField>
+
+<ResponseField name="available" type="boolean">
+  `false` pendant une panne de Discord : les données peuvent ne pas être à jour.
+</ResponseField>
+
+<ResponseField name="memberCount" type="number | null">
+  Combien de membres a le serveur. Exact quand le bot reçoit les événements des membres, approximatif sinon ; `null` quand Discord ne l’a jamais dit.
+</ResponseField>
+
+<ResponseField name="features" type="readonly GuildFeature[]">
+  Ce que le serveur a activé ou débloqué (`COMMUNITY`, `VANITY_URL`...). Voir [GuildFeature](#guildfeature).
+</ResponseField>
+
+<ResponseField name="verificationLevel" type="VerificationLevel">
+  Ce que Discord demande aux nouveaux membres avant qu’ils puissent écrire. Voir [VerificationLevel](/fr/reference/enums#verificationlevel).
+</ResponseField>
+
+<ResponseField name="premiumTier" type="PremiumTier">
+  Le niveau de boost du serveur. Voir [PremiumTier](/fr/reference/enums#premiumtier).
+</ResponseField>
+
+<ResponseField name="boostCount" type="number">
+  Combien de boosts a le serveur.
+</ResponseField>
+
+<ResponseField name="preferredLocale" type="Locale">
+  La langue du serveur, utilisée pour ce que Discord lui envoie. Voir [Locale](/fr/reference/enums#locale).
+</ResponseField>
+
+<ResponseField name="vanityUrlCode" type="string | null">
+  Le code du lien d’invitation personnalisé du serveur, quand il en a un.
+</ResponseField>
+
+<ResponseField name="systemChannelId" type="Snowflake | null">
+  L’identifiant du salon où Discord publie les messages de bienvenue.
+</ResponseField>
+
+<ResponseField name="rulesChannelId" type="Snowflake | null">
+  L’identifiant du salon qui affiche le règlement, sur un serveur Communauté.
+</ResponseField>
+
+<ResponseField name="afkChannelId" type="Snowflake | null">
+  L’identifiant du salon vocal où sont déplacés les membres inactifs.
+</ResponseField>
+
+<ResponseField name="joinedAt" type="Date | null">
+  Quand le bot a rejoint le serveur, quand Discord l’a dit.
+</ResponseField>
+
+<ResponseField name="roles" type="ReadonlyMap<Snowflake, Role>">
+  Les rôles du serveur, @everyone compris.
+</ResponseField>
+
+<ResponseField name="members" type="ReadonlyMap<Snowflake, GuildMember>">
+  Les membres du serveur que connaît le bot : ceux vus le plus récemment, pas tous.
+</ResponseField>
+
+<ResponseField name="channels" type="ReadonlyMap<Snowflake, GuildChannel | ThreadChannel>">
+  Les salons et les fils actifs du serveur.
+</ResponseField>
+
+<ResponseField name="emojis" type="ReadonlyMap<Snowflake, GuildEmoji>">
+  Les emojis personnalisés du serveur.
+</ResponseField>
+
+<ResponseField name="everyoneRole" type="Role">
+  Le rôle @everyone, que chaque membre a.
+</ResponseField>
+
+<ResponseField name="me" type="GuildMember">
+  Le bot en tant que membre de ce serveur.
+</ResponseField>
+
+<Info>
+  `members` ne contient que les membres que le bot a vus récemment (voir [Mémoire](/fr/memory)). Utilisez [`fetchMember()`](#fetchmember) pour en obtenir un à coup sûr. `me` est toujours là, quoi que garde le bot en mémoire.
+</Info>
+
+## Helpers
+
+Ils lisent ce dont le bot se souvient : ils n’envoient jamais de requête.
+
+### iconURL()
+
+```ts
+iconURL(options?: ImageOptions): string | null
+```
+
+L’URL de l’icône du serveur, quand il en a une. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### bannerURL()
+
+```ts
+bannerURL(options?: ImageOptions): string | null
+```
+
+L’URL de la bannière du serveur, quand il en a une. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### splashURL()
+
+```ts
+splashURL(options?: ImageOptions): string | null
+```
+
+L’URL de l’arrière-plan d’invitation du serveur, quand il en a un. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### toString()
+
+```ts
+toString(): string
+```
+
+Le nom du serveur.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+## Lire depuis Discord
+
+### fetch()
+
+```ts
+fetch(): Promise<Guild>
+```
+
+Demande à Discord les dernières données du serveur.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#get-guild)
+
+### fetchMember()
+
+```ts
+fetchMember(user: Snowflake | { id: Snowflake }, options?: { force?: boolean }): Promise<GuildMember>
+```
+
+Un membre du serveur : depuis la mémoire du bot, sinon depuis Discord.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#get-guild-member)
+
+### fetchMembers()
+
+```ts
+fetchMembers(options?: { limit?: number; after?: Snowflake | { id: Snowflake } }): Promise<GuildMember[]>
+```
+
+Des membres du serveur, par pages de 1000 au plus, triés par identifiant. Demande que le Server Members Intent soit activé pour le bot.
+
+`limit` est un nombre entier entre 1 et 1000 (par défaut) ; `after` est l’identifiant du dernier membre de la page précédente.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#list-guild-members)
+
+### searchMembers()
+
+```ts
+searchMembers(query: string, limit?: number): Promise<GuildMember[]>
+```
+
+Les membres dont le nom d’utilisateur ou le surnom commence par le texte donné. `limit` vaut `1` par défaut.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#search-guild-members)
+
+### fetchOwner()
+
+```ts
+fetchOwner(): Promise<GuildMember>
+```
+
+Le membre à qui appartient le serveur.
+
+### fetchBan()
+
+```ts
+fetchBan(user: Snowflake | { id: Snowflake }): Promise<Ban | null>
+```
+
+Le bannissement d’un utilisateur ; `null` quand il n’est pas banni. Voir [Ban](/fr/reference/data#ban).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#get-guild-ban)
+
+### fetchBans()
+
+```ts
+fetchBans(options?: { limit?: number; before?: Snowflake; after?: Snowflake }): Promise<Ban[]>
+```
+
+Les bannissements du serveur, par pages de 1000 au plus. Voir [Ban](/fr/reference/data#ban).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#get-guild-bans)
+
+### fetchRoles()
+
+```ts
+fetchRoles(): Promise<Role[]>
+```
+
+Demande à Discord les rôles du serveur.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#get-guild-roles)
+
+### fetchChannels()
+
+```ts
+fetchChannels(): Promise<GuildChannel[]>
+```
+
+Les salons du serveur (les fils ne sont pas inclus).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#get-guild-channels)
+
+### fetchActiveThreads()
+
+```ts
+fetchActiveThreads(): Promise<ThreadChannel[]>
+```
+
+Les fils du serveur qui ne sont pas archivés.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#list-active-guild-threads)
+
+### fetchEmojis()
+
+```ts
+fetchEmojis(): Promise<GuildEmoji[]>
+```
+
+Demande à Discord les emojis personnalisés du serveur.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/emoji#list-guild-emojis)
+
+### fetchInvites()
+
+```ts
+fetchInvites(): Promise<Invite[]>
+```
+
+Les invitations du serveur, avec combien de fois chacune a été utilisée.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#get-guild-invites)
+
+### fetchWebhooks()
+
+```ts
+fetchWebhooks(): Promise<Webhook[]>
+```
+
+Les webhooks de chaque salon du serveur.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#get-guild-webhooks)
+
+### fetchAuditLog()
+
+```ts
+fetchAuditLog(options?: {
+  userId?: Snowflake;
+  actionType?: AuditLogEvent;
+  before?: Snowflake;
+  after?: Snowflake;
+  limit?: number;
+}): Promise<AuditLog>
+```
+
+Ce que les modérateurs et les bots ont fait sur le serveur. Les options sont les [filtres du journal d’audit](#filtres-du-journal-d’audit) ; le résultat est un [AuditLog](/fr/reference/data#auditlog).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/audit-log#get-guild-audit-log)
+
+### fetchScheduledEvents()
+
+```ts
+fetchScheduledEvents(): Promise<ScheduledEvent[]>
+```
+
+Les événements programmés du serveur. Voir [ScheduledEvent](/fr/reference/data#scheduledevent).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild-scheduled-event#list-scheduled-events-for-guild)
+
+### fetchAutoModerationRules()
+
+```ts
+fetchAutoModerationRules(): Promise<AutoModerationRule[]>
+```
+
+Les règles de modération automatique du serveur. Voir [AutoModerationRule](/fr/reference/data#automoderationrule).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/auto-moderation#list-auto-moderation-rules-for-guild)
+
+### fetchStickers()
+
+```ts
+fetchStickers(): Promise<Sticker[]>
+```
+
+Les stickers personnalisés du serveur. Voir [Sticker](/fr/reference/data#sticker).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/sticker#list-guild-stickers)
+
+## Actions
+
+### edit()
+
+```ts
+edit(options: GuildEditOptions, reason?: string): Promise<Guild>
+```
+
+Change les réglages du serveur. Voir [GuildEditOptions](/fr/reference/options#guildeditoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#modify-guild)
+
+### leave()
+
+```ts
+leave(): Promise<void>
+```
+
+Fait quitter le serveur au bot.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/user#leave-guild)
+
+### kick()
+
+```ts
+kick(user: Snowflake | { id: Snowflake }, reason?: string): Promise<void>
+```
+
+Retire un membre du serveur ; il peut revenir avec une invitation.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#remove-guild-member)
+
+### ban()
+
+```ts
+ban(user: Snowflake | { id: Snowflake }, options?: BanOptions): Promise<void>
+```
+
+Bannit un utilisateur du serveur, membre ou non. Voir [BanOptions](/fr/reference/member#banoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#create-guild-ban)
+
+### bulkBan()
+
+```ts
+bulkBan(
+  users: readonly (Snowflake | { id: Snowflake })[],
+  options?: BanOptions
+): Promise<{ bannedUsers: Snowflake[]; failedUsers: Snowflake[] }>
+```
+
+Bannit jusqu’à 200 utilisateurs d’un coup. Renvoie les identifiants des utilisateurs bannis, et de ceux qui n’ont pas pu l’être. Voir [BanOptions](/fr/reference/member#banoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#bulk-guild-ban)
+
+### unban()
+
+```ts
+unban(user: Snowflake | { id: Snowflake }, reason?: string): Promise<void>
+```
+
+Lève le bannissement d’un utilisateur.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#remove-guild-ban)
+
+### createRole()
+
+```ts
+createRole(options?: RoleCreateOptions, reason?: string): Promise<Role>
+```
+
+Crée un rôle. Voir [RoleCreateOptions](/fr/reference/options#rolecreateoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#create-guild-role)
+
+### createChannel()
+
+```ts
+createChannel(options: ChannelCreateOptions, reason?: string): Promise<GuildChannel>
+```
+
+Crée un salon. Voir [ChannelCreateOptions](/fr/reference/options#channelcreateoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#create-guild-channel)
+
+### createEmoji()
+
+```ts
+createEmoji(
+  options: { name: string; image: string; roles?: (Snowflake | { id: Snowflake })[] },
+  reason?: string
+): Promise<GuildEmoji>
+```
+
+Ajoute un emoji personnalisé au serveur. `options.image` est l’image sous forme de data URI (`data:image/png;base64,...`).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/emoji#create-guild-emoji)
+
+### createScheduledEvent()
+
+```ts
+createScheduledEvent(
+  options: {
+    name: string;
+    privacyLevel: number;
+    scheduledStartTime: string;
+    entityType: number;
+    channelId?: Snowflake;
+    entityMetadata?: { location?: string };
+    scheduledEndTime?: string;
+    description?: string;
+    image?: string;
+    recurrenceRule?: object;
+  },
+  reason?: string
+): Promise<ScheduledEvent>
+```
+
+Programme un événement sur le serveur. Les options sont les [options d’un événement programmé](#options-d’un-événement-programmé) ; le résultat est un [ScheduledEvent](/fr/reference/data#scheduledevent).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild-scheduled-event#create-guild-scheduled-event)
+
+## Types
+
+### GuildFeature
+
+Ce qu’un serveur a activé ou débloqué, tel que Discord le nomme : l’un de `'ANIMATED_BANNER'`, `'ANIMATED_ICON'`, `'APPLICATION_COMMAND_PERMISSIONS_V2'`, `'AUTO_MODERATION'`, `'BANNER'`, `'COMMUNITY'`, `'CREATOR_MONETIZABLE_PROVISIONAL'`, `'CREATOR_STORE_PAGE'`, `'DEVELOPER_SUPPORT_SERVER'`, `'DISCOVERABLE'`, `'ENHANCED_ROLE_COLORS'`, `'FEATURABLE'`, `'GUILD_TAGS'`, `'GUESTS_ENABLED'`, `'INVITES_DISABLED'`, `'INVITE_SPLASH'`, `'MEMBER_VERIFICATION_GATE_ENABLED'`, `'MORE_SOUNDBOARD'`, `'MORE_STICKERS'`, `'NEWS'`, `'PARTNERED'`, `'PREVIEW_ENABLED'`, `'PRUNE_REQUIRES_ADMIN'`, `'RAID_ALERTS_DISABLED'`, `'ROLE_ICONS'`, `'ROLE_SUBSCRIPTIONS_AVAILABLE_FOR_PURCHASE'`, `'ROLE_SUBSCRIPTIONS_ENABLED'`, `'SOUNDBOARD'`, `'TICKETED_EVENTS_ENABLED'`, `'VANITY_URL'`, `'VERIFIED'`, `'VIP_REGIONS'`, `'WELCOME_SCREEN_ENABLED'`.
+
+Discord ajoute des fonctionnalités avec le temps, donc tout autre texte est accepté aussi : `guild.features.includes('COMMUNITY')` est typé, et une fonctionnalité inconnue ne casse rien.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#guild-object-guild-features)
+
+### Filtres du journal d’audit
+
+Ce que prend `fetchAuditLog()`. Chaque champ peut être laissé de côté.
+
+<ResponseField name="userId" type="Snowflake">
+  Seulement les entrées de cet utilisateur.
+</ResponseField>
+
+<ResponseField name="actionType" type="AuditLogEvent">
+  Seulement les entrées de cette sorte d’action. Voir [AuditLogEvent](/fr/reference/enums#auditlogevent).
+</ResponseField>
+
+<ResponseField name="before" type="Snowflake">
+  Seulement les entrées dont l’identifiant est inférieur à cet identifiant d’entrée du journal d’audit.
+</ResponseField>
+
+<ResponseField name="after" type="Snowflake">
+  Seulement les entrées dont l’identifiant est supérieur à cet identifiant d’entrée du journal d’audit.
+</ResponseField>
+
+<ResponseField name="limit" type="number">
+  Combien d’entrées au plus, entre 1 et 100 ; 50 par défaut.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/audit-log#get-guild-audit-log-query-string-params)
+
+### Options d’un événement programmé
+
+Ce que prend `createScheduledEvent()`. Les dates sont des textes ISO 8601 (`date.toISOString()`) ; l’image est une data URI (`data:image/png;base64,...`).
+
+<ResponseField name="name" type="string" required>
+  Le nom de l’événement programmé.
+</ResponseField>
+
+<ResponseField name="privacyLevel" type="number" required>
+  Le niveau de confidentialité de l’événement programmé : `2` (seulement les membres du serveur).
+</ResponseField>
+
+<ResponseField name="scheduledStartTime" type="string" required>
+  L’heure à laquelle programmer l’événement.
+</ResponseField>
+
+<ResponseField name="entityType" type="number" required>
+  Où a lieu l’événement : `1` dans un salon de conférence, `2` dans un salon vocal, `3` ailleurs (`entityMetadata.location` dit alors où).
+</ResponseField>
+
+<ResponseField name="channelId" type="Snowflake">
+  L’identifiant du salon de l’événement programmé.
+</ResponseField>
+
+<ResponseField name="entityMetadata" type="{ location?: string }">
+  Les métadonnées de l’événement programmé : `location` est l’endroit où il a lieu (1 à 100 caractères).
+</ResponseField>
+
+<ResponseField name="scheduledEndTime" type="string">
+  L’heure à laquelle l’événement programmé doit se terminer.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  La description de l’événement programmé.
+</ResponseField>
+
+<ResponseField name="image" type="string">
+  L’image de couverture de l’événement programmé.
+</ResponseField>
+
+<ResponseField name="recurrenceRule" type="object">
+  La définition de la fréquence à laquelle cet événement se répète, telle que la décrit Discord.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild-scheduled-event#create-guild-scheduled-event-json-params)
+
+### Autres types
+
+- [`GuildEditOptions`](/fr/reference/options#guildeditoptions), [`ChannelCreateOptions`](/fr/reference/options#channelcreateoptions) et [`RoleCreateOptions`](/fr/reference/options#rolecreateoptions) sont dans [Options](/fr/reference/options).
+- [`AuditLog`](/fr/reference/data#auditlog), [`AutoModerationRule`](/fr/reference/data#automoderationrule), [`Ban`](/fr/reference/data#ban), [`ScheduledEvent`](/fr/reference/data#scheduledevent) et [`Sticker`](/fr/reference/data#sticker) sont dans [Données](/fr/reference/data).
+- [`BanOptions`](/fr/reference/member#banoptions) est dans [GuildMember](/fr/reference/member).

@@ -1,0 +1,94 @@
+---
+title: 'Les tâches'
+description: 'Faire faire quelque chose à votre bot tout seul, régulièrement ou à des heures données, avec un fichier par tâche'
+---
+
+Tout ce qui précède se passait parce que quelqu’un faisait quelque chose : une commande, un clic, un message. Une **tâche** est ce que le bot fait de lui-même : un rapport chaque lundi, un nettoyage toutes les heures, un rappel à midi. Un fichier par tâche, dans `src/tasks/`.
+
+## Une tâche régulière
+
+Créez `src/tasks/heartbeat.ts` :
+
+```ts src/tasks/heartbeat.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '1h',
+  onStart: true,
+  run({ user, guilds, now }) {
+    console.log(`${now.toISOString()} : ${user.username} est sur ${guilds.size} serveur(s)`);
+  },
+});
+```
+
+Le nom du fichier est le nom de la tâche. `every` est une durée : un nombre et une unité, `s`, `m`, `h` ou `d`, qui s’additionnent (`'1h30m'`). La tâche tourne à cet intervalle, compté à partir du moment où le bot se connecte. `onStart: true` la lance aussi une fois tout de suite, sans attendre le premier intervalle : pratique pour voir qu’elle fonctionne.
+
+`run` reçoit `user` (le bot lui-même), `guilds` (les serveurs où il se trouve) et `now` (le moment où ce passage était prévu, un `Date`). Pas d’interaction ici : personne n’a rien demandé, donc il n’y a rien à quoi répondre. Une tâche qui veut dire quelque chose envoie un message dans un salon qu’elle connaît.
+
+## Une tâche à heures fixes
+
+Pour « chaque lundi à 9 h », `every` ne convient pas : il compte depuis le démarrage du bot. `cron` est une façon standard d’écrire des horaires : cinq champs, minute, heure, jour du mois, mois, jour de la semaine.
+
+```ts src/tasks/monday.ts
+import { task } from 'chapterjs';
+
+export default task({
+  cron: '0 9 * * 1',
+  timezone: 'Europe/Paris',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+      if (general?.isText()) await general.send(`Bonjour ${guild.name} ! Une nouvelle semaine commence. Nous sommes ${guild.memberCount ?? '?'}.`);
+    }
+  },
+});
+```
+
+| Écrivez | Tourne |
+| --- | --- |
+| `'0 9 * * *'` | Chaque jour à 9 h |
+| `'*/15 * * * *'` | Toutes les 15 minutes |
+| `'0 9 * * 1-5'` | En semaine à 9 h |
+| `'30 18 * * fri'` | Le vendredi à 18 h 30 |
+| `'0 0 1 * *'` | Le premier de chaque mois à minuit |
+
+`*` veut dire « chaque », `*/15` « tous les 15 », `1-5` une plage, `1,15` une liste, et les noms anglais (`mon`, `fri`, `jan`) fonctionnent pour les jours et les mois.
+
+**`timezone` compte.** Sans lui, la tâche suit l’horloge de la machine sur laquelle tourne le bot, qui en production est souvent un serveur réglé sur UTC : « 9 h » serait 9 h UTC, pas 9 h pour vos membres. Avec un fuseau (`'Europe/Paris'`, `'America/New_York'`...), elle suit cette horloge, changements d’heure compris : une heure qui n’existe pas ce jour-là est sautée, une heure qui arrive deux fois ne tourne qu’une fois.
+
+Un cron faux, ou qui ne peut jamais arriver (`'0 0 31 2 *'`, le 31 février), est une erreur au chargement du fichier, avec quoi écrire.
+
+## Ce dont le framework s’occupe
+
+- **Un passage qui dure plus longtemps que l’intervalle** n’est pas lancé deux fois. Le passage suivant est sauté, et le terminal le dit :
+
+  ```text
+  ⚠ src/tasks/heartbeat.ts heartbeat was still running when its next time came (every 1s): that run was skipped.
+  ```
+
+- **Un passage qui lève une erreur** est signalé avec le fichier et la ligne, et la tâche garde son prochain horaire. Rien n’arrête le bot.
+- **Pendant que le bot se reconnecte**, une tâche qui devait tourner est sautée et signalée ; elle tourne à nouveau à son prochain horaire.
+- **Dans `chapterjs dev`**, enregistrer un fichier de tâche remplace ce qu’elle fait sans changer quand : une tâche qui tourne toutes les heures garde son prochain horaire à travers le rechargement. Changer `every` ou `cron` recompte la tâche à partir de l’enregistrement.
+- **En production, sur plusieurs processus**, chaque tâche tourne une seule fois pour tout le bot, dans le premier processus.
+
+## Points d’attention
+
+- **Un seul de `every` ou `cron`**, jamais les deux, jamais aucun ; `timezone` seulement avec `cron`. Chaque erreur est refusée au chargement du fichier, avec la raison.
+- **Une fois par seconde au plus vite.** Une tâche n’est pas le moyen de réagir à quelque chose : c’est le rôle d’un événement.
+- **`guilds` est ce que sait le bot**, pas une requête fraîche. Pour une tâche qui publie dans chaque serveur, trouvez le salon dans `guild.channels` comme ci-dessus ; gardez un identifiant dans votre propre stockage quand vous voulez que le serveur le choisisse.
+- **Une tâche n’a personne à qui répondre.** Gardez ses messages pour des salons, et gardez-les utiles : un message par minute dans un salon est le moyen le plus rapide de faire retirer le bot.
+
+## Récapitulatif
+
+- Une tâche est un fichier de `src/tasks/` avec `every` (un intervalle depuis le démarrage) ou `cron` (un horaire), et `run`.
+- `timezone` fait suivre à un cron l’horloge de vos membres, pas celle de la machine.
+- Les passages qui se chevauchent, les erreurs et les reconnexions sont gérés ; enregistrer un fichier garde le prochain horaire.
+
+<CardGroup cols={2}>
+  <Card title="La présence" icon="activity" href="/fr/tutorial/presence">
+    Ce que le bot affiche sous son nom.
+  </Card>
+  <Card title="Guide : Tâches" icon="book-open" href="/fr/tasks">
+    La même chose, en bref.
+  </Card>
+</CardGroup>

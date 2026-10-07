@@ -2,6 +2,8 @@
 // a timezone. Written once, with no dependency: the next occurrence of a
 // cron is found by reading the clock of the timezone through `Intl`.
 
+import { DURATION_EXAMPLE, parseDuration } from '../util/duration.js';
+
 const fail = (message: string): never => {
   throw new TypeError(message);
 };
@@ -36,44 +38,27 @@ export type Schedule = EverySchedule | CronSchedule;
 /** The shortest `every` accepted, in milliseconds. */
 export const MIN_EVERY = 1000;
 
-const UNITS: Record<string, number> = {
-  s: 1000,
-  m: 60_000,
-  h: 3_600_000,
-  d: 86_400_000,
-};
-
 /**
  * Parses a duration: a number and a unit, `s`, `m`, `h` or `d`, like
  * `'30s'`, `'10m'`, `'2h'`, `'1d'`. Several parts add up: `'1h30m'`.
  */
 export function parseEvery(text: unknown): EverySchedule {
-  const example = `every: '10m' (a number and a unit: s, m, h or d, like '30s', '2h', '1d' or '1h30m')`;
+  const example = `every: '10m' (${DURATION_EXAMPLE})`;
   if (typeof text !== 'string' || text.trim() === '') {
     return fail(`"every" says how often the task runs: ${example}.`);
   }
-  const parts = [
-    ...text.replace(/\s+/g, '').matchAll(/(\d+(?:\.\d+)?)([smhd])/gi),
-  ];
-  const whole = parts.map(part => part[0]).join('');
-  if (
-    parts.length === 0 ||
-    whole.toLowerCase() !== text.replace(/\s+/g, '').toLowerCase()
-  ) {
+  const ms = parseDuration(text);
+  if (ms === null) {
     return fail(
       `"every" is ${JSON.stringify(text)}, which is not a duration: ${example}.`
     );
-  }
-  let ms = 0;
-  for (const [, amount, unit] of parts) {
-    ms += Number(amount) * UNITS[unit!.toLowerCase()]!;
   }
   if (ms < MIN_EVERY) {
     fail(
       `"every" is ${JSON.stringify(text)}: a task runs at most once per second.`
     );
   }
-  return { kind: 'every', text, ms: Math.round(ms) };
+  return { kind: 'every', text, ms };
 }
 
 const NAMES: Record<string, Record<string, number>> = {

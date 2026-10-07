@@ -1,0 +1,134 @@
+---
+title: 'Embeds and layout'
+description: 'Write an embed once and reuse it everywhere, and build messages out of texts, sections, galleries and containers'
+---
+
+Embeds were written inline in [Sending messages](/tutorial/sending-messages). When the same embed is used by a command, an event and a button, writing it three times is a mistake waiting to happen. This page moves it to a file, then shows the other way Discord has of laying out a message.
+
+## An embed file
+
+An embed used in several places is a file of `src/components/embeds/`. It is a function of what it shows, or the embed itself when it never changes. Create `src/components/embeds/card.ts`:
+
+```ts src/components/embeds/card.ts
+import { embed, type GuildMember } from 'chapterjs';
+
+export default embed((member: GuildMember) => ({
+  title: member.displayName,
+  description: `Member of ${member.guild.name} since ${member.joinedAt?.toDateString() ?? 'a while ago'}.`,
+  color: member.highestRole.color || 0xc026d3,
+  thumbnail: { url: member.avatarURL() },
+  fields: [
+    {
+      name: 'Roles',
+      value: member.roles.map(role => role.name).join(', ') || 'none',
+      inline: true,
+    },
+    { name: 'Highest', value: member.highestRole.name, inline: true },
+  ],
+}));
+```
+
+Then use it from a command:
+
+```ts src/commands/card.ts
+import { command } from 'chapterjs';
+import card from '../components/embeds/card';
+
+export default command({
+  description: 'Shows your member card',
+  async run({ interaction, member }) {
+    await interaction.reply({ embeds: [card(member)] });
+  },
+});
+```
+
+And from the welcome event, in the same way: `channel.send({ embeds: [card(member)] })`. `card(member)` returns the embed, checked against the limits of Discord when the message is sent. An embed file is a function like any other, with the one difference that it is checked and typed as an embed: a title over 256 characters, a color that is not a number, are errors with the limit in the message.
+
+Unlike buttons and forms, an embed is never clicked, so it has no `run` and no path to send back: the folder is only there so that embeds live with the other reusable pieces.
+
+<Info>
+  `member.avatarURL()` is the picture of the member, and
+  `member.highestRole.color` the color of their highest role, as a number; `0`
+  means no color, hence the `||`. The typed parameter, `member: GuildMember`, is
+  the one place in this tutorial where you write a type: an embed file is a
+  function of whatever you want to give it, so you say what it takes.
+</Info>
+
+## Messages made of components
+
+Discord has a second way to lay out a message, without `content` or `embeds`: a message made of **components** only. Texts, sections with a thumbnail or a button beside them, galleries of pictures, separators, and containers with a colored line like an embed. They are written with helpers imported from `chapterjs`, where the message is:
+
+```ts src/commands/profile-card.ts
+import {
+  command,
+  container,
+  section,
+  separator,
+  text,
+  thumbnail,
+} from 'chapterjs';
+
+export default command({
+  description: 'Shows your profile',
+  async run({ interaction, member }) {
+    await interaction.reply({
+      components: [
+        container(
+          [
+            section(
+              [
+                `## ${member.displayName}`,
+                `Joined ${member.joinedAt?.toDateString() ?? 'a while ago'}`,
+              ],
+              thumbnail(member.avatarURL())
+            ),
+            separator(),
+            text(
+              `${member.roles.length} roles, highest: ${member.highestRole.name}`
+            ),
+          ],
+          { color: 0xc026d3 }
+        ),
+      ],
+    });
+  },
+});
+```
+
+As soon as a message holds one of these, Discord shows components only: `content` and `embeds` are refused, and the framework says so before sending. Put the text in `text()`, which takes Markdown, and the look of an embed in a `container()`.
+
+| Helper                           | What it is                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------- |
+| `text(content)`                  | A text, with Markdown. All the texts of a message add up to 4000 characters.     |
+| `section(texts, accessory)`      | 1 to 3 texts with a button or a `thumbnail()` beside them                        |
+| `thumbnail(url)`                 | A small picture, beside a section                                                |
+| `gallery(items)`                 | 1 to 10 pictures or videos in a grid                                             |
+| `file(name)`                     | A file sent with the message, shown where it is placed                           |
+| `separator()`                    | Space between two pieces, with a line by default                                 |
+| `container(children, { color })` | A box around texts, sections, rows, galleries, files and separators              |
+| `row(components)`                | A row of up to 5 buttons, or one menu, when you want to choose the rows yourself |
+
+Buttons and menus of `src/components/` go in there too, in a `row()` or on their own in a section's accessory. A message holds 40 components at most, nested ones included.
+
+## Which one to use
+
+Embeds are simpler and enough for most things: a title, some fields, a picture. Component messages are for layouts an embed can't do: a button beside a paragraph, several pictures in a grid, a file shown at a precise place. Pick embeds by default, and reach for the layout helpers when an embed falls short.
+
+## Recap
+
+- An embed used several times is a file of `src/components/embeds/`: a function of what it shows, or the embed itself.
+- `text()`, `section()`, `container()` and the others build a message out of components, with no `content` nor `embeds`.
+- Both are checked against the limits of Discord before anything is sent.
+
+<CardGroup cols={2}>
+  <Card title="Tasks" icon="clock" href="/tutorial/tasks">
+    Make the bot do something by itself, every so often or at given times.
+  </Card>
+  <Card
+    title="Guide: Embeds and layout"
+    icon="book-open"
+    href="/components/embeds"
+  >
+    Every helper, in short.
+  </Card>
+</CardGroup>

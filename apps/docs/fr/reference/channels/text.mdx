@@ -1,0 +1,59 @@
+---
+title: 'TextChannel'
+description: 'Un salon textuel ou d’annonces d’un serveur : sujet, mode lent, fils et suivi'
+---
+
+Un `TextChannel` est un salon textuel ou d’annonces d’un serveur. C’est ce que donne `channel.isText()`, et le `channel` le plus courant d’une commande ou d’un message.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function openDiscussion(channel: TextChannel, subject: string) {
+  const thread = await channel.startThread({ name: subject, autoArchiveDuration: 1440 });
+  await thread.send(`Parlons de ${subject} ici.`);
+  if (channel.slowmode > 0) await channel.send(`Le mode lent est activé : un message toutes les ${channel.slowmode} s.`);
+  return thread;
+}
+```
+
+<Note>
+  Comment envoyer, modifier et lire des messages est dans [Envoyer des messages](/fr/messages).
+</Note>
+
+## Propriétés
+
+Il a aussi tout ce qu’a [GuildChannel](/fr/reference/channels#guildchannel) et [ce que partagent les salons avec des messages](/fr/reference/channels#salons-avec-des-messages).
+
+<ResponseField name="topic" type="string | null">
+  Le sujet affiché en haut du salon.
+</ResponseField>
+
+<ResponseField name="slowmode" type="number">
+  Combien de secondes un membre attend entre deux messages (mode lent).
+</ResponseField>
+
+<ResponseField name="isAnnouncement" type="boolean">
+  Si c’est un salon d’annonces, que les serveurs peuvent suivre.
+</ResponseField>
+
+## Actions
+
+### startThread()
+
+```ts
+startThread(options: ThreadCreateOptions, reason?: string): Promise<ThreadChannel>
+```
+
+Démarre un fil qui n’est rattaché à aucun message. Pour en démarrer un depuis un message, utilisez `message.startThread()`. Les options sont un [`ThreadCreateOptions`](/fr/reference/options#threadcreateoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#start-thread-without-message)
+
+### follow()
+
+```ts
+follow(target: Snowflake | { id: Snowflake }, reason?: string): Promise<void>
+```
+
+Fait recevoir à un autre salon ce qui est publié dans ce salon d’annonces.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#follow-announcement-channel)

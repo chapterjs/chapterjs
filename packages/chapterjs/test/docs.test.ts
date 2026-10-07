@@ -131,6 +131,20 @@ describe('the documentation site', () => {
     }
   });
 
+  // The site is in English and in French (`fr/`): every page has its
+  // translation, at the same path under `fr/`, and nothing exists in one
+  // language only.
+  it('has every page in both languages', () => {
+    const english = [...site.keys()].filter(page => !page.startsWith('fr/'));
+    const french = [...site.keys()].filter(page => page.startsWith('fr/'));
+    for (const page of english) {
+      expect(site.has(`fr/${page}`), `fr/${page} translates ${page}`).toBe(true);
+    }
+    for (const page of french) {
+      expect(site.has(page.slice(3)), `${page} translates a page`).toBe(true);
+    }
+  });
+
   it.each(exportedNames())('documents `%s`', name => {
     expect(siteCode).toMatch(new RegExp(`(?<![\\w$])${name}(?![\\w$])`));
   });
@@ -194,7 +208,19 @@ const structures: {
   })),
 ];
 
-describe.each(structures.map(entry => [entry.type.name, entry] as const))(
+// Each structure is checked on its English page and on its French one: the
+// translation keeps every heading and field, only the words change.
+describe.each(
+  structures.flatMap(entry =>
+    ['', 'fr/'].map(
+      language =>
+        [
+          `${entry.type.name}${language ? ' (fr)' : ''}`,
+          { ...entry, pages: entry.pages.map(page => language + page) },
+        ] as const
+    )
+  )
+)(
   'the reference of %s',
   (name, { type, pages: pagesOf }) => {
     const content = pagesOf.map(page => site.get(page) ?? '').join('\n');
@@ -230,7 +256,9 @@ describe.each(structures.map(entry => [entry.type.name, entry] as const))(
     ].map(match => match[1]!);
     const known = new Set(
       structures
-        .filter(entry => entry.pages.includes(pagesOf[0]!))
+        .filter(entry =>
+          entry.pages.includes(pagesOf[0]!.replace(/^fr\//, ''))
+        )
         .flatMap(entry => membersOf(entry.type).methods)
     );
     it.each(own.length > 0 ? own : ['toJSON'])(

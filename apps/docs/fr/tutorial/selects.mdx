@@ -1,0 +1,107 @@
+---
+title: 'Les menus déroulants'
+description: 'Ajouter un menu à un message avec des options que vous déclarez, ou rempli avec les utilisateurs, rôles et salons du serveur, et recevoir le choix typé'
+---
+
+Un menu déroulant est une liste sous un message. C’est un composant comme un bouton, donc tout ce que dit la page précédente s’applique : un fichier, un chemin, `data`, `who`, `update()`. Ce qui est nouveau, ce sont les **options**, et ce que `run` en reçoit.
+
+## Un menu avec vos options
+
+Créez `src/components/selects/pet.ts` :
+
+```ts src/components/selects/pet.ts
+import { select } from 'chapterjs';
+
+export default select({
+  placeholder: 'Choisissez votre préféré',
+  options: { 'Chat 🐱': 'cat', 'Chien 🐶': 'dog', 'Axolotl 🦎': 'axolotl' },
+  async run({ interaction, user, value }) {
+    await interaction.update({ content: `${user.displayName} préfère : ${value}.`, components: [] });
+  },
+});
+```
+
+Et une commande qui l’affiche :
+
+```ts src/commands/pet.ts
+import { command } from 'chapterjs';
+import pet from '../components/selects/pet';
+
+export default command({
+  description: 'Demande votre animal préféré',
+  async run({ interaction }) {
+    await interaction.reply({ content: 'Lequel ?', components: [pet] });
+  },
+});
+```
+
+Survolez `value` dans le fichier : c’est `'cat' | 'dog' | 'axolotl'`, pas un `string`. Le framework l’a typé d’après les options, donc une faute de frappe dans une comparaison (`value === 'cta'`) est soulignée. `values` est la liste de tout ce qui a été choisi, pour les menus qui en permettent plusieurs.
+
+Le menu n’a pas de `data`, donc il se met tel quel dans le message : `components: [pet]`. Un menu prend une rangée entière à lui seul.
+
+## Trois façons d’écrire les options
+
+| Écrivez | Quand |
+| --- | --- |
+| `['Pizza', 'Pasta']` | Ce qui est affiché est ce que reçoit votre code |
+| `{ 'Pizza 🍕': 'pizza' }` | Les clés sont affichées, les valeurs sont ce que reçoit votre code |
+| `[{ label: 'Pizza', value: 'pizza', description: 'Avec du fromage', emoji: '🍕' }]` | Avec une description, un emoji, ou `default: true` |
+
+Jusqu’à 25 options. `min` et `max` disent combien peuvent être choisies (1 par défaut) : avec `max: 3`, `values` en contient jusqu’à trois, et `min: 0` permet de ne rien choisir.
+
+## Des menus remplis par Discord
+
+Avec un `type`, vous ne déclarez aucune option : Discord remplit le menu avec le serveur. `'user'`, `'role'`, `'mentionable'` (utilisateurs et rôles) ou `'channel'`. `values` est alors une liste de `User`, `Role`, `User | Role` ou `Channel` :
+
+```ts src/components/selects/helper-role.ts
+import { select } from 'chapterjs';
+
+export default select({
+  type: 'role',
+  placeholder: 'Quel rôle aide les nouveaux ?',
+  async run({ interaction, value }) {
+    await interaction.update({ content: `Les nouveaux seront aidés par ${value}.`, components: [] });
+  },
+});
+```
+
+Pour un menu de salons, `channelTypes` restreint ce qui est listé : `channelTypes: [ChannelType.GuildText]` n’affiche que les salons textuels, avec `ChannelType` importé de `chapterjs`.
+
+## Ce avec quoi un menu est affiché
+
+Là où vous mettez le menu dans un message, un second argument change ce qui est affiché : `placeholder`, `disabled`, et `defaults`, ce qui est sélectionné quand le menu apparaît (les valeurs des options, ou les identifiants des utilisateurs, rôles ou salons) :
+
+```ts src/commands/pet-default.ts
+import { command } from 'chapterjs';
+import pet from '../components/selects/pet';
+
+export default command({
+  description: 'Demande votre animal préféré, chat présélectionné',
+  async run({ interaction }) {
+    await interaction.reply({ content: 'Lequel ?', components: [pet({ defaults: ['cat'] })] });
+  },
+});
+```
+
+Un menu avec des `data` les prend en premier : `menu({ page: 2 }, { defaults: ['cat'] })`.
+
+## Points d’attention
+
+- **Un menu répond comme un bouton** : `update()` pour modifier son message, `reply()` pour un nouveau, en moins de 3 secondes (le framework diffère au bout de 2).
+- **`value` est le premier choix**, `values` tous les choix. Avec `max: 1`, ils disent la même chose.
+- **Un vieux message dont le fichier a été renommé** répond « This menu is not available any more. », comme un bouton.
+
+## Récapitulatif
+
+- Un menu est un fichier de `src/components/selects/`, avec des `options` ou un `type`.
+- `value` et `values` sont typés d’après les options, ou sont des structures pour un `type`.
+- `defaults`, `placeholder` et `disabled` se règlent là où le menu est mis dans un message.
+
+<CardGroup cols={2}>
+  <Card title="Les formulaires" icon="clipboard-list" href="/fr/tutorial/forms">
+    Demander du texte et des choix dans une fenêtre qui s’ouvre dans Discord.
+  </Card>
+  <Card title="Guide : Menus déroulants" icon="book-open" href="/fr/components/selects">
+    La même chose, en bref.
+  </Card>
+</CardGroup>
