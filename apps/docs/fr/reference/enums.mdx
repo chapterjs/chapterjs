@@ -1,0 +1,391 @@
+---
+title: 'Énumérations'
+description: 'Écrire par leur nom les valeurs qu’utilise Discord : types de salons, types de messages, niveaux, styles, langues'
+---
+
+Discord utilise des nombres pour les sortes, les styles et les niveaux. ChapterJS exporte leurs noms, pour que vous n’écriviez jamais un nombre dont il faut retenir le sens.
+
+<Note>
+  Les permissions ne sont pas ici : elles ont [leur propre page](/fr/reference/permissions). Les drapeaux d’un message et d’un utilisateur se lisent par leur nom (`message.flags`, `user.flags`) : voir [Message](/fr/reference/message) et [User](/fr/reference/user).
+</Note>
+
+```ts
+import { ChannelType, type Guild } from 'chapterjs';
+
+async function createLounge(guild: Guild) {
+  return guild.createChannel({ name: 'lounge', type: ChannelType.GuildVoice });
+}
+```
+
+Chaque énumération est à la fois une valeur et un type : `ChannelType.GuildVoice` vaut `2`, et une variable de type `ChannelType` accepte n’importe laquelle des valeurs.
+
+## ChannelType
+
+La sorte d’un salon : `channel.type`, et le `type` de [`ChannelCreateOptions`](/fr/reference/options#channelcreateoptions) et de [`ThreadCreateOptions`](/fr/reference/options#threadcreateoptions). Les méthodes `is...()` d’un salon répondent à la même question sans nombre : voir [Salons](/fr/reference/channels).
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `ChannelType.GuildText` | `0` | Un salon textuel d’un serveur |
+| `ChannelType.Dm` | `1` | Une conversation privée entre deux utilisateurs |
+| `ChannelType.GuildVoice` | `2` | Un salon vocal d’un serveur |
+| `ChannelType.GroupDm` | `3` | Une conversation privée entre plusieurs utilisateurs |
+| `ChannelType.GuildCategory` | `4` | Une catégorie, qui regroupe jusqu’à 50 salons |
+| `ChannelType.GuildAnnouncement` | `5` | Un salon que d’autres serveurs peuvent suivre (anciennement salons d’actualités) |
+| `ChannelType.AnnouncementThread` | `10` | Un fil dans un salon d’annonces |
+| `ChannelType.PublicThread` | `11` | Un fil dans un salon textuel, ou une publication d’un forum |
+| `ChannelType.PrivateThread` | `12` | Un fil visible seulement par les personnes invitées et les membres avec `ManageThreads` |
+| `ChannelType.GuildStageVoice` | `13` | Un salon de conférence, où quelques-uns parlent à un public |
+| `ChannelType.GuildDirectory` | `14` | Le salon d’un hub qui liste ses serveurs |
+| `ChannelType.GuildForum` | `15` | Un forum : il ne contient que des publications |
+| `ChannelType.GuildMedia` | `16` | Un salon média : comme un forum, pour les images et les vidéos |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#channel-object-channel-types)
+
+## ForumLayoutType
+
+Comment sont affichées les publications d’un forum : `defaultForumLayout` dans les [options des salons](/fr/reference/options#channelcreateoptions).
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `ForumLayoutType.NotSet` | `0` | Aucune disposition choisie |
+| `ForumLayoutType.ListView` | `1` | Les publications en liste |
+| `ForumLayoutType.GalleryView` | `2` | Les publications en tuiles |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#channel-object-forum-layout-types)
+
+## ForumSortOrderType
+
+Comment sont triées les publications d’un salon forum ou média : `defaultSortOrder` dans les [options des salons](/fr/reference/options#channelcreateoptions).
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `ForumSortOrderType.LatestActivity` | `0` | Par activité la plus récente |
+| `ForumSortOrderType.CreationDate` | `1` | Par date de création, la plus récente en premier |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#channel-object-sort-order-types)
+
+## VideoQualityMode
+
+La qualité des caméras d’un salon vocal : `videoQualityMode` dans les [options des salons](/fr/reference/options#channelcreateoptions).
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `VideoQualityMode.Auto` | `1` | Discord choisit la qualité |
+| `VideoQualityMode.Full` | `2` | 720p |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#channel-object-video-quality-modes)
+
+## Locale
+
+Les langues de Discord : `guild.preferredLocale`, `interaction.locale`, `user.locale`, et les clés des `locales` d’une commande (voir [Traductions](/fr/commands/translations)). Les valeurs sont les codes de langue eux-mêmes, donc `Locale.French` et `'fr'` sont la même chose.
+
+| Nom | Code | Langue |
+| --- | --- | --- |
+| `Locale.Indonesian` | `'id'` | Indonésien |
+| `Locale.Danish` | `'da'` | Danois |
+| `Locale.German` | `'de'` | Allemand |
+| `Locale.EnglishUK` | `'en-GB'` | Anglais (Royaume-Uni) |
+| `Locale.EnglishUS` | `'en-US'` | Anglais (États-Unis) |
+| `Locale.Spanish` | `'es-ES'` | Espagnol |
+| `Locale.SpanishLATAM` | `'es-419'` | Espagnol (Amérique latine) |
+| `Locale.French` | `'fr'` | Français |
+| `Locale.Croatian` | `'hr'` | Croate |
+| `Locale.Italian` | `'it'` | Italien |
+| `Locale.Lithuanian` | `'lt'` | Lituanien |
+| `Locale.Hungarian` | `'hu'` | Hongrois |
+| `Locale.Dutch` | `'nl'` | Néerlandais |
+| `Locale.Norwegian` | `'no'` | Norvégien |
+| `Locale.Polish` | `'pl'` | Polonais |
+| `Locale.PortugueseBrazilian` | `'pt-BR'` | Portugais (Brésil) |
+| `Locale.Romanian` | `'ro'` | Roumain |
+| `Locale.Finnish` | `'fi'` | Finnois |
+| `Locale.Swedish` | `'sv-SE'` | Suédois |
+| `Locale.Vietnamese` | `'vi'` | Vietnamien |
+| `Locale.Turkish` | `'tr'` | Turc |
+| `Locale.Czech` | `'cs'` | Tchèque |
+| `Locale.Greek` | `'el'` | Grec |
+| `Locale.Bulgarian` | `'bg'` | Bulgare |
+| `Locale.Russian` | `'ru'` | Russe |
+| `Locale.Ukrainian` | `'uk'` | Ukrainien |
+| `Locale.Hindi` | `'hi'` | Hindi |
+| `Locale.Thai` | `'th'` | Thaï |
+| `Locale.ChineseChina` | `'zh-CN'` | Chinois (Chine) |
+| `Locale.Japanese` | `'ja'` | Japonais |
+| `Locale.ChineseTaiwan` | `'zh-TW'` | Chinois (Taïwan) |
+| `Locale.Korean` | `'ko'` | Coréen |
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#locales)
+
+## ButtonStyle
+
+Le `style` d’un bouton tel que Discord l’envoie dans un message que vous recevez. Dans vos fichiers, un bouton prend un [`ButtonStyleName`](/fr/reference/button#buttonstylename) (`'primary'`, `'danger'`...) à la place.
+
+| Nom | Valeur |
+| --- | --- |
+| `ButtonStyle.Primary` | `1` |
+| `ButtonStyle.Secondary` | `2` |
+| `ButtonStyle.Success` | `3` |
+| `ButtonStyle.Danger` | `4` |
+| `ButtonStyle.Link` | `5` |
+| `ButtonStyle.Premium` | `6` |
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#button-button-styles)
+
+## ComponentType
+
+Le `type` d’un composant d’un message que vous recevez. Les composants que vous envoyez sont fabriqués avec les fichiers de `src/components/` et les [helpers de mise en page](/fr/reference/layout), qui le règlent pour vous.
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `ComponentType.ActionRow` | `1` | Une rangée de composants interactifs |
+| `ComponentType.Button` | `2` | Un bouton |
+| `ComponentType.StringSelect` | `3` | Un menu déroulant avec des options texte |
+| `ComponentType.TextInput` | `4` | Un champ de texte |
+| `ComponentType.UserSelect` | `5` | Un menu déroulant d’utilisateurs |
+| `ComponentType.RoleSelect` | `6` | Un menu déroulant de rôles |
+| `ComponentType.MentionableSelect` | `7` | Un menu déroulant d’utilisateurs et de rôles |
+| `ComponentType.ChannelSelect` | `8` | Un menu déroulant de salons |
+| `ComponentType.Section` | `9` | Du texte à côté d’un composant accessoire |
+| `ComponentType.TextDisplay` | `10` | Du texte Markdown |
+| `ComponentType.Thumbnail` | `11` | Une petite image, utilisée comme accessoire |
+| `ComponentType.MediaGallery` | `12` | Des images et d’autres médias |
+| `ComponentType.File` | `13` | Un fichier joint |
+| `ComponentType.Separator` | `14` | De l’espace vertical entre les composants |
+| `ComponentType.Container` | `17` | Un cadre qui regroupe des composants |
+| `ComponentType.Label` | `18` | Une étiquette et une description autour d’un composant |
+| `ComponentType.FileUpload` | `19` | Un téléversement de fichier |
+| `ComponentType.RadioGroup` | `21` | Un choix unique parmi des options |
+| `ComponentType.CheckboxGroup` | `22` | Plusieurs cases à cocher |
+| `ComponentType.Checkbox` | `23` | Une case à cocher |
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#component-object-component-types)
+
+## TextInputStyle
+
+Le `style` d’un champ de texte.
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `TextInputStyle.Short` | `1` | Une ligne |
+| `TextInputStyle.Paragraph` | `2` | Plusieurs lignes |
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#text-input-text-input-styles)
+
+## DefaultMessageNotificationLevel
+
+De quoi les membres sont notifiés par défaut : `defaultMessageNotifications` dans [`GuildEditOptions`](/fr/reference/options#guildeditoptions).
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `DefaultMessageNotificationLevel.AllMessages` | `0` | Chaque message |
+| `DefaultMessageNotificationLevel.OnlyMentions` | `1` | Seulement les messages qui les mentionnent |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#guild-object-default-message-notification-level)
+
+## ExplicitContentFilterLevel
+
+Les images et vidéos de qui Discord analyse : `explicitContentFilter` dans [`GuildEditOptions`](/fr/reference/options#guildeditoptions).
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `ExplicitContentFilterLevel.Disabled` | `0` | Rien n’est analysé |
+| `ExplicitContentFilterLevel.MembersWithoutRoles` | `1` | Ce qu’envoient les membres sans rôle |
+| `ExplicitContentFilterLevel.AllMembers` | `2` | Ce qu’envoie chaque membre |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#guild-object-explicit-content-filter-level)
+
+## PremiumTier
+
+Le niveau de boost d’un serveur : `guild.premiumTier`.
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `PremiumTier.None` | `0` | Aucun avantage de boost débloqué |
+| `PremiumTier.Tier1` | `1` | Avantages du niveau 1 |
+| `PremiumTier.Tier2` | `2` | Avantages du niveau 2 |
+| `PremiumTier.Tier3` | `3` | Avantages du niveau 3 |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#guild-object-premium-tier)
+
+## VerificationLevel
+
+Ce que Discord demande aux nouveaux membres avant qu’ils puissent écrire : `guild.verificationLevel`, et `verificationLevel` dans [`GuildEditOptions`](/fr/reference/options#guildeditoptions).
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `VerificationLevel.None` | `0` | Rien |
+| `VerificationLevel.Low` | `1` | Un e-mail vérifié |
+| `VerificationLevel.Medium` | `2` | Un compte de plus de 5 minutes |
+| `VerificationLevel.High` | `3` | Être sur le serveur depuis plus de 10 minutes |
+| `VerificationLevel.VeryHigh` | `4` | Un numéro de téléphone vérifié |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#guild-object-verification-level)
+
+## AuditLogEvent
+
+Ce dont parle une entrée du journal d’audit : `actionType` d’une entrée d’[`AuditLog`](/fr/reference/data#auditlog), et le filtre `actionType` de `guild.fetchAuditLog()`.
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `AuditLogEvent.GuildUpdate` | `1` | Les réglages du serveur ont changé |
+| `AuditLogEvent.ChannelCreate` | `10` | Un salon a été créé |
+| `AuditLogEvent.ChannelUpdate` | `11` | Les réglages d’un salon ont changé |
+| `AuditLogEvent.ChannelDelete` | `12` | Un salon a été supprimé |
+| `AuditLogEvent.ChannelOverwriteCreate` | `13` | Un remplacement de permissions a été ajouté à un salon |
+| `AuditLogEvent.ChannelOverwriteUpdate` | `14` | Un remplacement de permissions d’un salon a changé |
+| `AuditLogEvent.ChannelOverwriteDelete` | `15` | Un remplacement de permissions a été retiré d’un salon |
+| `AuditLogEvent.MemberKick` | `20` | Un membre a été expulsé |
+| `AuditLogEvent.MemberPrune` | `21` | Des membres inactifs ont été retirés |
+| `AuditLogEvent.MemberBanAdd` | `22` | Un membre a été banni |
+| `AuditLogEvent.MemberBanRemove` | `23` | Un bannissement a été levé |
+| `AuditLogEvent.MemberUpdate` | `24` | Un membre a changé (surnom, exclusion temporaire...) |
+| `AuditLogEvent.MemberRoleUpdate` | `25` | Un membre a reçu ou perdu un rôle |
+| `AuditLogEvent.MemberMove` | `26` | Un membre a été déplacé vers un autre salon vocal |
+| `AuditLogEvent.MemberDisconnect` | `27` | Un membre a été déconnecté d’un salon vocal |
+| `AuditLogEvent.BotAdd` | `28` | Un bot a été ajouté au serveur |
+| `AuditLogEvent.RoleCreate` | `30` | Un rôle a été créé |
+| `AuditLogEvent.RoleUpdate` | `31` | Un rôle a changé |
+| `AuditLogEvent.RoleDelete` | `32` | Un rôle a été supprimé |
+| `AuditLogEvent.InviteCreate` | `40` | Une invitation a été créée |
+| `AuditLogEvent.InviteUpdate` | `41` | Une invitation a changé |
+| `AuditLogEvent.InviteDelete` | `42` | Une invitation a été supprimée |
+| `AuditLogEvent.WebhookCreate` | `50` | Un webhook a été créé |
+| `AuditLogEvent.WebhookUpdate` | `51` | Un webhook ou son salon a changé |
+| `AuditLogEvent.WebhookDelete` | `52` | Un webhook a été supprimé |
+| `AuditLogEvent.EmojiCreate` | `60` | Un emoji a été créé |
+| `AuditLogEvent.EmojiUpdate` | `61` | Le nom d’un emoji a changé |
+| `AuditLogEvent.EmojiDelete` | `62` | Un emoji a été supprimé |
+| `AuditLogEvent.MessageDelete` | `72` | Un message a été supprimé |
+| `AuditLogEvent.MessageBulkDelete` | `73` | Plusieurs messages ont été supprimés d’un coup |
+| `AuditLogEvent.MessagePin` | `74` | Un message a été épinglé |
+| `AuditLogEvent.MessageUnpin` | `75` | Un message a été désépinglé |
+| `AuditLogEvent.IntegrationCreate` | `80` | Une app a été ajoutée au serveur |
+| `AuditLogEvent.IntegrationUpdate` | `81` | Une app a changé (ses scopes, par exemple) |
+| `AuditLogEvent.IntegrationDelete` | `82` | Une app a été retirée du serveur |
+| `AuditLogEvent.StageInstanceCreate` | `83` | Une conférence a commencé |
+| `AuditLogEvent.StageInstanceUpdate` | `84` | Les détails d’une conférence en cours ont changé |
+| `AuditLogEvent.StageInstanceDelete` | `85` | Une conférence s’est terminée |
+| `AuditLogEvent.StickerCreate` | `90` | Un sticker a été créé |
+| `AuditLogEvent.StickerUpdate` | `91` | Les détails d’un sticker ont changé |
+| `AuditLogEvent.StickerDelete` | `92` | Un sticker a été supprimé |
+| `AuditLogEvent.GuildScheduledEventCreate` | `100` | Un événement programmé a été créé |
+| `AuditLogEvent.GuildScheduledEventUpdate` | `101` | Un événement programmé a changé |
+| `AuditLogEvent.GuildScheduledEventDelete` | `102` | Un événement programmé a été annulé |
+| `AuditLogEvent.ThreadCreate` | `110` | Un fil a été créé |
+| `AuditLogEvent.ThreadUpdate` | `111` | Un fil a changé |
+| `AuditLogEvent.ThreadDelete` | `112` | Un fil a été supprimé |
+| `AuditLogEvent.ApplicationCommandPermissionUpdate` | `121` | Les permissions d’une commande ont changé |
+| `AuditLogEvent.SoundboardSoundCreate` | `130` | Un son de soundboard a été créé |
+| `AuditLogEvent.SoundboardSoundUpdate` | `131` | Un son de soundboard a changé |
+| `AuditLogEvent.SoundboardSoundDelete` | `132` | Un son de soundboard a été supprimé |
+| `AuditLogEvent.AutoModerationRuleCreate` | `140` | Une règle de modération automatique a été créée |
+| `AuditLogEvent.AutoModerationRuleUpdate` | `141` | Une règle de modération automatique a changé |
+| `AuditLogEvent.AutoModerationRuleDelete` | `142` | Une règle de modération automatique a été supprimée |
+| `AuditLogEvent.AutoModerationBlockMessage` | `143` | La modération automatique a bloqué un message |
+| `AuditLogEvent.AutoModerationFlagToChannel` | `144` | La modération automatique a signalé un message dans un salon |
+| `AuditLogEvent.AutoModerationUserCommunicationDisabled` | `145` | La modération automatique a exclu temporairement un membre |
+| `AuditLogEvent.AutoModerationQuarantineUser` | `146` | La modération automatique a mis un membre en quarantaine |
+| `AuditLogEvent.CreatorMonetizationRequestCreated` | `150` | Une demande de monétisation créateur a été créée |
+| `AuditLogEvent.CreatorMonetizationTermsAccepted` | `151` | Les conditions de monétisation créateur ont été acceptées |
+| `AuditLogEvent.OnboardingPromptCreate` | `163` | Une question d’intégration a été créée |
+| `AuditLogEvent.OnboardingPromptUpdate` | `164` | Une question d’intégration a changé |
+| `AuditLogEvent.OnboardingPromptDelete` | `165` | Une question d’intégration a été supprimée |
+| `AuditLogEvent.OnboardingCreate` | `166` | L’intégration a été mise en place |
+| `AuditLogEvent.OnboardingUpdate` | `167` | L’intégration a changé |
+| `AuditLogEvent.HomeSettingsCreate` | `190` | Le guide du serveur a été créé |
+| `AuditLogEvent.HomeSettingsUpdate` | `191` | Le guide du serveur a changé |
+| `AuditLogEvent.VoiceChannelStatusCreate` | `192` | Quelqu’un a réglé le statut d’un salon vocal |
+| `AuditLogEvent.VoiceChannelStatusDelete` | `193` | Quelqu’un a retiré le statut d’un salon vocal |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/audit-log#audit-log-entry-object-audit-log-events)
+
+## MessageFlags
+
+Les drapeaux qu’un message peut avoir. `message.flags` donne leurs noms (`MessageFlagName`), donc vous avez rarement besoin des bits.
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `MessageFlags.Crossposted` | `1` | Publié dans les salons qui suivent celui-ci |
+| `MessageFlags.IsCrosspost` | `2` | Vient d’un salon suivi |
+| `MessageFlags.SuppressEmbeds` | `4` | Affiché sans les aperçus de ses liens |
+| `MessageFlags.SourceMessageDeleted` | `8` | Le message dont il a été publié a été supprimé |
+| `MessageFlags.Urgent` | `16` | Vient du système de messages urgents de Discord |
+| `MessageFlags.HasThread` | `32` | Un fil a été démarré depuis lui, avec le même identifiant |
+| `MessageFlags.Ephemeral` | `64` | Visible seulement par la personne qui a utilisé la commande |
+| `MessageFlags.Loading` | `128` | La réponse d’une commande qui « réfléchit » encore |
+| `MessageFlags.FailedToMentionSomeRolesInThread` | `256` | Certains rôles mentionnés n’ont pas pu être ajoutés au fil |
+| `MessageFlags.SuppressNotifications` | `4096` | Envoyé sans son de notification |
+| `MessageFlags.IsVoiceMessage` | `8192` | Un message vocal |
+| `MessageFlags.HasSnapshot` | `16384` | Un message transféré |
+| `MessageFlags.IsComponentsV2` | `32768` | Fait uniquement de composants |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#message-object-message-flags)
+
+## MessageType
+
+La sorte d’un message : `message.type`. `message.isFromUser` vaut `true` pour `Default` et `Reply` seulement, quand une personne les a écrits.
+
+| Nom | Valeur |
+| --- | --- |
+| `MessageType.Default` | `0` |
+| `MessageType.RecipientAdd` | `1` |
+| `MessageType.RecipientRemove` | `2` |
+| `MessageType.Call` | `3` |
+| `MessageType.ChannelNameChange` | `4` |
+| `MessageType.ChannelIconChange` | `5` |
+| `MessageType.ChannelPinnedMessage` | `6` |
+| `MessageType.UserJoin` | `7` |
+| `MessageType.GuildBoost` | `8` |
+| `MessageType.GuildBoostTier1` | `9` |
+| `MessageType.GuildBoostTier2` | `10` |
+| `MessageType.GuildBoostTier3` | `11` |
+| `MessageType.ChannelFollowAdd` | `12` |
+| `MessageType.GuildDiscoveryDisqualified` | `14` |
+| `MessageType.GuildDiscoveryRequalified` | `15` |
+| `MessageType.GuildDiscoveryGracePeriodInitialWarning` | `16` |
+| `MessageType.GuildDiscoveryGracePeriodFinalWarning` | `17` |
+| `MessageType.ThreadCreated` | `18` |
+| `MessageType.Reply` | `19` |
+| `MessageType.ChatInputCommand` | `20` |
+| `MessageType.ThreadStarterMessage` | `21` |
+| `MessageType.GuildInviteReminder` | `22` |
+| `MessageType.ContextMenuCommand` | `23` |
+| `MessageType.AutoModerationAction` | `24` |
+| `MessageType.RoleSubscriptionPurchase` | `25` |
+| `MessageType.InteractionPremiumUpsell` | `26` |
+| `MessageType.StageStart` | `27` |
+| `MessageType.StageEnd` | `28` |
+| `MessageType.StageSpeaker` | `29` |
+| `MessageType.StageTopic` | `31` |
+| `MessageType.GuildApplicationPremiumSubscription` | `32` |
+| `MessageType.GuildIncidentAlertModeEnabled` | `36` |
+| `MessageType.GuildIncidentAlertModeDisabled` | `37` |
+| `MessageType.GuildIncidentReportRaid` | `38` |
+| `MessageType.GuildIncidentReportFalseAlarm` | `39` |
+| `MessageType.PurchaseNotification` | `44` |
+| `MessageType.PollResult` | `46` |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#message-object-message-types)
+
+## UserFlags
+
+Les badges d’un compte. `user.flags` donne leurs noms (`UserFlagName`), donc vous avez rarement besoin des bits.
+
+| Nom | Valeur | Signification |
+| --- | --- | --- |
+| `UserFlags.Staff` | `1` | Employé de Discord |
+| `UserFlags.Partner` | `2` | Propriétaire d’un serveur partenaire |
+| `UserFlags.Hypesquad` | `4` | Membre des événements HypeSquad |
+| `UserFlags.BugHunterLevel1` | `8` | Chasseur de bugs, niveau 1 |
+| `UserFlags.HypesquadOnlineHouse1` | `64` | Maison Bravery |
+| `UserFlags.HypesquadOnlineHouse2` | `128` | Maison Brilliance |
+| `UserFlags.HypesquadOnlineHouse3` | `256` | Maison Balance |
+| `UserFlags.PremiumEarlySupporter` | `512` | Soutien de la première heure de Nitro |
+| `UserFlags.TeamPseudoUser` | `1024` | Le compte est une équipe |
+| `UserFlags.BugHunterLevel2` | `16384` | Chasseur de bugs, niveau 2 |
+| `UserFlags.VerifiedBot` | `65536` | Bot vérifié |
+| `UserFlags.VerifiedDeveloper` | `131072` | Développeur de bot vérifié de la première heure |
+| `UserFlags.CertifiedModerator` | `262144` | Ancien des programmes de modération |
+| `UserFlags.BotHttpInteractions` | `524288` | Un bot qui n’utilise que des interactions HTTP, affiché dans la liste des membres en ligne |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/user#user-object-user-flags)

@@ -1,0 +1,173 @@
+---
+title: 'User'
+description: 'Lire un compte Discord, obtenir son avatar et lui envoyer un message privé'
+---
+
+Un `User` est un compte Discord, le même dans chaque serveur. Vous en obtenez un comme `user` d’une [commande](/fr/reference/interaction), comme `message.author`, comme `member.user` et comme `user` de l’[événement](/fr/reference/events) `memberLeave`. Pour ce qui est propre à un serveur (surnom, rôles, permissions), voir [GuildMember](/fr/reference/member).
+
+```ts
+import type { User } from 'chapterjs';
+
+async function greet(user: User) {
+  if (user.bot) return;
+  await user.send({
+    content: `Salut ${user.displayName} !`,
+    embeds: [{ thumbnail: { url: user.avatarURL({ size: 256 }) } }],
+  });
+}
+```
+
+<Note>
+  Comment vos fonctions reçoivent un utilisateur est dans [Commandes](/fr/commands) et [Événements](/fr/events). Ce que peut contenir un message privé est dans [Messages](/fr/messages).
+</Note>
+
+<Warning>
+  Envoyer un message privé échoue quand l’utilisateur a fermé ses messages privés ou ne partage aucun serveur avec le bot. Attrapez l’erreur quand cela vous convient : voir [Erreurs](/fr/reference/errors).
+</Warning>
+
+## Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand il a été créé : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  Le nom unique du compte (`@nom`).
+</ResponseField>
+
+<ResponseField name="globalName" type="string | null">
+  Le nom affiché dans Discord, quand l’utilisateur en a choisi un.
+</ResponseField>
+
+<ResponseField name="displayName" type="string">
+  Le nom à afficher : le nom d’affichage, sinon le nom d’utilisateur.
+</ResponseField>
+
+<ResponseField name="discriminator" type="string">
+  `"0"` pour les utilisateurs du système de noms actuel.
+</ResponseField>
+
+<ResponseField name="bot" type="boolean">
+  Si le compte est un bot.
+</ResponseField>
+
+<ResponseField name="system" type="boolean">
+  Si le compte est un compte système officiel de Discord.
+</ResponseField>
+
+<ResponseField name="avatar" type="string | null">
+  Le hash de l’avatar ; utilisez `avatarURL()` pour obtenir l’image.
+</ResponseField>
+
+<ResponseField name="banner" type="string | null">
+  Le hash de la bannière ; utilisez `bannerURL()` pour obtenir l’image.
+</ResponseField>
+
+<ResponseField name="accentColor" type="number | null">
+  La couleur de la bannière, sous forme de nombre (`0xff0000`).
+</ResponseField>
+
+<ResponseField name="locale" type="Locale | null">
+  Connue seulement pour le bot lui-même. Voir [Locale](/fr/reference/enums#locale).
+</ResponseField>
+
+<ResponseField name="flags" type="UserFlagName[]">
+  Les badges publics du compte, par nom. Voir [UserFlagName](#userflagname).
+</ResponseField>
+
+## Helpers
+
+Ils lisent ce dont le bot se souvient : ils n’envoient jamais de requête.
+
+### avatarURL()
+
+```ts
+avatarURL(options?: ImageOptions): string
+```
+
+L’URL de l’avatar ; de celui par défaut quand aucun n’est défini. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### bannerURL()
+
+```ts
+bannerURL(options?: ImageOptions): string | null
+```
+
+L’URL de la bannière, quand il y en a une. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### toString()
+
+```ts
+toString(): string
+```
+
+`<@id>` : mentionne l’utilisateur quand il est mis dans un message.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+## Lire depuis Discord
+
+### fetch()
+
+```ts
+fetch(): Promise<User>
+```
+
+Demande à Discord les dernières données de cet utilisateur.
+
+## Actions
+
+### createDM()
+
+```ts
+createDM(): Promise<DMChannel>
+```
+
+Ouvre la conversation privée avec cet utilisateur. Voir [DMChannel](/fr/reference/channels/dm).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/user#create-dm)
+
+### send()
+
+```ts
+send(message: MessageInput): Promise<Message>
+```
+
+Envoie un message privé à cet utilisateur. Voir [MessageInput](/fr/reference/message-options#messageinput).
+
+## Types
+
+### UserFlagName
+
+Le nom d’un badge public, tel que `flags` les liste : l’une des clés de [`UserFlags`](/fr/reference/enums#userflags).
+
+| Nom | Badge |
+| --- | --- |
+| `Staff` | Employé de Discord |
+| `Partner` | Propriétaire d’un serveur partenaire |
+| `Hypesquad` | Membre des événements HypeSquad |
+| `BugHunterLevel1` | Chasseur de bugs niveau 1 |
+| `HypesquadOnlineHouse1` | Membre de la maison Bravery |
+| `HypesquadOnlineHouse2` | Membre de la maison Brilliance |
+| `HypesquadOnlineHouse3` | Membre de la maison Balance |
+| `PremiumEarlySupporter` | Soutien de la première heure de Nitro |
+| `TeamPseudoUser` | L’utilisateur est une équipe |
+| `BugHunterLevel2` | Chasseur de bugs niveau 2 |
+| `VerifiedBot` | Bot vérifié |
+| `VerifiedDeveloper` | Développeur de bot vérifié de la première heure |
+| `CertifiedModerator` | Ancien des programmes de modération |
+| `BotHttpInteractions` | Le bot n’utilise que des interactions HTTP et est affiché dans la liste des membres en ligne |
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/user#user-object-user-flags)
+
+`ImageOptions` est dans [Helpers](/fr/reference/helpers#imageoptions).

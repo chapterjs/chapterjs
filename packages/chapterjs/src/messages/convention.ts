@@ -6,6 +6,7 @@
 
 import { commandName } from '../commands/tree.js';
 import type { Locale } from '../discord/types/common.js';
+import type { TypedFolder } from '../loader/generated.js';
 import {
   logicalPath,
   type Convention,
@@ -342,22 +343,12 @@ export function messagesDeclarations(
   files: readonly FoundFile[],
   defaultFile?: string
 ): string {
-  const named = files.filter(({ file }) => {
-    try {
-      localeOf(file.slice('src/messages/'.length));
-      return true;
-    } catch {
-      return false;
-    }
-  });
+  const named = namedFiles(files);
   const first = named.find(({ file }) => file === defaultFile) ?? named[0];
   if (!first) return '';
   const path = first.file.replace(/^src\//, '').replace(/\.[^./]+$/, '');
   const locales = named
-    .map(
-      ({ file }) =>
-        `    ${JSON.stringify(localeOf(file.slice('src/messages/'.length)))}: true;`
-    )
+    .map(({ locale }) => `    ${JSON.stringify(locale)}: true;`)
     .sort()
     .join('\n');
   return `import type { MessagesOf } from '#chapterjs';
@@ -372,6 +363,62 @@ ${locales}
   }
 }
 `;
+}
+
+/** The files of `src/messages/` named after a language, with it. */
+function namedFiles(
+  files: readonly FoundFile[]
+): { file: string; locale: Locale }[] {
+  return files.flatMap(({ file }) => {
+    try {
+      return [{ file, locale: localeOf(file.slice('src/messages/'.length)) }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+/**
+ * One typed folder per language file: in `src/messages/fr.ts`, the
+ * `language()` imported from 'chapterjs' knows the other files. When
+ * another one says `default: true` (`defaults`, the files that do, known
+ * once they ran: `dev` and `build` give them, `sync` runs nothing), it
+ * refuses `default: true`, naming that file: a second default language is
+ * underlined in the editor, and no longer only reported in the console.
+ * Each project takes `main` (the commands a language file may translate)
+ * and not `shared`, which types `t` from the default file: a language file
+ * checked with the `language()` of another would be a false error.
+ */
+export function languageTypedFolders(
+  files: readonly FoundFile[],
+  defaults: readonly string[] = []
+): TypedFolder[] {
+  return namedFiles(files).map(({ file, locale }) => {
+    const others = defaults.filter(one => one !== file).sort();
+    const refusal =
+      others.length === 0
+        ? ''
+        : ` & {
+    /** ${others.join(' and ')} already ${others.length === 1 ? 'says' : 'say'} \`default: true\`: only one file of src/messages/ is the default language. Remove it there to make this one the default. */
+    default?: false;
+  }`;
+    return {
+      id: `messages.${locale}`,
+      folder: file,
+      includes: ['main'],
+      declarations: `import type { LanguageConfig, LanguageFile, MessageTexts } from '#chapterjs';
+
+/**
+ * Declares one language of the bot: the one this file is named after.
+ * Every handler then receives \`t\`, which gives a text in the language of
+ * who will read the message, with its \`{placeholders}\` filled in.
+ */
+export declare function language<const T extends MessageTexts>(
+  config: LanguageConfig<T>${refusal}
+): LanguageFile<T>;
+`,
+    };
+  });
 }
 
 /** A command file, and whether it has its own `description`. */

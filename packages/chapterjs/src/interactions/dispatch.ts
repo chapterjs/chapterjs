@@ -120,7 +120,7 @@ export function placeContext(
 export function says(
   interaction: Interaction,
   key: FrameworkKey,
-  params?: { what?: What; permissions?: string; count?: number }
+  params?: { what?: What; permissions?: string; count?: number; when?: string }
 ): string {
   return phrase(ctxOf(interaction), interaction.locale, key, params);
 }
@@ -132,11 +132,14 @@ export function says(
 export function refuse(
   interaction: Interaction,
   key: FrameworkKey,
-  params?: { what?: What; permissions?: string; count?: number }
-): void {
-  interaction
+  params?: { what?: What; permissions?: string; count?: number; when?: string }
+): Promise<void> {
+  return interaction
     .reply({ content: says(interaction, key, params), ephemeral: true })
-    .catch(() => {});
+    .then(
+      () => {},
+      () => {}
+    );
 }
 
 export interface RunOptions {

@@ -1,0 +1,363 @@
+---
+title: 'Envoyer des messages'
+description: 'Envoyer du texte, des embeds, des fichiers et des sondages, répondre, modifier, supprimer, réagir, épingler et lire l’historique d’un salon'
+---
+
+Tout ce qui peut recevoir un message a un `send()` : un salon, un utilisateur, un membre, un webhook. Un message est un texte, ou un objet avec tout ce qu’il contient.
+
+```ts src/commands/announce.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Publie une annonce dans ce salon',
+  options: {
+    text: { type: 'string', description: 'Quoi annoncer', required: true },
+  },
+  async run({ interaction, channel, options }) {
+    await channel.send({
+      embeds: [{ title: 'Annonce', description: options.text, color: 0x5865f2 }],
+    });
+    await interaction.reply({ content: 'Publié !', ephemeral: true });
+  },
+});
+```
+
+C’est tout : `channel` est le salon où la commande a été utilisée, et `send()` y publie. Le message est vérifié avant de partir (un texte de plus de 2000 caractères, trop d’embeds...) : une erreur est une erreur dans votre code avec un message clair, pas un refus de Discord.
+
+<Note>
+  Chaque champ que prend un message est dans [Options des messages](/fr/reference/message-options), et tout ce qu’a un message que vous recevez est dans [Message](/fr/reference/message).
+</Note>
+
+## Où va un message
+
+| Vous avez | Écrivez |
+| --- | --- |
+| Un salon (`channel`, `message.channel`, un de `guild.channels`) | `channel.send(...)` |
+| Un message auquel répondre | `message.reply(...)` |
+| Un utilisateur ou un membre à qui écrire en privé | `user.send(...)`, `member.send(...)` |
+| Une commande à laquelle répondre | `interaction.reply(...)` : voir [Répondre](/fr/commands/answering) |
+| Un webhook | `webhook.send(...)` : voir [Webhook](/fr/reference/webhook) |
+
+Ils prennent tous la même chose. Un texte :
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function hello(channel: TextChannel) {
+  await channel.send('Bonjour !');
+}
+```
+
+Ou un objet, quand le message a plus qu’un texte, ou est envoyé autrement :
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function quietly(channel: TextChannel) {
+  await channel.send({
+    content: 'Une nouvelle version est sortie : https://example.com/changelog',
+    silent: true, // pas de son de notification
+    suppressEmbeds: true, // pas d’aperçu du lien
+  });
+}
+```
+
+Un message a besoin d’au moins un contenu, un embed, un fichier, un composant, un sticker ou un sondage. Tout le reste est facultatif, et chaque `send()` renvoie le `Message` envoyé, pour que vous puissiez y réagir, l’épingler ou le modifier plus tard.
+
+## Répondre
+
+`message.reply()` répond à un message dans son salon : Discord affiche le message auquel il répond au-dessus du vôtre.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function thank(message: Message) {
+  await message.reply('Merci !');
+}
+```
+
+Une réponse notifie l’auteur du message par défaut. Pour répondre sans notifier, passez `allowedMentions` :
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function quietReply(message: Message) {
+  await message.reply({
+    content: 'Noté.',
+    allowedMentions: { repliedUser: false },
+  });
+}
+```
+
+`send()` peut aussi répondre : passez le message (ou son identifiant) en `replyTo`.
+
+## Les embeds
+
+Un embed est un encadré avec un titre, une description, des champs, une image, un pied... Passez-en jusqu’à 10 dans `embeds` :
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function report(channel: TextChannel, newMembers: number, messages: number) {
+  await channel.send({
+    embeds: [
+      {
+        title: 'Rapport de la semaine',
+        description: 'Tout s’est bien passé.',
+        color: 0x5865f2,
+        fields: [
+          { name: 'Nouveaux membres', value: String(newMembers), inline: true },
+          { name: 'Messages', value: String(messages), inline: true },
+        ],
+        footer: { text: 'Généré automatiquement' },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  });
+}
+```
+
+Discord limite ce que contient un embed (256 caractères pour un titre, 25 champs, 6000 caractères pour tous les embeds d’un message...). Dépasser une limite lève une erreur avant tout envoi, avec le champ et la limite dans le message :
+
+```text
+The title of embed 1 is 300 characters long: Discord accepts 256 at most.
+```
+
+Les limites sont listées dans [Limites des embeds](/fr/reference/message-options#limites-des-embeds).
+
+## Fichiers
+
+Les images et documents qu’envoie votre bot vivent dans le dossier `public/` de votre projet, à côté de `src/`. `asset()` en choisit un : votre éditeur liste chaque fichier du dossier pendant que vous tapez, et un chemin qui n’existe pas est souligné.
+
+```ts src/commands/chart.ts
+import { asset, command } from 'chapterjs';
+
+export default command({
+  description: 'Affiche le graphique de la semaine',
+  async run({ interaction }) {
+    await interaction.reply({
+      files: [asset('charts/week.png', { description: 'Messages par jour cette semaine' })],
+      // Un embed peut afficher un fichier joint, par son nom.
+      embeds: [{ title: 'Cette semaine', image: { url: 'attachment://week.png' } }],
+    });
+  },
+});
+```
+
+Le fichier est lu au moment de l’envoi du message, jamais avant. Un fichier envoyé sous un autre nom prend `name` ; `spoiler: true` le cache jusqu’à ce qu’on clique dessus. Deux fichiers d’un même message ne peuvent pas avoir le même nom : Discord les distingue par lui.
+
+Dans `chapterjs dev`, un fichier ajouté à `public/` est proposé par l’éditeur tout de suite :
+
+```text
+↻ public/ changed: types updated
+```
+
+Un fichier fabriqué par votre code (un graphique dessiné à la volée, un texte) se donne avec son contenu : un texte, un `Buffer`, un `Uint8Array`, un `ArrayBuffer` ou un `Blob`. Jusqu’à 10 fichiers par message, de `public/` ou fabriqués, au total.
+
+Un texte trop long pour un message peut aller dans un fichier à la place :
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function sendLog(channel: TextChannel, log: string) {
+  await channel.send({
+    content: 'Voici le journal complet.',
+    files: [{ name: 'log.txt', data: log }],
+  });
+}
+```
+
+## Les mentions
+
+Une mention est un texte : écrivez-la dans `content` avec les helpers de ChapterJS, ou avec ce que donne une structure mise dans un texte (`${member}`, `${channel}`, `${role}`).
+
+```ts
+import { roleMention, timestamp, type GuildMember, type TextChannel } from 'chapterjs';
+
+async function welcome(channel: TextChannel, member: GuildMember, helpersRoleId: string) {
+  await channel.send(
+    `Bienvenue ${member} ! Vous êtes arrivé ${timestamp(member.joinedAt ?? new Date(), 'R')}. ` +
+      `${roleMention(helpersRoleId)} vous aidera dans ${channel}.`
+  );
+}
+```
+
+Par défaut, un message notifie tous ceux qu’il mentionne, rôles et @everyone compris. `allowedMentions` dit qui reçoit vraiment une notification, quoi que contienne le texte :
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function quote(message: Message) {
+  // Répète ce que quelqu’un a écrit sans notifier personne.
+  await message.reply({
+    content: message.content,
+    allowedMentions: { parse: [], repliedUser: false },
+  });
+}
+```
+
+- `parse` est la liste des sortes de mentions du texte qui notifient : `['users']`, `['roles']`, `['everyone']`, ou `[]` pour personne.
+- `users` et `roles` listent les identifiants qui peuvent être notifiés, quoi que dise `parse`.
+
+Les helpers (`userMention`, `roleMention`, `channelMention`, `timestamp`...) sont listés dans [Helpers](/fr/reference/helpers).
+
+## Les sondages
+
+Un sondage est une question avec jusqu’à 10 réponses. Les gens votent dans Discord ; le sondage se ferme au bout de `duration` heures (24 par défaut).
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function ask(channel: TextChannel) {
+  await channel.send({
+    poll: {
+      question: { text: 'Pizza ou pâtes ?' },
+      answers: [
+        { answerId: 1, pollMedia: { text: 'Pizza', emoji: { name: '🍕' } } },
+        { answerId: 2, pollMedia: { text: 'Pâtes', emoji: { name: '🍝' } } },
+      ],
+      duration: 24, // heures
+      allowMultiselect: false,
+    },
+  });
+}
+```
+
+## Modifier
+
+`message.edit()` modifie un message écrit par le bot : son texte, ses embeds, ses composants, ses fichiers, et l’affichage des aperçus de ses liens. Seul ce que vous passez change.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function countdown(channel: TextChannel) {
+  const message = await channel.send('Départ dans 3...');
+  for (const n of [2, 1]) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await message.edit(`Départ dans ${n}...`);
+  }
+  await message.edit({ content: 'Partez !', embeds: [] }); // retire aussi les embeds
+}
+```
+
+Un message écrit par quelqu’un d’autre ne peut pas être modifié. Ce qu’accepte `edit()` est listé dans [MessageEditOptions](/fr/reference/message-options#messageeditoptions).
+
+## Supprimer
+
+`message.delete()` supprime un message ; la raison va dans le journal d’audit du serveur.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function removeInvite(message: Message) {
+  if (!message.content.includes('discord.gg/')) return;
+  await message.delete('Lien d’invitation');
+}
+```
+
+Pour en supprimer beaucoup d’un coup, `channel.bulkDelete()` prend des messages ou des identifiants et renvoie combien ont été supprimés. Discord refuse de supprimer en masse les messages de plus de deux semaines : ils sont laissés de côté.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function clear(channel: TextChannel, count: number) {
+  const messages = await channel.fetchMessages({ limit: count });
+  const deleted = await channel.bulkDelete(messages, 'Salon vidé');
+  await channel.send(`${deleted} messages supprimés.`);
+}
+```
+
+## Réagir
+
+`message.react()` ajoute une réaction du bot : un emoji standard, ou un emoji personnalisé du serveur, tel que Discord l’écrit (`<:name:id>`) ou comme l’un de `guild.emojis`.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function vote(message: Message) {
+  await message.react('👍');
+  await message.react('👎');
+}
+```
+
+`message.reactions` liste les réactions d’un message, avec leur nombre ; `fetchReactionUsers()` demande qui a réagi avec un emoji. `removeReaction()` retire la réaction du bot (ou d’un utilisateur donné), `clearReactions()` retire toutes les réactions, ou toutes celles d’un emoji.
+
+## Épingler
+
+`message.pin()` et `message.unpin()` épinglent et désépinglent un message dans son salon ; `channel.fetchPins()` liste les messages épinglés, le dernier épinglé en premier.
+
+```ts
+import type { Message } from 'chapterjs';
+
+async function keep(message: Message) {
+  if (!message.pinned) await message.pin('Gardé par le bot');
+}
+```
+
+## Lire l’historique
+
+`channel.fetchMessages()` demande à Discord les derniers messages d’un salon, du plus récent au plus ancien, 100 au plus par appel. `before`, `after` et `around` choisissent d’où lire, pour remonter plus loin :
+
+```ts
+import type { Message, TextChannel } from 'chapterjs';
+
+async function lastMessagesOf(channel: TextChannel, authorId: string, count: number) {
+  const found: Message[] = [];
+  let before: Message | undefined;
+  while (found.length < count) {
+    const page = await channel.fetchMessages({ limit: 100, before });
+    for (const message of page) {
+      if (message.author.id === authorId) found.push(message);
+    }
+    before = page.at(-1);
+    if (!before || page.length < 100) break;
+  }
+  return found.slice(0, count);
+}
+```
+
+`channel.fetchMessage(id)` récupère un message par son identifiant. `channel.messages` est ce dont le bot se souvient du salon sans demander à Discord : vide par défaut, puisque la plupart des bots ne relisent jamais un vieux message. Voir [ce dont le bot se souvient](/fr/memory).
+
+<Tip>
+  Un message que vous recevez dans un [événement](/fr/events/messages) est déjà un `Message` : pas besoin de le récupérer pour y répondre, y réagir ou le supprimer.
+</Tip>
+
+## Boutons, menus et mise en page
+
+Un message peut contenir des boutons et des menus déroulants, qui lancent un fichier de `src/components/` quand on les utilise, et être construit avec des textes, des sections, des galeries et des conteneurs au lieu d’un texte et d’embeds :
+
+```ts src/commands/vote.ts
+import { command } from 'chapterjs';
+import yes from '../components/buttons/yes';
+
+export default command({
+  description: 'Lance un vote',
+  async run({ interaction }) {
+    await interaction.reply({ content: 'Pizza ce soir ?', components: [yes] });
+  },
+});
+```
+
+```ts src/components/buttons/yes.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Oui !',
+  emoji: '🍕',
+  style: 'success',
+  async run({ interaction, user }) {
+    await interaction.reply({ content: `${user} en est.` });
+  },
+});
+```
+
+`components` ne prend que ce que ChapterJS a fabriqué, jamais du JSON : les identifiants qui distinguent un clic sont écrits par le framework. Comment les écrire est dans [Boutons](/fr/components), [Menus déroulants](/fr/components/selects), [Formulaires](/fr/components/modals) et [Embeds et mise en page](/fr/components/embeds).
+
+<CardGroup cols={2}>
+  <Card title="Événements sur les messages" icon="message-square" href="/fr/events/messages">
+    Réagir quand un message est envoyé, modifié ou supprimé.
+  </Card>
+  <Card title="Options des messages" icon="braces" href="/fr/reference/message-options">
+    Chaque champ que prend un message, avec les limites.
+  </Card>
+</CardGroup>

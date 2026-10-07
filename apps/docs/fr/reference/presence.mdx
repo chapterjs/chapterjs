@@ -1,0 +1,98 @@
+---
+title: 'presence()'
+description: 'Tout ce que déclare src/presence.ts : le statut du bot et ce qu’il fait'
+---
+
+`presence()` est ce que `src/presence.ts` exporte par défaut. Elle prend un objet, `PresenceConfig`.
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  status: 'online',
+  activity: { type: 'watching', name: 'le serveur' },
+});
+```
+
+<Note>
+  Comment écrire le fichier, et ce qu’affiche Discord pour chaque type, est dans le
+  [guide](/fr/presence). Cette page liste ce qui existe.
+</Note>
+
+## presence()
+
+```ts
+presence(config: PresenceConfig): PresenceFile
+```
+
+Déclare la présence du bot : son statut et ce qu’il fait, affichés sous son nom. Exportez le résultat comme export par défaut de `src/presence.ts` ; le bot l’a dès qu’il est connecté.
+
+### PresenceFile
+
+Ce que renvoie `presence()` : l’export par défaut de `src/presence.ts`.
+
+<ResponseField name="config" type="unknown">
+  Ce que le fichier a donné à `presence()`, pas encore vérifié.
+</ResponseField>
+
+## PresenceConfig
+
+Ce que `src/presence.ts` donne à `presence()`.
+
+<ResponseField name="status" type="PresenceStatusName">
+  Le statut du bot. `'online'` par défaut.
+</ResponseField>
+
+<ResponseField name="activity" type="Activity">
+  Ce que fait le bot. Rien par défaut.
+</ResponseField>
+
+### PresenceStatusName
+
+```ts
+type PresenceStatusName = 'online' | 'idle' | 'dnd' | 'invisible';
+```
+
+Le statut du bot : `'online'` (vert), `'idle'` (orange), `'dnd'` (rouge, « ne pas déranger ») ou `'invisible'` (affiché hors ligne).
+
+## Activity
+
+Ce que fait le bot : une `PlainActivity` ou une `StreamingActivity`.
+
+### PlainActivity
+
+Une activité qui n’est pas un stream.
+
+<ResponseField name="type" type="ActivityKind" required>
+  Ce que fait le bot, comme l’affiche Discord : « Joue à _name_ », « Écoute
+  _name_ », « Regarde _name_ », « Participe à _name_ », ou le texte lui-même avec
+  `'custom'`.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Ce qui est affiché après le type (ou seul avec `'custom'`).
+</ResponseField>
+
+### ActivityKind
+
+```ts
+type ActivityKind =
+  'playing' | 'listening' | 'watching' | 'competing' | 'custom';
+```
+
+### StreamingActivity
+
+Un stream : « Streame _name_ », avec un lien vers lui.
+
+<ResponseField name="type" type="'streaming'" required></ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Ce qui est affiché après « Streame ».
+</ResponseField>
+
+<ResponseField name="url" type="string" required>
+  Le stream : Discord n’accepte qu’un lien `https://twitch.tv/` ou
+  `https://youtube.com/`.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/events/gateway-events#update-presence)

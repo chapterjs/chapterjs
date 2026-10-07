@@ -1,0 +1,112 @@
+---
+title: 'GuildEmoji'
+description: 'Lire, afficher, renommer et supprimer les emojis personnalisés d’un serveur'
+---
+
+Un `GuildEmoji` est un emoji personnalisé d’un serveur. Vous en obtenez un depuis `guild.emojis`, `guild.fetchEmojis()` ou `guild.createEmoji()`. En mettre un dans un texte l’affiche.
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function welcome(guild: Guild) {
+  const emoji = [...guild.emojis.values()].find(emoji => emoji.name === 'party');
+  const channel = guild.channels.get(guild.systemChannelId ?? '');
+  if (!emoji || !channel?.isTextBased()) return;
+  await channel.send(`Bienvenue ! ${emoji}`);
+}
+```
+
+<Note>
+  Comment mettre un emoji dans un message ou réagir avec est dans [Messages](/fr/messages). Un emoji standard (🎉) est un texte, pas un `GuildEmoji`.
+</Note>
+
+## Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand il a été créé : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake">
+  L’identifiant du serveur de l’emoji.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Le nom de l’emoji, sans les deux-points.
+</ResponseField>
+
+<ResponseField name="animated" type="boolean">
+  Si l’emoji bouge.
+</ResponseField>
+
+<ResponseField name="available" type="boolean">
+  `false` quand le serveur a perdu les boosts qui lui donnaient cet emoji.
+</ResponseField>
+
+<ResponseField name="managed" type="boolean">
+  Si l’emoji appartient à une intégration.
+</ResponseField>
+
+<ResponseField name="roleIds" type="readonly Snowflake[]">
+  Les identifiants des rôles autorisés à utiliser l’emoji ; vide pour tout le monde.
+</ResponseField>
+
+## Helpers
+
+Ils lisent ce dont le bot se souvient : ils n’envoient jamais de requête.
+
+### url()
+
+```ts
+url(options?: ImageOptions): string
+```
+
+L’URL de l’image de l’emoji. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### toString()
+
+```ts
+toString(): string
+```
+
+`<:name:id>` : affiche l’emoji quand il est mis dans un message.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+## Actions
+
+### edit()
+
+```ts
+edit(
+  options: { name?: string; roles?: (Snowflake | { id: Snowflake })[] | null },
+  reason?: string
+): Promise<GuildEmoji>
+```
+
+Renomme l’emoji, ou change les rôles qui peuvent l’utiliser.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/emoji#modify-guild-emoji)
+
+### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Supprime l’emoji.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/emoji#delete-guild-emoji)
+
+## Types
+
+`ImageOptions` est dans [Helpers](/fr/reference/helpers#imageoptions). Pour ajouter un emoji à un serveur, voir [`guild.createEmoji()`](/fr/reference/guild#createemoji).

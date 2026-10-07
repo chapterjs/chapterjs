@@ -1,0 +1,81 @@
+---
+title: 'Les outils'
+description: 'Installer Node.js, choisir un gestionnaire de paquets et un éditeur, et vérifier que tout répond dans un terminal'
+---
+
+Trois outils suffisent pour écrire un bot : Node.js pour exécuter votre code, un gestionnaire de paquets pour installer ChapterJS, et un éditeur. Cette page s’assure que vous les avez, et montre les quelques commandes de terminal dont le reste du tutoriel se sert.
+
+## Le terminal
+
+Tout ce qui fait tourner votre bot se lance depuis un terminal : une fenêtre où vous tapez une commande et lisez sa réponse. Sur macOS, c’est l’app **Terminal** ; sur Windows, **Windows Terminal** ou **PowerShell** ; sur Linux, ce que votre système appelle ainsi. Votre éditeur en a aussi un intégré, et c’est l’endroit le plus pratique.
+
+Deux choses à savoir :
+
+- Un terminal est toujours « dans » un dossier. `cd my-bot` entre dans le dossier `my-bot` ; les commandes de ce tutoriel se lancent depuis le dossier de votre projet.
+- Un programme qui continue de tourner (comme votre bot) occupe le terminal. `Ctrl+C` l’arrête.
+
+## Node.js
+
+Node.js est ce qui exécute JavaScript en dehors d’un navigateur. ChapterJS a besoin de la version **22.18 ou plus récente**, parce qu’il s’appuie sur la capacité de Node à exécuter directement des fichiers TypeScript, ce que les versions plus anciennes ne savent pas faire.
+
+Installez-le depuis [nodejs.org](https://nodejs.org) (la version LTS convient si elle est en 22.18 ou plus), puis vérifiez dans un terminal :
+
+```bash
+node --version
+```
+
+Il affiche quelque chose comme `v22.18.0`. S’il affiche une version plus basse, ou « command not found », réinstallez-le et ouvrez un nouveau terminal : un terminal ouvert avant l’installation ne le voit pas.
+
+## Un gestionnaire de paquets
+
+Un gestionnaire de paquets télécharge les paquets dont dépend votre projet (ici, `chapterjs`) et lance les scripts de votre projet (`dev`, `build`, `start`). Node est fourni avec **npm**. Les autres, **pnpm**, **yarn** et **bun**, font la même chose avec de petites différences de vitesse et de façon de stocker les paquets. Choisissez-en un ; pnpm est celui qu’utilise l’équipe de ChapterJS.
+
+Vérifiez celui que vous avez choisi :
+
+<CodeGroup>
+```bash pnpm
+pnpm --version
+```
+
+```bash npm
+npm --version
+```
+
+```bash yarn
+yarn --version
+```
+
+```bash bun
+bun --version
+```
+</CodeGroup>
+
+Si pnpm n’est pas installé, `corepack enable pnpm` l’active, puisqu’il est fourni avec Node ; ou suivez [pnpm.io](https://pnpm.io/installation).
+
+<Warning>
+  Tenez-vous à un seul gestionnaire de paquets par projet. Chacun garde son propre fichier de verrouillage (`pnpm-lock.yaml`, `package-lock.json`...), et en utiliser deux à tour de rôle les laisse en désaccord, avec des erreurs difficiles à comprendre.
+</Warning>
+
+## Un éditeur
+
+N’importe quel éditeur qui comprend TypeScript fait l’affaire, et [Visual Studio Code](https://code.visualstudio.com) le fait sans rien installer de plus. L’éditeur compte plus que d’habitude avec ChapterJS : le framework génère les types de votre projet, et l’éditeur les lit pour compléter ce que vous tapez et souligner une erreur avant que vous n’exécutiez quoi que ce soit. C’est de là que vient une grande partie de l’aide, alors prenez le temps d’ouvrir votre projet dedans plutôt que dans un éditeur de texte simple.
+
+## Un compte Discord et un serveur pour tester
+
+Il vous faut un compte Discord et un serveur où vous avez le droit d’ajouter un bot (n’importe quel serveur que vous avez créé convient). Créez-en un pour votre bot si vous n’en avez pas : un serveur de test est un terrain de jeu où les erreurs ne dérangent personne. Dans Discord, cliquez sur le **+** en bas de la liste des serveurs et choisissez **Créer le mien**.
+
+## Récapitulatif
+
+- `node --version` affiche 22.18 ou plus.
+- Un gestionnaire de paquets, vérifié avec `--version`, et gardé pour tout le projet.
+- Un éditeur qui comprend TypeScript, Visual Studio Code par exemple.
+- Un compte Discord et un serveur de test que vous gérez.
+
+<CardGroup cols={2}>
+  <Card title="Votre application Discord" icon="bot" href="/fr/tutorial/discord-application">
+    Créer le compte bot dans le Developer Portal.
+  </Card>
+  <Card title="Créer le projet" icon="folder-plus" href="/fr/tutorial/create-project">
+    Une commande, deux valeurs, et votre bot est en ligne.
+  </Card>
+</CardGroup>

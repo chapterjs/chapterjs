@@ -21,6 +21,7 @@ export const FRAMEWORK_TEXTS: Readonly<FrameworkTexts> = Object.freeze({
   authorOnly: 'Only the person who used the command can use this {what}.',
   failed: 'Something went wrong while running this {what}.',
   missingPermission: "I don't have the permission to do that here.",
+  cooldown: 'You can use this {what} again {when}.',
   needsPermissions: {
     one: 'You need the {permissions} permission to use this command.',
     other: 'You need the {permissions} permissions to use this command.',
@@ -51,7 +52,12 @@ export function phrase(
   ctx: Pick<Context, 'messages'>,
   locale: string | null,
   key: FrameworkKey,
-  params: { what?: What; permissions?: string; count?: number } = {}
+  params: {
+    what?: What;
+    permissions?: string;
+    count?: number;
+    when?: string;
+  } = {}
 ): string {
   const { messages } = ctx;
   const picked = messages ? pickLocale(messages, locale) : null;

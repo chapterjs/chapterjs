@@ -1,0 +1,129 @@
+---
+title: 'Organising a growing project'
+description: 'Share code between files, keep what the bot learns, set a cooldown, keep files short, and know what the framework does not do yet'
+---
+
+With a dozen commands, a few events and some components, a project needs a little order. This page is about the habits that keep it readable, and about the two questions every bot meets on its first week: "where do I put the code two files share?" and "where do I store things?".
+
+## Shared code
+
+Any folder of `src/` that the framework does not read is yours. The usual one is `src/lib/`. Put a function there, import it from a relative path, without extension:
+
+```ts src/lib/warnings.ts
+const warnings = new Map<string, number>();
+
+export function addWarning(userId: string): number {
+  const count = (warnings.get(userId) ?? 0) + 1;
+  warnings.set(userId, count);
+  return count;
+}
+
+export function warningsOf(userId: string): number {
+  return warnings.get(userId) ?? 0;
+}
+```
+
+```ts src/commands/warnings.ts
+import { command } from 'chapterjs';
+import { warningsOf } from '../lib/warnings';
+
+export default command({
+  description: 'Counts the warnings of someone',
+  options: {
+    who: { type: 'user', description: 'Who', required: true },
+  },
+  async run({ interaction, options }) {
+    const count = warningsOf(options.who.id);
+    await interaction.reply(
+      `${options.who.displayName} has ${count} warning(s).`
+    );
+  },
+});
+```
+
+The files you import are watched like the others: saving `src/lib/warnings.ts` reloads every file that uses it.
+
+Inside a conventional folder, a file starting with `_` is never read as a command or an event, so shared code can also sit next to the files that use it: `src/commands/(moderation)/_checks.ts`. Pick one habit and keep it; `src/lib/` is the simplest.
+
+## Keeping files short
+
+A command file should read like a summary: check, do, answer. When `run` grows past a screen, move the work to a function in `src/lib/` and keep the file as the glue between Discord and that function. Two reasons:
+
+- A function in `src/lib/` can be tested or reused without Discord; a `run` can't.
+- The next person to read the file (you, in three months) sees what the command does without reading how.
+
+## Storing data
+
+Here is the important point of this page: **nothing survives a restart**. The `Map` of `warnings.ts` starts empty every time the bot starts, and `chapterjs dev` reloads it on every save. Only the `data` of a component survives, because it lives in the message on Discord.
+
+The framework has no storage of its own today. For anything your bot must remember (warnings, scores, settings per server), use what Node offers:
+
+- **A JSON file**, read at start and written on each change, with `node:fs`. Enough for small bots, and simple.
+- **A database** made for Node (SQLite through a package, or a server like PostgreSQL). For a bot with many servers or many writes.
+
+Whatever you choose, keep it in `src/lib/` behind a few functions (`getSettings(guildId)`, `saveSettings(...)`), so that the commands and events never know how it is stored. Changing from a JSON file to a database then changes one file.
+
+<Info>
+  In production, a large bot runs on several processes, each with its own
+  memory. A `Map` in one process is not seen by the others: a bot that will be
+  large keeps its data outside of the process, in a database, from the start.
+</Info>
+
+## A cooldown
+
+"Not more than once a day per person" is a common need, and a command declares it with `cooldown`:
+
+```ts src/commands/daily.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Claims your daily reward',
+  ephemeral: true,
+  cooldown: '1d',
+  async run({ interaction }) {
+    await interaction.reply('Here is your reward! 🎁');
+  },
+});
+```
+
+Someone who uses `/daily` again too soon gets a private answer saying when they can ("You can use this command again 8 October 2026 17:12."; a short cooldown reads "in 5 seconds", counting down, and the answer goes away when the time comes), and `run` does not run. `cooldown: { user: '10m', channel: '1m', guild: '1h' }` makes a channel or a whole server wait too. Like the `Map` above, the last uses are kept in memory: they start empty when the bot starts. The details are in the [Guide](/commands#cooldowns).
+
+## Grouping files
+
+The two naming rules of the [tour](/tutorial/tour#two-naming-rules-for-your-own-order) are what you need: `(fun)/`, `(moderation)/`, `(admin)/` folders in `src/commands/`, `src/events/` and `src/components/`, and `_` files for what they share. They change nothing for Discord.
+
+For commands, prefer **commands** sorted in groups (`/ban`, `/kick` in `(moderation)/`) over **subcommands** (`/mod ban`, `/mod kick` in `mod/`), unless they are variants of one action (`/timeout add`, `/timeout remove`). Discord hides a whole command from people who lack its permissions, never one subcommand: with `/mod ban` and `/mod kick`, someone who may only kick still sees `/mod ban`.
+
+## What the framework does not do yet
+
+ChapterJS is young, and some things a bot may want are not there. Knowing them saves a search:
+
+| Not there yet                                              | Meanwhile                                               |
+| ---------------------------------------------------------- | ------------------------------------------------------- |
+| Autocomplete (suggestions while typing an option)          | `choices`, when the values are known in advance         |
+| Context menu commands (right-click on a user or a message) | A slash command with a `user` option                    |
+| Waiting for the next message or click of a person          | A button or a menu that carries what it needs in `data` |
+| Storage                                                    | The pattern above                                       |
+| Reactions, threads, voice, bans and other events           | Not listed in `src/events/` yet                         |
+| Running on several machines                                | Several processes on one machine, by itself             |
+
+The full list, kept up to date, is [What's not there yet](/not-yet).
+
+## Recap
+
+- Shared code goes in `src/lib/` (or a `_` file), imported without extension, and reloaded with the files that use it.
+- Nothing survives a restart but the `data` of components: store what matters in a JSON file or a database, behind a few functions.
+- A cooldown is one setting of the command, `cooldown: '1d'`, kept in memory; a growing project uses `(group)` folders.
+
+<CardGroup cols={2}>
+  <Card
+    title="Memory and limits"
+    icon="brain"
+    href="/tutorial/memory-and-limits"
+  >
+    What the bot remembers, and the limits of Discord it handles for you.
+  </Card>
+  <Card title="Guide: What's not there yet" icon="book-open" href="/not-yet">
+    Everything the framework does not do, and what to do meanwhile.
+  </Card>
+</CardGroup>

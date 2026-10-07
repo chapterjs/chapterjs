@@ -1,0 +1,48 @@
+---
+title: 'ForumChannel'
+description: 'Un salon forum ou média : ses étiquettes, et comment créer une publication'
+---
+
+Un `ForumChannel` est un salon forum ou média : il ne contient que des publications, qui sont des fils. C’est ce que donne `channel.isForum()`.
+
+```ts
+import type { ForumChannel } from 'chapterjs';
+
+async function report(forum: ForumChannel, title: string, details: string) {
+  const bug = forum.availableTags.find(tag => tag.name === 'bug');
+  const post = await forum.createPost({
+    name: title,
+    message: { content: details },
+    appliedTags: bug ? [bug.id] : [],
+  });
+  return `Publication créée : ${post}`;
+}
+```
+
+<Note>
+  Une publication est un [`ThreadChannel`](/fr/reference/channels/thread) : envoyez-y ses messages, archivez-la ou changez ses étiquettes là. Le premier message d’une publication prend tout ce que décrit [Envoyer des messages](/fr/messages).
+</Note>
+
+## Propriétés
+
+Il a aussi tout ce qu’a [GuildChannel](/fr/reference/channels#guildchannel). On ne peut pas envoyer de messages dans le forum lui-même, seulement dans ses publications.
+
+<ResponseField name="topic" type="string | null">
+  Les consignes du forum.
+</ResponseField>
+
+<ResponseField name="availableTags" type="ForumTag[]">
+  Les étiquettes que peuvent avoir les publications de ce forum. Chaque entrée est un [`ForumTag`](/fr/reference/data#forumtag).
+</ResponseField>
+
+## Actions
+
+### createPost()
+
+```ts
+createPost(options: ForumPostOptions, reason?: string): Promise<ThreadChannel>
+```
+
+Crée une publication dans le forum. Les options sont un [`ForumPostOptions`](/fr/reference/options#forumpostoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#start-thread-in-forum-or-media-channel)

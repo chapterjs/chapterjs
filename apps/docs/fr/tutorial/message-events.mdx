@@ -1,0 +1,115 @@
+---
+title: 'Les messages comme événements'
+description: 'Réagir aux messages que les gens écrivent, choisir où votre fichier écoute et si les bots comptent, et lire le Message Content Intent'
+---
+
+Trois événements concernent les messages : `messageCreate`, `messageUpdate` et `messageDelete`. Ce sont les événements les plus fréquents qu’un bot reçoit, et ceux où un bot imprudent fait le plus de dégâts : se répondre à lui-même indéfiniment, ou notifier tout le monde. Cette page écrit une petite réaction, et montre les filets de sécurité que le framework place en dessous.
+
+## Réagir à un mot
+
+Créez `src/events/messageCreate/thanks.ts` :
+
+```ts src/events/messageCreate/thanks.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  if (!/\bmerci\b/i.test(message.content)) return;
+  await message.react('💜');
+});
+```
+
+Enregistrez-le. Comme l’intent des membres, il faut un interrupteur :
+
+```text
+⚠ Your files need an option that is not enabled for your bot:
+  - Message Content Intent, needed by src/events/messageCreate/thanks.ts
+  Enable it under "Privileged Gateway Intents", then save:
+  https://discord.com/developers/applications/123456789012345678/bot
+  Waiting for you to enable it...
+```
+
+Lire ce que les gens écrivent est la chose la plus personnelle qu’un bot puisse faire, alors Discord en fait un intent privilégié : **Message Content Intent**. Sans lui, un bot reçoit toujours les messages, mais `message.content` est vide pour tout le monde sauf lui-même. Activez-le, enregistrez, et le bot se reconnecte. Puis écrivez « merci » sur votre serveur de test : le bot réagit.
+
+<Info>
+  Pourquoi `/dice` n’en avait-il pas besoin ? Parce qu’une commande slash est envoyée au bot par Discord en tant que commande, avec ses options, et non en tant que message. Raison de plus pour préférer les commandes slash pour tout ce qui est un ordre donné au bot, et garder les événements de messages pour réagir à ce que disent les gens.
+</Info>
+
+## Sûr par défaut
+
+Regardez ce que le fichier ne fait **pas**. Il ne vérifie pas `if (message.author.bot) return;`. Il ne vérifie pas que le message est sur un serveur. Les deux sont le comportement par défaut :
+
+- **Les messages des bots et des webhooks sont ignorés**, y compris les vôtres. Un bot qui réagit aux messages et répond par un message verra sa propre réponse, y réagira, et ainsi de suite indéfiniment ; un serveur avec deux bots de ce genre les voit discuter toute la nuit. Alors par défaut, votre fichier ne tourne que pour les messages écrits par des personnes. Quand vous voulez vraiment les messages des bots, dites-le : `{ bots: true }` en second argument de `event()`.
+- **Seulement les messages des serveurs.** Les messages privés sont un autre endroit, sans serveur, sans membre et sans salon de serveur ; un fichier qui gère les deux doit les distinguer. Alors par défaut, votre fichier écoute sur les serveurs, où `message.guild`, `message.channel` et `message.member` sont toujours là.
+
+Le comportement sûr est le comportement par défaut, et en sortir est explicite. Voici comment le second argument de `event()` le change, et ce qu’il change dans ce que reçoit votre fonction :
+
+| Second argument | Tourne pour | `message.member` | `message.guild` |
+| --- | --- | --- | --- |
+| rien | Des personnes, sur les serveurs | Toujours là | Toujours là |
+| `{ bots: true }` | Des personnes, des bots et des webhooks, sur les serveurs | Peut être `null` (un webhook n’est pas un membre) | Toujours là |
+| `{ where: 'dm' }` | Des personnes, en messages privés | N’existe pas | N’existe pas |
+| `{ where: 'both' }` | Des personnes, partout | Là quand `message.guild` l’est | `Guild` ou `null` |
+
+Les types suivent les options : dans un fichier `'dm'`, l’éditeur ne propose même pas `message.guild` ; dans un fichier `'both'`, un seul `if (message.guild)` restreint tout ce qu’il contient à un message de serveur. Chaque fichier décide pour lui-même : deux fichiers du même dossier peuvent écouter à des endroits différents.
+
+<Info>
+  `chapterjs dev` ne fait tourner votre bot que sur votre serveur de test, donc un fichier avec `where: 'dm'` ne peut pas y être essayé, et le terminal vous le dit une fois. Les messages privés atteignent votre bot avec `chapterjs start`.
+</Info>
+
+## Répondre à un message
+
+`message.reply()` répond dans le salon, avec l’original affiché au-dessus de la réponse. Voici un fichier qui répond à une question sur le règlement :
+
+```ts src/events/messageCreate/rules.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  if (!message.content.toLowerCase().includes('où est le règlement')) return;
+  const rules = message.guild.rulesChannelId
+    ? message.guild.channels.get(message.guild.rulesChannelId)
+    : undefined;
+  await message.reply({
+    content: rules ? `Il est dans ${rules}.` : 'Ce serveur n’a pas encore de salon de règlement.',
+    allowedMentions: { repliedUser: false },
+  });
+});
+```
+
+`message.guild` est utilisé sans vérification : ce fichier n’écoute que sur les serveurs, donc il est toujours là. `allowedMentions: { repliedUser: false }` répond sans notifier l’auteur : un bot qui notifie les gens chaque fois qu’il aide se fait vite rendre muet.
+
+## Messages supprimés et modifiés
+
+`messageUpdate` donne le message après la modification. `messageDelete` est différent : le message n’existe plus, donc vous recevez son identifiant, le salon et le serveur où il était, et le message lui-même seulement quand le bot s’en souvenait, ce qui n’est pas le cas par défaut (les messages sont ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message). Utilisez toujours `messageId` :
+
+```ts src/events/messageDelete/audit.ts
+import { event } from 'chapterjs';
+
+export default event(({ messageId, channel, guild }) => {
+  console.log(`Message ${messageId} supprimé dans #${channel.name} de ${guild.name}`);
+});
+```
+
+`messageDelete` n’a pas besoin du Message Content Intent.
+
+## Points d’attention
+
+- **Ne répondez jamais à un message par un message sans penser aux boucles.** Avec le comportement par défaut (pas de bots), vous êtes en sécurité. Avec `{ bots: true }`, assurez-vous que votre fichier ne peut pas réagir à sa propre réponse.
+- **Une réaction à un mot tourne sur chaque message de chaque salon.** Gardez la vérification légère et en premier, et faites `return` tôt.
+- **Les messages privés, c’est pour la production.** Un bot de support qui écoute en messages privés s’essaie avec `chapterjs start`, sur l’application de dev si vous voulez.
+- **Un fil que le bot n’a jamais vu.** Un message peut arriver dans un salon que le bot ne connaît pas encore (un fil créé avant sa connexion). Le framework le demande une fois à Discord, avant de lancer vos fichiers, donc `message.channel` est toujours là. Quand Discord refuse (le bot ne peut pas voir ce salon), l’événement n’est pas transmis et le terminal le dit avec `⚠`.
+
+## Récapitulatif
+
+- `src/events/messageCreate/` tourne pour les messages écrits par des personnes, sur les serveurs, par défaut : aucune vérification `author.bot` à écrire.
+- Le Message Content Intent est nécessaire pour lire `message.content` dans `messageCreate` et `messageUpdate`.
+- `{ bots: true }` et `{ where: 'dm' | 'both' }` élargissent ce qu’un fichier entend, et les types suivent.
+- `messageDelete` donne l’identifiant, le salon et le serveur ; le message lui-même est `null`.
+
+<CardGroup cols={2}>
+  <Card title="Les boutons" icon="mouse-pointer-click" href="/fr/tutorial/buttons">
+    Mettre un bouton sous un message, et lancer du code quand on clique.
+  </Card>
+  <Card title="Guide : Messages" icon="book-open" href="/fr/events/messages">
+    Les trois événements et leurs options, en bref.
+  </Card>
+</CardGroup>

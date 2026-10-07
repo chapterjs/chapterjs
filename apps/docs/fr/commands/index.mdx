@@ -1,0 +1,313 @@
+---
+title: 'Commandes'
+description: 'Écrire une commande slash en un fichier, choisir où elle fonctionne et qui peut l’utiliser, et la voir apparaître sur votre serveur de test'
+---
+
+Une commande slash, c’est ce que les gens tapent après `/` dans Discord. Pour en créer une, ajoutez un fichier dans `src/commands/` :
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Répond Pong !',
+  async run({ interaction }) {
+    await interaction.reply('Pong !');
+  },
+});
+```
+
+C’est tout : `/ping` apparaît sur votre serveur de test dès que vous enregistrez, et votre fonction `run` tourne quand quelqu’un l’utilise. Rien à enregistrer, aucune liste à tenir à jour.
+
+<Note>
+  Chaque champ que prend une commande et chaque type qu’elle utilise sont dans la [référence](/fr/reference/command).
+</Note>
+
+## Le chemin est le nom
+
+Le chemin d’un fichier est le nom de sa commande :
+
+<Tree>
+  <Tree.Folder name="src/commands" defaultOpen>
+    <Tree.File name="ping.ts" highlight />
+    <Tree.Folder name="mod" defaultOpen>
+      <Tree.File name="ban.ts" />
+      <Tree.File name="kick.ts" />
+      <Tree.Folder name="roles" defaultOpen>
+        <Tree.File name="add.ts" />
+      </Tree.Folder>
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+| Fichier | Commande |
+| --- | --- |
+| `ping.ts` | `/ping` |
+| `mod/ban.ts` | `/mod ban` |
+| `mod/kick.ts` | `/mod kick` |
+| `mod/roles/add.ts` | `/mod roles add` |
+
+- Un **fichier** est une commande.
+- Un fichier dans un **dossier** est une sous-commande de la commande qui porte le nom du dossier.
+- Un second dossier fait un groupe. Discord n’autorise rien de plus profond : un fichier dans un troisième dossier est signalé.
+
+```text
+✗ src/commands/mod/roles/admin/add.ts This file is 3 folders deep: Discord allows a command, a group and a subcommand, so 2 folders at most (src/commands/mod/roles/add.ts is /mod roles add).
+```
+
+Les noms suivent les règles de Discord : lettres minuscules, chiffres, `-` et `_`, 32 caractères au plus. Un fichier qui les enfreint est signalé au chargement :
+
+```text
+✗ src/commands/Ping.ts "Ping" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most. The path of the file is the name of the command.
+```
+
+Un dossier n’a besoin d’aucun fichier à lui : Discord demande sa description mais ne l’affiche jamais, alors ChapterJS en génère une.
+
+<Warning>
+  Une commande avec des sous-commandes ne peut pas être utilisée seule : avec `mod/ban.ts`, il n’y a pas de `/mod`. Un fichier `mod.ts` à côté du dossier `mod/` est signalé et mis de côté :
+
+  ```text
+  ✗ src/commands/mod.ts /mod can't be a command and have subcommands (src/commands/mod/ban.ts is /mod ban): Discord only lets people use the subcommands. Move this file into the folder, for example as mod/run.ts.
+  ```
+</Warning>
+
+### Organiser vos fichiers
+
+Un dossier entre parenthèses, comme `(moderation)`, ne fait que regrouper des fichiers, et un fichier ou dossier qui commence par `_` n’est jamais une commande : les deux sont expliqués dans [Structure du projet](/fr/setup/project-structure#deux-règles-de-nommage). Deux fichiers qui sont la même commande une fois les parenthèses retirées sont signalés, et le second est mis de côté :
+
+```text
+✗ src/commands/(b)/ban.ts /ban is already src/commands/(a)/ban.ts: two files can't be the same command. A folder in parentheses only groups files, it is not part of the name.
+```
+
+### Une commande ou une sous-commande ?
+
+Préférez des **commandes** (`/ban`, `/kick`) rangées dans un dossier entre parenthèses, et gardez les **sous-commandes** pour les variantes d’une même action (`/timeout add`, `/timeout remove`).
+
+La raison est la façon dont Discord cache les commandes : il affiche ou cache une commande entière, jamais une seule sous-commande. Avec `/mod ban` et `/mod kick`, quelqu’un qui a seulement le droit d’expulser voit quand même `/mod ban` ; ChapterJS le refuse quand il l’utilise, mais avec `/ban` et `/kick`, il ne la verrait pas du tout.
+
+## La description
+
+`description` est le texte que Discord affiche sous le nom de la commande, de 1 à 100 caractères. C’est le seul champ dont une commande a besoin en plus de `run` :
+
+```text
+✗ src/commands/ping.ts This command has no description: write it in src/messages/en-US.ts (commands: { "ping": { description: '...' } }), or in the file (description: '...').
+```
+
+Un bot en plusieurs langues peut la laisser hors du fichier et l’écrire, avec ses traductions, dans les [fichiers de langue](/fr/translated-messages#les-noms-et-descriptions-des-commandes) à la place : un endroit ou l’autre.
+
+## Ce que reçoit run
+
+`run` reçoit un objet. Prenez-y ce dont vous avez besoin :
+
+```ts src/commands/whoami.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Dit qui vous êtes',
+  async run({ interaction, user, member, guild, channel }) {
+    await interaction.reply(
+      `Vous êtes ${user.username}, connu comme ${member.displayName} sur ${guild.name}, dans #${channel.name}.`
+    );
+  },
+});
+```
+
+| Nom | Ce que c’est |
+| --- | --- |
+| `interaction` | L’utilisation de la commande : de quoi répondre. Voir [Répondre](/fr/commands/answering). |
+| `options` | Ce que la personne a rempli, typé d’après ce que vous avez déclaré. Voir [Options](/fr/commands/options). |
+| `user` | Qui a utilisé la commande, en tant qu’[utilisateur](/fr/reference/user). |
+| `member` | Qui a utilisé la commande, en tant que [membre](/fr/reference/member) du serveur. |
+| `guild` | Le [serveur](/fr/reference/guild) où la commande a été utilisée. |
+| `channel` | Le [salon](/fr/reference/channels) où la commande a été utilisée : toujours là, sans requête, donc vous pouvez faire `channel.send()` tout de suite. |
+
+Sur un serveur, `member`, `guild` et `channel` sont toujours là : aucun `?.` à écrire. L’`interaction` les connaît aussi (`interaction.guild`, `interaction.member`, `interaction.channel`), ainsi que la langue de la personne (`interaction.locale`).
+
+## Serveurs et messages privés
+
+Une commande fonctionne sur les serveurs. `where` change cela, et ce que reçoit `run` suit :
+
+| `where` | La commande est proposée | `guild` et `member` | `channel` |
+| --- | --- | --- | --- |
+| `'guild'` (par défaut) | Sur les serveurs | Toujours là | Un salon du serveur |
+| `'dm'` | En messages privés avec votre bot | N’existent pas : votre éditeur ne les propose même pas | La conversation privée |
+| `'both'` | Les deux | Là ou `null` : un seul `if (guild)` vous le dit, pour tout à la fois | L’un ou l’autre |
+
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Dit bonjour',
+  where: 'both',
+  async run({ interaction, guild, member, channel }) {
+    if (guild) {
+      // Sur un serveur : le membre et le salon sont ceux d’un serveur.
+      await interaction.reply(`Bonjour ${member.displayName}, dans #${channel.name} !`);
+    } else {
+      await interaction.reply('Bonjour ! Nous sommes en privé ici.');
+    }
+  },
+});
+```
+
+Il en va de même pour `interaction.guild`, `interaction.member` et `interaction.channel`. ChapterJS s’en assure quand la commande est utilisée : une commande de serveur utilisée en privé, ou l’inverse, est refusée par une réponse privée (« This command can only be used in a server. » ou « This command can only be used in a private message with me. »), et votre fonction ne tourne pas.
+
+<Note>
+  Avec `chapterjs dev`, votre bot ne tourne que sur votre serveur de test. Une commande avec `where: 'dm'` ne peut pas y être essayée, et `chapterjs dev` vous le dit une fois par fichier :
+
+  ```text
+  ℹ src/commands/settings.ts /settings only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+  ```
+
+  Une commande avec `where: 'both'` ne peut être essayée que sur le serveur. Pour les essayer en messages privés, lancez [`chapterjs start`](/fr/run/start).
+</Note>
+
+## Qui peut utiliser une commande
+
+`permissions` liste ce dont un membre a besoin pour utiliser la commande :
+
+```ts src/commands/purge.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Supprime les derniers messages de ce salon',
+  permissions: ['ManageMessages'],
+  options: {
+    count: { type: 'integer', description: 'Combien', min: 2, max: 100, required: true },
+  },
+  async run({ interaction, options, channel }) {
+    const messages = await channel.fetchMessages({ limit: options.count });
+    const deleted = await channel.bulkDelete(messages);
+    await interaction.reply({ content: `${deleted} messages supprimés.`, ephemeral: true });
+  },
+});
+```
+
+Discord cache la commande aux membres qui n’ont pas les permissions, et ChapterJS vérifie à nouveau quand elle est utilisée : quelqu’un qui ne les a pas reçoit une réponse privée qui dit lesquelles manquent (« You need the ManageMessages permission to use this command. »), et votre fonction ne tourne pas. Les administrateurs d’un serveur peuvent changer qui voit la commande dans les réglages de leur serveur.
+
+Les noms sont ceux de [Permissions](/fr/reference/permissions#permissionname) : `['BanMembers']`, `['ManageMessages', 'ManageThreads']`... Un nom qui n’existe pas est signalé au chargement du fichier.
+
+<Info>
+  Une commande avec des sous-commandes est affichée aux membres qui ont ce que demande **chaque** sous-commande ; chaque sous-commande vérifie ensuite ses propres permissions quand elle est utilisée.
+</Info>
+
+## Délais entre deux utilisations
+
+`cooldown` est le temps qu’une personne attend avant de pouvoir utiliser à nouveau la commande :
+
+```ts src/commands/daily.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Récupère votre récompense quotidienne',
+  cooldown: '1d',
+  async run({ interaction }) {
+    await interaction.reply('Voici votre récompense ! 🎁');
+  },
+});
+```
+
+Une durée est un nombre et une unité, `s`, `m`, `h` ou `d`, d’une seconde au moins ; les parties s’additionnent (`'1h30m'`). Quelqu’un qui utilise la commande trop tôt reçoit une réponse privée qui dit quand il pourra (« You can use this command again in 5 minutes. », avec une heure que Discord affiche dans sa langue et décompte), et votre fonction ne tourne pas. La réponse se supprime toute seule quand le délai se termine, donc elle ne dit jamais « il y a 5 minutes ». Un délai de plus de 15 minutes, qui dure plus longtemps que ce que Discord laisse le bot supprimer, affiche la date et l’heure à la place (« again 8 October 2026 17:12 »). Chaque personne a son propre compte, et chaque commande aussi.
+
+Un délai peut aussi valoir pour un salon ou un serveur, quel que soit qui a utilisé la commande ; les trois se combinent :
+
+```ts src/commands/announce.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Notifie tout le monde',
+  permissions: ['MentionEveryone'],
+  cooldown: { user: '10m', guild: '1h' },
+  async run({ interaction }) {
+    await interaction.reply('@everyone, il se passe quelque chose !');
+  },
+});
+```
+
+| Clé | Qui attend |
+| --- | --- |
+| `user` | Chaque personne, où qu’elle utilise la commande. `cooldown: '10s'` équivaut à `cooldown: { user: '10s' }`. |
+| `channel` | Chaque salon, quel que soit qui l’utilise. |
+| `guild` | Chaque serveur, quel que soit qui l’utilise et où. Pas pour une commande avec `where: 'dm'`. |
+
+Quand plusieurs s’appliquent, la personne est prévenue de celui qui finit le plus tard. Une utilisation refusée ne compte pour rien : c’est la première utilisation qui décide quand la suivante pourra avoir lieu.
+
+Les dernières utilisations sont gardées en mémoire : elles repartent vides au démarrage du bot, et `chapterjs dev` les garde à travers un enregistrement. Une durée illisible est signalée au chargement du fichier :
+
+```text
+✗ src/commands/daily.ts "cooldown" is "10 minutes", which is not a duration: cooldown: '10s' (a number and a unit: s, m, h or d, like '30s', '2h', '1d' or '1h30m') for each person, or cooldown: { user: '10s', channel: '5s', guild: '1m' } for each place.
+```
+
+<Info>
+  Un gros bot tourne sur [plusieurs processus](/fr/run/start#gros-bots), chacun avec sa propre mémoire. Tout ce qui se passe dans un serveur va au même processus, donc les délais d’un salon ou d’un serveur tiennent toujours ; celui d’une personne tient dans chaque processus, donc quelqu’un peut utiliser la commande une fois dans un serveur d’un processus et une fois dans un serveur d’un autre.
+</Info>
+
+## Autres réglages
+
+| Champ | Signification |
+| --- | --- |
+| `nsfw: true` | N’afficher la commande que dans les salons soumis à une limite d’âge. |
+| `ephemeral: true` | Rendre les réponses de la commande visibles seulement par qui l’a utilisée. Voir [Répondre](/fr/commands/answering#réponses-que-seule-la-personne-voit). |
+| `locales` | La commande dans d’autres langues. Voir [Traductions](/fr/commands/translations). |
+
+## Là où le bot ne peut pas répondre
+
+Discord peut proposer une commande dans un salon où le bot ne peut pas envoyer de message (un salon qu’il ne voit pas, par exemple). La commande ne tourne alors pas : la personne lit « This command can not be used here. », et votre terminal dit quelle commande et où :
+
+```text
+⚠ src/commands/where.ts /where was used in a channel the bot can't answer in (type 4): it did not run.
+```
+
+Il en va de même sur un serveur où le bot n’est pas. Une commande que Discord propose encore alors que son fichier a disparu ou est cassé répond « This command is not available right now. »
+
+## Comment les commandes arrivent sur Discord
+
+Vous n’enregistrez jamais rien : ChapterJS présente vos commandes à Discord, et seulement quand quelque chose que les gens voient a changé (un nom, une description, une option, une traduction, l’endroit où elle fonctionne). Changer ce que *fait* une commande ne coûte jamais de requête, et relancer votre bot non plus.
+
+### En dev : votre serveur de test uniquement
+
+`chapterjs dev` enregistre vos commandes sur votre **serveur de test uniquement**, où elles apparaissent immédiatement :
+
+```text
+✓ 3 commands, 2 events loaded
+✓ Commands updated on My Server
+```
+
+À chaque enregistrement, elles sont enregistrées à nouveau si elles ont changé :
+
+```text
+↻ Reloaded in 12 ms, 3 commands, 2 events loaded
+↻ Commands updated on Discord
+```
+
+Si Discord les refuse, le bot continue de tourner avec les commandes que Discord a déjà :
+
+```text
+✗ Discord refused the commands of your project: Discord refused PUT /applications/{application.id}/guilds/{guild.id}/commands: Invalid Form Body (50035)
+```
+
+### En production : tout le monde
+
+`chapterjs start` les enregistre pour tout le monde, dans chaque serveur où se trouve le bot et en messages privés :
+
+```text
+✓ Commands updated for everyone
+```
+
+### Dev et production
+
+Une commande pour tout le monde appartient au bot, pas à un serveur : Discord l’affiche dans chaque serveur où se trouve le bot, votre serveur de test compris, et ne donne aucun moyen de la cacher dans l’un d’eux. Alors utilisez une **seconde application** pour le développement dès le départ, avec son propre token sur votre ordinateur : votre serveur de test n’affiche alors que les commandes de vos fichiers, jamais une en double. Comment la mettre en place est dans [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement).
+
+Avec un seul bot pour les deux, `chapterjs dev` fait ce qu’il peut : il n’ajoute à votre serveur de test que les commandes nouvelles ou différentes dans votre projet, et une commande utilisée là-bas fait toujours tourner le code de votre ordinateur. Mais pendant que vous modifiez une commande que la production a déjà, votre serveur de test l’affiche en double (la vôtre, et celle que tout le monde a), et `chapterjs dev` vous le dit une fois :
+
+```text
+ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
+```
+
+<CardGroup cols={2}>
+  <Card title="Options" icon="list" href="/fr/commands/options">
+    Ce que les gens remplissent, typé pour vous.
+  </Card>
+  <Card title="Répondre" icon="message-square" href="/fr/commands/answering">
+    Répondre, différer, modifier, envoyer une suite, et ce qui se passe quand votre fonction échoue.
+  </Card>
+</CardGroup>

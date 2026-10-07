@@ -1,0 +1,150 @@
+---
+title: 'Answering'
+description: 'Answer a command once, keep the answer private, take your time, change it afterwards, and know what the person sees when your code fails'
+---
+
+So far, `interaction.reply()` answered with a text. This page is about everything else an answer can be: private, delayed, changed, followed by another. And about the one case you will meet sooner or later: your code throws, and someone is waiting on the other side.
+
+## One answer, then follow-ups
+
+A use of a command gets **one** answer, with `reply()`. After that, `followUp()` sends another message, `edit()` changes the answer, and `delete()` removes it. Here is the whole set:
+
+| Method                          | What it does                                    |
+| ------------------------------- | ----------------------------------------------- |
+| `interaction.reply(message)`    | Answers. Once per use of the command.           |
+| `interaction.defer()`           | Tells Discord the answer is coming (see below). |
+| `interaction.edit(message)`     | Changes the answer.                             |
+| `interaction.followUp(message)` | Sends another message, after the answer.        |
+| `interaction.delete()`          | Deletes the answer.                             |
+
+Calling `reply()` twice is a mistake, and the framework says so with the line and what to do instead:
+
+```text
+✗ src/commands/dice.ts:8 This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer.
+```
+
+Every one of these takes what any message takes: a text, or an object with `content`, `embeds`, `files`, `components`... A later page goes through all of it.
+
+## Private answers
+
+Sometimes only the person should see the answer: a confirmation, an error, a secret. Pass `ephemeral: true`, and Discord shows the message to them alone, with a "Only you can see this" note and a way to dismiss it.
+
+```ts src/commands/secret-number.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Gives you a secret number',
+  async run({ interaction }) {
+    const number = Math.floor(Math.random() * 100);
+    await interaction.reply({
+      content: `Your number is ${number}. Keep it!`,
+      ephemeral: true,
+    });
+    await interaction.followUp({
+      content: 'Nobody else saw it.',
+      ephemeral: true,
+    });
+  },
+});
+```
+
+When every answer of a command is private, put `ephemeral: true` on the command itself instead of on each call. It also tells the framework, before `run` even starts, that whatever it sends for this command is for the person alone, which matters for the language of the answer in a later chapter.
+
+```ts src/commands/mynumber.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Gives you a secret number',
+  ephemeral: true,
+  async run({ interaction }) {
+    await interaction.reply(
+      `Your number is ${Math.floor(Math.random() * 100)}.`
+    );
+  },
+});
+```
+
+## When the answer takes time
+
+Discord wants an answer within **3 seconds**, or it tells the person "The application did not respond". A request to another website, a big computation, or a few requests to Discord in a row can take longer than that.
+
+**You don't have to care.** After 2 seconds without an answer, the framework tells Discord the answer is coming: the person sees "thinking…", and your `reply()` completes it when it arrives, up to 15 minutes later.
+
+```ts src/commands/slow.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Takes its time',
+  async run({ interaction }) {
+    await sleep(5_000); // something slow: a request to a website, for example
+    await interaction.reply('Sorry for the wait!');
+  },
+});
+```
+
+Use `/slow`: after two seconds, "thinking…", then the answer. If you would rather show "thinking…" right away, call `interaction.defer()` yourself at the start of `run`.
+
+<Info>
+  Whether a delayed answer is private is decided when it is deferred. For a slow command whose answer must be private, put `ephemeral: true` on the command, or call `interaction.defer({ ephemeral: true })` yourself: by the time the framework defers for you, it only knows what the command declares.
+</Info>
+
+## Changing the answer
+
+`edit()` changes the answer that was sent. Only what you pass changes:
+
+```ts src/commands/countdown3.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Counts down from 3',
+  async run({ interaction }) {
+    await interaction.reply('3...');
+    for (const step of ['2...', '1...', 'Go!']) {
+      await sleep(1000);
+      await interaction.edit(step);
+    }
+  },
+});
+```
+
+`edit()` and `delete()` work for 15 minutes after the command was used; after that, Discord forgets the interaction.
+
+## When your code fails
+
+Your code will throw one day: a bug, or Discord refusing something. What happens then is worth knowing, because someone is waiting in Discord.
+
+- **The person** gets a short, private answer: "Something went wrong while running this command." If the bot lacked a permission, the phrase says so instead: "I don't have the permission to do that here." Never a stack trace, never a technical word.
+- **You** get the error in your terminal, with the file and the line:
+
+```text
+✗ src/commands/whois.ts:11 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+```
+
+- **The bot** keeps running. One failing command never stops anything else.
+
+Try it: add `throw new Error('oops')` at the top of `run` in `/dice`, save, and use the command. Then remove it.
+
+<Tip>
+  Keep the line of your code in the error: chain with `await`, not `.then()`. An
+  error inside something you awaited is reported with the line that awaited it.
+</Tip>
+
+To handle a failure yourself, wrap the risky part in `try` / `catch`. Errors from Discord are `DiscordApiError`, with a `code` that says what happened; the page [What you receive](/tutorial/what-you-receive) shows one.
+
+## Recap
+
+- `reply()` once, then `followUp()`, `edit()`, `delete()`.
+- `ephemeral: true` makes a message private; on the command, it makes every answer private.
+- After 2 seconds, the framework defers for you; `defer()` does it at once.
+- When `run` throws, the person gets a plain answer, you get the file and the line, the bot goes on.
+
+<CardGroup cols={2}>
+  <Card title="What you receive" icon="box" href="/tutorial/what-you-receive">
+    Users, members, servers, channels: what they tell you and what they can do.
+  </Card>
+  <Card title="Guide: Answering" icon="book-open" href="/commands/answering">
+    The same, in short.
+  </Card>
+</CardGroup>

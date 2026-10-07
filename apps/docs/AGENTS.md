@@ -4,14 +4,25 @@ This is the user-facing documentation of ChapterJS, built on [Mintlify](https://
 
 ## Who reads this
 
-Amateur developers writing their first Discord bot. They know JavaScript, maybe TypeScript, and little of the Discord API. Every page assumes that reader.
+Amateur developers writing their first Discord bot. They know JavaScript, maybe TypeScript, and little of the Discord API. Every page assumes that reader; the Tutorial assumes even less, and explains Discord itself.
 
-## The two tabs
+## The three tabs
 
+- **Tutorial** (`/tutorial/…`) is a course, read once from start to finish by someone who has never written a bot. It explains _why_ things are the way they are (what a token is, why intents exist, why `t` speaks the language of the readers) before showing how, builds one bot page after page, and never assumes a word is known. Every page has the same shape: what you are about to do and why, a complete file to copy, "Points of attention", a "Recap", then two cards (the next page, and its counterpart in the Guide). It repeats what the Guide says, on purpose, in more words; it never documents a behavior the Guide does not have.
 - **Guide** (`/…`) is read in order and teaches. A guide page shows how to do one thing, with a complete file that works as is, and never lists an API: it links to the reference for that.
 - **Reference** (`/reference/…`) is looked up and lists everything. A reference page never explains a concept: it links to the guide for that.
 
-Each page of one tab links to its counterpart in the other (`commands/answering` ↔ `reference/interaction`).
+Each page of the Guide links to its counterpart in the Reference (`commands/answering` ↔ `reference/interaction`), and each page of the Tutorial to its counterpart in the Guide. The files of the tutorial's bot use names no other page uses (`dice`, `whois`, `reroll`, `pet`, `suggest`, `card`, `heartbeat`…): the samples of every page are compiled together in one scratch project, and a path shown twice with different content is renamed, so a tutorial file imported by another tutorial file must have its own name. Its language files are the ones of `translated-messages.mdx`, word for word, because `t` is typed from the first `src/messages/en-US.ts` of the site.
+
+## Two languages
+
+The site is in English and in French, and Mintlify shows a language switcher next to its name. `docs.json` has one entry per language under `navigation.languages`: `en` (the default) with the pages at the root, `fr` with the same navigation, translated group names and its own `navbar` and `footer`, pointing at the pages of `fr/`. Every page exists in both: `commands/answering.mdx` and `fr/commands/answering.mdx`, at the same path. A change to a page is not finished until its French version says the same thing; `docs.test.ts` fails when a page exists in one language only, and checks the reference of every structure in both.
+
+What the French version translates, and what it keeps:
+
+- **Translated**: the prose, the headings, the titles of steps, tabs and accordions, the texts of cards, the explanations of tables, the comments of samples, and the strings of samples that a person reads (a reply, a description, a label). Links point at `/fr/…`; an anchor is the slug Mintlify computes from the French heading (`## Délais entre deux utilisations` is `#délais-entre-deux-utilisations`, and a French ` : ` gives two hyphens: `#intents--rien-à-lister`).
+- **Kept as they are**: every name of the API (functions, options, types, fields, `### kick()`, `<ResponseField name type>`), the values a type is made of (choices, options of a menu, keys of `data`, keys of `t`), the language files of `src/messages/` (byte for byte: the samples are compiled together, and `t` is typed from the first `en-US.ts`), and every message of the CLI and phrase the bot answers by itself, quoted in English as the person sees it, with the explanation around it in French. A reference description is the JSDoc of the source, translated.
+- The French voice is the same as the English one, with « vous ». Terminology: serveur (never guilde), message privé, serveur de test, le bot, la personne, votre fonction, ce dont le bot se souvient, intents et intents privilégiés (with the English name of the Developer Portal option), événement, commande, formulaire, composant, bouton, menu déroulant, salon, fil, tâche, présence, compiler and compilation (for `chapterjs build`). The labels of the Discord app are given as a French Discord shows them (**Paramètres** → **Avancés** → **Mode développeur**); the Developer Portal is in English.
 
 ## Voice
 
@@ -150,7 +161,7 @@ The site is Mintlify's `luma` theme, set in `docs.json`, with the Lucide icon li
 
 ## Keeping in sync
 
-A change in the framework is not finished until the docs follow, in the same change (see `CLAUDE.md`): a new or renamed API, option, event, convention, env var, command or message. New feature → its guide page and its reference page, both in `docs.json`. Changed API → every page and sample using it. `memory.mdx` follows `CacheLimits` and `core/memory.ts`. `index.mdx` (the landing page) only claims what exists.
+A change in the framework is not finished until the docs follow, in the same change (see `CLAUDE.md`): a new or renamed API, option, event, convention, env var, command or message. New feature → its guide page and its reference page, in both languages, all in `docs.json`. Changed API → every page and sample using it, in English and in French. `memory.mdx` follows `CacheLimits` and `core/memory.ts`. `index.mdx` (the landing page) only claims what exists.
 
 `packages/chapterjs/test/docs.test.ts` checks the site against the package: every page of `docs.json` exists and every page is in `docs.json`; every name exported by the package appears in code in some page; every public method and property of a structure class is on its reference page (a method under its `### name()` heading, a property as a `<ResponseField>`), and no `### name()` names a method that does not exist; and every `ts` sample that is a program (a user file titled with its path, or a function taking a typed structure) compiles with `tsc -b` in a scratch project, with the generated types of its folder. A signature block (`kick(reason?: string): Promise<void>`) is not a program and is left alone.
 `````

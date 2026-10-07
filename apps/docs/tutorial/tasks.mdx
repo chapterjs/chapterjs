@@ -1,0 +1,101 @@
+---
+title: 'Tasks'
+description: 'Make your bot do something by itself, every so often or at given times, with one file per task'
+---
+
+Everything so far happened because someone did something: a command, a click, a message. A **task** is what the bot does on its own: a report every Monday, a cleanup every hour, a reminder at noon. One file per task, in `src/tasks/`.
+
+## A task every so often
+
+Create `src/tasks/heartbeat.ts`:
+
+```ts src/tasks/heartbeat.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '1h',
+  onStart: true,
+  run({ user, guilds, now }) {
+    console.log(
+      `${now.toISOString()}: ${user.username} is in ${guilds.size} server(s)`
+    );
+  },
+});
+```
+
+The name of the file is the name of the task. `every` is a duration: a number and a unit, `s`, `m`, `h` or `d`, which add up (`'1h30m'`). The task runs at that interval, counted from the moment the bot connects. `onStart: true` also runs it once right away, without waiting for the first interval: handy to see that it works.
+
+`run` receives `user` (the bot itself), `guilds` (the servers it is in) and `now` (when this run was due, a `Date`). No interaction here: nobody asked, so there is nothing to answer. A task that wants to say something sends a message in a channel it knows.
+
+## A task at given times
+
+For "every Monday at 9:00", `every` does not work: it counts from the start of the bot. `cron` is a standard way of writing times: five fields, minute, hour, day of month, month, day of week.
+
+```ts src/tasks/monday.ts
+import { task } from 'chapterjs';
+
+export default task({
+  cron: '0 9 * * 1',
+  timezone: 'Europe/Paris',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const general = [...guild.channels.values()].find(
+        channel => channel.name === 'general'
+      );
+      if (general?.isText())
+        await general.send(
+          `Good morning ${guild.name}! A new week starts. We are ${guild.memberCount ?? '?'}.`
+        );
+    }
+  },
+});
+```
+
+| Write             | Runs                                |
+| ----------------- | ----------------------------------- |
+| `'0 9 * * *'`     | Every day at 9:00                   |
+| `'*/15 * * * *'`  | Every 15 minutes                    |
+| `'0 9 * * 1-5'`   | Weekdays at 9:00                    |
+| `'30 18 * * fri'` | Fridays at 18:30                    |
+| `'0 0 1 * *'`     | The first of each month at midnight |
+
+`*` means "every", `*/15` "every 15", `1-5` a range, `1,15` a list, and names (`mon`, `fri`, `jan`) work for days and months.
+
+**`timezone` matters.** Without it, the task follows the clock of the machine the bot runs on, which in production is often a server set to UTC: "9:00" would be 9:00 UTC, not 9:00 for your members. With a timezone (`'Europe/Paris'`, `'America/New_York'`...), it follows that clock, daylight saving changes included: a time that does not exist that day is skipped, one that comes twice runs once.
+
+A cron that is wrong, or that can never happen (`'0 0 31 2 *'`, the 31st of February), is an error when the file loads, with what to write.
+
+## What the framework takes care of
+
+- **A run that takes longer than the interval** is not started twice. The next time is skipped, and the terminal says so:
+
+  ```text
+  ⚠ src/tasks/heartbeat.ts heartbeat was still running when its next time came (every 1s): that run was skipped.
+  ```
+
+- **A run that throws** is reported with the file and the line, and the task keeps its next time. Nothing stops the bot.
+- **While the bot reconnects**, a task that is due is skipped and said; it runs again at its next time.
+- **In `chapterjs dev`**, saving a task file replaces what it does without changing when: a task that runs every hour keeps its next time through the reload. Changing `every` or `cron` counts the task again from the save.
+- **In production, on several processes**, each task runs once for the whole bot, in the first process.
+
+## Points of attention
+
+- **One of `every` or `cron`**, never both, never neither; `timezone` only with `cron`. Each is refused when the file loads, with the reason.
+- **Once per second at the fastest.** A task is not the way to react to something: that is an event.
+- **`guilds` is what the bot knows**, not a fresh request. For a task that posts in every server, find the channel in `guild.channels` as above; keep an id in your own storage when you want the server to choose it.
+- **A task has no person to answer.** Keep its messages for channels, and keep them useful: a message every minute in a channel is the fastest way to get the bot removed.
+
+## Recap
+
+- A task is a file of `src/tasks/` with `every` (an interval from the start) or `cron` (a schedule), and `run`.
+- `timezone` makes a cron follow the clock of your members, not of the machine.
+- Overlapping runs, errors and reconnections are handled; saving a file keeps the next time.
+
+<CardGroup cols={2}>
+  <Card title="Presence" icon="activity" href="/tutorial/presence">
+    What the bot shows under its name.
+  </Card>
+  <Card title="Guide: Tasks" icon="book-open" href="/tasks">
+    The same, in short.
+  </Card>
+</CardGroup>

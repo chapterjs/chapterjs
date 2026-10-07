@@ -1,0 +1,281 @@
+---
+title: 'Options'
+description: 'Trouver chaque champ que vous pouvez passer à edit() et aux méthodes qui créent des salons, des fils, des publications, des rôles et des invitations'
+---
+
+Les méthodes qui créent ou modifient quelque chose prennent un objet d’options. Ses champs sont ceux de Discord, écrits en camelCase ; votre éditeur les complète.
+
+<Note>
+  Ces options appartiennent aux actions de [Guild](/fr/reference/guild), des [salons](/fr/reference/channels) et de [Role](/fr/reference/role). Ce que prend un message est dans [Options des messages](/fr/reference/message-options), ce que prend un membre dans [GuildMember](/fr/reference/member#types).
+</Note>
+
+Quelques règles valent partout :
+
+- À la modification, seul ce que vous passez change. `null` retire une valeur quand le type le permet.
+- Les images sont des data URI : `data:image/png;base64,...`.
+- Les identifiants sont des `Snowflake` : l’`id` d’une structure, ou le texte copié depuis Discord.
+- Les permissions s’écrivent par leur nom (`'ManageThreads'`), jamais sous forme de nombres : voir [Permissions](/fr/reference/permissions).
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function setUp(guild: Guild) {
+  const role = await guild.createRole({ name: 'Aidant', permissions: ['ManageMessages'] });
+  await guild.createChannel({ name: 'aide', topic: `Demandez n’importe quoi à ${role}` });
+}
+```
+
+## GuildEditOptions
+
+Ce que prend `edit()` sur un serveur : seul ce qui est passé change. Les images sont des data URI (`data:image/png;base64,...`).
+
+```ts
+guild.edit(options: GuildEditOptions, reason?: string): Promise<Guild>
+```
+
+<ResponseField name="name" type="string">Le nom du serveur.</ResponseField>
+<ResponseField name="verificationLevel" type="VerificationLevel | null">Ce que Discord demande aux nouveaux membres avant qu’ils puissent écrire : une valeur de [`VerificationLevel`](/fr/reference/enums#verificationlevel).</ResponseField>
+<ResponseField name="defaultMessageNotifications" type="DefaultMessageNotificationLevel | null">Si les membres reçoivent par défaut une notification pour chaque message ou seulement quand ils sont mentionnés : une valeur de [`DefaultMessageNotificationLevel`](/fr/reference/enums#defaultmessagenotificationlevel).</ResponseField>
+<ResponseField name="explicitContentFilter" type="ExplicitContentFilterLevel | null">Les images et vidéos de qui Discord analyse à la recherche de contenu explicite : une valeur de [`ExplicitContentFilterLevel`](/fr/reference/enums#explicitcontentfilterlevel).</ResponseField>
+<ResponseField name="afkChannelId" type="Snowflake | null">L’identifiant du salon vocal où sont déplacés les membres inactifs.</ResponseField>
+<ResponseField name="afkTimeout" type="number">Au bout de combien de secondes d’inactivité un membre y est déplacé : `60`, `300`, `900`, `1800` ou `3600`.</ResponseField>
+<ResponseField name="icon" type="string | null">L’icône : un PNG, JPEG ou GIF de 1024x1024 (un GIF animé seulement quand le serveur a la fonctionnalité `ANIMATED_ICON`).</ResponseField>
+<ResponseField name="splash" type="string | null">L’arrière-plan de la page d’invitation : un PNG ou JPEG en 16:9 (quand le serveur a la fonctionnalité `INVITE_SPLASH`).</ResponseField>
+<ResponseField name="discoverySplash" type="string | null">L’arrière-plan affiché dans la découverte de serveurs : un PNG ou JPEG en 16:9 (quand le serveur a la fonctionnalité `DISCOVERABLE`).</ResponseField>
+<ResponseField name="banner" type="string | null">La bannière : un PNG ou JPEG en 16:9 (quand le serveur a la fonctionnalité `BANNER` ; un GIF animé quand il a la fonctionnalité `ANIMATED_BANNER`).</ResponseField>
+<ResponseField name="systemChannelId" type="Snowflake | null">L’identifiant du salon où Discord publie les messages de bienvenue et les avis de boost.</ResponseField>
+<ResponseField name="systemChannelFlags" type="number">Lesquels de ces avis sont masqués, sous forme de champ de bits.</ResponseField>
+<ResponseField name="rulesChannelId" type="Snowflake | null">L’identifiant du salon qui affiche le règlement, sur un serveur Communauté.</ResponseField>
+<ResponseField name="publicUpdatesChannelId" type="Snowflake | null">L’identifiant du salon où les administrateurs et modérateurs d’un serveur Communauté reçoivent les avis de Discord.</ResponseField>
+<ResponseField name="preferredLocale" type="Locale | null">La langue d’un serveur Communauté, utilisée dans la découverte de serveurs et dans les avis qu’envoie Discord ; `'en-US'` par défaut. Une valeur de [`Locale`](/fr/reference/enums#locale).</ResponseField>
+<ResponseField name="features" type="GuildFeature[]">Les fonctionnalités activées sur le serveur : voir [`GuildFeature`](/fr/reference/guild#types).</ResponseField>
+<ResponseField name="description" type="string | null">La description du serveur.</ResponseField>
+<ResponseField name="premiumProgressBarEnabled" type="boolean">Si la barre de progression des boosts est affichée.</ResponseField>
+<ResponseField name="safetyAlertsChannelId" type="Snowflake | null">L’identifiant du salon où les administrateurs et modérateurs d’un serveur Communauté reçoivent les alertes de sécurité de Discord.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#modify-guild-json-params)
+
+## ChannelCreateOptions
+
+Ce que prend `createChannel()` : un nom, un type, et les réglages de cette sorte de salon.
+
+```ts
+guild.createChannel(options: ChannelCreateOptions, reason?: string): Promise<GuildChannel>
+```
+
+Seul `name` est nécessaire : sans `type`, Discord crée un salon textuel. Les autres champs ne s’appliquent qu’à la sorte de salon qu’ils décrivent.
+
+<ResponseField name="name" type="string" required>Le nom du salon (1 à 100 caractères).</ResponseField>
+<ResponseField name="type" type="ChannelType | null">La sorte de salon : une valeur de [`ChannelType`](/fr/reference/enums#channeltype).</ResponseField>
+<ResponseField name="topic" type="string | null">Le sujet affiché en haut du salon (0 à 1024 caractères).</ResponseField>
+<ResponseField name="bitrate" type="number | null">La qualité audio d’un salon vocal ou de conférence, en bits par seconde ; 8000 au moins.</ResponseField>
+<ResponseField name="userLimit" type="number | null">Combien de personnes peuvent rejoindre un salon vocal.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Mode lent : combien de secondes un membre attend entre deux messages (0 à 21600). Les bots et les membres avec la permission `BypassSlowmode` ne sont pas concernés.</ResponseField>
+<ResponseField name="position" type="number | null">Où se trouve le salon dans la liste (les salons de même position sont triés par identifiant).</ResponseField>
+<ResponseField name="permissionOverwrites" type="object[] | null">
+  Ce que les rôles et les membres ont le droit ou non de faire dans le salon.
+  <Expandable title="champs d’un remplacement">
+    <ResponseField name="id" type="Snowflake">L’identifiant du rôle ou du membre.</ResponseField>
+    <ResponseField name="type" type="0 | 1">`0` pour un rôle, `1` pour un membre.</ResponseField>
+    <ResponseField name="allow" type="string">Ce qui est autorisé, sous la forme de texte qu’attend Discord : `new Permissions(['SendMessages']).toString()`.</ResponseField>
+    <ResponseField name="deny" type="string">Ce qui est refusé, écrit de la même façon.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="parentId" type="Snowflake | null">L’identifiant de la catégorie où mettre le salon.</ResponseField>
+<ResponseField name="nsfw" type="boolean | null">Si le salon est soumis à une limite d’âge.</ResponseField>
+<ResponseField name="rtcRegion" type="string | null">La région vocale d’un salon vocal ou de conférence ; `null` laisse Discord la choisir.</ResponseField>
+<ResponseField name="videoQualityMode" type="VideoQualityMode | null">La qualité des caméras d’un salon vocal : une valeur de [`VideoQualityMode`](/fr/reference/enums#videoqualitymode).</ResponseField>
+<ResponseField name="defaultAutoArchiveDuration" type="number | null">Au bout de combien de minutes sans activité l’app Discord propose d’archiver un nouveau fil du salon.</ResponseField>
+<ResponseField name="defaultReactionEmoji" type="object | null">
+  L’emoji du bouton « ajouter une réaction » sur les publications d’un salon forum ou média.
+  <Expandable title="champs">
+    <ResponseField name="emojiId" type="Snowflake | null">L’identifiant d’un emoji personnalisé du serveur.</ResponseField>
+    <ResponseField name="emojiName" type="string | null">Un emoji standard, sous forme de son caractère.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[] | null">Les étiquettes que peuvent avoir les publications d’un salon forum ou média : voir [`ForumTag`](/fr/reference/data#forumtag).</ResponseField>
+<ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">Comment sont triées les publications d’un salon forum ou média : une valeur de [`ForumSortOrderType`](/fr/reference/enums#forumsortordertype).</ResponseField>
+<ResponseField name="defaultForumLayout" type="ForumLayoutType | null">Comment sont affichées les publications d’un forum : une valeur de [`ForumLayoutType`](/fr/reference/enums#forumlayouttype).</ResponseField>
+<ResponseField name="defaultThreadRateLimitPerUser" type="number | null">Le mode lent donné aux nouveaux fils du salon. Il est copié à la création du fil et ne suit pas les changements ultérieurs.</ResponseField>
+<ResponseField name="flags" type="number | null">Les drapeaux du salon, sous forme de champ de bits.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#create-guild-channel-json-params)
+
+## GuildChannelEditOptions
+
+Ce que prend `edit()` sur un salon d’un serveur.
+
+```ts
+channel.edit(options: GuildChannelEditOptions, reason?: string): Promise<this>
+```
+
+Cela fonctionne sur chaque salon d’un serveur qui n’est pas un fil : salons textuels, vocaux, catégories et forums. Un champ qui ne s’applique pas à la sorte de salon est refusé par Discord.
+
+<ResponseField name="name" type="string">Le nom du salon (1 à 100 caractères).</ResponseField>
+<ResponseField name="type" type="ChannelType">La sorte de salon : une valeur de [`ChannelType`](/fr/reference/enums#channeltype). Seul un salon textuel peut devenir un salon d’annonces et inversement, sur un serveur qui a la fonctionnalité `NEWS`.</ResponseField>
+<ResponseField name="position" type="number | null">Où se trouve le salon dans la liste (les salons de même position sont triés par identifiant).</ResponseField>
+<ResponseField name="topic" type="string | null">Le sujet affiché en haut du salon : 0 à 1024 caractères, ou 0 à 4096 pour un salon forum ou média.</ResponseField>
+<ResponseField name="nsfw" type="boolean | null">Si le salon est soumis à une limite d’âge.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Mode lent : combien de secondes un membre attend entre deux messages (0 à 21600). Les bots et les membres avec la permission `BypassSlowmode` ne sont pas concernés.</ResponseField>
+<ResponseField name="bitrate" type="number | null">La qualité audio d’un salon vocal ou de conférence, en bits par seconde ; 8000 au moins.</ResponseField>
+<ResponseField name="userLimit" type="number | null">Combien de personnes peuvent rejoindre : jusqu’à 99 dans un salon vocal, 10 000 dans un salon de conférence ; `0` veut dire pas de limite.</ResponseField>
+<ResponseField name="permissionOverwrites" type="object[] | null">Ce que les rôles et les membres ont le droit ou non de faire dans le salon ou la catégorie : les mêmes objets que dans [`ChannelCreateOptions`](#channelcreateoptions).</ResponseField>
+<ResponseField name="parentId" type="Snowflake | null">L’identifiant de la catégorie où déplacer le salon.</ResponseField>
+<ResponseField name="rtcRegion" type="string | null">La région vocale du salon ; `null` laisse Discord la choisir.</ResponseField>
+<ResponseField name="videoQualityMode" type="VideoQualityMode | null">La qualité des caméras d’un salon vocal : une valeur de [`VideoQualityMode`](/fr/reference/enums#videoqualitymode).</ResponseField>
+<ResponseField name="defaultAutoArchiveDuration" type="number | null">Au bout de combien de minutes sans activité l’app Discord propose d’archiver un nouveau fil du salon.</ResponseField>
+<ResponseField name="flags" type="number">Les drapeaux du salon, sous forme de champ de bits.</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[]">Les étiquettes que peuvent avoir les publications d’un salon forum ou média, 20 au plus : voir [`ForumTag`](/fr/reference/data#forumtag).</ResponseField>
+<ResponseField name="defaultReactionEmoji" type="object | null">L’emoji du bouton « ajouter une réaction » sur les publications d’un salon forum ou média : `{ emojiId, emojiName }`, comme dans [`ChannelCreateOptions`](#channelcreateoptions).</ResponseField>
+<ResponseField name="defaultThreadRateLimitPerUser" type="number">Le mode lent donné aux nouveaux fils du salon. Il est copié à la création du fil et ne suit pas les changements ultérieurs.</ResponseField>
+<ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">Comment sont triées les publications d’un salon forum ou média : une valeur de [`ForumSortOrderType`](/fr/reference/enums#forumsortordertype).</ResponseField>
+<ResponseField name="defaultForumLayout" type="ForumLayoutType">Comment sont affichées les publications d’un forum : une valeur de [`ForumLayoutType`](/fr/reference/enums#forumlayouttype).</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#modify-channel-json-params-guild-channel)
+
+## ThreadCreateOptions
+
+Ce que prend `startThread()` sur un salon textuel.
+
+```ts
+textChannel.startThread(options: ThreadCreateOptions, reason?: string): Promise<ThreadChannel>
+```
+
+Pour démarrer un fil depuis un message, utilisez plutôt `message.startThread()` : voir [Message](/fr/reference/message).
+
+<ResponseField name="name" type="string" required>Le nom du fil (1 à 100 caractères).</ResponseField>
+<ResponseField name="autoArchiveDuration" type="number">Au bout de combien de minutes sans activité le fil quitte la liste des salons : `60`, `1440`, `4320` ou `10080`.</ResponseField>
+<ResponseField name="type" type="ChannelType">La sorte de fil : `ChannelType.PublicThread`, `ChannelType.PrivateThread` ou `ChannelType.AnnouncementThread` (voir [`ChannelType`](/fr/reference/enums#channeltype)).</ResponseField>
+<ResponseField name="invitable" type="boolean">Si les membres qui ne sont pas modérateurs peuvent ajouter d’autres membres au fil. Seulement pour un fil privé.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Mode lent : combien de secondes un membre attend entre deux messages (0 à 21600).</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#start-thread-without-message-json-params)
+
+## ThreadEditOptions
+
+Ce que prend `edit()` sur un fil.
+
+```ts
+thread.edit(options: ThreadEditOptions, reason?: string): Promise<this>
+```
+
+`thread.archive()` et `thread.unarchive()` sont des raccourcis pour `{ archived: true }` et `{ archived: false }`.
+
+<ResponseField name="name" type="string">Le nom du fil (1 à 100 caractères).</ResponseField>
+<ResponseField name="archived" type="boolean">Si le fil est archivé.</ResponseField>
+<ResponseField name="autoArchiveDuration" type="number">Au bout de combien de minutes sans activité le fil quitte la liste des salons : `60`, `1440`, `4320` ou `10080`.</ResponseField>
+<ResponseField name="locked" type="boolean">Si le fil est verrouillé : seuls les membres avec la permission `ManageThreads` peuvent alors le désarchiver.</ResponseField>
+<ResponseField name="invitable" type="boolean">Si les membres qui ne sont pas modérateurs peuvent ajouter d’autres membres au fil. Seulement pour un fil privé.</ResponseField>
+<ResponseField name="rateLimitPerUser" type="number | null">Mode lent : combien de secondes un membre attend entre deux messages (0 à 21600). Les bots et les membres avec la permission `BypassSlowmode` ne sont pas concernés.</ResponseField>
+<ResponseField name="flags" type="number">Les drapeaux du fil, sous forme de champ de bits. Seule une publication d’un salon forum ou média peut être épinglée ainsi.</ResponseField>
+<ResponseField name="appliedTags" type="Snowflake[]">Les identifiants des étiquettes d’une publication d’un salon forum ou média, 5 au plus.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#modify-channel-json-params-thread)
+
+## ForumPostOptions
+
+Ce que prend `createPost()`.
+
+```ts
+forum.createPost(options: ForumPostOptions, reason?: string): Promise<ThreadChannel>
+```
+
+<ResponseField name="name" type="string" required>Le titre de la publication.</ResponseField>
+<ResponseField name="message" type="MessageInput" required>Le premier message de la publication : un texte, ou tout ce qu’un message peut contenir (voir [`MessageInput`](/fr/reference/message-options#messageinput)).</ResponseField>
+<ResponseField name="appliedTags" type="Snowflake[]">Les identifiants des étiquettes de la publication.</ResponseField>
+<ResponseField name="autoArchiveDuration" type="60 | 1440 | 4320 | 10080">Au bout de combien de minutes sans activité la publication est archivée.</ResponseField>
+<ResponseField name="slowmode" type="number">Mode lent de la publication, en secondes.</ResponseField>
+
+Le message est vérifié comme n’importe quel autre avant d’être envoyé : voir [Options des messages](/fr/reference/message-options).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#start-thread-in-forum-or-media-channel-jsonform-params)
+
+## RoleCreateOptions
+
+Ce que prend `createRole()`. Les permissions se donnent par leur nom, sous forme de liste de noms ou d’ensemble `Permissions`.
+
+```ts
+guild.createRole(options?: RoleCreateOptions, reason?: string): Promise<Role>
+```
+
+Chaque champ peut être laissé de côté : `guild.createRole()` crée un rôle avec les valeurs par défaut de Discord.
+
+<ResponseField name="name" type="string">Le nom du rôle, 100 caractères au plus.</ResponseField>
+<ResponseField name="permissions" type="PermissionResolvable | string">Ce que le rôle permet : un nom, une liste de noms, un ensemble `Permissions`, ou le texte qu’utilise Discord. Voir [`PermissionResolvable`](/fr/reference/permissions#permissionresolvable).</ResponseField>
+<ResponseField name="colors" type="object">
+  Les couleurs du rôle.
+  <Expandable title="champs">
+    <ResponseField name="primaryColor" type="number" required>La couleur principale, sous forme de nombre (`0xff0000` pour le rouge).</ResponseField>
+    <ResponseField name="secondaryColor" type="number | null" required>Une deuxième couleur : le rôle est alors affiché en dégradé entre les deux.</ResponseField>
+    <ResponseField name="tertiaryColor" type="number | null" required>Une troisième couleur : le dégradé devient alors holographique.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="hoist" type="boolean">Si les membres qui ont le rôle sont affichés à part dans la liste des membres.</ResponseField>
+<ResponseField name="icon" type="string | null">L’icône du rôle, sous forme de data URI (quand le serveur a la fonctionnalité `ROLE_ICONS`).</ResponseField>
+<ResponseField name="unicodeEmoji" type="string | null">Un emoji standard affiché comme icône du rôle (quand le serveur a la fonctionnalité `ROLE_ICONS`).</ResponseField>
+<ResponseField name="mentionable" type="boolean">Si tout le monde peut mentionner le rôle.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#create-guild-role-json-params)
+
+## RoleEditOptions
+
+Ce que prend `edit()` sur un rôle : seul ce qui est passé change. Les permissions se donnent par leur nom, sous forme de liste de noms ou d’ensemble `Permissions`.
+
+```ts
+role.edit(options: RoleEditOptions, reason?: string): Promise<Role>
+```
+
+<ResponseField name="name" type="string">Le nom du rôle, 100 caractères au plus.</ResponseField>
+<ResponseField name="permissions" type="PermissionResolvable | string">Ce que le rôle permet : un nom, une liste de noms, un ensemble `Permissions`, ou le texte qu’utilise Discord. Cela remplace les permissions du rôle : partez de `role.permissions.add()` ou `.remove()` pour en changer une. Voir [`PermissionResolvable`](/fr/reference/permissions#permissionresolvable).</ResponseField>
+<ResponseField name="colors" type="object">Les couleurs du rôle : `{ primaryColor, secondaryColor, tertiaryColor }`, comme dans [`RoleCreateOptions`](#rolecreateoptions).</ResponseField>
+<ResponseField name="hoist" type="boolean">Si les membres qui ont le rôle sont affichés à part dans la liste des membres.</ResponseField>
+<ResponseField name="icon" type="string">L’icône du rôle, sous forme de data URI (quand le serveur a la fonctionnalité `ROLE_ICONS`).</ResponseField>
+<ResponseField name="unicodeEmoji" type="string">Un emoji standard affiché comme icône du rôle (quand le serveur a la fonctionnalité `ROLE_ICONS`).</ResponseField>
+<ResponseField name="mentionable" type="boolean">Si tout le monde peut mentionner le rôle.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#modify-guild-role-json-params)
+
+## InviteCreateOptions
+
+Ce que prend `createInvite()`.
+
+```ts
+channel.createInvite(options?: InviteCreateOptions, reason?: string): Promise<Invite>
+```
+
+Chaque champ peut être laissé de côté : `channel.createInvite()` crée une invitation avec les valeurs par défaut de Discord.
+
+<ResponseField name="maxAge" type="number">Au bout de combien de secondes l’invitation expire, de 0 (jamais) à 604800 (7 jours).</ResponseField>
+<ResponseField name="maxUses" type="number">Combien de fois elle peut être utilisée, de 0 (pas de limite) à 100.</ResponseField>
+<ResponseField name="temporary" type="boolean">Si l’invitation ne donne qu’une adhésion temporaire : les membres qui arrivent avec elle sont expulsés quand ils se déconnectent.</ResponseField>
+<ResponseField name="unique" type="boolean">`true` pour toujours créer un nouveau lien, au lieu de réutiliser un lien semblable qui existe déjà. Utile pour beaucoup de liens à usage unique.</ResponseField>
+<ResponseField name="targetType" type="1 | 2">Ce qu’ouvre une invitation vers un salon vocal : `1` un stream, `2` une activité intégrée.</ResponseField>
+<ResponseField name="targetUserId" type="Snowflake">L’identifiant de l’utilisateur dont montrer le stream. Nécessaire quand `targetType` vaut `1` ; l’utilisateur doit être en train de streamer dans le salon.</ResponseField>
+<ResponseField name="targetApplicationId" type="Snowflake">L’identifiant de l’activité à ouvrir. Nécessaire quand `targetType` vaut `2` ; l’application doit avoir le drapeau `EMBEDDED`.</ResponseField>
+<ResponseField name="targetUserIds" type="Snowflake[]">Les identifiants des seuls utilisateurs qui peuvent voir et accepter l’invitation, 1000 au plus.</ResponseField>
+<ResponseField name="roleIds" type="Snowflake[]">Les identifiants des rôles donnés à qui arrive avec l’invitation.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#create-channel-invite-jsonform-params)
+
+## FetchMessagesOptions
+
+Ce que prend `fetchMessages()` : combien de messages, et à partir d’où.
+
+```ts
+channel.fetchMessages(options?: FetchMessagesOptions): Promise<Message[]>
+```
+
+<ResponseField name="limit" type="number">Combien de messages, de 1 à 100. Par défaut : 50.</ResponseField>
+<ResponseField name="before" type="Snowflake | { id: Snowflake }">Seulement les messages avant celui-ci.</ResponseField>
+<ResponseField name="after" type="Snowflake | { id: Snowflake }">Seulement les messages après celui-ci.</ResponseField>
+<ResponseField name="around" type="Snowflake | { id: Snowflake }">Les messages autour de celui-ci.</ResponseField>
+
+`limit` est vérifié avant tout envoi. Une mauvaise valeur lève une `RangeError` :
+
+```text
+limit is a whole number between 1 and 100, got 500.
+```
+
+Pour partir d’une date plutôt que d’un message, transformez la date en identifiant avec [`snowflakeFromTimestamp()`](/fr/reference/helpers#snowflakefromtimestamp).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#get-channel-messages-query-string-params)

@@ -172,7 +172,12 @@ export async function build(options: BuildOptions): Promise<number> {
   // once the files ran, so a language file only offers the commands they
   // do not describe; written even when a file failed, so the editor
   // follows.
-  await writeTypes(cwd, sources.commands, sources.messages);
+  await writeTypes(
+    cwd,
+    sources.commands,
+    sources.messages,
+    sources.languageDefaults
+  );
   if (failures.length > 0) {
     for (const failure of failures) sources.report(failure);
     return stopped(failures.length);

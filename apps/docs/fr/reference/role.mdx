@@ -1,0 +1,149 @@
+---
+title: 'Role'
+description: 'Lire les permissions, la position et les membres d’un rôle, et le modifier ou le supprimer'
+---
+
+Un `Role` est un rôle d’un serveur. Vous en obtenez un depuis `guild.roles`, `member.roles`, `member.highestRole`, une option `role` d’une [commande](/fr/commands/options) ou `guild.createRole()`. Chaque serveur a un rôle @everyone que chaque membre possède : `guild.everyoneRole`, dont l’identifiant est celui du serveur.
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function createModerators(guild: Guild) {
+  const role = await guild.createRole({
+    name: 'Modérateurs',
+    permissions: ['KickMembers', 'BanMembers', 'ModerateMembers'],
+    hoist: true,
+  });
+  return `${role} a été créé.`; // "<@&id> a été créé."
+}
+```
+
+<Note>
+  Comment vérifier et donner des permissions est dans [Permissions](/fr/reference/permissions) ; comment une commande reçoit un rôle est dans [Options](/fr/commands/options).
+</Note>
+
+## Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand il a été créé : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake">
+  L’identifiant du serveur du rôle.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  Le serveur du rôle.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Le nom du rôle.
+</ResponseField>
+
+<ResponseField name="color" type="number">
+  La couleur sous forme de nombre (`0xff0000`) ; `0` veut dire pas de couleur.
+</ResponseField>
+
+<ResponseField name="hoist" type="boolean">
+  Si les membres qui ont ce rôle sont affichés à part dans la liste des membres.
+</ResponseField>
+
+<ResponseField name="position" type="number">
+  Où se trouve le rôle dans la hiérarchie : plus il est haut, plus il est puissant.
+</ResponseField>
+
+<ResponseField name="permissions" type="Permissions">
+  Ce que le rôle permet sur le serveur. Voir [Permissions](/fr/reference/permissions).
+</ResponseField>
+
+<ResponseField name="managed" type="boolean">
+  Si le rôle appartient à une intégration (un bot, les boosters...).
+</ResponseField>
+
+<ResponseField name="mentionable" type="boolean">
+  Si tout le monde peut mentionner le rôle.
+</ResponseField>
+
+<ResponseField name="unicodeEmoji" type="string | null">
+  L’emoji standard affiché à côté du rôle, quand il en a un.
+</ResponseField>
+
+<ResponseField name="isEveryone" type="boolean">
+  Si c’est le rôle @everyone, que chaque membre a.
+</ResponseField>
+
+<ResponseField name="members" type="GuildMember[]">
+  Les membres qui ont ce rôle, parmi ceux que connaît le bot.
+</ResponseField>
+
+<Info>
+  `members` est lu parmi les membres dont le bot se souvient (voir [Mémoire](/fr/memory)), donc ce n’est pas toujours chaque membre qui a le rôle.
+</Info>
+
+## Helpers
+
+Ils lisent ce dont le bot se souvient : ils n’envoient jamais de requête.
+
+### iconURL()
+
+```ts
+iconURL(options?: ImageOptions): string | null
+```
+
+L’URL de l’icône du rôle, quand il en a une. Voir [ImageOptions](/fr/reference/helpers#imageoptions).
+
+### isHigherThan()
+
+```ts
+isHigherThan(other: Role): boolean
+```
+
+Si ce rôle est au-dessus d’un autre dans la hiérarchie. À position égale, le rôle le plus ancien est au-dessus.
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/permissions#permission-hierarchy)
+
+### toString()
+
+```ts
+toString(): string
+```
+
+`<@&id>` : mentionne le rôle quand il est mis dans un message.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+## Actions
+
+### edit()
+
+```ts
+edit(options: RoleEditOptions, reason?: string): Promise<Role>
+```
+
+Modifie le rôle. Voir [RoleEditOptions](/fr/reference/options#roleeditoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#modify-guild-role)
+
+### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Supprime le rôle.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#delete-guild-role)
+
+## Types
+
+`RoleEditOptions` est dans [Options](/fr/reference/options#roleeditoptions), à côté de `RoleCreateOptions`. `Permissions` est dans [Permissions](/fr/reference/permissions).

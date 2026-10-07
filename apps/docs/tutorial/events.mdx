@@ -1,0 +1,153 @@
+---
+title: 'Events'
+description: 'React to what happens on Discord with a folder per event: welcome new members, log changes, run code when the bot connects, and see how intents follow your files'
+---
+
+Commands run when someone asks. Events run when something **happens**: a member joins, a role is deleted, a channel is renamed, the bot connects. This page makes your bot welcome newcomers, and on the way explains the one thing events need from the Developer Portal.
+
+## A folder per event
+
+To react to an event, create a folder named after it in `src/events/`, and put a file inside. The folder is the event; the file is one reaction, named as you like. Create `src/events/memberJoin/hello.ts`:
+
+```ts src/events/memberJoin/hello.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  const channel = guild.systemChannelId
+    ? guild.channels.get(guild.systemChannelId)
+    : undefined;
+  if (!channel?.isTextBased()) return;
+  await channel.send(
+    `Welcome to ${guild.name}, ${member}! You are member number ${guild.memberCount ?? '?'}.`
+  );
+});
+```
+
+Compare with a command file: `event()` takes a function directly, not an object, because an event has nothing to declare: no name, no description, no options. The folder said everything. And the function receives what the event is about: here a `member` (who joined) and a `guild` (where). Hover `member` in your editor: it is a `GuildMember`, with everything the previous pages showed. The same `import { event } from 'chapterjs'` line, in `src/events/roleDelete/`, would give your function a `role`.
+
+`guild.systemChannelId` is the channel where Discord itself posts "X joined the server", when the server has one: a sensible default for a welcome. `guild.channels.get()` reads it from what the bot knows, and `isTextBased()` makes sure a message can go there.
+
+## The first privileged intent
+
+Save the file. The terminal does not say "Reloaded". It says:
+
+```text
+⚠ Your files need an option that is not enabled for your bot:
+  - Server Members Intent, needed by src/events/memberJoin/hello.ts
+  Enable it under "Privileged Gateway Intents", then save:
+  https://discord.com/developers/applications/123456789012345678/bot
+  Waiting for you to enable it...
+```
+
+This is the intents mechanism from [How a bot works](/tutorial/how-a-bot-works), at work. The bot asked Discord for the servers (`GUILDS`) when it connected. Knowing about members joining is another intent, `GUILD_MEMBERS`, and that one is privileged: Discord wants you to enable it by hand, because the list of members of a server is personal data.
+
+Open the link (it goes straight to the **Bot** page of your dev application), turn on **Server Members Intent**, click **Save Changes**. The terminal goes on by itself:
+
+```text
+✓ Privileged intents enabled
+↻ Your files now need more from Discord (GUILD_MEMBERS): reconnecting...
+✓ Reconnected, 2 events loaded
+```
+
+Intents are given to Discord when the bot connects, so needing a new one means reconnecting. The framework did it. From now on, every time someone joins your test server, your file runs. Try it with a second account, or by leaving and joining again.
+
+<Info>
+  You never wrote an intent. The framework reads your folders, works out what
+  they need, asks Discord for exactly that, and tells you when one needs a
+  switch in the Developer Portal. When you delete the folder, the intent is not
+  asked for any more. That is what "intents are computed from your files" means
+  on the first line of every start.
+</Info>
+
+## Several files for one event
+
+A folder holds as many files as you want, and **all of them run** when the event happens, at the same time, in no particular order. Add `src/events/memberJoin/role.ts`, which gives newcomers a role:
+
+```ts src/events/memberJoin/role.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  const role = [...guild.roles.values()].find(role => role.name === 'Newcomer');
+  if (!role) return;
+  await member.addRole(role, 'Just joined');
+});
+```
+
+Create a role called "Newcomer" in your test server, and make sure the role of the bot is **above** it in the server settings: Discord only lets a bot give roles below its own highest role.
+
+Why one file per thing, rather than one big function? Because a file that fails never stops the others. If `role.ts` throws (the role was deleted, the bot's role is too low), `hello.ts` still welcomes. And each file stays short enough to read. When two steps must happen in order, keep them in the same file.
+
+## The ready event
+
+`ready` is special: it is not something that happens on Discord, but the moment your bot is connected and knows every server it is in. It runs **once per start**, never on a reload. The template uses it to print a line:
+
+```ts src/events/ready/online.ts
+import { event } from 'chapterjs';
+
+export default event(({ user, guilds }) => {
+  console.log(`${user.username} is online in ${guilds.size} server(s)`);
+});
+```
+
+`user` is the bot itself, `guilds` the servers it is in. Use it for things that must happen once at startup. Do not use it for things that must happen regularly: that is what tasks are for, a few chapters from here.
+
+## The events you can react to
+
+| Folder                                            | Happens when                                        | Your function receives                     |
+| ------------------------------------------------- | --------------------------------------------------- | ------------------------------------------ |
+| `ready`                                           | The bot is connected                                | `user`, `guilds`                           |
+| `guildJoin`, `guildLeave`                         | The bot is added to a server, or removed            | `guild`                                    |
+| `memberJoin`, `memberUpdate`, `memberLeave`       | Someone joins, changes (nickname, roles...), leaves | `member`, `guild` (and `user` for a leave) |
+| `roleCreate`, `roleUpdate`, `roleDelete`          | A role is created, changed, deleted                 | `role`, `guild`                            |
+| `channelCreate`, `channelUpdate`, `channelDelete` | A channel is created, changed, deleted              | `channel`, `guild`                         |
+| `messageCreate`, `messageUpdate`, `messageDelete` | A message is sent, edited, deleted                  | `message` and more: the next page          |
+
+A folder with another name is reported when it loads, with the closest event name when there is one. The exact contents of each are in the [Reference](/reference/events).
+
+### What was deleted
+
+For something that no longer exists, the event gives it to you **as it was**: `roleDelete` gives the role, `channelDelete` the channel, `guildLeave` the server. The bot remembered them all, so they are there. `memberLeave` is the exception: a server can have more members than the bot remembers, so `member` is `null` when the bot never saw that person, and `user` (the account) is always there.
+
+```ts src/events/memberLeave/bye.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ user, member, guild }) => {
+  const channel = guild.systemChannelId
+    ? guild.channels.get(guild.systemChannelId)
+    : undefined;
+  if (!channel?.isTextBased()) return;
+  const name = member?.displayName ?? user.displayName;
+  await channel.send(`${name} left. We are ${guild.memberCount ?? '?'} now.`);
+});
+```
+
+## Points of attention
+
+- **Everything your function receives is read-only.** Assigning to it throws; it is shared by every file of the folder.
+- **What must exist is there.** `member.guild`, `channel.guild`, `guild.me`: no `?.`. What may really be missing is nullable, like `guild.memberCount`, which Discord does not always send.
+- **In dev, only your test server.** `chapterjs dev` ignores what happens in other servers and in private messages. That is why you can run the dev bot and the production bot with one token without them answering twice; `chapterjs start` hears everything.
+- **A failing file is reported with the file and the line**, and nothing else stops:
+
+```text
+✗ src/events/memberJoin/role.ts:6 Discord refused PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}: Missing Permissions (50013)
+```
+
+## Recap
+
+- A folder of `src/events/` is an event; each file in it is one reaction, and all run.
+- `event()` takes a function; what it receives follows the folder, with no type to write.
+- Intents are computed from your folders; a privileged one is a switch in the Developer Portal, and the terminal waits for you.
+- `ready` runs once per start; deleted things come as they were.
+
+<CardGroup cols={2}>
+  <Card
+    title="Messages as events"
+    icon="message-square"
+    href="/tutorial/message-events"
+  >
+    React to what people write, where, and from whom.
+  </Card>
+  <Card title="Guide: Events" icon="book-open" href="/events">
+    The same, in short.
+  </Card>
+</CardGroup>

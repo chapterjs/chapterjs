@@ -1,0 +1,226 @@
+---
+title: 'Mise en page'
+description: 'Les pièces d’un message écrites là où est le message : rangées, boutons de lien, textes, sections, galeries, fichiers, séparateurs et conteneurs'
+---
+
+Les `components` d’un message prennent des pièces fabriquées par ChapterJS : les fichiers de `src/components/`, et les helpers de cette page, importés de `'chapterjs'`. Chacune est vérifiée par rapport aux limites de Discord à sa fabrication.
+
+```ts
+import { container, separator, text, type GuildMember, type TextChannel } from 'chapterjs';
+
+async function profile(channel: TextChannel, member: GuildMember) {
+  await channel.send({
+    components: [container([text(`## ${member.displayName}`), separator(), text(`${member.roles.length} rôles`)], { color: 0xc026d3 })],
+  });
+}
+```
+
+<Note>
+  Comment construire un message avec ces pièces est dans [Embeds et mise en page](/fr/components/embeds).
+</Note>
+
+## Helpers
+
+### row()
+
+```ts
+row(components: readonly (ButtonComponent | SelectComponent)[]): ActionRowComponent
+```
+
+Une rangée de composants : jusqu’à 5 boutons, ou un menu déroulant. Le framework fabrique les rangées tout seul ; utilisez ceci pour choisir quels boutons partagent une rangée.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#action-row)
+
+### linkButton()
+
+```ts
+linkButton(options: LinkButtonOptions): ButtonComponent
+```
+
+Un bouton qui ouvre un lien. Rien ne tourne dans votre bot quand on clique dessus : Discord ouvre l’adresse.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#button)
+
+### premiumButton()
+
+```ts
+premiumButton(skuId: Snowflake, options?: { disabled?: boolean }): ButtonComponent
+```
+
+Un bouton qui propose quelque chose à acheter : Discord affiche lui-même le nom et le prix du SKU.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#button)
+
+### text()
+
+```ts
+text(content: string): TextComponent
+```
+
+Un texte dans un message construit avec des composants. Le Markdown fonctionne comme dans n’importe quel message, mentions comprises. Les textes d’un message font 4000 caractères au plus au total.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#text-display)
+
+### section()
+
+```ts
+section(texts: string | readonly string[], accessory: ButtonComponent | ThumbnailComponent): SectionComponent
+```
+
+Un à trois textes avec un bouton ou une miniature à côté.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#section)
+
+### thumbnail()
+
+```ts
+thumbnail(media: string | MediaOptions): ThumbnailComponent
+```
+
+Une petite image à côté des textes d’une section.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#thumbnail)
+
+### gallery()
+
+```ts
+gallery(items: readonly (string | MediaOptions)[]): GalleryComponent
+```
+
+Jusqu’à 10 images ou vidéos, affichées en grille.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#media-gallery)
+
+### file()
+
+```ts
+file(name: string, options?: { spoiler?: boolean }): FileComponent
+```
+
+Un fichier envoyé avec le message (ses `files`), affiché là où il est placé.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#file)
+
+### separator()
+
+```ts
+separator(options?: SeparatorOptions): SeparatorComponent
+```
+
+De l’espace entre deux pièces, avec une ligne par défaut.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#separator)
+
+### container()
+
+```ts
+container(children: readonly ContainerChild[], options?: ContainerOptions): ContainerComponent
+```
+
+Un cadre autour de textes, sections, rangées, galeries, fichiers et séparateurs, avec une couleur facultative sur sa gauche, comme un embed.
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#container)
+
+## Options
+
+### LinkButtonOptions
+
+Un bouton de lien : ce qu’il affiche, et l’adresse qu’il ouvre.
+
+<ResponseField name="url" type="string" required>
+  L’adresse qu’ouvre le bouton (512 caractères au plus).
+</ResponseField>
+
+<ResponseField name="label" type="string">
+  Le texte sur le bouton (80 caractères au plus).
+</ResponseField>
+
+<ResponseField name="emoji" type="EmojiInput">
+  Un emoji sur le bouton, avant l’étiquette.
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean">
+  Affiche le bouton grisé, impossible à cliquer.
+</ResponseField>
+
+### MediaOptions
+
+Une image ou une vidéo : son adresse, ou `attachment://nom` pour un fichier du message.
+
+<ResponseField name="url" type="string" required>
+  L’adresse du média : un lien, ou `attachment://chart.png` pour un fichier envoyé avec le message.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Ce que montre le média, pour les personnes qui ne peuvent pas le voir (1024 caractères au plus).
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Floute le média jusqu’à ce qu’on clique dessus.
+</ResponseField>
+
+### SeparatorOptions
+
+L’apparence d’un séparateur.
+
+<ResponseField name="divider" type="boolean">
+  Affiche une ligne. Affichée par défaut.
+</ResponseField>
+
+<ResponseField name="spacing" type="'small' | 'large'">
+  Combien d’espace : `'small'` (par défaut) ou `'large'`.
+</ResponseField>
+
+### ContainerOptions
+
+L’apparence d’un conteneur.
+
+<ResponseField name="color" type="number">
+  La couleur de la ligne sur sa gauche, sous forme de nombre (`0xc026d3`).
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Floute tout le conteneur jusqu’à ce qu’on clique dessus.
+</ResponseField>
+
+## Les pièces
+
+### MessageComponent
+
+```ts
+type MessageComponent = ContainerChild | ContainerComponent
+```
+
+Ce que prennent les `components` d’un message. Les boutons et menus sont mis en rangées par le framework (5 boutons par rangée, un menu seul dans sa rangée) ; `row()` est là pour choisir. Dès qu’un message a un texte, une section, une galerie, un fichier, un séparateur ou un conteneur, il est construit uniquement avec des composants : Discord ne prend alors ni `content` ni `embeds`.
+
+### ContainerChild
+
+```ts
+type ContainerChild = ButtonComponent | SelectComponent | ActionRowComponent | TextComponent | SectionComponent | GalleryComponent | FileComponent | SeparatorComponent
+```
+
+Ce que peut contenir un conteneur.
+
+### Piece
+
+```ts
+interface Piece<Kind extends string> { readonly [brand]: Kind }
+```
+
+Une pièce d’un message fabriquée par ChapterJS : un bouton, un menu, une mise en page. Seul le framework fabrique des pièces : un objet simple est refusé là où une pièce est attendue, avec un message qui dit quoi utiliser à la place. Chaque pièce est une `Piece` :
+
+| Type | Fabriqué par |
+| --- | --- |
+| `ButtonComponent` | Un fichier de `src/components/buttons/`, `linkButton()`, `premiumButton()` |
+| `SelectComponent` | Un fichier de `src/components/selects/` |
+| `ModalComponent` | Un fichier de `src/components/modals/`, pour `interaction.showModal()` |
+| `ActionRowComponent` | `row()` |
+| `TextComponent` | `text()` |
+| `SectionComponent` | `section()` |
+| `ThumbnailComponent` | `thumbnail()` |
+| `GalleryComponent` | `gallery()` |
+| `FileComponent` | `file()` |
+| `SeparatorComponent` | `separator()` |
+| `ContainerComponent` | `container()` |
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference)

@@ -1,0 +1,171 @@
+---
+title: 'Déployer'
+description: 'Mettre votre bot sur une machine qui reste allumée, et le garder en marche'
+---
+
+Un bot est en ligne tant que `chapterjs start` tourne. Sur votre ordinateur, il s’arrête quand vous fermez le terminal, donc un bot pour tout le monde vit sur une machine qui reste allumée : un serveur que vous louez, un conteneur, un hébergeur fait pour les applications Node. Quelle qu’elle soit, les étapes sont les mêmes.
+
+<Steps>
+  <Step title="Y mettre votre projet">
+    Clonez votre dépôt, ou copiez le dossier sans `node_modules` ni `.chapterjs` (les deux sont recréés sur la machine). La machine a besoin de [Node.js](https://nodejs.org) 22.18 ou plus récent et d’un gestionnaire de paquets.
+  </Step>
+  <Step title="Installer">
+    Lancez la commande d’installation de votre gestionnaire de paquets dans le dossier. L’installation écrit aussi les types du projet (`postinstall` lance `chapterjs sync`).
+
+    <CodeGroup>
+    ```bash pnpm
+    pnpm install
+    ```
+
+    ```bash npm
+    npm install
+    ```
+
+    ```bash yarn
+    yarn install
+    ```
+
+    ```bash bun
+    bun install
+    ```
+    </CodeGroup>
+
+    Gardez les dépendances de développement si vous voulez que la compilation vérifie les types là-bas : sans TypeScript, `chapterjs build` dit `ℹ Types were not checked` et continue.
+  </Step>
+  <Step title="Lui donner le token">
+    Réglez `BOT_TOKEN` comme le fait la machine : une variable d’environnement, les « secrets » d’un hébergeur, ou un fichier `.env` dans le dossier. C’est le token de votre application de **production**, pas celui du `.env` de votre ordinateur : voir [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement). Le vrai environnement l’emporte sur le fichier. Le token est la seule valeur qu’exige `chapterjs start`.
+
+    ```bash .env
+    BOT_TOKEN=
+    ```
+
+    <Warning>
+      Ne commitez jamais `.env`, et ne mettez jamais le token dans votre code : qui le possède contrôle votre bot. S’il fuit, réinitialisez-le sur la page **Bot** de votre application dans le Developer Portal, et donnez le nouveau à la machine.
+    </Warning>
+  </Step>
+  <Step title="Compiler">
+    Lancez le script `build`. Il vérifie chaque fichier et compile le bot dans `.chapterjs/build` : voir [chapterjs build](/fr/run/build).
+
+    <CodeGroup>
+    ```bash pnpm
+    pnpm build
+    ```
+
+    ```bash npm
+    npm run build
+    ```
+
+    ```bash yarn
+    yarn build
+    ```
+
+    ```bash bun
+    bun run build
+    ```
+    </CodeGroup>
+  </Step>
+  <Step title="Lancer">
+    Lancez le script `start`. Le bot est en ligne pour tout le monde : voir [chapterjs start](/fr/run/start).
+
+    <CodeGroup>
+    ```bash pnpm
+    pnpm start
+    ```
+
+    ```bash npm
+    npm run start
+    ```
+
+    ```bash yarn
+    yarn start
+    ```
+
+    ```bash bun
+    bun start
+    ```
+    </CodeGroup>
+
+    ```text
+    ✓ Commands updated for everyone
+    ✓ Online as my-bot in 128 servers
+    ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT
+    ✓ 4 commands, 6 events loaded
+    ```
+  </Step>
+</Steps>
+
+C’est tout. Beaucoup d’hébergeurs demandent une « build command » et une « start command » : donnez-leur les scripts `build` et `start` de votre projet. Un hébergeur qui récupère votre projet depuis git fait les deux premières étapes tout seul.
+
+<Note>Les variables d’environnement et les codes de sortie de `chapterjs start` sont dans la [référence du CLI](/fr/reference/cli#chapterjs-start).</Note>
+
+## Variables d’environnement
+
+| Variable | Obligatoire | Ce qu’elle fait |
+| --- | --- | --- |
+| `BOT_TOKEN` | Oui | Le token de votre bot de production. |
+| `DEV_GUILD_ID` | Non | L’identifiant de votre serveur de test. Quand il est réglé, la production laisse ce serveur tranquille, pour que `chapterjs dev` puisse y faire tourner le même bot pendant que celui-ci tourne partout ailleurs. Seulement pour un bot qui fait les deux : voir [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement). |
+| `NODE_OPTIONS` | Non | Des options pour Node lui-même. `--max-old-space-size=4096` donne 4096 MB de mémoire au bot : seulement pour un gros bot, quand `chapterjs start` le demande (voir plus bas). |
+| `NO_COLOR` | Non | Réglez-la sur n’importe quoi pour afficher sans couleurs. Les couleurs sont déjà coupées quand la sortie n’est pas un terminal. |
+
+Rien d’autre n’est lu. En particulier, il n’y a aucune option pour les intents, les commandes ou ce dont le bot se souvient : tout cela vient de vos fichiers.
+
+## Le garder en marche
+
+`chapterjs start` tourne jusqu’à ce qu’on l’arrête. Deux choses le terminent :
+
+- **Un arrêt demandé par la machine** (`Ctrl+C`, un `SIGTERM` d’un hébergeur ou d’un gestionnaire de processus) : le bot se déconnecte proprement, affiche `✓ Disconnected` et sort avec le code 0. Laissez-lui quelques secondes pour cela avant de le tuer : un bot tué d’un coup reste affiché en ligne jusqu’à ce que Discord le remarque.
+- **Quelque chose à corriger** : un token refusé, un intent privilégié non activé, pas de compilation, trop de sessions démarrées aujourd’hui. Le message dit quoi, et la commande sort avec le code 1.
+
+Utilisez ce que propose la machine pour relancer le bot quand il s’arrête, et quand la machine redémarre : un gestionnaire de processus, le réglage « restart » d’un hébergeur, un service système. Ne le relancez pas aveuglément en boucle serrée : un bot qui s’arrête avec le code 1 a quelque chose à corriger, et le relancer ne change rien. Discord limite le nombre de connexions d’un bot par jour ; ChapterJS s’arrête avant la limite plutôt que de laisser Discord réinitialiser votre token :
+
+```text
+✗ The bot needs to start 1 session(s) but Discord only allows 0 more until 10/7/2026, 9:00:00 AM. Going over that limit makes Discord reset the bot token, so the bot is not started. This usually means it was restarted too many times: wait, then start it again.
+```
+
+À l’intérieur de `chapterjs start`, rien n’a besoin de votre aide : la connexion est gardée en vie et rétablie quand elle tombe, et les processus d’un gros bot sont relancés quand l’un d’eux s’arrête.
+
+## Mettre le bot à jour
+
+Mettez les nouveaux fichiers sur la machine, compilez, relancez. Tant que vous ne compilez pas, le bot en marche garde la compilation précédente, et `chapterjs start` vous le rappelle :
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+Une compilation est liée à la version de ChapterJS qui l’a faite. Après avoir mis à jour le paquet, recompilez :
+
+```text
+✗ This build was made with chapterjs 0.1.2, and this is chapterjs 0.1.3.
+  Run "chapterjs build" again.
+```
+
+<Note>
+  Si vous compilez sur votre ordinateur et envoyez le résultat, envoyez aussi `.chapterjs/build` (il n’est pas dans git), et utilisez la même version de ChapterJS et de Node des deux côtés. Les paquets qu’utilise le bot restent dans `node_modules` : la production en a besoin, installés.
+</Note>
+
+## Gros bots
+
+Un bot présent dans des milliers de serveurs tourne tout seul sur plusieurs processus, un pour 4 shards et jamais plus que la machine n’a de processeurs. Passez `--processes` pour choisir :
+
+```bash
+chapterjs start --processes 8
+```
+
+Chaque processus tourne sur la même machine. Une machine avec plus de processeurs et plus de mémoire est le moyen de grandir ; plusieurs machines ne sont [pas encore disponibles](/fr/not-yet).
+
+Le bot adapte ce dont il se souvient à la mémoire qu’il a, et ne demande plus de mémoire que quand il n’a plus rien à céder :
+
+```text
+⚠ The bot uses 1900 MB of the 2048 MB of memory it can use, and already remembers as little as it can: 18420 servers and 240000 channels, which it needs. Remembering less freed 12 MB. If your own code keeps things that only grow (a list, a Map), that is what fills it: look there first. Otherwise give the bot more memory: set NODE_OPTIONS=--max-old-space-size=4096 (in MB) on a machine that has that much.
+```
+
+Ce que veut dire ce message, et ce dont le bot se souvient, est dans [Mémoire](/fr/memory).
+
+<CardGroup cols={2}>
+  <Card title="Dépannage" icon="bug" href="/fr/run/troubleshooting">
+    Chaque message, et quoi en faire.
+  </Card>
+  <Card title="Référence du CLI" icon="square-terminal" href="/fr/reference/cli">
+    Chaque commande, variable et code de sortie.
+  </Card>
+</CardGroup>

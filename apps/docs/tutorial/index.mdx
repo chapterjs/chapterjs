@@ -1,0 +1,72 @@
+---
+title: 'Welcome'
+description: 'What this tutorial teaches, who it is for, and how to read it'
+---
+
+This tutorial takes you from nothing to a Discord bot that is online for everyone, one step at a time. It assumes you have never written a bot before. If you know a little JavaScript, you have everything you need; if you have never heard of Discord's API, intents or slash commands, that is fine too: every word is explained the first time it appears.
+
+Read it in order. Each page builds on the one before, and each page ends with a short recap of what you learned and what comes next.
+
+## What you will build
+
+Along the way, you write a small bot for a community server. By the end, it:
+
+- answers slash commands like `/dice` and `/whois`, with options people fill in;
+- welcomes new members and keeps an eye on messages;
+- shows buttons, select menus and forms, and reacts when people use them;
+- posts a report by itself every morning;
+- speaks English and French, depending on who reads it;
+- runs on a machine that stays on, for every server that adds it.
+
+Every piece is a file you add to your project. Nothing you write in one chapter has to be rewritten in a later one.
+
+## Who this is for
+
+You, if one of these is true:
+
+- You want a bot for your server and you have never written one.
+- You know JavaScript (variables, functions, `async` and `await`) and want to use it for something real.
+- You have used another Discord library and want to understand how ChapterJS thinks, without reading its reference first.
+
+You do not need to know TypeScript. Your files are TypeScript files, but you never write a type yourself: the framework writes them for you, and your editor uses them to underline mistakes before the bot even runs. You will see what that means on the very first command.
+
+## How to read it
+
+Every chapter has the same shape:
+
+1. **What you are about to do, and why.** A bot has moving parts; knowing why a step exists is what lets you remember it.
+2. **A complete file that works as is.** Copy it into your project, save, and try it in your test server. Nothing is left as an exercise.
+3. **Points of attention.** The mistakes everyone makes once, and what the bot tells you when you make them.
+4. **A recap.**
+
+Two other tabs sit next to this one at the top of the page:
+
+| Tab           | What it is for                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------- |
+| **Guide**     | One page per feature, straight to the point, for when you already know what you want to do. |
+| **Reference** | Every field, every method, every type, for when you are looking something up.               |
+
+This tutorial links to both when a detail is worth it. You never need them to follow along.
+
+<Info>
+  Commands you type in a terminal are shown for the four package managers (pnpm,
+  npm, yarn, bun). Pick the tab of the one you use, and keep using it: mixing
+  two in one project causes confusing errors.
+</Info>
+
+## Where to start
+
+If you have nothing yet, start with the next page, which explains what a bot is and how it talks to Discord. If you already have a Discord application and a test server, you can go straight to [Creating the project](/tutorial/create-project); the explanations you skip are short, and you can come back to them.
+
+<CardGroup cols={2}>
+  <Card
+    title="How a bot works"
+    icon="lightbulb"
+    href="/tutorial/how-a-bot-works"
+  >
+    What a bot is, and what happens between Discord and your program.
+  </Card>
+  <Card title="The tools" icon="wrench" href="/tutorial/tools">
+    Node.js, a package manager, an editor: install and check them.
+  </Card>
+</CardGroup>

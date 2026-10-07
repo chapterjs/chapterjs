@@ -1,0 +1,73 @@
+---
+title: 'La présence'
+description: 'Choisir le statut de votre bot et ce qu’il affiche sous son nom, avec un seul fichier'
+---
+
+Dans la liste des membres, un bot a une pastille de couleur et parfois une ligne sous son nom : « Joue à with ChapterJS », dans le modèle. C’est sa **présence**. C’est un seul fichier, `src/presence.ts`, et cette page est courte parce que le fichier l’est.
+
+## Le fichier
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  status: 'online',
+  activity: { type: 'watching', name: 'le serveur' },
+});
+```
+
+Enregistrez-le pendant que le bot tourne :
+
+```text
+↻ Presence updated
+```
+
+Pas de reconnexion : le bot donne sa nouvelle présence à Discord immédiatement. Sans ce fichier, le bot est en ligne et n’affiche rien. Les deux champs sont facultatifs.
+
+## Le statut
+
+| Écrivez | Affiché |
+| --- | --- |
+| `'online'` | Une pastille verte (par défaut) |
+| `'idle'` | Une lune orange |
+| `'dnd'` | Une pastille rouge, « ne pas déranger » |
+| `'invisible'` | Hors ligne, alors que le bot continue de tourner |
+
+`'invisible'` sert pour un bot qui travaille en arrière-plan et ne doit pas avoir l’air de quelqu’un à qui parler.
+
+## L’activité
+
+`type` dit comment Discord la formule, `name` est le texte qui suit :
+
+| Type | Affiché |
+| --- | --- |
+| `'playing'` | Joue à _name_ |
+| `'listening'` | Écoute _name_ |
+| `'watching'` | Regarde _name_ |
+| `'competing'` | Participe à _name_ |
+| `'custom'` | _name_, seul |
+| `'streaming'` | Streame _name_, avec un lien vers le stream (demande une `url` Twitch ou YouTube) |
+
+Un usage courant est un indice : `{ type: 'playing', name: '/help' }` dit aux gens par où commencer. C’est tout ce qu’un bot peut régler : Discord laisse une personne afficher bien plus (une chanson, un jeu avec des détails), mais un bot n’a qu’un type, un nom, et une URL pour un stream.
+
+## Points d’attention
+
+- **La présence est celle du bot, pas du serveur.** Elle est la même dans chaque serveur où se trouve le bot. Raison de plus pour avoir une application de dev séparée : ce que vous essayez ici est affiché partout où est le bot.
+- **Discord accepte quelques changements par minute.** Quand vous enregistrez plus vite que cela, seule la dernière présence est envoyée, quand elle peut l’être.
+- **Un fichier qui ne se charge pas** est signalé avec ce qui ne va pas, et le bot garde la dernière présence qui fonctionnait. Supprimer le fichier remet le bot en ligne sans rien afficher.
+- **La présence vient uniquement du fichier.** Il n’y a aucun moyen de la changer depuis votre code, donc une présence qui affiche des données en direct (un nombre de membres, une chanson) n’est pas possible aujourd’hui. Discord limiterait de toute façon un bot qui la changerait toutes les quelques secondes.
+
+## Récapitulatif
+
+- `src/presence.ts` exporte `presence({ status, activity })` ; l’enregistrer s’applique immédiatement.
+- `status` est la pastille ; `activity` est la ligne sous le nom, avec un `type` et un `name`.
+- Une seule présence pour tout le bot, dans chaque serveur.
+
+<CardGroup cols={2}>
+  <Card title="Les messages traduits" icon="languages" href="/fr/tutorial/translations">
+    Répondre à chaque personne dans sa langue.
+  </Card>
+  <Card title="Guide : Présence" icon="book-open" href="/fr/presence">
+    La même chose, en bref.
+  </Card>
+</CardGroup>

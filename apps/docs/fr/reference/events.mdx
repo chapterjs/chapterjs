@@ -1,0 +1,255 @@
+---
+title: 'Événements'
+description: 'Chaque événement auquel votre bot peut réagir : quand il se produit, ce dont il a besoin, et ce que reçoit votre fonction'
+---
+
+<Note>
+  Comment écrire un fichier d’événement est dans [Événements](/fr/events) ; les événements sur les messages et leurs options dans [Messages](/fr/events/messages) ; `event()` et ses types dans [event()](/fr/reference/event).
+</Note>
+
+Un événement est un dossier de `src/events/`. Chaque section ci-dessous est un dossier : quand ses fichiers tournent, les intents dont Discord a besoin pour lui (déduits de vos fichiers, jamais écrits par vous), ses options, ce dont le bot se souvient pour lui au-delà de [la valeur par défaut](/fr/memory), et ce que reçoit votre fonction.
+
+Les intents sont nommés comme les affiche `chapterjs dev`. Deux sont privilégiés, à activer dans le [Developer Portal](/fr/setup/discord-application) : `GUILD_MEMBERS` est le Server Members Intent, `MESSAGE_CONTENT` le Message Content Intent.
+
+## ready
+
+| | |
+| --- | --- |
+| Quand | Le bot est connecté et connaît chaque serveur où il se trouve. Une fois par démarrage, jamais à nouveau lors d’un rechargement. |
+| Intents | Aucun |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+Chaque événement reçoit aussi `t`, dans la langue du serveur où il s’est produit, quand le projet a une langue dans `src/messages/` : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
+
+<ResponseField name="user" type="User" required>
+  Le bot lui-même.
+</ResponseField>
+<ResponseField name="guilds" type="ReadonlyMap<Snowflake, Guild>" required>
+  Les serveurs où se trouve le bot.
+</ResponseField>
+
+## guildJoin
+
+| | |
+| --- | --- |
+| Quand | Le bot a été ajouté à un serveur. Pas quand un serveur où le bot se trouvait déjà envoie ses données (après la connexion, ou après une panne). |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="guild" type="Guild" required>
+  Le serveur auquel le bot a été ajouté.
+</ResponseField>
+
+## guildLeave
+
+| | |
+| --- | --- |
+| Quand | Le bot a été retiré d’un serveur. Pas pendant une panne de Discord, quand un serveur devient indisponible mais que le bot y est toujours. |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="guild" type="Guild" required>
+  Le serveur tel qu’il était, quand le bot y était.
+</ResponseField>
+
+## memberJoin
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a rejoint un serveur. |
+| Intents | `GUILD_MEMBERS` (privilégié) |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="member" type="GuildMember" required>
+  Le nouveau membre.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur qu’il a rejoint.
+</ResponseField>
+
+## memberUpdate
+
+| | |
+| --- | --- |
+| Quand | Un membre a changé : surnom, rôles, exclusion temporaire, avatar... |
+| Intents | `GUILD_MEMBERS` (privilégié) |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="member" type="GuildMember" required>
+  Le membre, tel qu’il est maintenant.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du membre.
+</ResponseField>
+
+## memberLeave
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a quitté un serveur, ou a été expulsé ou banni. |
+| Intents | `GUILD_MEMBERS` (privilégié) |
+| Options | Aucune |
+| Mémoire | 1000 membres par serveur, pour que `member` soit là pour ceux vus le plus récemment |
+
+<ResponseField name="user" type="User" required>
+  Le compte de celui qui est parti.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur qu’il a quitté.
+</ResponseField>
+<ResponseField name="member" type="GuildMember | null" required>
+  Le membre tel qu’il était, quand le bot le connaissait.
+</ResponseField>
+
+## roleCreate
+
+| | |
+| --- | --- |
+| Quand | Un rôle a été créé. |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="role" type="Role" required>
+  Le nouveau rôle.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du rôle.
+</ResponseField>
+
+## roleUpdate
+
+| | |
+| --- | --- |
+| Quand | Un rôle a changé : nom, couleur, permissions, position... |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="role" type="Role" required>
+  Le rôle, tel qu’il est maintenant.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du rôle.
+</ResponseField>
+
+## roleDelete
+
+| | |
+| --- | --- |
+| Quand | Un rôle a été supprimé. |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut : le bot connaît chaque rôle de ses serveurs |
+
+<ResponseField name="roleId" type="Snowflake" required>
+  L’identifiant du rôle supprimé.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où était le rôle.
+</ResponseField>
+<ResponseField name="role" type="Role" required>
+  Le rôle tel qu’il était.
+</ResponseField>
+
+## channelCreate
+
+| | |
+| --- | --- |
+| Quand | Un salon ou un fil a été créé. |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+  Le nouveau salon ou fil. Utilisez `channel.isText()`, `channel.isThread()`... pour savoir de [quelle sorte](/fr/reference/channels) il est.
+</ResponseField>
+
+## channelUpdate
+
+| | |
+| --- | --- |
+| Quand | Un salon ou un fil a changé : nom, sujet, permissions... |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+  Le salon ou le fil, tel qu’il est maintenant.
+</ResponseField>
+
+## channelDelete
+
+| | |
+| --- | --- |
+| Quand | Un salon ou un fil a été supprimé. |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+  Le salon ou le fil tel qu’il était.
+</ResponseField>
+
+## messageCreate
+
+| | |
+| --- | --- |
+| Quand | Un message a été envoyé, sur un serveur ou en privé. Par défaut, seulement par une personne, sur un serveur. |
+| Intents | `MESSAGE_CONTENT` (privilégié), plus `GUILD_MESSAGES` pour un fichier qui écoute sur les serveurs et `DIRECT_MESSAGES` pour un fichier qui écoute en messages privés |
+| Options | `bots`, `where` ([MessageEventOptions](/fr/reference/event#messageeventoptions)) |
+| Mémoire | Par défaut |
+
+<ResponseField name="message" type="MemberMessage" required>
+  Le message envoyé. Le type suit les options du fichier : `MemberMessage` par défaut, `GuildMessage` avec `bots: true`, `DmMessage` avec `where: 'dm'`, `MemberMessage | PrivateMessage` avec `where: 'both'` (`GuildMessage | PrivateMessage` avec les deux options). Les quatre sont dans [Message](/fr/reference/message#types).
+</ResponseField>
+
+## messageUpdate
+
+| | |
+| --- | --- |
+| Quand | Un message a été modifié. Par défaut, seulement le message d’une personne, sur un serveur. |
+| Intents | `MESSAGE_CONTENT` (privilégié), plus `GUILD_MESSAGES` pour un fichier qui écoute sur les serveurs et `DIRECT_MESSAGES` pour un fichier qui écoute en messages privés |
+| Options | `bots`, `where` ([MessageEventOptions](/fr/reference/event#messageeventoptions)) |
+| Mémoire | Par défaut |
+
+<ResponseField name="message" type="MemberMessage" required>
+  Le message, tel qu’il est maintenant. Le type suit les options du fichier, comme pour `messageCreate`.
+</ResponseField>
+
+## messageDelete
+
+| | |
+| --- | --- |
+| Quand | Un message a été supprimé. Par défaut, seulement sur un serveur. |
+| Intents | `GUILD_MESSAGES` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGES` pour un fichier qui écoute en messages privés |
+| Options | `where` ([WhereEventOptions](/fr/reference/event#whereeventoptions)) |
+| Mémoire | Par défaut : aucun message, donc `message` est `null` aujourd’hui |
+
+Ce que reçoit un fichier sans `where` :
+
+<ResponseField name="messageId" type="Snowflake" required>
+  L’identifiant du message supprimé.
+</ResponseField>
+<ResponseField name="channelId" type="Snowflake" required>
+  L’identifiant du salon où était le message.
+</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>
+  L’identifiant du serveur.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où était le message.
+</ResponseField>
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon où était le message.
+</ResponseField>
+<ResponseField name="message" type="GuildMessage | null" required>
+  Le message tel qu’il était, quand le bot s’en souvenait.
+</ResponseField>
+
+Avec `where: 'dm'`, `guildId` et `guild` n’existent pas, `channel` est un `DMChannel | null` (la conversation privée, quand le bot la connaît) et `message` un `DmMessage | null`. Avec `where: 'both'`, un message privé arrive avec `guildId: null`, `guild: null`, `channel: DMChannel | null` et `message: PrivateMessage | null`, donc `guild` distingue les deux.

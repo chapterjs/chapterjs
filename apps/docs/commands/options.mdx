@@ -101,6 +101,61 @@ export default command({
 
 The choices of a `string` option are texts, those of an `integer` or `number` option are numbers; what is shown is 1 to 100 characters. The same choice can't appear twice.
 
+## Autocomplete
+
+When the values are not known in advance, or change (a song, a player, a ticket), `autocomplete` suggests them **while the person types**: Discord asks your bot every few keystrokes, and shows what your function returns under the option. The person may still type something else.
+
+```ts src/commands/play.ts
+import { command } from 'chapterjs';
+
+const SONGS = [
+  { id: '1', title: 'Daylight' },
+  { id: '2', title: 'Dark Horse' },
+  { id: '3', title: 'Darkside' },
+];
+
+export default command({
+  description: 'Plays a song',
+  options: {
+    song: { type: 'string', description: 'Which song', required: true },
+  },
+  autocomplete: {
+    // Called while the person types in "song", with what they typed so far.
+    song: ({ value }) =>
+      SONGS.filter(song => song.title.toLowerCase().startsWith(value.toLowerCase()))
+        // Shown as the title, received as the id.
+        .map(song => ({ name: song.title, value: song.id })),
+  },
+  async run({ interaction, options }) {
+    // options.song: string, the id of the song, or whatever was typed
+    const song = SONGS.find(song => song.id === options.song);
+    await interaction.reply(song ? `Playing ${song.title}.` : 'I do not know that song.');
+  },
+});
+```
+
+`autocomplete` has one function per option, by its name, for a `string`, `integer` or `number` option without `choices`. It receives:
+
+| Field | What it is |
+| --- | --- |
+| `value` | What the person typed so far: a text (maybe empty) for a `string` option; for an `integer` or `number` option, a number, or `undefined` while it is not one yet |
+| `options` | What the person filled in so far, every option optional; a `user`, `role`, `channel`, `mentionable` or `attachment` option is its id |
+| `user`, `locale` | Who is typing, and their language |
+| `guild`, `member`, `channel` | Where, following `where` like `run` |
+| `t` | The texts of the project, in the language of the person (see [translated messages](/translated-messages)) |
+
+It returns the suggestions (or a promise of them): a value, shown as is, or `{ name, value }` to show a text and receive another value. A `string` option suggests texts, an `integer` or `number` option numbers. Discord shows 25 at most, in the order you return them, and waits 3 seconds: return quickly, your best matches first.
+
+<Warning>
+  A suggestion is a help, not a limit: Discord sends your `run` what the person typed, picked in the list or not. Check the value, as in the sample.
+</Warning>
+
+What the function returns is checked when it is sent. Too many suggestions are cut to 25, and a name over 100 characters is shortened, said once with `⚠`. What can't be fixed is an error, and nothing is suggested:
+
+```text
+✗ src/commands/play.ts A suggestion of /play song has the value 1: the option is a text, so its suggestions must be texts.
+```
+
 ## Limits on what is typed
 
 A text can be given a length, a number a range:
@@ -201,6 +256,19 @@ Everything an option declares is checked when the file loads, against the limits
   <Accordion title="Channel types">
     ```text
     ✗ src/commands/announce.ts "channelTypes" of the option "channel" is a list of ChannelType values, like [ChannelType.GuildText].
+    ```
+  </Accordion>
+  <Accordion title="Autocomplete">
+    ```text
+    ✗ src/commands/play.ts "title" of "autocomplete" is not an option of this command. Its options are: song.
+    ```
+
+    ```text
+    ✗ src/commands/play.ts "who" of "autocomplete" can't have suggestions: the option "who" is a user. Only a string, integer, number option can.
+    ```
+
+    ```text
+    ✗ src/commands/play.ts "song" of "autocomplete" can't have suggestions: the option "song" has "choices", and Discord takes one or the other. Remove its choices to suggest them from here, or take it out of "autocomplete".
     ```
   </Accordion>
 </AccordionGroup>

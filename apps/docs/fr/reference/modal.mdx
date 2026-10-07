@@ -1,0 +1,353 @@
+---
+title: 'modal()'
+description: 'Tout ce que déclare un fichier de formulaire, chaque sorte de champ, et ce que reçoit la fonction run pour chacun'
+---
+
+`modal()` est ce qu’un fichier de `src/components/modals/` exporte par défaut. Elle prend un objet, `ModalConfig`, et type `fields` dans `run` d’après lui.
+
+```ts src/components/modals/feedback.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Avis',
+  fields: {
+    text: { type: 'text', label: 'Qu’en pensez-vous ?', style: 'paragraph' },
+  },
+  async run({ interaction, fields }) {
+    await interaction.reply({ content: `Merci ! Vous avez écrit : ${fields.text}`, ephemeral: true });
+  },
+});
+```
+
+<Note>
+  Comment écrire un formulaire, l’ouvrir et lire ce qui a été rempli est dans le [guide](/fr/components/modals). Cette page liste ce qui existe. L’endroit (`where`, `PlaceOf`...) est sur la [page de button()](/fr/reference/button#l’endroit).
+</Note>
+
+## modal()
+
+```ts
+modal<Fields extends ModalFields, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ModalConfig<Fields, Data, Where>): ModalFile<Fields, Data>
+```
+
+Déclare un formulaire. Exportez le résultat comme export par défaut d’un fichier de `src/components/modals/` : le chemin du fichier est ce qui distingue le formulaire, donc vous n’écrivez jamais d’identifiant.
+
+### ModalFile
+
+Ce que renvoie `modal()` : l’export par défaut d’un fichier de formulaire. Importez-le là où quelqu’un utilise une commande ou un composant, et ouvrez-le : `interaction.showModal(report({ userId }))`, ou `interaction.showModal(feedback)` pour un formulaire sans données.
+
+```ts
+type ModalFile<Fields extends ModalFields = ModalFields, Data extends DataShape = {}> = { readonly config: unknown } &
+  ({} extends Data
+    ? ((options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
+    : {} extends DataInputOf<Data>
+      ? ((data?: DataInputOf<Data>, options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
+      : (data: DataInputOf<Data>, options?: ModalInstanceOptions<Fields>) => ModalComponent)
+```
+
+<ResponseField name="config" type="unknown">
+  Ce que le fichier a donné à `modal()`, pas encore vérifié.
+</ResponseField>
+
+### ModalInstanceOptions
+
+Ce avec quoi un formulaire est ouvert : ses données, et ce que contiennent certains champs.
+
+<ResponseField name="values" type="ModalPrefill<Fields>">
+  Ce que contiennent certains champs quand le formulaire s’ouvre.
+</ResponseField>
+
+### ModalPrefill
+
+Ce qu’un formulaire peut contenir quand il s’ouvre : une valeur pour certains de ses champs. Un `string` pour un `text`, une liste de valeurs pour un `select` ou des `checkboxes`, une valeur pour un `radio`, un `boolean` pour une `checkbox`. Les autres sortes de champs ne peuvent pas être pré-remplies.
+
+## ModalConfig
+
+Ce qu’un fichier de formulaire donne à `modal()`.
+
+<ResponseField name="title" type="DynamicText" required>
+  Le titre du formulaire (45 caractères au plus) : écrit tel quel, ou une fonction de `t` et des données, lancée à l’ouverture du formulaire. Voir [DynamicText](/fr/reference/messages#dynamictext).
+</ResponseField>
+
+<ResponseField name="fields" type="ModalFields" required>
+  Les champs, par nom (1 à 5). `run` les reçoit sous les mêmes noms.
+</ResponseField>
+
+<ResponseField name="run" type="(context: ModalContext<Fields, Data, Where>) => unknown" required>
+  Ce qu’il faut faire quand quelqu’un envoie le formulaire.
+</ResponseField>
+
+<ResponseField name="data" type="DataShape">
+  Ce que le formulaire transporte depuis le code qui l’ouvre jusqu’au code qui tourne à l’envoi : un nom et une sorte pour chaque valeur. Donné à l’ouverture du formulaire, reçu typé dans `run`.
+</ResponseField>
+
+<ResponseField name="where" type="ComponentWhere">
+  D’où le formulaire peut être envoyé : `'guild'` (serveurs, par défaut), `'dm'` (messages privés avec le bot) ou `'both'`. Ce que reçoit `run` suit.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean">
+  Rendre les réponses du formulaire visibles seulement par qui l’a envoyé. Quand un composant d’un message que seule la personne voit l’a ouvert, elles le sont déjà.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal)
+
+## Les champs
+
+### ModalFields
+
+```ts
+type ModalFields = Readonly<Record<string, ModalField>>
+```
+
+Les champs d’un formulaire, par nom (5 au plus). Un nom est la façon dont votre code lit le champ (`fields.reason`) : lettres, chiffres et `_`.
+
+### ModalField
+
+```ts
+type ModalField = TextField | SelectField | EntityField | FilesField | RadioField | CheckboxesField | CheckboxField | NoteField
+```
+
+Un champ d’un formulaire. Chaque champ sauf une note a :
+
+<ResponseField name="label" type="DynamicText" required>
+  Le nom du champ, au-dessus de lui (45 caractères au plus) : écrit tel quel, ou une fonction de `t` et des données, lancée à l’ouverture du formulaire.
+</ResponseField>
+
+<ResponseField name="description" type="DynamicText">
+  Un texte d’aide sous l’étiquette (100 caractères au plus) : un texte, ou une fonction de `t` et des données.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#label)
+
+### TextField
+
+Un texte que la personne tape.
+
+<ResponseField name="type" type="'text'" required>
+  La sorte de champ : un texte.
+</ResponseField>
+
+<ResponseField name="style" type="'short' | 'paragraph'">
+  Une ligne (`'short'`, par défaut) ou plusieurs (`'paragraph'`).
+</ResponseField>
+
+<ResponseField name="placeholder" type="DynamicText">
+  Le texte affiché tant que le champ est vide (100 caractères au plus) : un texte, ou une fonction de `t` et des données.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Si la personne doit le remplir. `true` par défaut.
+</ResponseField>
+
+<ResponseField name="minLength" type="number">
+  Le texte le plus court accepté, en caractères (0 à 4000).
+</ResponseField>
+
+<ResponseField name="maxLength" type="number">
+  Le texte le plus long accepté, en caractères (1 à 4000).
+</ResponseField>
+
+<ResponseField name="value" type="string">
+  Ce que contient le champ quand le formulaire s’ouvre (4000 caractères au plus).
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#text-input)
+
+### SelectField
+
+Un menu de textes que vous déclarez.
+
+<ResponseField name="type" type="'select'" required>
+  La sorte de champ : un menu de textes.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  Les options (25 au plus), écrites comme les options d’un [menu déroulant](/fr/reference/select#selectoptions).
+</ResponseField>
+
+<ResponseField name="placeholder" type="DynamicText">
+  Le texte affiché quand rien n’est choisi (150 caractères au plus) : un texte, ou une fonction de `t` et des données.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  Combien d’options doivent être choisies au moins (0 à 25). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  Combien d’options peuvent être choisies au plus (1 à 25). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Si quelque chose doit être choisi. `true` par défaut.
+</ResponseField>
+
+### EntityField
+
+Un menu d’utilisateurs, de rôles, d’utilisateurs et rôles, ou de salons du serveur.
+
+<ResponseField name="type" type="'user' | 'role' | 'mentionable' | 'channel'" required>
+  La sorte de champ : ce que liste Discord.
+</ResponseField>
+
+<ResponseField name="placeholder" type="DynamicText">
+  Le texte affiché quand rien n’est choisi (150 caractères au plus) : un texte, ou une fonction de `t` et des données.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  Combien d’éléments doivent être choisis au moins (0 à 25). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  Combien d’éléments peuvent être choisis au plus (1 à 25). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Si quelque chose doit être choisi. `true` par défaut.
+</ResponseField>
+
+<ResponseField name="channelTypes" type="readonly ChannelType[]">
+  Pour un menu de salons : les sortes de salons listées. Toutes par défaut.
+</ResponseField>
+
+### FilesField
+
+Des fichiers que la personne téléverse.
+
+<ResponseField name="type" type="'files'" required>
+  La sorte de champ : des fichiers à téléverser.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  Combien de fichiers doivent être téléversés au moins (0 à 10). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  Combien de fichiers peuvent être téléversés au plus (1 à 10). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Si des fichiers doivent être téléversés. `true` par défaut.
+</ResponseField>
+
+<ResponseField name="fileTypes" type="readonly string[]">
+  Les sortes de fichiers acceptées : `'image'`, `'video'`, `'audio'`, ou des extensions comme `'.pdf'` (10 au plus).
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#file-upload)
+
+### RadioField
+
+Un choix parmi quelques-uns, affiché sous forme de boutons radio.
+
+<ResponseField name="type" type="'radio'" required>
+  La sorte de champ : un choix parmi 2 à 10.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  Les choix (2 à 10), écrits comme les options d’un menu déroulant.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Si un choix doit être fait. `true` par défaut.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#radio-group)
+
+### CheckboxesField
+
+Plusieurs choix parmi quelques-uns, affichés sous forme de cases à cocher.
+
+<ResponseField name="type" type="'checkboxes'" required>
+  La sorte de champ : plusieurs choix parmi 1 à 10.
+</ResponseField>
+
+<ResponseField name="options" type="SelectOptions" required>
+  Les choix (1 à 10), écrits comme les options d’un menu déroulant.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  Combien doivent être cochées au moins (0 à 10). 1 par défaut.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  Combien peuvent être cochées au plus (1 à 10). Toutes par défaut.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Si quelque chose doit être coché. `true` par défaut.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#checkbox-group)
+
+### CheckboxField
+
+Une case à cocher : oui ou non.
+
+<ResponseField name="type" type="'checkbox'" required>
+  La sorte de champ : une case à cocher.
+</ResponseField>
+
+<ResponseField name="default" type="boolean">
+  Si elle est cochée quand le formulaire s’ouvre.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#checkbox)
+
+### NoteField
+
+Un texte affiché dans le formulaire, que personne ne remplit.
+
+<ResponseField name="type" type="'note'" required>
+  La sorte de champ : un texte à lire.
+</ResponseField>
+
+<ResponseField name="content" type="DynamicText" required>
+  Le texte, avec du Markdown : écrit tel quel, ou une fonction de `t` et des données.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference#text-display)
+
+## Ce que reçoit run
+
+### ModalContext
+
+Ce que reçoit `run` quand le formulaire est envoyé : l’endroit tel que le donne [PlaceOf](/fr/reference/button#placeof) avec une [ModalInteraction](/fr/reference/interaction#modalinteraction), et :
+
+<ResponseField name="user" type="User" required>
+  Qui a envoyé le formulaire.
+</ResponseField>
+
+<ResponseField name="fields" type="FieldValuesOf<Fields>" required>
+  Ce que la personne a rempli.
+</ResponseField>
+
+<ResponseField name="data" type="DataValuesOf<Data>" required>
+  Ce que transporte le formulaire, tel que déclaré dans `data`.
+</ResponseField>
+
+<ResponseField name="message" type="Message | null" required>
+  Le message dont le bouton ou le menu a ouvert le formulaire ; `null` quand c’est une commande.
+</ResponseField>
+
+### FieldValuesOf
+
+```ts
+type FieldValuesOf<Fields extends ModalFields> = { [Name in keyof Fields]: FieldValue<Fields[Name]> }
+```
+
+Ce que la personne a rempli, typé champ par champ. Les notes n’y sont pas.
+
+### FieldValue
+
+Ce que reçoit `run` pour un champ, d’après sa déclaration :
+
+| Champ | `FieldValue` |
+| --- | --- |
+| `TextField` | `string`, ou `string \| undefined` avec `required: false` |
+| `SelectField` | `OptionValue<Options>[]` |
+| `EntityField` | `User[]`, `Role[]`, `(User \| Role)[]` ou `Channel[]` |
+| `FilesField` | [`Attachment`](/fr/reference/data#attachment)`[]` |
+| `RadioField` | `OptionValue<Options>`, ou `\| undefined` avec `required: false` |
+| `CheckboxesField` | `OptionValue<Options>[]` |
+| `CheckboxField` | `boolean` |
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-modal-submit-data-structure)

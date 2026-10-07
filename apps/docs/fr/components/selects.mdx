@@ -1,0 +1,132 @@
+---
+title: 'Menus déroulants'
+description: 'Ajouter des menus à vos messages : des options que vous déclarez, ou les utilisateurs, rôles et salons du serveur'
+---
+
+Un menu déroulant est un fichier de `src/components/selects/`. Déclarez ses options, et `run` reçoit ce qui a été choisi, typé d’après elles.
+
+```ts src/components/selects/color.ts
+import { select } from 'chapterjs';
+
+export default select({
+  placeholder: 'Choisissez une couleur',
+  options: { Rouge: 'red', Bleu: 'blue', Vert: 'green' },
+  async run({ interaction, value }) {
+    await interaction.update({ content: `Vous avez choisi ${value}.`, components: [] });
+  },
+});
+```
+
+```ts src/commands/color.ts
+import { command } from 'chapterjs';
+import color from '../components/selects/color';
+
+export default command({
+  description: 'Demande votre couleur préférée',
+  async run({ interaction }) {
+    await interaction.reply({ content: 'Laquelle ?', components: [color] });
+  },
+});
+```
+
+C’est tout : `value` vaut `'red' | 'blue' | 'green'`, et `values` est la liste de tout ce qui a été choisi. Un menu prend une rangée entière à lui seul.
+
+<Note>
+  Tout ce que déclare un fichier de menu est dans la [référence](/fr/reference/select). Ce qu’un menu partage avec un bouton (`data`, `who`, `where`, `ephemeral`, les réponses) est expliqué dans [Boutons](/fr/components).
+</Note>
+
+## Les options
+
+`options` s’écrit de l’une de trois façons :
+
+| Écrivez | Quand |
+| --- | --- |
+| `['Pizza', 'Pasta']` | Ce qui est affiché est ce que reçoit votre code |
+| `{ 'Pizza 🍕': 'pizza' }` | Les clés sont affichées, les valeurs sont ce que reçoit votre code |
+| `[{ label: 'Pizza', value: 'pizza', description: 'Avec du fromage', emoji: '🍕' }]` | Avec une description, un emoji, ou `default: true` |
+
+Jusqu’à 25 options. `min` et `max` disent combien peuvent être choisies (1 par défaut) : avec `max: 3`, `values` en contient jusqu’à trois.
+
+```ts src/components/selects/toppings.ts
+import { select } from 'chapterjs';
+
+export default select({
+  placeholder: 'Jusqu’à trois',
+  min: 0,
+  max: 3,
+  options: [
+    { label: 'Fromage', value: 'cheese', emoji: '🧀' },
+    { label: 'Champignons', value: 'mushrooms', description: 'Des frais' },
+    { label: 'Olives', value: 'olives' },
+  ],
+  async run({ interaction, values }) {
+    await interaction.update(values.length === 0 ? 'Nature, alors.' : `Avec ${values.join(', ')}.`);
+  },
+});
+```
+
+## Utilisateurs, rôles et salons
+
+Avec un `type`, Discord remplit le menu avec le serveur : `'user'`, `'role'`, `'mentionable'` (utilisateurs et rôles) ou `'channel'`. `values` est alors une liste de [User](/fr/reference/user), [Role](/fr/reference/role), `User | Role` ou [Channel](/fr/reference/channels), et `channelTypes` restreint les salons listés.
+
+```ts src/components/selects/helpers.ts
+import { select } from 'chapterjs';
+
+export default select({
+  type: 'role',
+  placeholder: 'Qui aide ?',
+  max: 5,
+  async run({ interaction, values }) {
+    await interaction.update({
+      content: `Aidants : ${values.map(role => role.name).join(', ')}`,
+      components: [],
+    });
+  },
+});
+```
+
+```ts src/components/selects/logs.ts
+import { ChannelType, select } from 'chapterjs';
+
+export default select({
+  type: 'channel',
+  channelTypes: [ChannelType.GuildText],
+  async run({ interaction, value }) {
+    await interaction.update({ content: `Les journaux vont dans ${value}.`, components: [] });
+  },
+});
+```
+
+## Ce avec quoi un menu est affiché
+
+Là où vous mettez le menu dans un message, passez ce qu’il faut afficher : `placeholder`, `disabled`, et `defaults`, ce qui est sélectionné quand le menu apparaît (les valeurs des options, ou les identifiants des utilisateurs, rôles ou salons) :
+
+```ts src/commands/setup.ts
+import { command } from 'chapterjs';
+import color from '../components/selects/color';
+import helpers from '../components/selects/helpers';
+
+export default command({
+  description: 'Configure le bot',
+  async run({ interaction, guild }) {
+    await interaction.reply({
+      content: 'Vos réglages',
+      components: [
+        color({ defaults: ['blue'] }),
+        helpers({ defaults: [guild.everyoneRole], placeholder: 'Choisissez les aidants' }),
+      ],
+    });
+  },
+});
+```
+
+Un menu avec des `data` les prend en premier : `menu({ page: 2 }, { defaults: ['blue'] })`.
+
+<CardGroup cols={2}>
+  <Card title="Formulaires" icon="clipboard-list" href="/fr/components/modals">
+    Demander du texte et des choix dans un formulaire qui s’ouvre dans Discord.
+  </Card>
+  <Card title="Embeds et mise en page" icon="layout-template" href="/fr/components/embeds">
+    Réutiliser un embed, et construire des messages avec des textes, des sections et des conteneurs.
+  </Card>
+</CardGroup>

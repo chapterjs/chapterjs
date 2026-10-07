@@ -1,0 +1,180 @@
+---
+title: 'Creating the project'
+description: 'Create a project with one command, give it your token, run it, and read what the terminal says line by line'
+---
+
+You have a bot account and a test server. This page turns them into a bot that is online, with a first command to try. Everything happens in a terminal.
+
+## Create the project
+
+Open a terminal in the folder where you keep your projects, and run the command of your package manager:
+
+<CodeGroup>
+```bash pnpm
+pnpm create chapter
+```
+
+```bash npm
+npm create chapter@latest
+```
+
+```bash yarn
+yarn create chapter
+```
+
+```bash bun
+bun create chapter
+```
+
+</CodeGroup>
+
+It asks up to three questions:
+
+1. **Where to create the project.** A folder name, like `buddy`. The folder must not exist yet, or be empty. (`.` means "right here", for a folder you already created.)
+2. **Which package manager to use.** Only the ones installed on your computer can be picked, and the one you ran the command with is preselected: press Enter.
+3. **Which template to start from.** There is one today, so the question is skipped and you are told so.
+
+Then it copies the template, installs the dependencies (this is the part that takes a moment) and prints what to do next. A question with only one possible answer is never asked: the framework takes the answer and says so with `ℹ`. You will see that habit everywhere.
+
+<Tip>
+  Pass the folder name to skip the first question: `pnpm create chapter buddy`.
+</Tip>
+
+Move into the folder and open it in your editor:
+
+```bash
+cd buddy
+```
+
+## Give it your bot
+
+The project has a file called `.env.example`:
+
+```bash .env.example
+# Your bot token: https://discord.com/developers/applications → your app → Bot → Reset Token
+BOT_TOKEN=
+# The ID of the server used by `chapterjs dev` (right-click the server → Copy Server ID)
+DEV_GUILD_ID=
+```
+
+Copy it to a file called `.env` (same folder, without `.example`), and fill in the two values from the previous page: the token after `BOT_TOKEN=`, the server ID after `DEV_GUILD_ID=`, no quotes, no spaces.
+
+Why two files? `.env.example` is committed to git and shows what the project needs, with empty values. `.env` holds the real values and is ignored by git (look at `.gitignore`: it is already there). That way, your token never ends up in a repository, even a private one, and whoever gets the project knows what to fill in.
+
+<Warning>
+  If you ever see your token in a terminal, a screenshot or a commit, reset it
+  in the Developer Portal right away. The old one stops working, and nobody can
+  run your bot with it.
+</Warning>
+
+## Run it
+
+<CodeGroup>
+```bash pnpm
+pnpm dev
+```
+
+```bash npm
+npm run dev
+```
+
+```bash yarn
+yarn dev
+```
+
+```bash bun
+bun dev
+```
+
+</CodeGroup>
+
+The first time, the bot is not in your test server yet, so the terminal gives you a link and waits:
+
+```text
+⚠ Your bot is not in your dev server yet (DEV_GUILD_ID=123456789012345678).
+  Open this link to add it:
+  https://discord.com/oauth2/authorize?client_id=...&scope=bot+applications.commands&permissions=8&guild_id=123456789012345678&disable_guild_select=true
+  If the link shows another server, DEV_GUILD_ID is not the ID of a server you manage.
+  Waiting for the bot to be added...
+```
+
+Open the link in your browser, check that it shows your test server, and confirm. The link adds the bot to that server only, with every permission: a test server is a playground, and giving the bot everything there means a missing permission never gets in the way while you learn. In production, the people who add your bot choose what they give it.
+
+Back in the terminal, the command goes on by itself:
+
+```text
+✓ The bot joined My Server
+✓ Connected to My Server as buddy
+ℹ Intents computed from your files: GUILDS
+✓ 1 command, 1 event, 1 component, a presence, messages in 2 languages loaded
+buddy is online in 1 server(s)
+✓ Commands updated on My Server
+```
+
+Look at your test server: the bot is online, "Playing with ChapterJS". Type `/` in a channel: `/ping` is in the list. Use it: the bot answers "Pong!" with a button that counts your clicks.
+
+## Reading the terminal
+
+Each line of that output tells you something, and the symbol in front says what kind:
+
+| Symbol | Meaning                                          |
+| ------ | ------------------------------------------------ |
+| `✓`    | Something worked                                 |
+| `ℹ`    | Something worth knowing, nothing to do           |
+| `↻`    | A reload or a reconnection                       |
+| `⚠`    | Something to look at; the bot keeps running      |
+| `✗`    | Something failed: what happened, then what to do |
+
+Now the lines, one by one:
+
+- **`✓ Connected to My Server as buddy`**: the program logged in with your token, and found your test server. "My Server" is the name of the server of `DEV_GUILD_ID`.
+- **`ℹ Intents computed from your files: GUILDS`**: the intents of the previous chapter. The framework read your folders and asked Discord for what they need. `GUILDS` is the one every bot needs to know its servers; nothing in the template needs more.
+- **`✓ 1 command, 1 event, 1 component, a presence, messages in 2 languages loaded`**: the files of `src/` were read. One command (`/ping`), one event (`ready`), one component (the button), the presence file, and two language files. Each of these is a chapter of this tutorial.
+- **`buddy is online in 1 server(s)`**: this line is not from the framework. It is printed by a file of the template, `src/events/ready/online.ts`, which runs once when the bot is connected. Your first look at an event.
+- **`✓ Commands updated on My Server`**: the framework sent the list of your commands to Discord, for your test server. That is why `/ping` appears.
+
+## Stopping
+
+Press `Ctrl+C` in the terminal. The bot disconnects properly and goes offline at once:
+
+```text
+✓ Disconnected
+```
+
+Press it once and wait for that line. A second `Ctrl+C` kills the program without saying goodbye, and Discord then keeps the bot shown online for a while, until it notices that nobody is on the line.
+
+## When something is wrong
+
+Every value of `.env` is checked before anything else, and every problem is printed at once with what to do:
+
+```text
+✗ .env: BOT_TOKEN is empty.
+  Copy the token of your bot from https://discord.com/developers/applications → your application → Bot → Reset Token.
+✗ .env: DEV_GUILD_ID is "my-server", which is not a server ID (an ID only has digits).
+  In Discord, right-click your test server → Copy Server ID.
+```
+
+A token Discord does not recognize is refused at the first request:
+
+```text
+✗ Discord refused the bot token. Copy it again from the Developer Portal (your application → Bot → Reset Token) into BOT_TOKEN in your .env file.
+```
+
+That usually means the token was reset since you copied it. Reset it again, copy the new one, and start again. Every message the bot can print is gathered in [Troubleshooting](/run/troubleshooting), with what to do about it.
+
+## Recap
+
+- `pnpm create chapter` (or the command of your package manager) creates the project and installs it.
+- `.env` holds `BOT_TOKEN` and `DEV_GUILD_ID`, and git ignores it.
+- `pnpm dev` runs the bot on your test server; the first time, a link adds the bot there.
+- The symbol of each line says what kind of message it is; `✗` always comes with what to do.
+- `Ctrl+C` once, then wait for `✓ Disconnected`.
+
+<CardGroup cols={2}>
+  <Card title="A tour of the project" icon="folder-tree" href="/tutorial/tour">
+    What each file is for, and the rule behind all of them.
+  </Card>
+  <Card title="Guide: Quickstart" icon="book-open" href="/quickstart">
+    The same steps on one page.
+  </Card>
+</CardGroup>

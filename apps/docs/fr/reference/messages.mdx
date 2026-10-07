@@ -1,0 +1,267 @@
+---
+title: 'language()'
+description: 'Tout ce que déclare un fichier de src/messages/, et t, que reçoit chaque fonction'
+---
+
+`language()` est ce qu’un fichier de `src/messages/` exporte par défaut. Le nom du fichier est la langue ; elle prend un objet, `LanguageConfig`.
+
+```ts src/messages/en-US.ts
+import { language } from 'chapterjs';
+
+export default language({
+  default: true,
+  texts: {
+    pong: 'Pong!',
+    welcome: 'Welcome {name}, you are member #{count}!',
+    next: 'Page {page}',
+    members: { one: '{count} member', other: '{count} members' },
+  },
+});
+```
+
+<Note>
+  Comment écrire les fichiers et quelle langue parle `t` est dans le
+  [guide](/fr/translated-messages). Cette page liste ce qui existe.
+</Note>
+
+## language()
+
+```ts
+language<const T extends MessageTexts>(config: LanguageConfig<T>): LanguageFile<T>
+```
+
+Déclare une langue du bot. Exportez le résultat comme export par défaut d’un fichier de `src/messages/` nommé d’après la langue (`en-US.ts`, `fr.ts`...) : chaque fonction reçoit alors `t`, qui donne un texte dans la langue de qui lira le message, avec ses `{paramètres}` remplis.
+
+### LanguageConfig
+
+Ce qu’un fichier de `src/messages/` donne à `language()`.
+
+<ResponseField name="texts" type="MessageTexts" required>
+  Les textes du bot dans cette langue, par clé.
+</ResponseField>
+
+<ResponseField name="default" type="boolean">
+  Si c’est la langue utilisée quand celle d’une personne ou d’un serveur n’est
+  pas dans `src/messages/`. Exactement un fichier le dit ; avec un seul fichier,
+  cela va sans dire. Une fois les fichiers exécutés (`chapterjs dev`,
+  `chapterjs build`), un deuxième fichier qui le dit est une erreur de type sur le
+  `default: true` des deux, qui nomme l’autre fichier.
+</ResponseField>
+
+<ResponseField name="commands" type="CommandsTranslations">
+  Ce que Discord affiche des commandes dans cette langue.
+</ResponseField>
+
+<ResponseField name="framework" type="Partial<FrameworkTexts>">
+  Ce que le bot répond de lui-même dans cette langue, quand il ne peut pas lancer
+  ce qui a été demandé : les phrases de `FrameworkTexts`, celles que ce fichier veut
+  traduire. Les autres restent en anglais.
+</ResponseField>
+
+### MessageTexts
+
+```ts
+type MessageTexts = Record<string, MessageText>;
+```
+
+Les textes d’une langue, par clé.
+
+### MessageText
+
+```ts
+type MessageText = string | PluralText;
+```
+
+Un texte d’une langue : une chaîne, avec ses `{paramètres}`, ou un texte à plusieurs formes, choisies par `count`.
+
+### PluralText
+
+Un texte à plusieurs formes, une par quantité : `t('members', { count })` choisit la forme de la langue pour ce nombre (`one` pour 1 en anglais, `other` pour le reste ; le français, le russe ou l’arabe en ont d’autres). `other` est toujours là ; les formes qu’une langue n’utilise pas sont laissées de côté. `{count}` dans une forme est le nombre lui-même.
+
+<ResponseField name="other" type="string" required />
+<ResponseField name="zero" type="string" />
+<ResponseField name="one" type="string" />
+<ResponseField name="two" type="string" />
+<ResponseField name="few" type="string" />
+<ResponseField name="many" type="string" />
+
+### FrameworkTexts
+
+Ce que le bot répond de lui-même, quand il ne peut pas lancer ce qui a été demandé : là où une commande ou un composant ne peut pas être utilisé, un bouton d’un vieux message, un `run` qui a échoué... Chaque phrase a une version anglaise ; un fichier de langue donne la sienne dans `framework`, celles qu’il veut. `{what}` est le mot pour ce qui a été utilisé : `command`, `button`, `menu` ou `form`, donnés ici aussi.
+
+| Clé | En anglais |
+| --- | --- |
+| `command` | Le mot pour une commande : « command ». |
+| `button` | Le mot pour un bouton : « button ». |
+| `menu` | Le mot pour un menu déroulant : « menu ». |
+| `form` | Le mot pour un formulaire : « form ». |
+| `guildOnly` | « This {what} can only be used in a server. » |
+| `dmOnly` | « This {what} can only be used in a private message with me. » |
+| `notHere` | « This {what} can not be used here. » |
+| `unavailable` | « This command is not available right now. » (son fichier a disparu ou est cassé) |
+| `gone` | « This {what} is not available any more. » (un vieux message, son fichier a disparu) |
+| `outdated` | « This {what} is out of date. » (un vieux message, ses `data` ont changé) |
+| `authorOnly` | « Only the person who used the command can use this {what}. » |
+| `failed` | « Something went wrong while running this {what}. » |
+| `missingPermission` | « I don’t have the permission to do that here. » |
+| `cooldown` | « You can use this {what} again {when}. » (un `cooldown` pas encore terminé) ; `{when}` est un horodatage Discord, affiché comme « dans 5 secondes » (ou une date et une heure au-delà de 15 minutes) dans la langue de la personne. |
+| `needsPermissions` | « You need the {permissions} permission to use this command. » Un pluriel de `count`, le nombre de permissions manquantes ; `{permissions}` est leurs noms, séparés par des virgules. |
+
+### CommandsTranslations
+
+```ts
+type CommandsTranslations = {
+  readonly [
+    Path in keyof ProjectCommands as ProjectCommands[Path] extends true
+      ? Path
+      : never
+  ]?: CommandTranslation;
+};
+```
+
+Ce que Discord affiche des commandes dans une langue : par le chemin du fichier de la commande (`'ping'`, `'mod/ban'`), son nom, sa description, ses options et ses choix dans cette langue, comme les prennent les `locales` d’un fichier de commande ([`CommandTranslation`](/fr/reference/command#commandtranslation)). L’éditeur propose les commandes du projet qui n’ont pas de `description` dans leur fichier (une qui en a une possède ses textes, `locales` compris) ; leurs options et choix sont vérifiés au chargement des fichiers.
+
+### ProjectCommands
+
+Les commandes du projet, telles que les voit l’éditeur : le chemin de chaque fichier de commande, `true` quand les fichiers de langue la décrivent, `false` quand le fichier a sa propre `description`. Rempli par le dossier `.chapterjs/` du projet, pour que les `commands` d’un fichier de langue proposent celles qu’il peut traduire. Les options et les choix sont vérifiés au chargement des fichiers.
+
+### LanguageFile
+
+Ce que renvoie `language()` : l’export par défaut d’un fichier de `src/messages/`.
+
+<ResponseField name="config" type="LanguageConfig<T>" required>
+  Ce que le fichier a donné à `language()`, pas encore vérifié.
+</ResponseField>
+
+## Translator
+
+```ts
+interface Translator<M extends object = ProjectMessages>
+```
+
+`t`, tel que le reçoivent les fonctions : donne un texte de `src/messages/` dans la langue de qui lira le message, avec ses paramètres remplis. `M` est l’ensemble des textes de la langue par défaut, qui type les clés et les paramètres : un texte qu’une autre langue n’a pas est pris dans celle-ci.
+
+### t()
+
+```ts
+t<K extends keyof M & string>(key: K, ...params: ParamsArgs<TextOf<M, K>>): string
+```
+
+<ResponseField name="locale" type="Locale" required>
+  La langue d’où viennent les textes : celle demandée, ou la plus proche déclarée.
+</ResponseField>
+
+### in()
+
+```ts
+in<L extends ProjectLocale | (string & {}), K extends keyof M & string>(locale: LocaleGiven<L>, key: K, ...params: ParamsArgs<TextOf<M, K>>): string
+```
+
+Un texte dans une autre langue : `t.in('fr', 'welcome', { name })`, ou `t.in(owner.locale, 'pong')`. La langue de la personne qui le lira, quand ce n’est pas celle que parle `t`.
+
+```ts
+in<L extends ProjectLocale | (string & {})>(locale: LocaleGiven<L>): Translator<M>
+```
+
+Le même `t` pour une autre langue, pour écrire plusieurs textes : `t.in('fr')('welcome', { name })`.
+
+### ProjectLocales
+
+Les langues de `src/messages/`, telles que les voit l’éditeur : une clé par fichier. Rempli par le dossier `.chapterjs/` du projet, vide quand le dossier n’a aucune langue.
+
+### ProjectLocale
+
+```ts
+type ProjectLocale = keyof ProjectLocales & string;
+```
+
+Une langue de `src/messages/` : `'en-US'`, `'fr'`...
+
+### LocaleGiven
+
+```ts
+type LocaleGiven<L extends string> = L extends Locale ? L : ProjectLocale;
+```
+
+Une langue donnée à `t.in()` : l’éditeur propose celles de `src/messages/`, et toute langue de Discord est acceptée (celle d’une personne, d’un serveur), `t` prenant alors la plus proche déclarée. Un mot qui n’est pas une langue de Discord est souligné, avec celles du projet.
+
+### TranslationContext
+
+`TranslationContext` est ce que reçoit chaque fonction quand le projet a une langue dans `src/messages/` : `t`. Rien sinon.
+
+<ResponseField name="t" type="Translator">
+  Les textes de `src/messages/`, dans la bonne langue.
+</ResponseField>
+
+### ProjectMessages
+
+Les textes de `src/messages/`, tels que les voit l’éditeur : les clés qu’accepte `t` et les paramètres de chacun. Rempli par le dossier `.chapterjs/` du projet quand le dossier a une langue, vide sinon.
+
+### MessagesOf
+
+```ts
+type MessagesOf<F> = F extends LanguageFile<infer T> ? T : never;
+```
+
+Ce d’après quoi `t` est typé, pour un fichier de langue : ses textes.
+
+## Les textes d’un composant
+
+### DynamicText
+
+```ts
+type DynamicText<Data extends DataShape = DataShape> =
+  string | ((context: TextContext<Data>) => string);
+```
+
+Un texte affiché par un composant : écrit tel quel, ou calculé au moment de l’envoi du message, à partir de `t` et des données du composant.
+
+### TextContext
+
+Ce à partir de quoi un texte d’un composant est calculé quand c’est une fonction : `t` dans la langue de qui lira le message, et les données que transporte le composant.
+
+<ResponseField name="t" type="Translator" required>
+  Les textes de `src/messages/`, dans la langue de qui lira le message.
+</ResponseField>
+
+<ResponseField name="data" type="DataValuesOf<Data>" required>
+  Ce que transporte le composant, tel que déclaré dans `data`.
+</ResponseField>
+
+## Les paramètres
+
+### Placeholders
+
+```ts
+type Placeholders<T extends MessageText>
+```
+
+Les paramètres d’un texte : `'Hello {name}'` a `'name'`. Écrit entre accolades, un paramètre est un nom fait de lettres, de chiffres et de `_` ; `{{` et `}}` sont des accolades écrites telles quelles. Un pluriel a `count`, et les paramètres de ses formes.
+
+### ParamsOf
+
+```ts
+type ParamsOf<T extends MessageText> = {
+  [Name in Placeholders<T>]: Name extends 'count'
+    ? T extends PluralText
+      ? number
+      : string | number
+    : string | number;
+};
+```
+
+Ce que prend `t` pour un texte : une valeur par paramètre, ou rien quand le texte n’en a pas. Un nombre est écrit comme la langue écrit les nombres (`1,234` en anglais, `1 234` en français) : donnez un texte pour le garder tel quel. Le `count` d’un pluriel est un nombre.
+
+### ParamsArgs
+
+```ts
+type ParamsArgs<T extends MessageText> = string extends T
+  ? [params?: Record<string, string | number>]
+  : [Placeholders<T>] extends [never]
+    ? []
+    : [params: ParamsOf<T>];
+```
+
+Les arguments de `t` après la clé : les paramètres, seulement quand il y en a.
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#locales)

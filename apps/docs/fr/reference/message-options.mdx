@@ -1,0 +1,500 @@
+---
+title: 'Options des messages'
+description: 'Tout ce qu’un message peut contenir quand vous envoyez, répondez, modifiez, répondez à une commande ou publiez avec un webhook'
+---
+
+`channel.send()`, `message.reply()`, `user.send()`, `member.send()` et le premier message de `forum.createPost()` prennent un `MessageInput` : un texte, ou un objet `MessageOptions`. `interaction.reply()` et `webhook.send()` prennent les mêmes options avec quelques changements, listés à la fin.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function example(channel: TextChannel) {
+  await channel.send('Bonjour !');
+  await channel.send({
+    content: 'Voici le rapport',
+    embeds: [{ title: 'Rapport de la semaine', description: 'Tout s’est bien passé.' }],
+    files: [{ name: 'report.txt', data: 'Le rapport complet' }],
+    silent: true,
+  });
+}
+```
+
+<Note>
+  Comment utiliser tout cela est dans [Envoyer des messages](/fr/messages). Les messages que vous recevez sont décrits dans [Message](/fr/reference/message).
+</Note>
+
+## MessageInput
+
+```ts
+type MessageInput = string | MessageOptions
+```
+
+Un message à envoyer : son texte, ou ses options.
+
+## MessageOptions
+
+Ce qu’un message peut contenir, et comment il est envoyé. Un message a besoin d’au moins un contenu, un embed, un fichier, un composant, un sticker ou un sondage.
+
+<ResponseField name="content" type="string">
+  Le texte du message (jusqu’à 2000 caractères).
+</ResponseField>
+
+<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
+  Jusqu’à 10 embeds : écrits ici, ou des fichiers de `src/components/embeds/`. Voir [Embed](#embed) et [embed()](/fr/reference/embed).
+</ResponseField>
+
+<ResponseField name="components" type="MessageComponent[]">
+  Des boutons, des menus déroulants et des composants de mise en page, fabriqués par ChapterJS : les fichiers de `src/components/` et `row()`, `text()`, `container()`... Voir [Composants](#composants).
+</ResponseField>
+
+<ResponseField name="files" type="(FileInput | AssetFile)[]">
+  Jusqu’à 10 fichiers à joindre : leur contenu, ou `asset()` pour un fichier de `public/`. Voir [FileInput](#fileinput) et [asset()](#asset).
+</ResponseField>
+
+<ResponseField name="allowedMentions" type="AllowedMentions">
+  Qui le message a le droit de notifier. Voir [AllowedMentions](#allowedmentions).
+</ResponseField>
+
+<ResponseField name="stickers" type="Snowflake[]">
+  Les identifiants de 3 stickers du serveur au plus.
+</ResponseField>
+
+<ResponseField name="poll" type="PollInput">
+  Un sondage à joindre au message. Voir [PollInput](#pollinput).
+</ResponseField>
+
+<ResponseField name="tts" type="boolean">
+  Lit le message à voix haute.
+</ResponseField>
+
+<ResponseField name="silent" type="boolean">
+  Envoie le message sans son de notification.
+</ResponseField>
+
+<ResponseField name="suppressEmbeds" type="boolean">
+  N’affiche pas les aperçus des liens du message.
+</ResponseField>
+
+<ResponseField name="replyTo" type="Snowflake | { id: Snowflake }">
+  Le message auquel répondre.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#create-message)
+
+## MessageEditOptions
+
+Ce qui peut être changé dans un message déjà envoyé : `message.edit()` prend un texte, ou ces champs de `MessageOptions`. Seul ce que vous passez change : une liste vide retire les embeds ou les composants, et les fichiers que vous passez remplacent ceux du message.
+
+<ResponseField name="content" type="string">
+  Le texte du message (jusqu’à 2000 caractères).
+</ResponseField>
+
+<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
+  Jusqu’à 10 embeds : écrits ici, ou des fichiers de `src/components/embeds/`.
+</ResponseField>
+
+<ResponseField name="components" type="MessageComponent[]">
+  Des boutons, des menus déroulants et des composants de mise en page, fabriqués par ChapterJS : les fichiers de `src/components/` et `row()`, `text()`, `container()`...
+</ResponseField>
+
+<ResponseField name="files" type="(FileInput | AssetFile)[]">
+  Jusqu’à 10 fichiers à joindre : leur contenu, ou `asset()` pour un fichier de `public/`.
+</ResponseField>
+
+<ResponseField name="allowedMentions" type="AllowedMentions">
+  Qui le message a le droit de notifier.
+</ResponseField>
+
+<ResponseField name="suppressEmbeds" type="boolean">
+  N’affiche pas les aperçus des liens du message. `false` les affiche à nouveau.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#edit-message)
+
+## FileInput
+
+Un fichier à joindre à un message. Chaque fichier est envoyé avec le message, et un embed peut l’afficher avec `attachment://<name>` comme `url` de son `image` ou de sa `thumbnail`.
+
+<ResponseField name="name" type="string" required>
+  Le nom du fichier, avec son extension : `chart.png`.
+</ResponseField>
+
+<ResponseField name="data" type="Blob | Uint8Array | ArrayBuffer | string" required>
+  Le contenu du fichier.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Ce que montre le fichier, pour les personnes qui ne peuvent pas le voir.
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Cache le fichier jusqu’à ce qu’on clique dessus.
+</ResponseField>
+
+<ResponseField name="contentType" type="string">
+  Le type de média du fichier (`image/png`) ; déduit du nom quand il manque.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#uploading-files)
+
+## asset()
+
+```ts
+asset(path: PublicFile, options?: AssetOptions): AssetFile
+```
+
+Un fichier du dossier `public/` du projet, à envoyer avec un message : `files: [asset('photos/monday.png')]`. Le fichier est lu au moment de l’envoi du message, donc un fichier manquant est une erreur à ce moment-là.
+
+`asset` s’importe de `'chapterjs'` comme tout le reste, et est typé pour votre projet par le dossier `.chapterjs/` : `PublicFile` est l’union des chemins de chaque fichier de `public/`, donc l’éditeur les liste et souligne celui qui n’existe pas. Le dossier est relu par `chapterjs dev` chaque fois qu’un fichier est ajouté ou retiré, et par `chapterjs sync` et `chapterjs build`. Comment l’utiliser est dans [Fichiers](/fr/messages#fichiers).
+
+### PublicFile
+
+```ts
+type PublicFile = 'logo.png' | 'photos/monday.png' | ...
+```
+
+Un fichier du dossier `public/` de votre projet, sous forme de chemin depuis lui : `'photos/monday.png'`. `never` tant que le dossier est vide ou absent.
+
+### AssetOptions
+
+Ce qui peut changer pour un fichier de `public/` quand il est envoyé.
+
+<ResponseField name="name" type="string">
+  Le nom sous lequel le fichier est envoyé ; par défaut son propre nom.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Ce que montre le fichier, pour les personnes qui ne peuvent pas le voir.
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Cache le fichier jusqu’à ce qu’on clique dessus.
+</ResponseField>
+
+<ResponseField name="contentType" type="string">
+  Le type de média du fichier (`image/png`) ; déduit du nom quand il manque.
+</ResponseField>
+
+### AssetFile
+
+Un fichier du dossier `public/` du projet, fabriqué par `asset()`, à mettre dans les `files` d’un message. Il est lu au moment de l’envoi du message.
+
+<ResponseField name="name" type="string" required>
+  Le nom sous lequel le fichier est envoyé, avec son extension.
+</ResponseField>
+
+<ResponseField name="path" type="string" required>
+  Le chemin du fichier dans `public/`.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Ce que montre le fichier, pour les personnes qui ne peuvent pas le voir.
+</ResponseField>
+
+<ResponseField name="spoiler" type="boolean">
+  Cache le fichier jusqu’à ce qu’on clique dessus.
+</ResponseField>
+
+<ResponseField name="contentType" type="string">
+  Le type de média du fichier ; déduit du nom quand il manque.
+</ResponseField>
+
+## Embed
+
+Un encadré riche dans un message : titre, description, champs, image... Le même type décrit les `embeds` d’un message que vous recevez : les champs marqués « Réglé par Discord » sont remplis dans les messages que Discord renvoie, et ignorés quand vous en envoyez un.
+
+<ResponseField name="title" type="string">
+  Le titre de l’embed (256 caractères au plus).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Le texte de l’embed (4096 caractères au plus).
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Le lien qu’ouvre le titre.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  Une date affichée dans le pied, sous forme de texte ISO 8601 : `new Date().toISOString()`.
+</ResponseField>
+
+<ResponseField name="color" type="number">
+  La couleur de la bordure gauche, sous forme de nombre : `0x5865f2`.
+</ResponseField>
+
+<ResponseField name="footer" type="EmbedFooter">
+  Le pied de l’embed.
+  <Expandable title="EmbedFooter">
+    <ResponseField name="text" type="string" required>
+      Le texte du pied (2048 caractères au plus).
+    </ResponseField>
+    <ResponseField name="iconUrl" type="string">
+      L’URL de l’icône du pied (seulement des liens `http(s)` et `attachment://`).
+    </ResponseField>
+    <ResponseField name="proxyIconUrl" type="string">
+      Réglé par Discord : une URL relayée de l’icône.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="image" type="EmbedImage">
+  La grande image de l’embed.
+  <Expandable title="EmbedImage">
+    <ResponseField name="url" type="string" required>
+      L’URL de l’image (seulement des liens `http(s)` et `attachment://`).
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Ce que montre l’image, pour les personnes qui ne peuvent pas la voir.
+    </ResponseField>
+    <ResponseField name="proxyUrl" type="string">
+      Réglé par Discord : une URL relayée de l’image.
+    </ResponseField>
+    <ResponseField name="height" type="number">
+      Réglé par Discord : la hauteur de l’image.
+    </ResponseField>
+    <ResponseField name="width" type="number">
+      Réglé par Discord : la largeur de l’image.
+    </ResponseField>
+    <ResponseField name="contentType" type="string">
+      Réglé par Discord : le type de média de l’image.
+    </ResponseField>
+    <ResponseField name="placeholder" type="string">
+      Réglé par Discord : un aperçu flou (thumbhash) de l’image.
+    </ResponseField>
+    <ResponseField name="placeholderVersion" type="number">
+      Réglé par Discord : la version de l’aperçu.
+    </ResponseField>
+    <ResponseField name="flags" type="number">
+      Réglé par Discord : les drapeaux de média de l’image, sous forme de champ de bits.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="thumbnail" type="EmbedImage">
+  La petite image dans le coin en haut à droite. Mêmes champs que `image`.
+</ResponseField>
+
+<ResponseField name="author" type="EmbedAuthor">
+  La ligne de l’auteur, au-dessus du titre.
+  <Expandable title="EmbedAuthor">
+    <ResponseField name="name" type="string" required>
+      Le nom de l’auteur (256 caractères au plus).
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      Le lien qu’ouvre le nom (seulement des liens `http(s)`).
+    </ResponseField>
+    <ResponseField name="iconUrl" type="string">
+      L’URL de l’icône de l’auteur (seulement des liens `http(s)` et `attachment://`).
+    </ResponseField>
+    <ResponseField name="proxyIconUrl" type="string">
+      Réglé par Discord : une URL relayée de l’icône.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="fields" type="EmbedField[]">
+  Jusqu’à 25 champs, affichés sous la description.
+  <Expandable title="EmbedField">
+    <ResponseField name="name" type="string" required>
+      Le nom du champ (256 caractères au plus).
+    </ResponseField>
+    <ResponseField name="value" type="string" required>
+      La valeur du champ (1024 caractères au plus).
+    </ResponseField>
+    <ResponseField name="inline" type="boolean">
+      Si le champ est affiché à côté du précédent au lieu d’en dessous.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="type" type="'rich' | 'image' | 'video' | 'gifv' | 'article' | 'link' | 'poll_result'">
+  Réglé par Discord : la sorte d’embed (toujours `'rich'` pour les embeds qu’envoie un bot).
+</ResponseField>
+
+<ResponseField name="video" type="EmbedVideo">
+  Réglé par Discord : la vidéo d’un embed fabriqué à partir d’un lien.
+  <Expandable title="EmbedVideo">
+    <ResponseField name="url" type="string">
+      L’URL de la vidéo.
+    </ResponseField>
+    <ResponseField name="proxyUrl" type="string">
+      Une URL relayée de la vidéo.
+    </ResponseField>
+    <ResponseField name="height" type="number">
+      La hauteur de la vidéo.
+    </ResponseField>
+    <ResponseField name="width" type="number">
+      La largeur de la vidéo.
+    </ResponseField>
+    <ResponseField name="contentType" type="string">
+      Le type de média de la vidéo.
+    </ResponseField>
+    <ResponseField name="placeholder" type="string">
+      Un aperçu flou (thumbhash) de la vidéo.
+    </ResponseField>
+    <ResponseField name="placeholderVersion" type="number">
+      La version de l’aperçu.
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Ce que montre la vidéo, pour les personnes qui ne peuvent pas la voir.
+    </ResponseField>
+    <ResponseField name="flags" type="number">
+      Les drapeaux de média de la vidéo, sous forme de champ de bits.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="provider" type="EmbedProvider">
+  Réglé par Discord : le site d’où vient un embed fabriqué à partir d’un lien.
+  <Expandable title="EmbedProvider">
+    <ResponseField name="name" type="string">
+      Le nom du site.
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      L’URL du site.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="flags" type="number">
+  Réglé par Discord : les drapeaux de l’embed, sous forme de champ de bits.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#embed-object)
+
+### Limites des embeds
+
+| Limite | Maximum |
+| --- | --- |
+| Embeds par message | 10 |
+| `title` | 256 caractères |
+| `description` | 4096 caractères |
+| `fields` | 25 |
+| `fields[].name` | 256 caractères |
+| `fields[].value` | 1024 caractères |
+| `footer.text` | 2048 caractères |
+| `author.name` | 256 caractères |
+| Tout ce qui précède, pour tous les embeds d’un message | 6000 caractères |
+
+En dépasser une lève une erreur qui nomme le champ, avant tout envoi : voir [Limites et erreurs](#limites-et-erreurs).
+
+## AllowedMentions
+
+Qui un message a le droit de notifier. Sans cela, un message notifie tous ceux qu’il mentionne.
+
+<ResponseField name="parse" type="('roles' | 'users' | 'everyone')[]">
+  Les sortes de mentions du texte qui notifient : `[]` ne notifie personne.
+</ResponseField>
+
+<ResponseField name="roles" type="Snowflake[]">
+  Les identifiants des rôles à notifier (100 au plus).
+</ResponseField>
+
+<ResponseField name="users" type="Snowflake[]">
+  Les identifiants des utilisateurs à notifier (100 au plus).
+</ResponseField>
+
+<ResponseField name="repliedUser" type="boolean">
+  Pour une réponse, s’il faut notifier l’auteur du message auquel on répond. Par défaut `false`.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#allowed-mentions-object)
+
+## PollInput
+
+Un sondage à joindre à un message.
+
+<ResponseField name="question" type="PollMedia" required>
+  La question du sondage. Seul `text` est pris en charge.
+  <Expandable title="PollMedia">
+    <ResponseField name="text" type="string">
+      Le texte.
+    </ResponseField>
+    <ResponseField name="emoji" type="{ id?: Snowflake | null; name?: string | null }">
+      L’emoji : `{ name: '🍕' }` pour un emoji standard, `{ id }` pour un emoji personnalisé.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="answers" type="PollAnswer[]" required>
+  Chacune des réponses disponibles dans le sondage, jusqu’à 10.
+  <Expandable title="PollAnswer">
+    <ResponseField name="answerId" type="number" required>
+      L’identifiant de la réponse.
+    </ResponseField>
+    <ResponseField name="pollMedia" type="PollMedia" required>
+      Le texte et l’emoji de la réponse : mêmes champs que `question`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="duration" type="number">
+  Combien d’heures le sondage reste ouvert, jusqu’à 32 jours. 24 par défaut.
+</ResponseField>
+
+<ResponseField name="allowMultiselect" type="boolean">
+  Si une personne peut choisir plusieurs réponses. `false` par défaut.
+</ResponseField>
+
+<ResponseField name="layoutType" type="1">
+  La disposition du sondage. Il n’y en a qu’une : `1`, par défaut.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/poll#poll-create-request-object)
+
+## Composants
+
+`components` ne prend que ce que ChapterJS a fabriqué : les boutons, menus et formulaires de `src/components/`, et les helpers de mise en page (`row()`, `linkButton()`, `text()`, `section()`, `container()`...). Un objet simple est refusé avant tout envoi, donc aucun identifiant n’est jamais écrit à la main. Les boutons qui se suivent sont mis en rangées de 5 ; un menu a une rangée à lui.
+
+Un message avec un texte, une section, une galerie, un fichier, un séparateur ou un conteneur est construit uniquement avec des composants : Discord n’affiche ni `content` ni `embeds`, et le message le dit avant de partir si vous en passez un. Les pièces et leurs types sont listés dans [Mise en page](/fr/reference/layout) ; comment les utiliser est dans [Boutons](/fr/components) et [Embeds et mise en page](/fr/components/embeds).
+
+[Documentation de Discord](https://docs.discord.com/developers/components/reference)
+
+## InteractionReplyOptions
+
+Les options d’une réponse : tout ce que prend un message, sauf `replyTo` et `stickers`. C’est ce que prennent `interaction.reply()` et `interaction.followUp()`, sous forme de texte ou d’objet (`InteractionReply`) ; `interaction.edit()` prend un [`MessageEditOptions`](#messageeditoptions). Voir [Interaction](/fr/reference/interaction).
+
+<ResponseField name="ephemeral" type="boolean">
+  N’afficher la réponse qu’à qui a utilisé la commande. Par défaut : ce que dit la commande avec son propre `ephemeral`, sinon visible par tout le monde.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#create-interaction-response)
+
+## WebhookMessageOptions
+
+Ce que peut contenir un message publié avec un webhook : tout ce que prend un message, sauf `replyTo`, et ceci. C’est ce que prend [`webhook.send()`](/fr/reference/webhook), sous forme de texte ou d’objet.
+
+<ResponseField name="username" type="string">
+  Affiche ce nom au lieu du nom du webhook.
+</ResponseField>
+
+<ResponseField name="avatarURL" type="string">
+  Affiche cet avatar au lieu de l’avatar du webhook.
+</ResponseField>
+
+<ResponseField name="threadId" type="Snowflake">
+  Envoie le message dans ce fil du salon du webhook.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#execute-webhook)
+
+## Limites et erreurs
+
+Chaque message est vérifié avant d’être envoyé, donc une erreur est une erreur dans votre code avec un message clair, pas un refus de Discord. Les nombres sont ceux de votre message.
+
+| Ce qui n’allait pas | L’erreur |
+| --- | --- |
+| Ni un texte ni un objet | `A message is a text or an object like { content: "Hello" }, got number.` |
+| `content` n’est pas un texte | `The content of a message is a text, got number.` |
+| `content` dépasse 2000 caractères | `The message is 2345 characters long: Discord accepts 2000 at most. Split it in several messages or put the text in a file.` |
+| Plus de 10 embeds | `A message has 10 embeds at most, got 11.` |
+| Un texte d’un embed trop long | `The title of embed 1 is 300 characters long: Discord accepts 256 at most.` (aussi `description`, `footer text`, `author name`, `name of field 3`, `value of field 3`) |
+| Plus de 25 champs dans un embed | `Embed 1 has 26 fields: Discord accepts 25 at most.` |
+| Les embeds dépassent 6000 caractères ensemble | `The embeds of the message contain 6100 characters in total: Discord accepts 6000 at most.` |
+| Plus de 3 stickers | `A message has 3 stickers at most, got 4.` |
+| Plus de 10 fichiers | `A message has 10 files at most, got 11.` |
+| Rien à envoyer (à l’envoi, pas à la modification) | `The message is empty: give it a content, an embed, a file, a component, a sticker or a poll.` |
+| Un fichier sans nom | `Every file needs a name with its extension, like "chart.png".` |
+
+Le texte d’un embed est compté sans les espaces autour. Ce que ces vérifications ne couvrent pas (un `customId` faux, un sticker inconnu...) est refusé par Discord avec une [`DiscordApiError`](/fr/reference/errors#discordapierror) qui dit quel champ.

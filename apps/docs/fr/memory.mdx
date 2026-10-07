@@ -1,0 +1,111 @@
+---
+title: 'Ce dont votre bot se souvient'
+description: 'Pourquoi lire un serveur, un membre ou un salon ne coûte rien, et comment votre bot garde sa mémoire sous contrôle tout seul'
+---
+
+Votre bot se souvient de ce que Discord lui dit, pour que le lire ne coûte jamais de requête : `guild.name`, `member.roles` ou `message.channel` répondent immédiatement, sans demander à Discord. Vous n’avez rien à configurer et rien à nettoyer. Il ne se souvient que de ce qu’utilisent vos fichiers, ce que [recommande Discord](https://docs.discord.com/developers/events/gateway#tracking-state) : comme les intents, c’est déduit de votre projet.
+
+Tout vit dans la mémoire du processus qui fait tourner votre bot. Rien n’est écrit sur le disque, et il n’y a aucune base de données à installer.
+
+## Ce qui est gardé
+
+| Quoi | Combien | Pourquoi |
+| --- | --- | --- |
+| Serveurs, salons, fils, rôles, emojis personnalisés | Tous | Discord les annonce à la connexion du bot, puis chaque changement |
+| Votre bot en tant que membre de chaque serveur | Toujours | `guild.me` ne manque jamais, quelle que soit la limite sur les membres |
+| Membres | Les 100 vus le plus récemment dans chaque serveur ; 1000 quand un fichier de `src/events/memberLeave/` en a besoin | Un serveur peut avoir des millions de membres, et un bot a rarement besoin des silencieux |
+| Utilisateurs | Chacun de ceux qu’il a rencontrés, dans tous les serveurs | Ils viennent avec les membres et les messages |
+| Messages | Aucun | C’est de loin ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message |
+
+« Vu » veut dire que Discord vient d’envoyer ce membre : il a écrit un message, utilisé une commande, est arrivé ou a changé. Un membre vu à nouveau devient le plus récent ; quand la limite est atteinte, celui vu il y a le plus longtemps laisse sa place.
+
+<Info>
+  Les nombres de ce tableau ne sont pas un réglage : ils suivent vos fichiers. Quand un fichier en demande plus (`memberLeave` et ses 1000 membres par serveur), le bot se souvient de plus, et rien n’est gardé pour ce qu’aucun fichier n’utilise. Enregistrer un fichier dans `chapterjs dev` applique le changement immédiatement.
+</Info>
+
+## Ce que cela veut dire pour votre code
+
+**Rien ne dépend du fait qu’un membre soit en mémoire.** Ce qui vient avec un événement est toujours là : l’auteur d’un message, qui a utilisé une commande, le membre qui est arrivé, le salon où cela s’est passé. Votre fonction les reçoit quoi que le bot garde en mémoire, et les garde pendant qu’elle tourne.
+
+```ts src/events/messageCreate/hello.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ message }) => {
+  // Toujours là, même dans un serveur d’un million de membres.
+  await message.channel.send(`Bonjour ${message.member.displayName} !`);
+});
+```
+
+**`guild.members` est ce que sait le bot, pas tout le monde.** Pour obtenir un membre précis, demandez-le : `fetchMember()` répond depuis la mémoire du bot quand il le peut, et demande à Discord sinon.
+
+```ts src/commands/joined.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Dit quand quelqu’un est arrivé',
+  options: {
+    who: { type: 'user', description: 'Qui', required: true },
+  },
+  async run({ interaction, guild, options }) {
+    const member = await guild.fetchMember(options.who);
+    await interaction.reply(`${member.displayName} est arrivé le ${member.joinedAt?.toDateString() ?? 'une date inconnue'}.`);
+  },
+});
+```
+
+La seule chose qui dépend de ce dont le bot se souvient est le « tel qu’il était » : `member` dans `memberLeave` est `null` quand le bot n’a jamais vu ce membre, et `message` dans `messageDelete` est `null` puisque le bot ne garde aucun message.
+
+## Comment la mémoire est libérée
+
+Ce dont le bot se souvient est borné par serveur, mais pas au total : un bot dans beaucoup de serveurs peut quand même remplir la mémoire de son processus. Avant que cela n’arrive, le bot se souvient de moins de choses de lui-même. Il regarde sa mémoire toutes les 30 secondes :
+
+<Steps>
+  <Step title="La mémoire reste au-dessus de 80 % : le bot se souvient de moitié moins">
+    Une seule mesure élevée ne suffit pas : Node libère de la mémoire tout seul quand elle se remplit, donc seul un niveau qui reste élevé, sur deux mesures de suite, veut dire que quelque chose doit partir. Le bot divise alors ses limites par deux : 50 membres par serveur au lieu de 100, et la moitié des utilisateurs qu’il connaît. Ceux qu’il n’avait pas vus depuis le plus longtemps partent. Il vous le dit :
+
+    ```text
+    ℹ Memory was getting full (1638 MB of 2048 MB): the bot now remembers 50 members per server at most, and forgot 412000 members and users it had not seen for the longest. Nothing changes for your code.
+    ```
+
+    Si la mémoire est toujours élevée 30 secondes plus tard, il divise à nouveau par deux : 25, 12, 6... jusqu’à 0. Les serveurs, salons et rôles ne sont jamais touchés : c’est ce qui garde tout le reste exact.
+  </Step>
+  <Step title="Entre 50 % et 80 % : rien ne bouge">
+    Les limites ne montent ni ne descendent à chaque mesure.
+  </Step>
+  <Step title="La mémoire reste sous 50 % : le bot se souvient de plus à nouveau">
+    Après deux mesures de suite sous 50 %, les membres par serveur remontent pas à pas (deux fois plus à chaque mesure, jusqu’à ce dont vos fichiers ont besoin) et les utilisateurs d’un coup. On vous prévient quand tout est revenu :
+
+    ```text
+    ℹ Memory is fine again: the bot remembers up to 100 members per server again.
+    ```
+  </Step>
+  <Step title="Plus rien à céder : le bot vous demande">
+    C’est seulement quand ses limites sont déjà à zéro et que la mémoire est toujours au-dessus de 80 % que le bot demande quelque chose. Il le dit une fois, jusqu’à ce que la mémoire ne soit plus pleine :
+
+    ```text
+    ⚠ The bot uses 1990 MB of the 2048 MB of memory it can use, and already remembers as little as it can: 1840 servers and 61200 channels, which it needs. Remembering less freed 35 MB. If your own code keeps things that only grow (a list, a Map), that is what fills it: look there first. Otherwise give the bot more memory: set NODE_OPTIONS=--max-old-space-size=4096 (in MB) on a machine that has that much.
+    ```
+  </Step>
+</Steps>
+
+Les deux premiers messages n’attendent rien de vous. Le dernier vous dit combien de mémoire a été rendue en se souvenant de moins, ce qui dit où va la mémoire :
+
+- **Peu** (comme les 35 MB ci-dessus) : la mémoire n’est pas utilisée par ce dont le bot se souvient. Cherchez dans votre propre code quelque chose qui ne fait que grandir, comme une liste ou une `Map` à laquelle vous ajoutez sans jamais la vider.
+- **Beaucoup**, et la mémoire est toujours pleine : votre bot est gros. `NODE_OPTIONS=--max-old-space-size=4096` lui laisse utiliser 4 Go, si votre machine les a.
+
+<Note>
+  Quoi que le bot garde en mémoire, votre code fonctionne de la même façon : ce qui vient avec un événement est toujours là. Se souvenir de moins veut seulement dire que `guild.members` contient moins de membres.
+</Note>
+
+## Gros bots
+
+Un gros bot tourne sur [plusieurs processus](/fr/run/start#gros-bots). Chacun a sa propre mémoire : il se souvient des serveurs qu’il fait tourner, et s’occupe de sa mémoire comme décrit ici.
+
+<CardGroup cols={2}>
+  <Card title="Événements" icon="zap" href="/fr/events">
+    Ce que reçoit votre fonction, et ce qui ne manque jamais.
+  </Card>
+  <Card title="chapterjs start" icon="rocket" href="/fr/run/start">
+    Faire tourner votre bot pour tout le monde, sur un ou plusieurs processus.
+  </Card>
+</CardGroup>

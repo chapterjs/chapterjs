@@ -1,0 +1,30 @@
+---
+title: 'CategoryChannel'
+description: 'Une catégorie : les salons qu’elle regroupe'
+---
+
+Un `CategoryChannel` est une catégorie : elle regroupe des salons. C’est ce que donne `channel.isCategory()`, et le `parent` d’un salon d’un serveur.
+
+```ts
+import type { CategoryChannel } from 'chapterjs';
+
+async function hide(category: CategoryChannel) {
+  const everyone = category.guild.everyoneRole;
+  await category.setPermissions(everyone, { deny: ['ViewChannel'] }, 'Catégorie masquée');
+  for (const channel of category.children) {
+    await channel.setPermissions(everyone, { deny: ['ViewChannel'] }, 'Catégorie masquée');
+  }
+}
+```
+
+<Note>
+  Où se trouve un salon dans la liste, et comment le changer, est dans [Options](/fr/reference/options#guildchanneleditoptions) : `position` et `parentId`.
+</Note>
+
+## Propriétés
+
+Il a aussi tout ce qu’a [GuildChannel](/fr/reference/channels#guildchannel). On ne peut pas envoyer de messages dans une catégorie.
+
+<ResponseField name="children" type="GuildChannel[]">
+  Les salons de la catégorie que connaît le bot, dans l’ordre.
+</ResponseField>

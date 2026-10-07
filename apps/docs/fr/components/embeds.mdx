@@ -1,0 +1,130 @@
+---
+title: 'Embeds et mise en page'
+description: 'Écrire un embed une fois et l’utiliser partout, et construire des messages avec des textes, des sections, des galeries et des conteneurs'
+---
+
+Un embed utilisé dans plusieurs messages est un fichier de `src/components/embeds/`. C’est l’embed lui-même, ou une fonction de ce qu’il affiche.
+
+```ts src/components/embeds/welcome.ts
+import { embed, type GuildMember } from 'chapterjs';
+
+export default embed((member: GuildMember) => ({
+  title: `Bienvenue ${member.displayName} !`,
+  description: `Vous êtes le membre numéro ${member.guild.memberCount ?? '?'}.`,
+  color: 0xc026d3,
+  thumbnail: { url: member.avatarURL() },
+}));
+```
+
+```ts src/events/memberJoin/greet.ts
+import { event } from 'chapterjs';
+import welcome from '../../components/embeds/welcome';
+
+export default event(async ({ member, guild }) => {
+  const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+  if (general?.isText()) await general.send({ embeds: [welcome(member)] });
+});
+```
+
+C’est tout : `welcome(member)` renvoie l’embed, vérifié par rapport aux limites de Discord au moment de l’envoi. Un embed qui a toujours la même apparence se donne directement, et s’utilise sans l’appeler :
+
+```ts src/components/embeds/rules.ts
+import { embed } from 'chapterjs';
+
+export default embed({
+  title: 'Règlement',
+  description: '1. Soyez gentils.\n2. Pas de spam.\n3. Amusez-vous.',
+  color: 0x5865f2,
+});
+```
+
+```ts src/commands/rules.ts
+import { command } from 'chapterjs';
+import rules from '../components/embeds/rules';
+
+export default command({
+  description: 'Affiche le règlement',
+  async run({ interaction }) {
+    await interaction.reply({ embeds: [rules] });
+  },
+});
+```
+
+Un embed statique est vérifié au chargement du fichier, donc un titre de plus de 256 caractères est une erreur dans `chapterjs dev` avant que quoi que ce soit ne soit envoyé. Ce que peut contenir un embed est dans [Embed](/fr/reference/message-options#embed).
+
+<Note>
+  `embed()` et `EmbedFile` sont dans la [référence](/fr/reference/embed) ; chaque helper de mise en page de cette page est dans [Mise en page](/fr/reference/layout).
+</Note>
+
+## Des messages faits de composants
+
+Discord peut afficher un message fait uniquement de composants : des textes, des sections avec une miniature ou un bouton à côté, des galeries d’images, des fichiers, des séparateurs, et des conteneurs avec une ligne de couleur comme un embed. Écrivez-les avec les helpers de `'chapterjs'`, là où est le message :
+
+```ts src/commands/profile.ts
+import { command, container, linkButton, section, separator, text, thumbnail } from 'chapterjs';
+
+export default command({
+  description: 'Affiche votre profil',
+  async run({ interaction, member }) {
+    await interaction.reply({
+      components: [
+        container(
+          [
+            section(
+              [`## ${member.displayName}`, `Arrivé le ${member.joinedAt?.toDateString() ?? 'il y a un moment'}`],
+              thumbnail(member.avatarURL())
+            ),
+            separator(),
+            text(`${member.roles.length} rôles`),
+            linkButton({ label: 'Ouvrir dans Discord', url: `https://discord.com/users/${member.id}` }),
+          ],
+          { color: 0xc026d3 }
+        ),
+      ],
+    });
+  },
+});
+```
+
+Dès qu’un message en contient un, Discord n’affiche que des composants : il ne prend ni `content` ni `embeds`, et ChapterJS le dit avant l’envoi si vous en passez un. Mettez le texte dans `text()`, et l’apparence d’un embed dans un `container()`.
+
+| Helper | Ce que c’est |
+| --- | --- |
+| `text(content)` | Un texte, avec du Markdown. Tous les textes d’un message font 4000 caractères au total. |
+| `section(texts, accessory)` | 1 à 3 textes avec un bouton ou une `thumbnail()` à côté |
+| `thumbnail(url)` | Une petite image, à côté d’une section |
+| `gallery(items)` | 1 à 10 images ou vidéos en grille |
+| `file(name)` | Un fichier envoyé avec le message (`files`), affiché là où il est placé |
+| `separator()` | De l’espace entre deux pièces, avec une ligne par défaut |
+| `container(children, { color })` | Un cadre autour de textes, sections, rangées, galeries, fichiers et séparateurs |
+| `row(components)` | Une rangée de 5 boutons au plus, ou un menu, quand vous voulez choisir les rangées vous-même |
+
+Une image de galerie ou une miniature est un lien, ou un fichier du message avec `attachment://nom`. Les fichiers de votre bot vivent dans `public/`, et [`asset()`](/fr/messages#fichiers) en choisit un avec l’aide de votre éditeur :
+
+```ts src/commands/photos.ts
+import { asset, command, gallery, text } from 'chapterjs';
+
+export default command({
+  description: 'Affiche les photos de la semaine',
+  async run({ interaction }) {
+    await interaction.reply({
+      files: [asset('photos/monday.png')],
+      components: [
+        text('# Cette semaine'),
+        gallery(['attachment://monday.png', { url: 'https://example.com/tuesday.png', description: 'L’équipe mardi' }]),
+      ],
+    });
+  },
+});
+```
+
+Un message contient 40 composants au plus, rangées et pièces dans les conteneurs comprises. Dépasser une limite lève une erreur avant tout envoi, avec la limite dans le message.
+
+<CardGroup cols={2}>
+  <Card title="Envoyer des messages" icon="mail" href="/fr/messages">
+    Tout ce qu’un message peut contenir, et où il va.
+  </Card>
+  <Card title="Boutons" icon="mouse-pointer-click" href="/fr/components">
+    Lancer du code quand on clique sur un bouton.
+  </Card>
+</CardGroup>

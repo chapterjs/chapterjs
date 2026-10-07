@@ -1,0 +1,52 @@
+---
+title: 'VoiceChannel'
+description: 'Un salon vocal ou de conférence : débit, limite d’utilisateurs, région et statut'
+---
+
+Un `VoiceChannel` est un salon vocal ou de conférence : on y parle, et on peut aussi y écrire. C’est ce que donne `channel.isVoice()`.
+
+```ts
+import type { VoiceChannel } from 'chapterjs';
+
+async function openGame(channel: VoiceChannel, game: string) {
+  await channel.setStatus(`On joue à ${game}`);
+  const seats = channel.userLimit === 0 ? 'pas de limite' : `${channel.userLimit} places`;
+  await channel.send(`${channel} est ouvert : ${seats}.`);
+}
+```
+
+<Note>
+  Comment envoyer, modifier et lire des messages est dans [Envoyer des messages](/fr/messages).
+</Note>
+
+## Propriétés
+
+Il a aussi tout ce qu’a [GuildChannel](/fr/reference/channels#guildchannel) et [ce que partagent les salons avec des messages](/fr/reference/channels#salons-avec-des-messages).
+
+<ResponseField name="bitrate" type="number">
+  La qualité audio, en bits par seconde.
+</ResponseField>
+
+<ResponseField name="userLimit" type="number">
+  Combien de personnes peuvent rejoindre ; `0` veut dire pas de limite.
+</ResponseField>
+
+<ResponseField name="rtcRegion" type="string | null">
+  La région vocale du salon ; `null` quand Discord la choisit.
+</ResponseField>
+
+<ResponseField name="isStage" type="boolean">
+  Si c’est un salon de conférence, où quelques-uns parlent et les autres écoutent.
+</ResponseField>
+
+## Actions
+
+### setStatus()
+
+```ts
+setStatus(status: string | null, reason?: string): Promise<void>
+```
+
+Règle le statut affiché sous le nom du salon vocal ; `null` le retire.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#set-voice-channel-status)

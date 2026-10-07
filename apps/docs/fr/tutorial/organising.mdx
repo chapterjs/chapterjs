@@ -1,0 +1,121 @@
+---
+title: 'Organiser un projet qui grandit'
+description: 'Partager du code entre fichiers, garder ce que le bot apprend, imposer un délai entre deux utilisations, garder les fichiers courts, et savoir ce que le framework ne fait pas encore'
+---
+
+Avec une douzaine de commandes, quelques événements et des composants, un projet a besoin d’un peu d’ordre. Cette page parle des habitudes qui le gardent lisible, et des deux questions que tout bot rencontre dès sa première semaine : « où mettre le code que deux fichiers partagent ? » et « où stocker les choses ? ».
+
+## Le code partagé
+
+Tout dossier de `src/` que le framework ne lit pas est à vous. Le plus courant est `src/lib/`. Mettez-y une fonction, importez-la par un chemin relatif, sans extension :
+
+```ts src/lib/warnings.ts
+const warnings = new Map<string, number>();
+
+export function addWarning(userId: string): number {
+  const count = (warnings.get(userId) ?? 0) + 1;
+  warnings.set(userId, count);
+  return count;
+}
+
+export function warningsOf(userId: string): number {
+  return warnings.get(userId) ?? 0;
+}
+```
+
+```ts src/commands/warnings.ts
+import { command } from 'chapterjs';
+import { warningsOf } from '../lib/warnings';
+
+export default command({
+  description: 'Compte les avertissements de quelqu’un',
+  options: {
+    who: { type: 'user', description: 'Qui', required: true },
+  },
+  async run({ interaction, options }) {
+    const count = warningsOf(options.who.id);
+    await interaction.reply(`${options.who.displayName} a ${count} avertissement(s).`);
+  },
+});
+```
+
+Les fichiers que vous importez sont surveillés comme les autres : enregistrer `src/lib/warnings.ts` recharge chaque fichier qui l’utilise.
+
+Dans un dossier conventionnel, un fichier qui commence par `_` n’est jamais lu comme une commande ou un événement, donc le code partagé peut aussi se trouver à côté des fichiers qui l’utilisent : `src/commands/(moderation)/_checks.ts`. Choisissez une habitude et gardez-la ; `src/lib/` est la plus simple.
+
+## Garder les fichiers courts
+
+Un fichier de commande devrait se lire comme un résumé : vérifier, faire, répondre. Quand `run` dépasse un écran, déplacez le travail dans une fonction de `src/lib/` et gardez le fichier comme la colle entre Discord et cette fonction. Deux raisons :
+
+- Une fonction de `src/lib/` peut être testée ou réutilisée sans Discord ; un `run`, non.
+- La prochaine personne qui lira le fichier (vous, dans trois mois) voit ce que fait la commande sans lire comment.
+
+## Stocker des données
+
+Voici le point important de cette page : **rien ne survit à un redémarrage**. La `Map` de `warnings.ts` repart vide à chaque démarrage du bot, et `chapterjs dev` la recharge à chaque enregistrement. Seules les `data` d’un composant survivent, parce qu’elles vivent dans le message sur Discord.
+
+Le framework n’a pas de stockage à lui aujourd’hui. Pour tout ce dont votre bot doit se souvenir (avertissements, scores, réglages par serveur), utilisez ce que Node propose :
+
+- **Un fichier JSON**, lu au démarrage et écrit à chaque changement, avec `node:fs`. Suffisant pour les petits bots, et simple.
+- **Une base de données** faite pour Node (SQLite via un paquet, ou un serveur comme PostgreSQL). Pour un bot avec beaucoup de serveurs ou beaucoup d’écritures.
+
+Quel que soit votre choix, gardez-le dans `src/lib/` derrière quelques fonctions (`getSettings(guildId)`, `saveSettings(...)`), pour que les commandes et les événements ne sachent jamais comment c’est stocké. Passer d’un fichier JSON à une base de données ne change alors qu’un fichier.
+
+<Info>
+  En production, un gros bot tourne sur plusieurs processus, chacun avec sa propre mémoire. Une `Map` dans un processus n’est pas vue par les autres : un bot qui deviendra gros garde ses données hors du processus, dans une base de données, dès le départ.
+</Info>
+
+## Un délai entre deux utilisations
+
+« Pas plus d’une fois par jour et par personne » est un besoin courant, et une commande le déclare avec `cooldown` :
+
+```ts src/commands/daily.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Récupère votre récompense quotidienne',
+  ephemeral: true,
+  cooldown: '1d',
+  async run({ interaction }) {
+    await interaction.reply('Voici votre récompense ! 🎁');
+  },
+});
+```
+
+Quelqu’un qui utilise à nouveau `/daily` trop tôt reçoit une réponse privée qui dit quand il pourra (« You can use this command again 8 October 2026 17:12. » ; un délai court affiche « in 5 seconds », en décompte, et la réponse disparaît quand le moment arrive), et `run` ne tourne pas. `cooldown: { user: '10m', channel: '1m', guild: '1h' }` fait aussi attendre un salon ou un serveur entier. Comme la `Map` ci-dessus, les dernières utilisations sont gardées en mémoire : elles repartent vides au démarrage du bot. Les détails sont dans le [Guide](/fr/commands#délais-entre-deux-utilisations).
+
+## Regrouper les fichiers
+
+Les deux règles de nommage de la [visite](/fr/tutorial/tour#deux-règles-de-nommage-pour-votre-propre-rangement) sont ce qu’il vous faut : des dossiers `(fun)/`, `(moderation)/`, `(admin)/` dans `src/commands/`, `src/events/` et `src/components/`, et des fichiers `_` pour ce qu’ils partagent. Ils ne changent rien pour Discord.
+
+Pour les commandes, préférez des **commandes** rangées en groupes (`/ban`, `/kick` dans `(moderation)/`) aux **sous-commandes** (`/mod ban`, `/mod kick` dans `mod/`), sauf si ce sont des variantes d’une même action (`/timeout add`, `/timeout remove`). Discord cache une commande entière aux personnes qui n’ont pas ses permissions, jamais une seule sous-commande : avec `/mod ban` et `/mod kick`, quelqu’un qui a seulement le droit d’expulser voit quand même `/mod ban`.
+
+## Ce que le framework ne fait pas encore
+
+ChapterJS est jeune, et certaines choses dont un bot peut avoir envie ne sont pas là. Les connaître évite une recherche :
+
+| Pas encore là | En attendant |
+| --- | --- |
+| L’autocomplétion (des suggestions pendant la saisie d’une option) | `choices`, quand les valeurs sont connues à l’avance |
+| Les commandes de menu contextuel (clic droit sur un utilisateur ou un message) | Une commande slash avec une option `user` |
+| Attendre le prochain message ou clic d’une personne | Un bouton ou un menu qui transporte ce qu’il lui faut dans `data` |
+| Le stockage | Le modèle ci-dessus |
+| Les réactions, fils, salons vocaux, bannissements et autres événements | Pas encore listés dans `src/events/` |
+| Tourner sur plusieurs machines | Plusieurs processus sur une machine, tout seul |
+
+La liste complète, tenue à jour, est dans [Ce qui n’est pas encore là](/fr/not-yet).
+
+## Récapitulatif
+
+- Le code partagé va dans `src/lib/` (ou un fichier `_`), importé sans extension, et rechargé avec les fichiers qui l’utilisent.
+- Rien ne survit à un redémarrage sauf les `data` des composants : stockez ce qui compte dans un fichier JSON ou une base de données, derrière quelques fonctions.
+- Un délai entre deux utilisations est un réglage de la commande, `cooldown: '1d'`, gardé en mémoire ; un projet qui grandit utilise des dossiers `(groupe)`.
+
+<CardGroup cols={2}>
+  <Card title="Mémoire et limites" icon="brain" href="/fr/tutorial/memory-and-limits">
+    Ce dont le bot se souvient, et les limites de Discord qu’il gère pour vous.
+  </Card>
+  <Card title="Guide : Ce qui n’est pas encore là" icon="book-open" href="/fr/not-yet">
+    Tout ce que le framework ne fait pas, et quoi faire en attendant.
+  </Card>
+</CardGroup>

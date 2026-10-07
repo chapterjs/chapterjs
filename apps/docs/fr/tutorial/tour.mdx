@@ -1,0 +1,177 @@
+---
+title: 'Visite du projet'
+description: 'À quoi sert chaque fichier de votre projet, la règle unique qui les organise, et comment l’éditeur et le rechargement à chaud vous aident'
+---
+
+Votre projet tourne. Avant de le modifier, faites-en le tour : un projet ChapterJS est petit, et une fois que vous savez à quoi sert chaque fichier, vous savez où va chaque chose pour le reste du tutoriel.
+
+<Tree>
+  <Tree.Folder name="buddy" defaultOpen>
+    <Tree.Folder name=".chapterjs" />
+    <Tree.Folder name="node_modules" />
+    <Tree.Folder name="public" />
+    <Tree.Folder name="src" defaultOpen>
+      <Tree.Folder name="commands" defaultOpen>
+        <Tree.File name="ping.ts" />
+      </Tree.Folder>
+      <Tree.Folder name="components" defaultOpen>
+        <Tree.Folder name="buttons" defaultOpen>
+          <Tree.File name="again.ts" />
+        </Tree.Folder>
+      </Tree.Folder>
+      <Tree.Folder name="events" defaultOpen>
+        <Tree.Folder name="ready" defaultOpen>
+          <Tree.File name="online.ts" />
+        </Tree.Folder>
+      </Tree.Folder>
+      <Tree.Folder name="messages" defaultOpen>
+        <Tree.File name="en-US.ts" />
+        <Tree.File name="fr.ts" />
+      </Tree.Folder>
+      <Tree.File name="presence.ts" />
+    </Tree.Folder>
+    <Tree.File name=".env" />
+    <Tree.File name=".env.example" />
+    <Tree.File name=".gitignore" />
+    <Tree.File name="package.json" />
+    <Tree.File name="tsconfig.json" />
+  </Tree.Folder>
+</Tree>
+
+## La règle unique : l’endroit où est un fichier dit ce qu’il est
+
+Tout ce que fait votre bot vit dans `src/`. ChapterJS ne vous demande jamais d’enregistrer quoi que ce soit : un fichier est une commande, une réaction à un événement ou un bouton **à cause du dossier où il se trouve**, comme une page d’un site web se trouve à l’adresse de son fichier. Ouvrez `src/commands/ping.ts` :
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Répond Pong !',
+  async run({ interaction }) {
+    await interaction.reply('Pong !');
+  },
+});
+```
+
+Rien dans ce fichier ne dit « ceci est la commande `/ping` ». Le nom vient du nom du fichier, `ping.ts`, et le fait que ce soit une commande vient du dossier, `src/commands/`. Le fichier dit seulement ce que la commande *fait*. Renommez le fichier en `hello.ts`, et la commande devient `/hello`, sans rien d’autre à changer.
+
+C’est la règle pour chaque dossier que lit le framework :
+
+| Dossier | Un fichier dedans est | Il exporte |
+| --- | --- | --- |
+| `src/commands/` | Une commande slash, nommée d’après son chemin : `ping.ts` est `/ping`, `mod/ban.ts` est `/mod ban` | `command({ ... })` |
+| `src/events/<event>/` | Une réaction à l’événement nommé par le dossier : chaque fichier de `memberJoin/` tourne quand quelqu’un arrive | `event(({ ... }) => { ... })` |
+| `src/components/buttons/`, `selects/`, `modals/`, `embeds/` | Un bouton, un menu déroulant, un formulaire ou un embed, distingués par leur chemin | `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed(...)` |
+| `src/tasks/` | Quelque chose que le bot fait tout seul, régulièrement ou à des heures données | `task({ ... })` |
+| `src/messages/` | Une langue du bot, nommée d’après elle : `fr.ts` est le français | `language({ ... })` |
+| `src/presence.ts` | Le seul fichier qui dit ce que le bot affiche sous son nom | `presence({ ... })` |
+
+Tout autre dossier de `src/` est à vous : `src/lib/`, `src/db/`, n’importe quoi. Le framework ne lit que les dossiers ci-dessus, et vos fichiers importent le reste comme d’habitude.
+
+Pourquoi ce choix ? Parce que l’alternative, une liste quelque part qui dit « la commande `/ping` est dans ce fichier, l’événement de bienvenue dans celui-là », est une liste que vous devez tenir à jour à la main. Ici, il n’y a pas de liste. Ajouter une commande, c’est ajouter un fichier ; en retirer une, c’est le supprimer.
+
+## Le même import partout
+
+Chaque fichier commence par `import { command } from 'chapterjs'`, ou `event`, `button`... Tous viennent du même paquet, `chapterjs`. Il n’y a rien d’autre à importer : pas de client, pas de configuration, pas de fichier du framework. Et dans chaque dossier, la fonction sait à quoi s’attendre : `event` dans `src/events/memberJoin/` donne un membre à votre fonction, et `event` dans `src/events/messageCreate/` lui donne un message, avec la même ligne d’import.
+
+Comment le sait-elle ? C’est le dossier suivant.
+
+## `.chapterjs/` : généré, ignoré, supprimable
+
+Ce dossier est écrit par le framework, et git l’ignore. Il contient les **types de votre projet** : la description de ce que reçoit chaque fonction dans chaque dossier, que votre éditeur lit pour compléter ce que vous tapez et souligner une erreur. Il garde aussi un petit cache (ce qui a été enregistré en dernier auprès de Discord, pour que relancer ne coûte rien) et, plus tard, le bot compilé.
+
+Il est écrit quand vous installez le projet (`postinstall` lance `chapterjs sync`) et à chaque démarrage de `chapterjs dev`. Si votre éditeur dit un jour que `event` n’existe pas, ou qu’il ne sait pas ce que reçoit votre fonction, lancez `chapterjs sync` (`pnpm chapterjs sync`, ou l’équivalent) et rechargez l’éditeur. Vous pouvez aussi supprimer le dossier : il est reconstruit.
+
+## Essayer l’éditeur
+
+Ouvrez `src/commands/ping.ts` dans votre éditeur, et dans `run`, tapez `interaction.` avec le point. L’éditeur liste tout ce qu’une interaction sait faire : `reply`, `defer`, `edit`, `followUp`, `delete`... Tapez maintenant `interaction.replu('Pong !')` avec une faute de frappe : c’est souligné avant même d’enregistrer, avec la méthode qu’il ne connaît pas.
+
+Voilà ce que veut dire « aucun type à écrire ». Vos fichiers sont en TypeScript, pour que l’éditeur puisse faire cela, mais chaque type vient du framework. Vous n’en écrivez jamais.
+
+<Info>
+  Si rien n’est souligné et rien n’est complété, votre éditeur ne lit pas les types. Dans Visual Studio Code, vérifiez que le dossier ouvert est bien le projet lui-même (celui qui contient `package.json`), pas un dossier au-dessus, et lancez `chapterjs sync` une fois.
+</Info>
+
+## Essayer le rechargement à chaud
+
+Lancez le bot (`pnpm dev`) et laissez-le tourner. Changez la réponse dans `src/commands/ping.ts` :
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Répond Pong !',
+  async run({ interaction }) {
+    await interaction.reply('Pong ! 🏓');
+  },
+});
+```
+
+Enregistrez. Le terminal dit :
+
+```text
+↻ Reloaded in 12 ms, 1 command, 1 event, 1 component, a presence, messages in 2 languages loaded
+```
+
+Utilisez à nouveau `/ping` dans Discord : la nouvelle réponse. Vous ne redémarrez jamais le bot pendant que vous l’écrivez : chaque fichier de `src/` est surveillé, et un enregistrement le recharge, avec chaque fichier qui l’importe.
+
+Cassez maintenant le fichier exprès : supprimez `'Pong ! 🏓')` pour que la ligne devienne `await interaction.reply(;`, et enregistrez.
+
+```text
+✗ src/commands/ping.ts:6 Expression expected
+⚠ Reloaded with an error: that file keeps running its last working version
+```
+
+Le bot est toujours en ligne, et `/ping` répond toujours avec la dernière version qui fonctionnait. Corrigez le fichier, enregistrez, et il se recharge. Une erreur ne fait jamais tomber le bot : vous pouvez essayer librement.
+
+## Les autres fichiers
+
+| Fichier | Ce que c’est |
+| --- | --- |
+| `public/` | Les images et fichiers qu’envoie votre bot. Vide pour l’instant ; un chapitre suivant s’en sert. |
+| `node_modules/` | Les paquets installés par votre gestionnaire de paquets, dont `chapterjs`. Ne le modifiez jamais, ne le commitez jamais. |
+| `.env`, `.env.example` | Les valeurs dont votre bot a besoin (la page précédente). |
+| `.gitignore` | Ce que git laisse de côté : `.env`, `node_modules/`, `.chapterjs/`. |
+| `package.json` | L’identité de votre projet : son nom, ses dépendances et ses scripts (`dev`, `build`, `start`, `typecheck`). |
+| `tsconfig.json` | Les réglages de TypeScript. Il ne fait que pointer vers `.chapterjs/`, où sont les vrais réglages ; laissez-le tel quel. |
+
+`chapterjs` est la seule dépendance de votre bot. `typescript` et `@types/node` sont des dépendances de développement : elles vérifient votre code dans l’éditeur et avant une compilation, et ne sont pas nécessaires pour faire tourner le bot.
+
+## Deux règles de nommage pour votre propre rangement
+
+À mesure qu’un projet grandit, `src/commands/` se remplit. Deux sortes de noms ne font jamais partie d’une commande, d’un événement ou d’un composant, pour que vous puissiez ranger les fichiers à votre façon :
+
+<Tree>
+  <Tree.Folder name="src/commands" defaultOpen>
+    <Tree.File name="_shared.ts" />
+    <Tree.Folder name="(fun)" defaultOpen>
+      <Tree.File name="dice.ts" />
+      <Tree.File name="ping.ts" />
+    </Tree.Folder>
+    <Tree.Folder name="(moderation)" defaultOpen>
+      <Tree.File name="warn.ts" />
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+- **Un dossier entre parenthèses ne fait que regrouper des fichiers.** `(fun)/dice.ts` est toujours `/dice`. Discord ne voit jamais le groupe.
+- **Un nom qui commence par `_` est privé.** `_shared.ts` n’est jamais lu comme une commande ; servez-vous-en pour le code que plusieurs fichiers partagent, et importez-le comme n’importe quel fichier.
+
+Sans les parenthèses, un dossier serait une sous-commande : `fun/dice.ts` serait `/fun dice`. C’est une vraie fonctionnalité, utilisée plus tard pour des commandes comme `/mod ban`.
+
+## Récapitulatif
+
+- L’endroit où est un fichier dit ce qu’il est : `src/commands/ping.ts` est `/ping`, et rien ne l’enregistre.
+- Chaque fichier importe une fonction de `chapterjs`, qui sait à quoi s’attendre dans son dossier.
+- `.chapterjs/` contient les types générés ; votre éditeur les lit ; `chapterjs sync` les réécrit.
+- Enregistrez un fichier et le bot l’utilise ; un fichier cassé garde sa dernière version qui fonctionnait.
+- Les dossiers `(groupe)` et les fichiers `_privé` vous servent à ranger.
+
+<CardGroup cols={2}>
+  <Card title="Votre première commande" icon="terminal" href="/fr/tutorial/first-command">
+    Écrire /dice de zéro, et voir ce que le framework vérifie pour vous.
+  </Card>
+  <Card title="Guide : Structure du projet" icon="book-open" href="/fr/setup/project-structure">
+    Chaque fichier et dossier, en bref.
+  </Card>
+</CardGroup>

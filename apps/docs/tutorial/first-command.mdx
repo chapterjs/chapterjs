@@ -1,0 +1,100 @@
+---
+title: 'Your first command'
+description: 'Write /dice from scratch, understand each line, and see what the framework and the editor check for you'
+---
+
+The template gave you `/ping`. Now write a command of your own, `/dice`, which rolls a die. It is four lines of logic, and it is a chance to understand each part of a command file: what it declares, what `run` receives, and what happens when something is wrong.
+
+## The file
+
+Create `src/commands/dice.ts`:
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Rolls a six-sided die',
+  async run({ interaction, user }) {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    await interaction.reply(`${user.displayName} rolled a ${roll}.`);
+  },
+});
+```
+
+Save it with the bot running. The terminal says:
+
+```text
+↻ Reloaded in 15 ms, 2 commands, 1 event, 1 component, a presence, messages in 2 languages loaded
+↻ Commands updated on Discord
+```
+
+Type `/dice` in your test server. It is there, with its description under its name, and it answers.
+
+## Line by line
+
+**`import { command } from 'chapterjs'`.** The function that makes a command. It takes an object describing the command and returns something the framework recognises as one.
+
+**`export default`.** The file hands its command to the framework through its default export. A file of `src/commands/` must export exactly that; one that exports something else is refused with a message that says what to write.
+
+**`description`.** The text Discord shows under the name in the `/` menu, 1 to 100 characters. Besides `run`, it is the only thing a command needs. (The `/ping` of the template has none in its file because the language files give it; that is a later chapter.)
+
+**`async run({ interaction, user })`.** The function that runs when someone uses the command. It receives one object, and you take out of it what you need: here `interaction`, the use of the command, and `user`, the person who used it. The next pages go through everything else that object holds.
+
+**`interaction.reply(...)`.** The answer. Discord shows it under the command, with the name of the person who used it.
+
+**`await`.** Sending the answer is a request to Discord, which takes time. `await` waits for it, and lets the framework know when your function is really done. Always `await` what you ask Discord to do: an error in a request you did not await is reported without the line of your code that caused it.
+
+## The command has to answer
+
+Discord waits for an answer to every use of a command, and tells the person "The application did not respond" when none comes. Try it: comment out the `reply` line, save, and use `/dice`.
+
+```text
+⚠ src/commands/dice.ts /dice finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.
+```
+
+The framework can't answer for you (it does not know what to say), but it tells you right away, with the file. Put the line back.
+
+## What is checked before Discord sees it
+
+Discord has rules for commands: a name is lowercase, with letters, digits, `-` and `_` only, 32 characters at most; a description is 1 to 100 characters; and so on. Breaking one would make Discord refuse the whole list of your commands. So the framework checks each file when it loads, and explains in your terms.
+
+Rename the file to `Dice.ts` and save:
+
+```text
+✗ src/commands/Dice.ts "Dice" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most. The path of the file is the name of the command.
+```
+
+Rename it back. Now remove `description` and save:
+
+```text
+✗ src/commands/dice.ts This command has no description: write it in src/messages/en-US.ts (commands: { "dice": { description: '...' } }), or in the file (description: '...').
+```
+
+Each time, the file is left out until it is fixed, and the other commands keep working. Most of these mistakes are underlined in your editor before you even save: `command()` only accepts what exists.
+
+## Why slash commands and not messages
+
+An older kind of bot reads every message and reacts to the ones that start with `!`, like `!dice`. ChapterJS does not do that for commands, and Discord discourages it, for good reasons:
+
+- A slash command is **discoverable**: people type `/` and see what the bot can do, with descriptions and options, without reading a help page.
+- Discord **validates** what people type before sending it to the bot: a missing option or a wrong value never reaches your code.
+- Reading every message needs the **Message Content Intent**, a privileged one, while slash commands need nothing.
+- Discord shows a command only to the people who have the **permissions** it asks for.
+
+You will still read messages in a later chapter, for things that are not commands, like reacting to a word.
+
+## Recap
+
+- A command is a file of `src/commands/` with `export default command({ description, run })`.
+- `run` receives one object; take `interaction`, `user` and the rest out of it.
+- `await interaction.reply(...)` answers; a command that does not answer is a warning with the file.
+- Every rule of Discord is checked when the file loads, with a message saying what to write.
+
+<CardGroup cols={2}>
+  <Card title="Options" icon="list" href="/tutorial/options">
+    Let people choose the number of sides, and receive it typed.
+  </Card>
+  <Card title="Guide: Commands" icon="book-open" href="/commands">
+    Subcommands, permissions, private messages, in short.
+  </Card>
+</CardGroup>
