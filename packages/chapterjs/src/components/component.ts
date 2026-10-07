@@ -139,7 +139,10 @@ export interface InteractiveConfig<
    * the command the message answers.
    */
   who?: ComponentWho;
-  /** Make the answers of the component only visible to who used it. */
+  /**
+   * Make the answers of the component only visible to who used it. On a
+   * message only the person sees (an ephemeral answer), they already are.
+   */
   ephemeral?: boolean;
 }
 

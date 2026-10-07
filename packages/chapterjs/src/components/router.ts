@@ -15,7 +15,7 @@ import {
   type RawModalSubmitData,
   type RawResolvedData,
 } from '../discord/types/interaction.js';
-import type { RawMessage } from '../discord/types/message.js';
+import { MessageFlags, type RawMessage } from '../discord/types/message.js';
 import {
   authorOf,
   placeContext,
@@ -89,6 +89,16 @@ export class ComponentRouter {
     const message = rawMessage
       ? ctx.entities.message(rawMessage as RawMessage, raw.guild_id)
       : null;
+    // Only the person sees an ephemeral message: what answers a component
+    // on it (an update of that message, a reply) stays with them, whatever
+    // the file says, so `t` speaks their language.
+    // https://docs.discord.com/developers/resources/message#message-object-message-flags
+    const isPrivate =
+      (((rawMessage as RawMessage | undefined)?.flags ?? 0) &
+        MessageFlags.Ephemeral) !==
+      0;
+    const ephemeralOf = (component: LoadedComponent) =>
+      isPrivate || ('ephemeral' in component && component.ephemeral);
 
     const { path, parts } = decodeCustomId(data.custom_id);
     const entry = this.#components.get(path);
@@ -100,17 +110,11 @@ export class ComponentRouter {
         : 'menu';
     const interaction: Interaction = isModal
       ? new ModalInteraction(ctx, rest, user, {
-          ephemeral:
-            entry?.component.kind === 'modal'
-              ? entry.component.ephemeral
-              : false,
+          ephemeral: entry ? ephemeralOf(entry.component) : isPrivate,
           message,
         })
       : new ComponentInteraction(ctx, rest, user, {
-          ephemeral:
-            entry && 'ephemeral' in entry.component
-              ? entry.component.ephemeral
-              : false,
+          ephemeral: entry ? ephemeralOf(entry.component) : isPrivate,
           message: message!,
         });
     if (isComponent && !message) return;
@@ -205,7 +209,7 @@ export class ComponentRouter {
         audienceLocale({
           person: raw.locale,
           guild: place.guild,
-          ephemeral: 'ephemeral' in component ? component.ephemeral : false,
+          ephemeral: ephemeralOf(component),
         })
       ),
     });

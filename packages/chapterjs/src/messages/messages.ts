@@ -178,6 +178,28 @@ export type ParamsArgs<T extends MessageText> = string extends T
     : [params: ParamsOf<T>];
 
 /**
+ * The languages of `src/messages/`, as the editor sees them: one key per
+ * file. Filled in by the `.chapterjs/` folder of the project, empty when
+ * the folder has no language.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ProjectLocales {}
+
+/** A language of `src/messages/`: `'en-US'`, `'fr'`... */
+export type ProjectLocale = keyof ProjectLocales & string;
+
+/**
+ * A language given to `t.in()`: the editor offers the ones of
+ * `src/messages/`, and any language of Discord is accepted (the one of a
+ * person, of a server), `t` then taking the closest one declared. A word
+ * that is no language of Discord is underlined, with the ones of the
+ * project.
+ */
+export type LocaleGiven<L extends string> = L extends Locale
+  ? L
+  : ProjectLocale;
+
+/**
  * `t`, as handlers receive it: gives a text of `src/messages/` in the
  * language of who will read the message, with its placeholders filled in.
  * `M` is the texts of the default language, which types the keys and the
@@ -190,8 +212,20 @@ export interface Translator<M extends object = ProjectMessages> {
   ): string;
   /** The language the texts come from: the one asked, or the closest one declared. */
   readonly locale: Locale;
-  /** The same, for another language: `t.in('fr')('welcome', { name })`. */
-  in(locale: Locale): Translator<M>;
+  /**
+   * A text in another language: `t.in('fr', 'welcome', { name })`, or
+   * `t.in(owner.locale, 'pong')`. The language of the person who will read
+   * it, when it is not the one `t` speaks.
+   */
+  in<L extends ProjectLocale | (string & {}), K extends keyof M & string>(
+    locale: LocaleGiven<L>,
+    key: K,
+    ...params: ParamsArgs<TextOf<M, K>>
+  ): string;
+  /** The same `t` for another language, to write several texts: `t.in('fr')('welcome', { name })`. */
+  in<L extends ProjectLocale | (string & {})>(
+    locale: LocaleGiven<L>
+  ): Translator<M>;
 }
 
 /**

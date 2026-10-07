@@ -255,7 +255,15 @@ export function translatorFor(
   Object.defineProperties(t, {
     locale: { value: picked, enumerable: true },
     in: {
-      value: (other: string) => translatorFor(messages, other),
+      // `t.in('fr')` is a `t`, `t.in('fr', 'welcome', { name })` a text.
+      value: (
+        other: string,
+        key?: string,
+        params?: Record<string, string | number>
+      ) =>
+        key === undefined
+          ? translatorFor(messages, other)
+          : translatorFor(messages, other)(key, params),
       enumerable: false,
     },
   });
@@ -307,7 +315,11 @@ export function missingTranslator(
   }) as unknown as Translator<MessageTexts> & { locale: string };
   Object.defineProperties(t, {
     locale: { value: shown, enumerable: true },
-    in: { value: () => t, enumerable: false },
+    in: {
+      value: (_other: string, key?: string) =>
+        key === undefined ? t : (t as unknown as () => never)(),
+      enumerable: false,
+    },
   });
   Object.freeze(t);
   missing.set(shown, t);

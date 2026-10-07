@@ -231,6 +231,15 @@ describe('the language', () => {
     expect(t.in('en-GB')('hi')).toBe('Hiya');
     expect(t.in('en-GB').locale).toBe('en-GB');
     expect(t.in('ja')('hi')).toBe('Salut');
+    // In one call: the language, the key, the params.
+    expect(t.in('en-GB', 'hi')).toBe('Hiya');
+    expect(t.in('ja', 'hi')).toBe('Salut');
+    expect(
+      (t.in as unknown as (...args: unknown[]) => string)('fr', 'hi', {})
+    ).toBe('Salut');
+    expect(() =>
+      (t.in as unknown as (...args: unknown[]) => string)('fr', 'bye')
+    ).toThrow('There is no message "bye" in src/messages/. It has: hi.');
     expect(() => (t as unknown as (key: string) => string)('bye')).toThrow(
       'There is no message "bye" in src/messages/. It has: hi.'
     );
@@ -287,6 +296,9 @@ describe('the language', () => {
     expect(() => (none as unknown as (key: string) => string)('hi')).toThrow(
       'This project has no language in src/messages/: add one, like src/messages/en-US.ts, to use t().'
     );
+    expect(() =>
+      (none.in as unknown as (...args: unknown[]) => string)('fr', 'hi')
+    ).toThrow('This project has no language in src/messages/');
     expect(missingTranslator(null).locale).toBe('en-US');
   });
 });
@@ -1075,6 +1087,16 @@ declare module 'chapterjs' {
     expect(messagesDeclarations(files, 'src/messages/de.ts')).toContain(
       "import('../../src/messages/fr')"
     );
+    // The languages, for t.in(): the named files, whatever the default.
+    expect(messagesDeclarations(files))
+      .toContain(`  export interface ProjectLocales {
+    "en-US": true;
+    "fr": true;
+  }`);
+    expect(messagesDeclarations([{ file: 'src/messages/fr.ts', path: '' }]))
+      .toContain(`  export interface ProjectLocales {
+    "fr": true;
+  }`);
     expect(
       messagesDeclarations([{ file: 'src/messages/nope.ts', path: '' }])
     ).toBe('');
@@ -1125,8 +1147,13 @@ export default command({ description: 'd', async run({ interaction, t, user }) {
   const a: string = t('pong');
   const b: string = t('welcome', { name: user.username, count: 3 });
   const c: string = t.in('fr')('welcome', { name: 'x', count: 'three' });
+  // A language of the project, one of Discord, or one that comes from Discord.
+  const d: string = t.in('fr', 'welcome', { name: 'x', count: 3 });
+  const e: string = t.in('de', 'pong');
+  const f: string = t.in(interaction.locale, 'pong');
+  const g: string = t.in(interaction.locale)('members', { count: 1 });
   const locale: string = t.locale;
-  await interaction.reply(a + b + c + locale);
+  await interaction.reply(a + b + c + d + e + f + g + locale);
 } });
 `,
       'src/commands/wrong-key.ts': `import { command } from 'chapterjs';
@@ -1143,6 +1170,21 @@ export default command({ description: 'd', run({ t }) { return t('welcome'); } }
 `,
       'src/commands/wrong-locale.ts': `import { command } from 'chapterjs';
 export default command({ description: 'd', run({ t }) { return t.in('en')('pong'); } });
+`,
+      'src/commands/wrong-locale-key.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', run({ t }) { return t.in('en', 'pong'); } });
+`,
+      'src/commands/in-wrong-key.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', run({ t }) { return t.in('fr', 'pang'); } });
+`,
+      'src/commands/in-missing-param.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', run({ t }) { return t.in('fr', 'welcome', { name: 'x' }); } });
+`,
+      'src/commands/in-extra-param.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', run({ t }) { return t.in('fr', 'pong', { x: 1 }); } });
+`,
+      'src/commands/in-any-string.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', run({ t }) { return t.in(String(1), 'pong'); } });
 `,
       'src/commands/plural.ts': `import { command } from 'chapterjs';
 export default command({ description: 'd', run({ t }) { return t('members', { count: 2 }); } });
@@ -1189,11 +1231,16 @@ export default task({ every: '1h', run({ t }) { console.log(t('welcome', { count
     });
     expect(await typeErrors(cwd, fake)).toEqual([
       'src/commands/extra-param.ts',
+      'src/commands/in-any-string.ts',
+      'src/commands/in-extra-param.ts',
+      'src/commands/in-missing-param.ts',
+      'src/commands/in-wrong-key.ts',
       'src/commands/missing-param.ts',
       'src/commands/no-param.ts',
       'src/commands/plural-missing.ts',
       'src/commands/plural-string.ts',
       'src/commands/wrong-key.ts',
+      'src/commands/wrong-locale-key.ts',
       'src/commands/wrong-locale.ts',
       'src/components/selects/wrong.ts',
       'src/events/ready/wrong.ts',
@@ -1579,6 +1626,86 @@ export default command({ description: 'd', async run({ interaction, channel }) {
           .body
       )
     ).toEqual(['"label":"Bienvenue x, membre n°2 !"']);
+    cli.signal('SIGTERM');
+    await cli.exited;
+  });
+
+  it('speaks to the person from a component of a message only they see', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/messages/en-US.ts': EN,
+      'src/messages/fr.ts': FR,
+      // A public command, whose answer is made private at the call.
+      'src/commands/ping.ts': `import { command } from 'chapterjs';
+import again from '../components/buttons/again';
+import more from '../components/buttons/more';
+export default command({ description: 'd', async run({ interaction, t }) {
+  await interaction.reply({ ephemeral: true, content: t('pong') + ' [' + t.locale + ']', components: [again, more] });
+} });
+`,
+      // Neither button says `ephemeral`: the message they are on does.
+      'src/components/buttons/again.ts': `import { button } from 'chapterjs';
+export default button({ label: ({ t }) => t('pong'), async run({ interaction, t }) {
+  await interaction.update(t('pong') + ' [' + t.locale + ']');
+} });
+`,
+      'src/components/buttons/more.ts': `import { button } from 'chapterjs';
+export default button({ label: 'More', async run({ interaction, t }) {
+  await interaction.reply(t('welcome', { name: 'you', count: 1 }));
+} });
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor(
+      '✓ 1 command, 2 components, messages in 2 languages loaded'
+    );
+    const connection = await connected(fake);
+    // The command: `t` was given for everyone, as the warning of the docs says.
+    const sent = answers(fake, '1');
+    connection.dispatch('INTERACTION_CREATE', use('1', 'ping', 'fr'));
+    await waitUntil(() => sent().length === 1, 'the answer');
+    expect(sent()).toEqual(['Pong! [en-US]']);
+    expect(bodies(fake, '1')[0]).toMatchObject({ flags: 64 });
+
+    // Only Alice sees that message: its buttons speak her language.
+    const onPrivate = (id: string, customId: string) => ({
+      ...use(id, '', 'fr'),
+      type: 3,
+      message: rawMessage('100000000000000090', 'Pong! [en-US]', {
+        author: {
+          id: BOT,
+          username: 'test-bot',
+          discriminator: '0',
+          bot: true,
+        },
+        flags: 64,
+        components: [],
+      }),
+      data: { custom_id: customId, component_type: 2 },
+    });
+    const updated = answers(fake, '2');
+    connection.dispatch('INTERACTION_CREATE', onPrivate('2', 'buttons/again'));
+    await waitUntil(() => updated().length === 1, 'the update');
+    expect(bodies(fake, '2')[0]).toEqual({ content: 'Pong ! [fr]' });
+    // And a new answer stays with her, in her language.
+    const replied = answers(fake, '3');
+    connection.dispatch('INTERACTION_CREATE', onPrivate('3', 'buttons/more'));
+    await waitUntil(() => replied().length === 1, 'the reply');
+    expect(bodies(fake, '3')[0]).toEqual({
+      content: 'Bienvenue you, membre n°1 !',
+      flags: 64,
+    });
+    // On a message everyone sees, the file decides, as before.
+    const open = answers(fake, '4');
+    connection.dispatch('INTERACTION_CREATE', {
+      ...onPrivate('4', 'buttons/more'),
+      message: rawMessage('100000000000000093', 'x', { flags: 0 }),
+    });
+    await waitUntil(() => open().length === 1, 'the public reply');
+    expect(bodies(fake, '4')[0]).toEqual({
+      content: 'Welcome you, member #1!',
+      flags: 0,
+    });
     cli.signal('SIGTERM');
     await cli.exited;
   });

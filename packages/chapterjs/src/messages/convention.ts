@@ -353,12 +353,23 @@ export function messagesDeclarations(
   const first = named.find(({ file }) => file === defaultFile) ?? named[0];
   if (!first) return '';
   const path = first.file.replace(/^src\//, '').replace(/\.[^./]+$/, '');
+  const locales = named
+    .map(
+      ({ file }) =>
+        `    ${JSON.stringify(localeOf(file.slice('src/messages/'.length)))}: true;`
+    )
+    .sort()
+    .join('\n');
   return `import type { MessagesOf } from '#chapterjs';
 
 declare module 'chapterjs' {
   /** The texts of src/messages/, as ${first.file} writes them: what \`t\` accepts. */
   export interface ProjectMessages
     extends MessagesOf<typeof import('../../src/${path}').default> {}
+  /** The languages of src/messages/: what \`t.in()\` offers. */
+  export interface ProjectLocales {
+${locales}
+  }
 }
 `;
 }

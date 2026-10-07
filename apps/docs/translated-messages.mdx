@@ -85,13 +85,14 @@ A message is sent once, and everyone in the channel reads the same text: Discord
 | What you send                                                                                               | The language                                 |
 | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | An answer only the person sees (`ephemeral: true` on the command, the button, the menu or the form), a form | The one of the person                        |
+| A button, a menu or a form of a message only the person sees                                                 | The one of the person                        |
 | A private message                                                                                           | The one of the person                        |
 | A public message in a server                                                                                | The one of the server, when Discord knows it |
 | The `ready` event, a task                                                                                   | The default one                              |
 
 Discord only knows the language of a **Community** server. Elsewhere it says `en-US` whatever the server speaks, so a public message there uses the default language of your file: a French bot with `default: 'fr'` speaks French in every server, and a bot in many languages follows the big servers that set theirs.
 
-When that language is not in the file, `t` takes one of the same language in another region (`en-GB` reads the `'en-US'` texts, `es-419` the `'es-ES'` ones, `zh-TW` the `'zh-CN'` ones: add the file when that is not what you want), and the default one otherwise. `t.locale` says which one was taken, and `t.in('fr')` is the same `t` for another language, to write to someone else:
+When that language is not in the file, `t` takes one of the same language in another region (`en-GB` reads the `'en-US'` texts, `es-419` the `'es-ES'` ones, `zh-TW` the `'zh-CN'` ones: add the file when that is not what you want), and the default one otherwise. `t.locale` says which one was taken, and `t.in(locale, key, params)` gives a text in another language, to write to someone else:
 
 ```ts src/events/memberJoin/notify.ts
 import { event } from 'chapterjs';
@@ -100,7 +101,7 @@ export default event(async ({ member, guild, t }) => {
   // `t` speaks the language of the server; the owner may prefer another.
   const owner = await guild.fetchOwner();
   await owner.send(
-    t.in('fr')('welcome', {
+    t.in('fr', 'welcome', {
       name: member.displayName,
       count: guild.memberCount ?? 1,
     })
@@ -108,13 +109,18 @@ export default event(async ({ member, guild, t }) => {
 });
 ```
 
+The editor offers the languages of `src/messages/`, and a language that comes from Discord (`interaction.locale`, `guild.preferredLocale`) is taken as is: `t` picks the closest one declared, as above. To write several texts in that language, `t.in(locale)` alone is the same `t` for it: `const say = t.in(interaction.locale); say('pong')`.
+
 <Warning>
   `t` is given to your function before it runs, for the audience the file
   declares. An answer made private at the call (`interaction.reply({
   ephemeral: true, content: t('pong') })`) in a command that is not
   `ephemeral` keeps the language of the server in `content`, while the
   texts of its components are computed for the person. Put `ephemeral:
-  true` in the file when the answer is for the person alone.
+  true` in the file when the answer is for the person alone: it is then the
+  default of its answers too, so the call needs nothing. The buttons and
+  menus of that answer need nothing either: a message only the person sees
+  is read by them alone, so what they answer with is for the person.
 </Warning>
 
 ## The texts of a button, a menu, a form

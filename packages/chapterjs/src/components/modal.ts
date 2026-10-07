@@ -280,7 +280,10 @@ export interface ModalConfig<
    * receives follows it.
    */
   where?: Where;
-  /** Make the answers of the form only visible to who sent it. */
+  /**
+   * Make the answers of the form only visible to who sent it. When a
+   * component of a message only the person sees opened it, they already are.
+   */
   ephemeral?: boolean;
   /** What to do when someone sends the form. */
   run: (context: ModalContext<Fields, Data, Where>) => unknown;

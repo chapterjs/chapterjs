@@ -184,6 +184,10 @@ describe.skipIf(exe === null || process.platform === 'win32')(
         // The files of public/ are offered to asset(), in every folder.
         'public/logo.png': '',
         'public/photos/monday.png': '',
+        // The languages of src/messages/ are offered to t.in().
+        'src/messages/en-US.ts': `import { language } from 'chapterjs';\nexport default language({ default: true, texts: { pong: 'Pong!' } });\n`,
+        'src/messages/fr.ts': `import { language } from 'chapterjs';\nexport default language({ texts: { pong: 'Pong !' } });\n`,
+        'src/commands/lang.ts': `import { command } from 'chapterjs';\nexport default command({ description: 'd', run({ t }) { return t.in('`,
         'src/commands/photo.ts': `import { asset, command } from 'chapterjs';\nexport default command({ description: 'd', async run({ channel }) { await channel.send({ files: [asset('`,
         'src/events/ready/photo.ts': `import { asset, event } from 'chapterjs';\nexport default event(({ guilds }) => asset('`,
       });
@@ -228,6 +232,20 @@ describe.skipIf(exe === null || process.platform === 'win32')(
       },
       40_000
     );
+
+    it('offers the languages of src/messages/ inside t.in(), and no other', async () => {
+      const cwd = await scaffolded();
+      expect(
+        await offered(
+          exe!,
+          cwd,
+          join(cwd, 'src/commands/lang.ts'),
+          "t.in('",
+          null,
+          items => items.map(item => item.label).sort()
+        )
+      ).toEqual(['en-US', 'fr']);
+    }, 40_000);
 
     it('offers to import command from chapterjs in a command file', async () => {
       const cwd = await scaffolded();
