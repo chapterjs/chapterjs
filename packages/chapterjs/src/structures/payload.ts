@@ -17,6 +17,8 @@ import {
 import type { RawPollCreateRequest } from '../discord/types/poll.js';
 import type { RestFile } from '../rest/rest.js';
 import { toSnakeCase, type Camelize } from '../util/case.js';
+import type { Translator } from '../messages/messages.js';
+import { missingTranslator } from '../messages/translate.js';
 
 /**
  * A rich box in a message: title, description, fields, image...
@@ -178,7 +180,14 @@ function checkEmbeds(embeds: Embed[]): void {
  */
 export function buildMessage(
   input: MessageInput,
-  { edit = false }: { edit?: boolean } = {}
+  {
+    t = missingTranslator(null),
+    edit = false,
+  }: {
+    /** `t` for who will read the message: what its components may be computed from. */
+    t?: Translator;
+    edit?: boolean;
+  } = {}
 ): BuiltMessage {
   if (typeof input === 'string') input = { content: input };
   if (typeof input !== 'object' || input === null) {
@@ -200,7 +209,7 @@ export function buildMessage(
     );
   }
   if (embeds) checkEmbeds(embeds);
-  const rendered = components ? renderComponents(components) : undefined;
+  const rendered = components ? renderComponents(components, t) : undefined;
   if (rendered?.v2 && (count(content) > 0 || embeds?.length)) {
     throw new TypeError(
       'A message built with texts, sections, galleries, files, separators or containers takes no content and no embeds: Discord shows components only. Put the text in text() and the embed in a container().'

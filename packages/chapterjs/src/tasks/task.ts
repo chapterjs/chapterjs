@@ -4,6 +4,7 @@
 import type { Snowflake } from '../discord/types/common.js';
 import type { Guild } from '../structures/guild.js';
 import type { User } from '../structures/user.js';
+import type { TranslationContext } from '../messages/messages.js';
 
 /** What `run` receives: the bot, as the `ready` event gives it, and the time. */
 export interface TaskContext {
@@ -22,7 +23,7 @@ interface TaskConfigBase {
    */
   onStart?: boolean;
   /** What the task does. */
-  run: (context: TaskContext) => unknown;
+  run: (context: TaskContext & TranslationContext) => unknown;
 }
 
 /** A task that runs every so often. */

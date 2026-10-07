@@ -12,6 +12,94 @@ import type { GuildMember } from '../structures/member.js';
 import type { Message } from '../structures/message.js';
 import type { User } from '../structures/user.js';
 import type { DataShape, DataValuesOf } from './custom-id.js';
+import type { Translator } from '../messages/messages.js';
+
+/**
+ * What a text of a component is computed from when it is a function: `t`
+ * in the language of who will read the message, and the data the
+ * component carries.
+ */
+export interface TextContext<Data extends DataShape = DataShape> {
+  /** The texts of `src/messages/`, in the language of who will read the message. */
+  t: Translator;
+  /** What the component carries, as declared in `data`. */
+  data: [DataShape] extends [Data]
+    ? Record<string, string | number | boolean>
+    : DataValuesOf<Data>;
+}
+
+/**
+ * A text shown by a component: written as is, or computed when the
+ * message is sent, from `t` and the data of the component.
+ */
+export type DynamicText<Data extends DataShape = DataShape> =
+  string | ((context: TextContext<Data>) => string);
+
+/** Whether a text is computed when the message is sent. */
+export const isDynamic = (
+  value: unknown
+): value is (context: TextContext) => string => typeof value === 'function';
+
+/**
+ * Checks a text of a component, now when it is written, or when the
+ * message is sent when it is a function: `resolve` is then what to check.
+ * Returns the text, or `undefined` when there is none and none is needed.
+ */
+export function checkDynamicText(
+  what: string,
+  value: unknown,
+  {
+    min = 1,
+    max,
+    required = false,
+  }: { min?: number; max: number; required?: boolean }
+): void {
+  if (value === undefined) {
+    if (required) throw new TypeError(`${what} is missing.`);
+    return;
+  }
+  if (isDynamic(value)) return;
+  checkTextValue(what, value, { min, max });
+}
+
+/** A text given by a file or computed, within the limits of Discord. */
+export function checkTextValue(
+  what: string,
+  value: unknown,
+  { min = 1, max }: { min?: number; max: number }
+): string {
+  if (typeof value !== 'string') {
+    throw new TypeError(
+      `${what} is a text${min === 1 ? ` of 1 to ${max} characters` : ''}, got ${typeof value}.`
+    );
+  }
+  if (
+    value.length < min ||
+    value.length > max ||
+    (min > 0 && value.trim() === '')
+  ) {
+    throw new RangeError(
+      `${what} is ${value.length} characters long: Discord accepts between ${min} and ${max}.`
+    );
+  }
+  return value;
+}
+
+/** The text of a component when the message is sent. */
+export function resolveText(
+  what: string,
+  value: DynamicText | undefined,
+  context: TextContext,
+  limits: { min?: number; max: number }
+): string | undefined {
+  if (value === undefined) return undefined;
+  const text = isDynamic(value) ? value(context) : value;
+  return checkTextValue(
+    isDynamic(value) ? `${what}, as its function returned it,` : what,
+    text,
+    limits
+  );
+}
 
 /**
  * Where a component can be used: in messages of servers (`'guild'`), in

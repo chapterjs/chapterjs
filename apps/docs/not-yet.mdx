@@ -7,8 +7,8 @@ ChapterJS is young. This page lists what it does not have yet, so that you do no
 
 <Note>
   What exists is in the [reference](/reference): slash commands, events,
-  components (buttons, select menus, forms, embeds), tasks and the structures
-  they give you.
+  components (buttons, select menus, forms, embeds), tasks, the presence,
+  translated messages and the structures they give you.
 </Note>
 
 ## Autocomplete
@@ -28,12 +28,6 @@ Meanwhile: a slash command with a `user` option, or a `string` option that takes
 Commands written in a message, like `!ban` or `?help`. Not available: a file of `src/commands/` is always a slash command, registered with Discord.
 
 Meanwhile: a file of `src/events/messageCreate/` that reads `message.content`. It needs the [Message Content Intent](/events/messages#message-content-intent), and the person gets none of what a slash command gives: no list of options, no typing help, no permission check before your function runs.
-
-## Translated answers
-
-[Translations](/commands/translations) cover the name and the description of a command, its options and its choices: what Discord shows before the command is used. What your bot answers is not translated.
-
-Meanwhile: `interaction.locale` is the language of the person. Keep your texts in a file starting with `_`, like `src/commands/_texts.ts`, and pick the right one from there.
 
 ## Waiting for an answer
 

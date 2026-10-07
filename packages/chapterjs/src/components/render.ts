@@ -7,7 +7,9 @@ import {
   ComponentType,
   type RawComponent,
 } from '../discord/types/component.js';
-import { renderedOf, type Rendered } from './instance.js';
+import { renderedOf, resolve, type Rendered } from './instance.js';
+import type { Translator } from '../messages/messages.js';
+import { missingTranslator } from '../messages/translate.js';
 import { autoRows } from './layout.js';
 
 export interface RenderedComponents {
@@ -50,7 +52,8 @@ function textLength(components: readonly RawComponent[]): number {
  * @see https://docs.discord.com/developers/components/reference#component-object
  */
 export function renderComponents(
-  components: readonly unknown[]
+  components: readonly unknown[],
+  t: Translator = missingTranslator(null)
 ): RenderedComponents {
   if (!Array.isArray(components)) {
     throw new TypeError(
@@ -62,7 +65,8 @@ export function renderComponents(
   );
   const rows = autoRows(pieces, 'a message');
   const v2 = rows.some(one => one.kind !== 'row');
-  const raw = rows.map(one => one.raw as RawComponent);
+  // The texts of a piece may be computed now, for who will read the message.
+  const raw = rows.map(one => resolve(one, t).raw as RawComponent);
   const total = count(raw);
   if (total > Limits.MessageComponents) {
     throw new RangeError(

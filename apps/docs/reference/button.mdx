@@ -37,9 +37,11 @@ What `button()` returns: the default export of a button file. Import it where yo
 
 ```ts
 type ButtonFile<Data extends DataShape = {}> = { readonly config: unknown } &
-  ({} extends DataValuesOf<Data>
+  ({} extends Data
     ? ((look?: ButtonLook) => ButtonComponent) & ButtonComponent
-    : (data: DataValuesOf<Data>, look?: ButtonLook) => ButtonComponent)
+    : {} extends DataInputOf<Data>
+      ? ((data?: DataInputOf<Data>, look?: ButtonLook) => ButtonComponent) & ButtonComponent
+      : (data: DataInputOf<Data>, look?: ButtonLook) => ButtonComponent)
 ```
 
 <ResponseField name="config" type="unknown">
@@ -60,8 +62,8 @@ A button needs a `label` or an `emoji`.
 
 What a button looks like. Everything is optional when it is put in a message: what the file says is the default.
 
-<ResponseField name="label" type="string">
-  The text on the button (80 characters at most).
+<ResponseField name="label" type="DynamicText<Data>">
+  The text on the button (80 characters at most): written as is, or a function of `t` and the data, run when the message is sent. See [DynamicText](/reference/messages#dynamictext).
 </ResponseField>
 
 <ResponseField name="emoji" type="EmojiInput">
@@ -129,6 +131,8 @@ What every interactive component gives to its `run`, besides the place.
   The message the component is on.
 </ResponseField>
 
+Every component also receives `t` when the project has a language in `src/messages/`: see [`TranslationContext`](/reference/messages#translationcontext).
+
 <ResponseField name="data" type="DataValuesOf<Data>">
   What the component carries, as declared in `data`.
 </ResponseField>
@@ -159,10 +163,18 @@ type DataKind = 'string' | 'number' | 'boolean'
 
 The kinds of values a component can carry in its `data`.
 
+### DataField
+
+```ts
+type DataField = DataKind | { type: 'string'; default?: string } | { type: 'number'; default?: number } | { type: 'boolean'; default?: boolean }
+```
+
+One value a component carries: its kind, or its kind with a default value, which makes it optional where the component is put in a message.
+
 ### DataShape
 
 ```ts
-type DataShape = Readonly<Record<string, DataKind>>
+type DataShape = Readonly<Record<string, DataField>>
 ```
 
 What a component carries: a name for each value, and its kind.
@@ -173,7 +185,15 @@ What a component carries: a name for each value, and its kind.
 type DataValuesOf<Shape extends DataShape> = { [Name in keyof Shape]: string | number | boolean }
 ```
 
-The values of a `data` declaration, typed from it: `string` for `'string'`, `number` for `'number'`, `boolean` for `'boolean'`.
+The values of a `data` declaration, typed from it: what `run` and the texts of the component receive. A value with a default is always there.
+
+### DataInputOf
+
+```ts
+type DataInputOf<Shape extends DataShape> = { [Name in keyof Shape]: string | number | boolean }
+```
+
+What a message gives to a component: the values of its `data`, those with a default value being optional.
 
 ## The place
 

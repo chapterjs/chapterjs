@@ -141,6 +141,57 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
 
   it.each([
     [
+      'one of its commands',
+      {
+        'src/commands/greet.ts': `import { command } from 'chapterjs';\nexport default command({ run() {} });\n`,
+        'src/messages/en-US.ts': `import { language } from 'chapterjs';
+export default language({ default: true, texts: { a: 'b' }, commands: { greet: { description: 'Greets' } } });
+`,
+      },
+      /src\/messages\/fr\.ts\(5,5\): error TS2353: Object literal may only specify known properties, and 'ping' does not exist in type '\{ readonly greet\?: CommandTranslation<.*> \| undefined; \}'\./,
+    ],
+    [
+      'every command',
+      {
+        'src/messages/en-US.ts': `import { language } from 'chapterjs';
+export default language({ default: true, texts: { a: 'b' } });
+`,
+      },
+      /src\/messages\/fr\.ts\(5,5\): error TS2322: Type '\{ description: string; \}' is not assignable to type 'never'\./,
+    ],
+  ])(
+    'underlines a language file that translates a command its file describes: %s',
+    (_, more, error) => {
+      const cwd = typed({
+        'src/commands/ping.ts': `import { command } from 'chapterjs';\nexport default command({ description: 'Pong', run() {} });\n`,
+        'src/messages/fr.ts': `import { language } from 'chapterjs';
+export default language({
+  texts: { a: 'c' },
+  commands: {
+    ping: { description: 'Pong !' },
+  },
+});
+`,
+        ...more,
+      });
+      // The files run first, and the language file is refused there...
+      const result = buildProject(cwd);
+      expect(result.code).toBe(1);
+      expect(result.output).toContain(
+        '✗ src/messages/fr.ts /ping is described in src/commands/ping.ts: remove its description there to translate it here, or remove it here.'
+      );
+      expect(existsSync(join(cwd, '.chapterjs/build'))).toBe(false);
+      // ...but the types were written from them: the editor underlines it.
+      const types = spawnSync(join(cwd, 'node_modules/.bin/tsc'), ['-b'], {
+        cwd,
+        encoding: 'utf8',
+      });
+      expect(types.stdout).toMatch(error);
+    }
+  );
+
+  it.each([
+    [
       'a file that can not run',
       { 'src/commands/broken.ts': 'export default 5;\n' },
       [

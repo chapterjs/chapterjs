@@ -9,8 +9,10 @@ import {
   ComponentType,
   type RawButton,
 } from '../discord/types/component.js';
+import type { TranslationContext } from '../messages/messages.js';
 import type { ComponentInteraction } from '../structures/interaction.js';
 import type { EmojiInput } from '../structures/message.js';
+import { isDynamic, resolveText, type DynamicText } from './component.js';
 import type {
   ComponentWhere,
   InteractiveConfig,
@@ -21,6 +23,7 @@ import {
   checkData,
   encodeCustomId,
   type DataShape,
+  type DataInputOf,
   type DataValuesOf,
 } from './custom-id.js';
 import { createFile } from './file.js';
@@ -41,9 +44,12 @@ export const BUTTON_STYLES: Record<ButtonStyleName, ButtonStyle> = {
 };
 
 /** What a button looks like. Everything is optional when it is put in a message: what the file says is the default. */
-export interface ButtonLook {
-  /** The text on the button (80 characters at most). */
-  label?: string;
+export interface ButtonLook<Data extends DataShape = DataShape> {
+  /**
+   * The text on the button (80 characters at most): written as is, or a
+   * function of `t` and the data, run when the message is sent.
+   */
+  label?: DynamicText<Data>;
   /** An emoji on the button, before the label. */
   emoji?: EmojiInput;
   /** The color of the button. `'primary'` by default. */
@@ -56,14 +62,16 @@ export interface ButtonLook {
 export type ButtonContext<
   Data extends DataShape = {},
   Where extends ComponentWhere = 'guild',
-> = InteractiveContext<Data> & PlaceOf<Where, ComponentInteraction>;
+> = InteractiveContext<Data> &
+  TranslationContext &
+  PlaceOf<Where, ComponentInteraction>;
 
 /** What a button file gives to `button()`. */
 export interface ButtonConfig<
   Data extends DataShape = {},
   Where extends ComponentWhere = 'guild',
 >
-  extends ButtonLook, InteractiveConfig<Data, Where> {
+  extends ButtonLook<Data>, InteractiveConfig<Data, Where> {
   /** What to do when someone clicks the button. */
   run: (context: ButtonContext<Data, Where>) => unknown;
 }
@@ -77,9 +85,12 @@ export interface ButtonConfig<
 export type ButtonFile<Data extends DataShape = {}> = {
   /** What the file gave to `button()`, not checked yet. */
   readonly config: unknown;
-} & ({} extends DataValuesOf<Data>
+} & ({} extends Data
   ? ((look?: ButtonLook) => ButtonComponent) & ButtonComponent
-  : (data: DataValuesOf<Data>, look?: ButtonLook) => ButtonComponent);
+  : {} extends DataInputOf<Data>
+    ? ((data?: DataInputOf<Data>, look?: ButtonLook) => ButtonComponent) &
+        ButtonComponent
+    : (data: DataInputOf<Data>, look?: ButtonLook) => ButtonComponent);
 
 /**
  * Declares a button. Export the result as the default export of a file of
@@ -139,7 +150,7 @@ export function readLook(what: string, look: unknown): ButtonLook {
       );
     }
   }
-  if (given.label !== undefined) {
+  if (given.label !== undefined && !isDynamic(given.label)) {
     if (
       typeof given.label !== 'string' ||
       given.label.trim() === '' ||
@@ -182,13 +193,27 @@ export function renderButton(
     ...loaded.look,
     ...readLook(name, hasData ? args[1] : args[0]),
   };
-  const raw: RawButton = {
+  const base: RawButton = {
     type: ComponentType.Button,
     style: BUTTON_STYLES[look.style],
     custom_id: encodeCustomId(loaded.path, loaded.data, values),
   };
-  if (look.label !== undefined) raw.label = look.label;
-  if (look.emoji !== undefined) raw.emoji = emojiOf(look.emoji, name);
-  if (look.disabled) raw.disabled = true;
-  return { kind: 'button', raw };
+  if (look.emoji !== undefined) base.emoji = emojiOf(look.emoji, name);
+  if (look.disabled) base.disabled = true;
+  const { label } = look;
+  if (label === undefined) return { kind: 'button', raw: base };
+  if (!isDynamic(label)) return { kind: 'button', raw: { ...base, label } };
+  // The label is computed when the message is sent, for who will read it.
+  return {
+    kind: 'button',
+    raw: t => ({
+      ...base,
+      label: resolveText(
+        `The label of ${name}`,
+        label,
+        { t, data: values },
+        { max: Limits.ButtonLabel }
+      )!,
+    }),
+  };
 }

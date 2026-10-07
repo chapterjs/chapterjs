@@ -72,6 +72,9 @@ export async function dev(options: DevOptions): Promise<number> {
   // Taken before loading: what is saved from now on must be reloaded.
   const loaded = snapshotFolder(src);
   for (const failure of await project.load()) project.report(failure);
+  // Now that the command files ran, a language file only offers the ones
+  // they do not describe.
+  await writeTypes(cwd, project.commands);
 
   // 3. What Discord must agree with before connecting.
   const apiUrl = options.env.CHAPTERJS_API_URL;
@@ -93,7 +96,7 @@ export async function dev(options: DevOptions): Promise<number> {
   // The files of public/ are listed in the types: a file added or removed
   // is offered (or not) by the editor at once.
   const assets = watchPublic(cwd, () => {
-    writeTypes(cwd)
+    writeTypes(cwd, project.commands)
       .then(written => {
         if (written > 0) log.reload('public/ changed: types updated');
       })
@@ -242,6 +245,11 @@ export async function dev(options: DevOptions): Promise<number> {
               configure(bot.ctx.cache, limitsFor(project.events.values()));
               if (project.applyPresence(bot)) log.reload('Presence updated');
             }
+            // A language that appeared or went: `t` is typed from the
+            // folder. A command described in its file, or no longer: the
+            // language files offer it, or not.
+            if ((await writeTypes(cwd, project.commands)) > 0)
+              log.reload('Types updated');
             const intents = project.intents(false);
             if ((intents & ~connectedIntents) !== 0 && bot) {
               // Intents are given when connecting: new ones need a new session.

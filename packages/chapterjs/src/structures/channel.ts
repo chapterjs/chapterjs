@@ -57,6 +57,7 @@ import type { Invite } from './invite.js';
 import { GuildMember } from './member.js';
 import { sendMessage, type Message } from './message.js';
 import { buildMessage, type MessageInput } from './payload.js';
+import { translatorOf } from '../messages/translate.js';
 import { Role } from './role.js';
 import type { User } from './user.js';
 import type { Webhook } from './webhook.js';
@@ -689,7 +690,9 @@ export class ForumChannel extends GuildChannel {
     reason?: string
   ): Promise<ThreadChannel> {
     const { rest, entities } = ctxOf(this);
-    const { body, files } = buildMessage(options.message);
+    const { body, files } = buildMessage(options.message, {
+      t: translatorOf(ctxOf(this), { guild: this.guild }),
+    });
     const raw = await rest.request(
       StartThreadInForumOrMediaChannel,
       [this.id],

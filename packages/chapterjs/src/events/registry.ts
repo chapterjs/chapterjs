@@ -32,6 +32,7 @@ import type {
 } from '../structures/message.js';
 import type { Role } from '../structures/role.js';
 import type { User } from '../structures/user.js';
+import type { TranslationContext } from '../messages/messages.js';
 
 /** What your function receives, for each event. */
 export interface EventContexts {
@@ -280,9 +281,10 @@ interface NarrowedContexts<Options> {
 export type ContextOf<
   Name extends EventName,
   Options = object,
-> = Name extends keyof NarrowedContexts<Options>
+> = (Name extends keyof NarrowedContexts<Options>
   ? NarrowedContexts<Options>[Name]
-  : EventContexts[Name];
+  : EventContexts[Name]) &
+  TranslationContext;
 
 /** The options of an event; nothing for an event without options. */
 export type OptionsOf<Name extends EventName> = Name extends keyof EventOptions
@@ -342,6 +344,11 @@ export interface EventDefinition<Name extends EventName = EventName> {
    * Decided per file: two files of the same folder can differ.
    */
   accepts?: (context: EventContexts[Name], options: OptionsOf<Name>) => boolean;
+  /**
+   * The server the event happened in, read from what the handler receives:
+   * the language `t` speaks. Left out for what happens outside servers.
+   */
+  guildOf?: (context: EventContexts[Name]) => Guild | null;
   sources: {
     [E in GatewayDispatchEventName]: Source<Name, E>;
   }[GatewayDispatchEventName][];
@@ -349,8 +356,11 @@ export interface EventDefinition<Name extends EventName = EventName> {
 
 const I = GatewayIntent;
 
-const guildOf = (ctx: Context, id: Snowflake): Guild | null =>
+const findGuild = (ctx: Context, id: Snowflake): Guild | null =>
   ctx.cache.guilds.get(id) ?? null;
+
+/** The server of a context that has it. */
+const ofGuild = ({ guild }: { guild: Guild | null }): Guild | null => guild;
 
 const channel = (
   on: 'CHANNEL_CREATE' | 'CHANNEL_UPDATE' | 'THREAD_CREATE' | 'THREAD_UPDATE'
@@ -450,7 +460,7 @@ const member = (
 ): Source<'memberJoin' | 'memberUpdate', typeof on> => ({
   on,
   build: (ctx, data) => {
-    const guild = guildOf(ctx, data.guild_id);
+    const guild = findGuild(ctx, data.guild_id);
     if (!guild) return null;
     const { guild_id: guildId, ...raw } = data;
     // The member comes with the event: it is there whatever the bot
@@ -467,7 +477,7 @@ const role = (
 ): Source<'roleCreate' | 'roleUpdate', typeof on> => ({
   on,
   build: (ctx, data) => {
-    const guild = guildOf(ctx, data.guild_id);
+    const guild = findGuild(ctx, data.guild_id);
     const found = guild?.roles.get(data.role.id);
     return guild && found ? { role: found, guild } : null;
   },
@@ -481,6 +491,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   ready: { intents: 0, sources: [] },
 
   messageCreate: {
+    guildOf: ({ message }) => message.guild,
     // Without Message Content, the messages of others come empty.
     intents: ({ where }) => messagesIn(where) | I.MessageContent,
     options: { bots: 'boolean', where: PLACES },
@@ -488,12 +499,14 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     sources: [message('MESSAGE_CREATE')],
   },
   messageUpdate: {
+    guildOf: ({ message }) => message.guild,
     intents: ({ where }) => messagesIn(where) | I.MessageContent,
     options: { bots: 'boolean', where: PLACES },
     accepts: wantedMessage,
     sources: [message('MESSAGE_UPDATE')],
   },
   messageDelete: {
+    guildOf: ofGuild,
     intents: ({ where }) => messagesIn(where),
     options: { where: PLACES },
     accepts: ({ guildId, guild, channel }, options) =>
@@ -527,14 +540,17 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   },
 
   memberJoin: {
+    guildOf: ofGuild,
     intents: I.GuildMembers,
     sources: [member('GUILD_MEMBER_ADD')],
   },
   memberUpdate: {
+    guildOf: ofGuild,
     intents: I.GuildMembers,
     sources: [member('GUILD_MEMBER_UPDATE')],
   },
   memberLeave: {
+    guildOf: ofGuild,
     intents: I.GuildMembers,
     // "The member as it was" is a member the bot remembered.
     remembers: { members: 1000 },
@@ -542,9 +558,9 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
       {
         on: 'GUILD_MEMBER_REMOVE',
         before: (ctx, data) =>
-          guildOf(ctx, data.guild_id)?.members.get(data.user.id) ?? null,
+          findGuild(ctx, data.guild_id)?.members.get(data.user.id) ?? null,
         build: (ctx, data, { before }) => {
-          const guild = guildOf(ctx, data.guild_id);
+          const guild = findGuild(ctx, data.guild_id);
           if (!guild) return null;
           return {
             user: ctx.entities.user(data.user),
@@ -557,23 +573,25 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   },
 
   guildJoin: {
+    guildOf: ofGuild,
     intents: I.Guilds,
     sources: [
       {
         on: 'GUILD_CREATE',
         build: (ctx, data, { joined }) => {
-          const guild = joined ? guildOf(ctx, data.id) : null;
+          const guild = joined ? findGuild(ctx, data.id) : null;
           return guild ? { guild } : null;
         },
       },
     ],
   },
   guildLeave: {
+    guildOf: ofGuild,
     intents: I.Guilds,
     sources: [
       {
         on: 'GUILD_DELETE',
-        before: (ctx, data) => guildOf(ctx, data.id),
+        before: (ctx, data) => findGuild(ctx, data.id),
         // With `unavailable`, an outage: the bot is still in the server.
         build: (_ctx, data, { before }) =>
           before && !data.unavailable ? { guild: before as Guild } : null,
@@ -582,14 +600,17 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   },
 
   channelCreate: {
+    guildOf: ({ channel }) => channel.guild,
     intents: I.Guilds,
     sources: [channel('CHANNEL_CREATE'), channel('THREAD_CREATE')],
   },
   channelUpdate: {
+    guildOf: ({ channel }) => channel.guild,
     intents: I.Guilds,
     sources: [channel('CHANNEL_UPDATE'), channel('THREAD_UPDATE')],
   },
   channelDelete: {
+    guildOf: ({ channel }) => channel.guild,
     intents: I.Guilds,
     sources: [
       deletedChannel('CHANNEL_DELETE'),
@@ -597,17 +618,26 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     ],
   },
 
-  roleCreate: { intents: I.Guilds, sources: [role('GUILD_ROLE_CREATE')] },
-  roleUpdate: { intents: I.Guilds, sources: [role('GUILD_ROLE_UPDATE')] },
+  roleCreate: {
+    guildOf: ofGuild,
+    intents: I.Guilds,
+    sources: [role('GUILD_ROLE_CREATE')],
+  },
+  roleUpdate: {
+    guildOf: ofGuild,
+    intents: I.Guilds,
+    sources: [role('GUILD_ROLE_UPDATE')],
+  },
   roleDelete: {
+    guildOf: ofGuild,
     intents: I.Guilds,
     sources: [
       {
         on: 'GUILD_ROLE_DELETE',
         before: (ctx, data) =>
-          guildOf(ctx, data.guild_id)?.roles.get(data.role_id) ?? null,
+          findGuild(ctx, data.guild_id)?.roles.get(data.role_id) ?? null,
         build: (ctx, data, { before }) => {
-          const guild = guildOf(ctx, data.guild_id);
+          const guild = findGuild(ctx, data.guild_id);
           // Every role of a server is known: one that is not never was.
           if (!guild || !before) return null;
           return { roleId: data.role_id, guild, role: before as Role };

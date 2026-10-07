@@ -9,7 +9,9 @@ import type { RawChannel } from '../discord/types/channel.js';
 import type { RawGuildMember } from '../discord/types/guild.js';
 import type { RawInteraction } from '../discord/types/interaction.js';
 import type { RawUser } from '../discord/types/user.js';
+import { phrase, type FrameworkKey, type What } from '../messages/phrases.js';
 import { DiscordApiError } from '../rest/errors.js';
+import { ctxOf } from '../structures/base.js';
 import type { TextBasedChannel } from '../structures/channel.js';
 import type { Context } from '../structures/context.js';
 import type { Guild } from '../structures/guild.js';
@@ -53,7 +55,7 @@ export interface Place {
 
 export type Placed =
   | { place: Place; refusal?: undefined }
-  | { place?: undefined; refusal: string };
+  | { place?: undefined; refusal: 'guildOnly' | 'dmOnly' | 'notHere' };
 
 /**
  * Where the interaction was used, checked against where `what` works.
@@ -65,7 +67,6 @@ export function resolvePlace(
   user: User,
   rawMember: RawGuildMember | undefined,
   where: Where,
-  what: string,
   warn: (message: string) => void
 ): Placed {
   // In a server Discord sends the member, in a private message the user.
@@ -78,16 +79,14 @@ export function resolvePlace(
       : null;
   const inGuild = guild !== null && member !== null;
   if (where === 'guild' && !inGuild) {
-    return { refusal: `This ${what} can only be used in a server.` };
+    return { refusal: 'guildOnly' };
   }
   if (where === 'dm' && raw.guild_id) {
-    return {
-      refusal: `This ${what} can only be used in a private message with me.`,
-    };
+    return { refusal: 'dmOnly' };
   }
   if (raw.guild_id && !inGuild) {
     // A server the bot is not in: nothing of it is known.
-    return { refusal: `This ${what} can not be used here.` };
+    return { refusal: 'notHere' };
   }
   // Discord sends the channel with the interaction: known without asking.
   const channel =
@@ -99,7 +98,7 @@ export function resolvePlace(
     warn(
       `was used in a channel the bot can't answer in (${channel ? `type ${channel.type}` : 'Discord did not say which'}): it did not run.`
     );
-    return { refusal: `This ${what} can not be used here.` };
+    return { refusal: 'notHere' };
   }
   return { place: { user, guild, member, channel, inGuild } };
 }
@@ -117,9 +116,27 @@ export function placeContext(
   };
 }
 
-/** Answers with a private message, and never fails. */
-export function refuse(interaction: Interaction, message: string): void {
-  interaction.reply({ content: message, ephemeral: true }).catch(() => {});
+/** A phrase of the framework, in the language of the person. */
+export function says(
+  interaction: Interaction,
+  key: FrameworkKey,
+  params?: { what?: What; permissions?: string; count?: number }
+): string {
+  return phrase(ctxOf(interaction), interaction.locale, key, params);
+}
+
+/**
+ * Answers with a private message, in the language of the person, and
+ * never fails.
+ */
+export function refuse(
+  interaction: Interaction,
+  key: FrameworkKey,
+  params?: { what?: What; permissions?: string; count?: number }
+): void {
+  interaction
+    .reply({ content: says(interaction, key, params), ephemeral: true })
+    .catch(() => {});
 }
 
 export interface RunOptions {
@@ -129,7 +146,7 @@ export interface RunOptions {
   /** How the thing is named in messages to the developer: `/ping`, `buttons/ban`. */
   name: string;
   /** What it is, for the person: "command", "button", "menu", "form". */
-  what: string;
+  what: What;
   reporter: Reporter;
   /** What to tell Discord when the answer takes long. */
   defer: () => Promise<void>;
@@ -164,8 +181,8 @@ export function runInteraction(options: RunOptions): void {
         error instanceof DiscordApiError &&
         (error.code === 50013 || error.code === 50001);
       const content = missingPermission
-        ? "I don't have the permission to do that here."
-        : `Something went wrong while running this ${options.what}.`;
+        ? says(interaction, 'missingPermission')
+        : says(interaction, 'failed', { what: options.what });
       const tell = isUpdating(interaction)
         ? // The pending answer is a change of a message: the bad news must
           // not replace that message.

@@ -256,6 +256,7 @@ export function createContext(input: { rest: Rest; cache: Cache }): Context {
     rest: input.rest,
     cache: input.cache,
     self: null,
+    messages: null,
   } as { -readonly [K in keyof Context]: Context[K] };
   ctx.entities = new Entities(ctx);
   return ctx;

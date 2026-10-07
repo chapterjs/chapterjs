@@ -23,6 +23,7 @@ import {
   type Reporter,
 } from '../interactions/dispatch.js';
 import type { Context } from '../structures/context.js';
+import { audienceLocale, translation } from '../messages/translate.js';
 import { CommandInteraction } from '../structures/interaction.js';
 import { remember } from '../structures/known.js';
 import { toCamelCase } from '../util/case.js';
@@ -77,7 +78,7 @@ export class CommandRouter {
     });
     if (!entry) {
       // Still registered on Discord, but its file is gone or broken.
-      refuse(interaction, 'This command is not available right now.');
+      refuse(interaction, 'unavailable');
       return;
     }
     const { command, file } = entry;
@@ -87,11 +88,10 @@ export class CommandRouter {
       user,
       author.member,
       command.where,
-      'command',
       message => this.#options.onWarning(file, `${name} ${message}`)
     );
     if (!placed.place) {
-      refuse(interaction, placed.refusal);
+      refuse(interaction, placed.refusal, { what: 'command' });
       return;
     }
     const { place } = placed;
@@ -102,10 +102,10 @@ export class CommandRouter {
         command.permissions
       );
       if (missing.length > 0) {
-        refuse(
-          interaction,
-          `You need the ${missing.join(', ')} permission${missing.length === 1 ? '' : 's'} to use this command.`
-        );
+        refuse(interaction, 'needsPermissions', {
+          permissions: missing.join(', '),
+          count: missing.length,
+        });
         return;
       }
     }
@@ -115,7 +115,7 @@ export class CommandRouter {
       options = this.#readOptions(ctx, raw, data, given, entry);
     } catch (error) {
       this.#options.onError(file, error);
-      refuse(interaction, 'Something went wrong while running this command.');
+      refuse(interaction, 'failed', { what: 'command' });
       return;
     }
     remember(interaction, {
@@ -128,6 +128,15 @@ export class CommandRouter {
       options: Object.freeze(options),
       user,
       ...placeContext(place, command.where),
+      // `t` speaks the language of who will read the answer.
+      ...translation(
+        ctx,
+        audienceLocale({
+          person: raw.locale,
+          guild: place.guild,
+          ephemeral: command.ephemeral,
+        })
+      ),
     }) as unknown as CommandContext;
 
     runInteraction({

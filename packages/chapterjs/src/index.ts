@@ -45,6 +45,7 @@ export type {
 
 // Components: what the files of src/components/ are written with, and the
 // pieces of a message written where the message is.
+export type { DynamicText, TextContext } from './components/component.js';
 export { button } from './components/button.js';
 export type {
   ButtonConfig,
@@ -101,6 +102,8 @@ export type {
   PlaceOf,
 } from './components/component.js';
 export type {
+  DataField,
+  DataInputOf,
   DataKind,
   DataShape,
   DataValuesOf,
@@ -209,6 +212,24 @@ export type {
   Reaction,
 } from './structures/message.js';
 // Tasks: what the files of src/tasks/ are written with.
+export { language } from './messages/messages.js';
+export type {
+  CommandsTranslations,
+  FrameworkTexts,
+  LanguageConfig,
+  LanguageFile,
+  MessagesOf,
+  MessageText,
+  MessageTexts,
+  PluralText,
+  ProjectCommands,
+  ParamsArgs,
+  ParamsOf,
+  Placeholders,
+  ProjectMessages,
+  TranslationContext,
+  Translator,
+} from './messages/messages.js';
 export { presence } from './presence/presence.js';
 export type {
   Activity,

@@ -3,16 +3,20 @@ title: 'Your Discord application'
 description: 'Create the application of your bot, get its token and the ID of your test server, and enable what your files need'
 ---
 
-A bot is a Discord application with a bot account. You create it once in the [Developer Portal](https://discord.com/developers/applications), and `chapterjs dev` needs two things from it: the token of the bot and the ID of the server you test in.
+A bot is a Discord application with a bot account. You create it in the [Developer Portal](https://discord.com/developers/applications), and `chapterjs dev` needs two things from it: the token of the bot and the ID of the server you test in.
+
+<Info>
+  **Create two applications from the start: one for development, one for production.** Name them after your bot, with "dev" in the name of the first (`my-bot dev`, `my-bot`). The token of the dev one goes in the `.env` of your computer, the token of the other one on the machine that will host your bot. A command for everyone belongs to the bot, not to a server, so with one bot for both your test server shows every command you are changing twice, and the presence, the privileged intents and the token of production are shared with what you try. Why in detail: [A second bot for development](/run/start#a-second-bot-for-development).
+</Info>
 
 <Steps>
   <Step title="Create the application">
-    Open the [Developer Portal](https://discord.com/developers/applications), click **New Application** and give it a name: it is the name people see.
+    Open the [Developer Portal](https://discord.com/developers/applications), click **New Application** and give it a name: it is the name people see. Do it twice, once for the dev bot and once for the production bot.
 
     Then open the **Bot** page of the application. This is where the bot account of your application lives: its username, its avatar and its token.
   </Step>
   <Step title="Copy the token">
-    On the **Bot** page, click **Reset Token** and copy the token it shows. Discord shows a token once: if you lose it, reset it again, which makes the old one stop working everywhere it was used.
+    On the **Bot** page of the **dev** application, click **Reset Token** and copy the token it shows. Discord shows a token once: if you lose it, reset it again, which makes the old one stop working everywhere it was used.
 
     Put it in the `.env` file of your project:
 

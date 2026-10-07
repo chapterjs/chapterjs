@@ -37,9 +37,11 @@ What `modal()` returns: the default export of a modal file. Import it where some
 
 ```ts
 type ModalFile<Fields extends ModalFields = ModalFields, Data extends DataShape = {}> = { readonly config: unknown } &
-  ({} extends DataValuesOf<Data>
+  ({} extends Data
     ? ((options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
-    : (data: DataValuesOf<Data>, options?: ModalInstanceOptions<Fields>) => ModalComponent)
+    : {} extends DataInputOf<Data>
+      ? ((data?: DataInputOf<Data>, options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
+      : (data: DataInputOf<Data>, options?: ModalInstanceOptions<Fields>) => ModalComponent)
 ```
 
 <ResponseField name="config" type="unknown">
@@ -62,8 +64,8 @@ What a form can hold when it opens: a value for some of its fields. A `string` f
 
 What a modal file gives to `modal()`.
 
-<ResponseField name="title" type="string" required>
-  The title of the form (45 characters at most).
+<ResponseField name="title" type="DynamicText" required>
+  The title of the form (45 characters at most): written as is, or a function of `t` and the data, run when the form opens. See [DynamicText](/reference/messages#dynamictext).
 </ResponseField>
 
 <ResponseField name="fields" type="ModalFields" required>
@@ -106,12 +108,12 @@ type ModalField = TextField | SelectField | EntityField | FilesField | RadioFiel
 
 One field of a form. Every field but a note has:
 
-<ResponseField name="label" type="string" required>
-  The name of the field, above it (45 characters at most).
+<ResponseField name="label" type="DynamicText" required>
+  The name of the field, above it (45 characters at most): written as is, or a function of `t` and the data, run when the form opens.
 </ResponseField>
 
-<ResponseField name="description" type="string">
-  A help text under the label (100 characters at most).
+<ResponseField name="description" type="DynamicText">
+  A help text under the label (100 characters at most): a text, or a function of `t` and the data.
 </ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/components/reference#label)
@@ -128,8 +130,8 @@ A text the person types.
   One line (`'short'`, the default) or several (`'paragraph'`).
 </ResponseField>
 
-<ResponseField name="placeholder" type="string">
-  The text shown while the field is empty (100 characters at most).
+<ResponseField name="placeholder" type="DynamicText">
+  The text shown while the field is empty (100 characters at most): a text, or a function of `t` and the data.
 </ResponseField>
 
 <ResponseField name="required" type="boolean">
@@ -162,8 +164,8 @@ A menu of texts you declare.
   The options (25 at most), written like the options of a [select menu](/reference/select#selectoptions).
 </ResponseField>
 
-<ResponseField name="placeholder" type="string">
-  The text shown when nothing is picked (150 characters at most).
+<ResponseField name="placeholder" type="DynamicText">
+  The text shown when nothing is picked (150 characters at most): a text, or a function of `t` and the data.
 </ResponseField>
 
 <ResponseField name="min" type="number">
@@ -186,8 +188,8 @@ A menu of users, roles, users and roles, or channels of the server.
   The kind of field: what Discord lists.
 </ResponseField>
 
-<ResponseField name="placeholder" type="string">
-  The text shown when nothing is picked (150 characters at most).
+<ResponseField name="placeholder" type="DynamicText">
+  The text shown when nothing is picked (150 characters at most): a text, or a function of `t` and the data.
 </ResponseField>
 
 <ResponseField name="min" type="number">
@@ -298,8 +300,8 @@ A text shown in the form, which nobody fills in.
   The kind of field: a text to read.
 </ResponseField>
 
-<ResponseField name="content" type="string" required>
-  The text, with Markdown.
+<ResponseField name="content" type="DynamicText" required>
+  The text, with Markdown: written as is, or a function of `t` and the data.
 </ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/components/reference#text-display)

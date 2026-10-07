@@ -5,10 +5,11 @@ import again from '../components/buttons/again';
 // A file in a folder is a subcommand: src/commands/mod/ban.ts is /mod ban.
 export default command({
   description: 'Replies with Pong!',
-  async run({ interaction }) {
-    // A button of src/components/buttons/, with the data it carries.
+  async run({ interaction, t }) {
+    // A button of src/components/buttons/, with the data it carries, and a
+    // text of src/messages/ in the language of who will read the answer.
     await interaction.reply({
-      content: 'Pong!',
+      content: t('pong'),
       components: [again({ count: 1 })],
     });
   },

@@ -49,7 +49,8 @@ function packageSpecifier(projectDir: string): string {
 function generatedFiles(
   projectDir: string,
   folders: readonly TypedFolder[],
-  shared: string
+  shared: string,
+  main: string
 ): Map<string, string> {
   const files = new Map<string, string>();
   const specifier = packageSpecifier(projectDir);
@@ -68,12 +69,22 @@ function generatedFiles(
       `${HEADER}${shared.replaceAll("'#chapterjs'", `'${specifier}'`)}`
     );
   }
+  // What only the files outside typed folders get: written apart, so that
+  // what it refers to (the command files, for the languages) is only
+  // checked by the one project that holds them.
+  const mainOnly = main === '' ? [] : ['../types/main.d.ts'];
+  if (main !== '') {
+    files.set(
+      'types/main.d.ts',
+      `${HEADER}${main.replaceAll("'#chapterjs'", `'${specifier}'`)}`
+    );
+  }
   // Files that are in no typed folder: 'chapterjs' is the package itself.
   files.set(
     'projects/main.json',
     json({
       extends: '../../tsconfig.json',
-      include: ['../../src', ...everywhere],
+      include: ['../../src', ...everywhere, ...mainOnly],
       exclude: folders.map(({ folder }) => `../../${folder}`),
     })
   );
@@ -109,16 +120,18 @@ function generatedFiles(
  * older version wrote and this one does not is removed. `shared` is what
  * 'chapterjs' declares in every file of the project, whatever its folder:
  * a `declare module 'chapterjs'` augmentation, importing the package from
- * `'#chapterjs'` like the declarations of a `TypedFolder`.
+ * `'#chapterjs'` like the declarations of a `TypedFolder`. `main` is the
+ * same for the files outside typed folders only.
  * @returns how many files were written
  */
 export async function writeGenerated(
   projectDir: string,
   folders: readonly TypedFolder[],
-  shared = ''
+  shared = '',
+  main = ''
 ): Promise<number> {
   const root = join(projectDir, '.chapterjs');
-  const files = generatedFiles(projectDir, folders, shared);
+  const files = generatedFiles(projectDir, folders, shared, main);
   const existing = await readdir(root, {
     recursive: true,
     withFileTypes: true,

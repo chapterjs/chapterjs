@@ -927,7 +927,7 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
     expect(output).toBe('✓ Types written to .chapterjs/\n');
 
     expect(read(cwd, 'types/events.memberJoin.d.ts')).toBe(
-      "// Written by ChapterJS: do not edit, it is overwritten.\nexport * from '../../node_modules/chapterjs/dist/index.js';\nimport type { EventContexts, EventFile } from '../../node_modules/chapterjs/dist/index.js';\n\n/**\n * Says what to do when `memberJoin` happens. Export the result as the default\n * export of a file of src/events/memberJoin/.\n */\nexport declare function event(\n  handler: (context: EventContexts['memberJoin']) => unknown\n): EventFile;\n"
+      "// Written by ChapterJS: do not edit, it is overwritten.\nexport * from '../../node_modules/chapterjs/dist/index.js';\nimport type { ContextOf, EventFile } from '../../node_modules/chapterjs/dist/index.js';\n\n/**\n * Says what to do when `memberJoin` happens. Export the result as the default\n * export of a file of src/events/memberJoin/.\n */\nexport declare function event(\n  handler: (context: ContextOf<'memberJoin'>) => unknown\n): EventFile;\n"
     );
     expect(JSON.parse(read(cwd, 'projects/events.memberJoin.json'))).toEqual({
       extends: '../../tsconfig.json',
@@ -991,7 +991,7 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
     const buildInfo = join(cwd, '.chapterjs/projects/main.tsbuildinfo');
     writeFileSync(buildInfo, '{}');
     await runDev(cwd, fake, ['sync']).exited;
-    expect(readFileSync(file, 'utf8')).toContain("EventContexts['ready']");
+    expect(readFileSync(file, 'utf8')).toContain("ContextOf<'ready'>");
     expect(existsSync(stale)).toBe(false);
     expect(existsSync(buildInfo)).toBe(true);
   });

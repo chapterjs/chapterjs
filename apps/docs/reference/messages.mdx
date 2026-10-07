@@ -1,0 +1,238 @@
+---
+title: 'language()'
+description: 'Everything a file of src/messages/ declares, and t, which every function receives'
+---
+
+`language()` is what a file of `src/messages/` exports by default. The name of the file is the language; it takes one object, `LanguageConfig`.
+
+```ts src/messages/en-US.ts
+import { language } from 'chapterjs';
+
+export default language({
+  default: true,
+  texts: {
+    pong: 'Pong!',
+    welcome: 'Welcome {name}, you are member #{count}!',
+    next: 'Page {page}',
+    members: { one: '{count} member', other: '{count} members' },
+  },
+});
+```
+
+<Note>
+  How to write the files and which language `t` speaks is in the
+  [guide](/translated-messages). This page lists what exists.
+</Note>
+
+## language()
+
+```ts
+language<const T extends MessageTexts>(config: LanguageConfig<T>): LanguageFile<T>
+```
+
+Declares one language of the bot. Export the result as the default export of a file of `src/messages/` named after the language (`en-US.ts`, `fr.ts`...): every handler then receives `t`, which gives a text in the language of who will read the message, with its `{placeholders}` filled in.
+
+### LanguageConfig
+
+What a file of `src/messages/` gives to `language()`.
+
+<ResponseField name="texts" type="MessageTexts" required>
+  The texts of the bot in this language, by key.
+</ResponseField>
+
+<ResponseField name="default" type="boolean">
+  Whether this is the language used when the one of a person or of a server is
+  not in `src/messages/`. Exactly one file says so; with one file, it goes
+  without saying.
+</ResponseField>
+
+<ResponseField name="commands" type="CommandsTranslations">
+  What Discord shows of the commands in this language.
+</ResponseField>
+
+<ResponseField name="framework" type="Partial<FrameworkTexts>">
+  What the bot answers by itself in this language, when it can't run what was
+  asked: the phrases of `FrameworkTexts`, the ones this file wants to translate.
+  The others stay in English.
+</ResponseField>
+
+### MessageTexts
+
+```ts
+type MessageTexts = Record<string, MessageText>;
+```
+
+The texts of one language, by key.
+
+### MessageText
+
+```ts
+type MessageText = string | PluralText;
+```
+
+One text of a language: a string, with its `{placeholders}`, or a text with several forms, picked by `count`.
+
+### PluralText
+
+A text with several forms, one per quantity: `t('members', { count })` picks the form of the language for that number (`one` for 1 in English, `other` for the rest; French, Russian or Arabic have others). `other` is always there; the forms a language does not use are left out. `{count}` in a form is the number itself.
+
+<ResponseField name="other" type="string" required />
+<ResponseField name="zero" type="string" />
+<ResponseField name="one" type="string" />
+<ResponseField name="two" type="string" />
+<ResponseField name="few" type="string" />
+<ResponseField name="many" type="string" />
+
+### FrameworkTexts
+
+What the bot answers by itself, when it can't run what was asked: where a command or a component can't be used, a button of an old message, a `run` that failed... Every phrase has an English version; a language file gives its own in `framework`, the ones it wants. `{what}` is the word for what was used: `command`, `button`, `menu` or `form`, given here too.
+
+| Key                 | English                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `command`           | The word for a command: "command".                                                                                                                                       |
+| `button`            | The word for a button: "button".                                                                                                                                         |
+| `menu`              | The word for a select menu: "menu".                                                                                                                                      |
+| `form`              | The word for a form: "form".                                                                                                                                             |
+| `guildOnly`         | "This {what} can only be used in a server."                                                                                                                              |
+| `dmOnly`            | "This {what} can only be used in a private message with me."                                                                                                             |
+| `notHere`           | "This {what} can not be used here."                                                                                                                                      |
+| `unavailable`       | "This command is not available right now." (its file is gone or broken)                                                                                                  |
+| `gone`              | "This {what} is not available any more." (an old message, its file is gone)                                                                                              |
+| `outdated`          | "This {what} is out of date." (an old message, its `data` changed)                                                                                                       |
+| `authorOnly`        | "Only the person who used the command can use this {what}."                                                                                                              |
+| `failed`            | "Something went wrong while running this {what}."                                                                                                                        |
+| `missingPermission` | "I don't have the permission to do that here."                                                                                                                           |
+| `needsPermissions`  | "You need the {permissions} permission to use this command." A plural of `count`, how many permissions are missing; `{permissions}` is their names, separated by commas. |
+
+### CommandsTranslations
+
+```ts
+type CommandsTranslations = {
+  readonly [
+    Path in keyof ProjectCommands as ProjectCommands[Path] extends true
+      ? Path
+      : never
+  ]?: CommandTranslation;
+};
+```
+
+What Discord shows of the commands in one language: by the path of the command file (`'ping'`, `'mod/ban'`), its name, description, options and choices in that language, as the `locales` of a command file take them ([`CommandTranslation`](/reference/command#commandtranslation)). The editor offers the commands of the project that have no `description` in their file (one that has owns its texts, `locales` included); their options and choices are checked when the files load.
+
+### ProjectCommands
+
+The commands of the project, as the editor sees them: the path of each command file, `true` when the language files describe it, `false` when the file has its own `description`. Filled in by the `.chapterjs/` folder of the project, so that the `commands` of a language file offers the ones it may translate. The options and choices are checked when the files load.
+
+### LanguageFile
+
+What `language()` returns: the default export of a file of `src/messages/`.
+
+<ResponseField name="config" type="LanguageConfig<T>" required>
+  What the file gave to `language()`, not checked yet.
+</ResponseField>
+
+## Translator
+
+```ts
+interface Translator<M extends object = ProjectMessages>
+```
+
+`t`, as handlers receive it: gives a text of `src/messages/` in the language of who will read the message, with its placeholders filled in. `M` is the texts of one language file, which types the keys and the params: every language has the same ones.
+
+### t()
+
+```ts
+t<K extends keyof M & string>(key: K, ...params: ParamsArgs<TextOf<M, K>>): string
+```
+
+<ResponseField name="locale" type="Locale" required>
+  The language the texts come from: the one asked, or the closest one declared.
+</ResponseField>
+
+### in()
+
+```ts
+in(locale: Locale): Translator<M>
+```
+
+The same, for another language: `t.in('fr')('welcome', { name })`.
+
+### TranslationContext
+
+`TranslationContext` is what every handler receives when the project has a language in `src/messages/`: `t`. Nothing otherwise.
+
+<ResponseField name="t" type="Translator">
+  The texts of `src/messages/`, in the right language.
+</ResponseField>
+
+### ProjectMessages
+
+The texts of `src/messages/`, as the editor sees them: the keys `t` accepts and the placeholders of each. Filled in by the `.chapterjs/` folder of the project when the folder has a language, empty otherwise.
+
+### MessagesOf
+
+```ts
+type MessagesOf<F> = F extends LanguageFile<infer T> ? T : never;
+```
+
+What `t` is typed from, for a language file: its texts.
+
+## The texts of a component
+
+### DynamicText
+
+```ts
+type DynamicText<Data extends DataShape = DataShape> =
+  string | ((context: TextContext<Data>) => string);
+```
+
+A text shown by a component: written as is, or computed when the message is sent, from `t` and the data of the component.
+
+### TextContext
+
+What a text of a component is computed from when it is a function: `t` in the language of who will read the message, and the data the component carries.
+
+<ResponseField name="t" type="Translator" required>
+  The texts of `src/messages/`, in the language of who will read the message.
+</ResponseField>
+
+<ResponseField name="data" type="DataValuesOf<Data>" required>
+  What the component carries, as declared in `data`.
+</ResponseField>
+
+## Placeholders
+
+### Placeholders
+
+```ts
+type Placeholders<T extends MessageText>
+```
+
+The placeholders of a text: `'Hello {name}'` has `'name'`. Written between braces, a placeholder is a name made of letters, digits and `_`; `{{` and `}}` are braces written as is. A plural has `count`, and the placeholders of its forms.
+
+### ParamsOf
+
+```ts
+type ParamsOf<T extends MessageText> = {
+  [Name in Placeholders<T>]: Name extends 'count'
+    ? T extends PluralText
+      ? number
+      : string | number
+    : string | number;
+};
+```
+
+What `t` takes for a text: one value per placeholder, or nothing when the text has none. A number is written the way the language writes numbers (`1,234` in English, `1 234` in French): give a text to keep it as is. The `count` of a plural is a number.
+
+### ParamsArgs
+
+```ts
+type ParamsArgs<T extends MessageText> = string extends T
+  ? [params?: Record<string, string | number>]
+  : [Placeholders<T>] extends [never]
+    ? []
+    : [params: ParamsOf<T>];
+```
+
+The arguments of `t` after the key: the params, only when there are some.
+
+[Discord documentation](https://docs.discord.com/developers/reference#locales)

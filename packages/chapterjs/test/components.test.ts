@@ -1,6 +1,10 @@
 // Components: the files of src/components/, their ids written by the
 // framework, the pieces of a message, and what runs when someone clicks,
 // picks or sends a form.
+import type { RawButton } from '../src/discord/types/component.js';
+import { spawnSync } from 'node:child_process';
+import { cpSync, symlinkSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { button, renderButton } from '../src/components/button.js';
 import {
@@ -15,7 +19,11 @@ import {
 } from '../src/components/custom-id.js';
 import { embed } from '../src/components/embed.js';
 import { fileStateOf } from '../src/components/file.js';
-import { isPiece, renderedOf } from '../src/components/instance.js';
+import {
+  isPiece,
+  renderedOf,
+  type MessageComponent,
+} from '../src/components/instance.js';
 import {
   container,
   file,
@@ -38,6 +46,7 @@ import {
   connected,
   GENERAL,
   GUILD,
+  packageDir,
   project,
   rawMessage,
   runDev,
@@ -559,7 +568,7 @@ describe('the files of src/components/', () => {
           run() {},
         }),
       },
-      "The data \"id\" of this button has the kind \"snowflake\", which does not exist. Kinds are: 'string', 'number', 'boolean'.",
+      "The data \"id\" of this button has the kind \"snowflake\", which does not exist. Kinds are: 'string', 'number', 'boolean', or { type: 'number', default: 1 } for a value with a default.",
     ],
     [
       {
@@ -677,10 +686,12 @@ describe('the files of src/components/', () => {
       },
     ]);
     expect(
-      renderButton(
-        load('buttons/confirm.ts', { default: confirm }) as never,
-        []
-      ).raw.custom_id
+      (
+        renderButton(
+          load('buttons/confirm.ts', { default: confirm }) as never,
+          []
+        ).raw as RawButton
+      ).custom_id
     ).toBe('buttons/confirm');
   });
 
@@ -2268,3 +2279,203 @@ export default embed({ title: 'Rules', color });
     await cli.exited;
   });
 });
+
+describe('a data with a default value', () => {
+  const shape = {
+    page: { type: 'number', default: 4 },
+    tab: { type: 'string', default: 'all' },
+    hard: { type: 'boolean', default: false },
+    userId: 'string',
+  } as const;
+
+  it('is optional where the component is put in a message', () => {
+    expect(checkData('next', shape, { userId: '1' })).toEqual({
+      page: 4,
+      tab: 'all',
+      hard: false,
+      userId: '1',
+    });
+    expect(
+      checkData('next', shape, { userId: '1', page: 7, hard: true })
+    ).toEqual({ page: 7, tab: 'all', hard: true, userId: '1' });
+    expect(() => checkData('next', shape, undefined)).toThrow(
+      "next needs its data: write next({ userId: '...' })."
+    );
+    expect(() => checkData('next', shape, { userId: '1', page: 'x' })).toThrow(
+      'The data "page" of next is a number, got "x".'
+    );
+    // Every value has a default: no data at all is fine.
+    const all = { page: { type: 'number', default: 4 } } as const;
+    expect(checkData('next', all, undefined)).toEqual({ page: 4 });
+    expect(checkData('next', all, {})).toEqual({ page: 4 });
+    expect(checkData('next', all, { page: 0 })).toEqual({ page: 0 });
+  });
+
+  it('is encoded as the value really carried, and read back', () => {
+    const id = encodeCustomId('buttons/next', shape, {
+      page: 4,
+      tab: 'all',
+      hard: false,
+      userId: '1',
+    });
+    expect(id).toBe('buttons/next:4:all:false:1');
+    expect(readData(shape, decodeCustomId(id).parts)).toEqual({
+      page: 4,
+      tab: 'all',
+      hard: false,
+      userId: '1',
+    });
+    expect(readData(shape, ['x', 'all', 'false', '1'])).toBeNull();
+  });
+
+  it.each([
+    [
+      { page: { type: 'number', default: '4' } },
+      'The default value of the data "page" of this button must be a number, got "4".',
+    ],
+    [
+      { page: { type: 'number', default: NaN } },
+      'The default value of the data "page" of this button must be a number, got null.',
+    ],
+    [
+      { page: { type: 'snowflake' } },
+      `The data "page" of this button has the type "snowflake", which does not exist. Kinds are: 'string', 'number', 'boolean'.`,
+    ],
+    [
+      { page: { kind: 'number' } },
+      '"kind" is not something the data "page" of this button has. It can have: type, default.',
+    ],
+    [
+      { page: { type: 'boolean', default: 'yes' } },
+      'The default value of the data "page" of this button must be a boolean, got "yes".',
+    ],
+  ] as const)('is checked when the file loads (%j)', (data, message) => {
+    expect(() =>
+      load('buttons/next.ts', {
+        default: button({ label: 'x', data: data as never, run() {} }),
+      })
+    ).toThrow(message);
+  });
+
+  it('lets the component be used as is, or with some of its data', () => {
+    const next = button({
+      label: 'Next',
+      data: {
+        page: { type: 'number', default: 4 },
+        tab: { type: 'string', default: 'all' },
+      },
+      run() {},
+    });
+    load('buttons/next.ts', { default: next });
+    const ids = (components: MessageComponent[]) =>
+      (
+        buildMessage({ components }).body.components as {
+          components: { custom_id: string }[];
+        }[]
+      ).flatMap(row => row.components.map(one => one.custom_id));
+    expect(
+      ids([
+        next,
+        next(),
+        next({}),
+        next({ page: 7 }),
+        next({ tab: 'x' }, { disabled: true }),
+      ])
+    ).toEqual([
+      'buttons/next:4:all',
+      'buttons/next:4:all',
+      'buttons/next:4:all',
+      'buttons/next:7:all',
+      'buttons/next:4:x',
+    ]);
+    // Its texts and its run receive the value really carried.
+    const shown = button({
+      label: ({ data }) => `Page ${data.page}`,
+      data: { page: { type: 'number', default: 4 } },
+      run() {},
+    });
+    load('buttons/shown.ts', { default: shown });
+    expect(
+      JSON.stringify(buildMessage({ components: [shown] }).body.components)
+    ).toContain('"label":"Page 4"');
+  });
+});
+
+describe.skipIf(process.platform === 'win32')(
+  'a data with a default value, in the editor',
+  () => {
+    it('is optional at the call, present in run and in the texts', async () => {
+      const fake = await world();
+      const cwd = project({
+        'src/components/buttons/next.ts': `import { button } from 'chapterjs';
+const next = button({
+  label: ({ data }) => 'Page ' + data.page.toFixed(0) + data.tab.toUpperCase(),
+  data: { page: { type: 'number', default: 4 }, tab: { type: 'string', default: 'all' }, userId: 'string' },
+  run({ data }) { const page: number = data.page; const id: string = data.userId; return [page, id]; },
+});
+export default next;
+`,
+        'src/components/buttons/free.ts': `import { button } from 'chapterjs';
+export default button({ label: 'x', data: { page: { type: 'number', default: 4 } }, run() {} });
+`,
+        'src/components/buttons/bad-default.ts': `import { button } from 'chapterjs';
+export default button({ label: 'x', data: { page: { type: 'number', default: 'four' } }, run() {} });
+`,
+        'src/commands/ok.ts': `import { command } from 'chapterjs';
+import next from '../components/buttons/next';
+import free from '../components/buttons/free';
+export default command({ description: 'd', async run({ interaction }) {
+  await interaction.reply({ components: [next({ userId: '1' }), next({ userId: '1', page: 7 }), free, free(), free({}), free({ page: 2 }, { disabled: true })] });
+} });
+`,
+        'src/commands/missing.ts': `import { command } from 'chapterjs';
+import next from '../components/buttons/next';
+export default command({ description: 'd', async run({ interaction }) {
+  await interaction.reply({ components: [next({ page: 7 })] });
+} });
+`,
+        'src/commands/bare.ts': `import { command } from 'chapterjs';
+import next from '../components/buttons/next';
+export default command({ description: 'd', async run({ interaction }) {
+  await interaction.reply({ components: [next] });
+} });
+`,
+        'src/commands/wrong-kind.ts': `import { command } from 'chapterjs';
+import free from '../components/buttons/free';
+export default command({ description: 'd', async run({ interaction }) {
+  await interaction.reply({ components: [free({ page: 'x' })] });
+} });
+`,
+      });
+      cpSync(
+        join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+        join(cwd, 'tsconfig.json')
+      );
+      symlinkSync(
+        join(packageDir, 'node_modules/@types'),
+        join(cwd, 'node_modules/@types'),
+        'dir'
+      );
+      await runDev(cwd, fake, ['sync']).exited;
+      const result = spawnSync(
+        join(packageDir, 'node_modules/.bin/tsc'),
+        ['-b'],
+        { cwd, encoding: 'utf8' }
+      );
+      const errors = [
+        ...new Set(
+          result.stdout
+            .split('\n')
+            .filter(line => line.includes('error TS'))
+            .map(line => line.replace(/\(\d+,\d+\).*/, ''))
+        ),
+      ].sort();
+      expect(errors).toEqual([
+        'src/commands/bare.ts',
+        'src/commands/missing.ts',
+        'src/commands/wrong-kind.ts',
+        'src/components/buttons/bad-default.ts',
+      ]);
+    });
+  }
+);

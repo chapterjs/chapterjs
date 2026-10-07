@@ -6,11 +6,11 @@ import { button } from 'chapterjs';
 const again = button({
   label: 'Again',
   data: { count: 'number' },
-  async run({ interaction, data }) {
+  async run({ interaction, data, t }) {
     const count = data.count + 1;
     // Changes the message the button is on, instead of sending a new one.
     await interaction.update({
-      content: `Pong! ×${count}`,
+      content: t('again', { count }),
       components: [again({ count })],
     });
   },

@@ -7,6 +7,7 @@
 import { Limits } from '../discord/api.js';
 import type { Convention } from '../loader/loader.js';
 import { checkEmbed, type Embed } from '../structures/payload.js';
+import { isDynamic } from './component.js';
 import {
   BUTTON_STYLES,
   readLook,
@@ -106,15 +107,41 @@ function checkDataShape(what: string, value: unknown): DataShape {
       `"data" of ${what} is an object from a name to a kind: data: { userId: 'string', page: 'number' }.`
     );
   }
-  for (const [name, kind] of Object.entries(value)) {
+  const kinds = DATA_KINDS.map(one => `'${one}'`).join(', ');
+  for (const [name, field] of Object.entries(value)) {
     if (!/^[A-Za-z_$][\w$]*$/.test(name)) {
       fail(
         `"${name}" can't be the name of a data of ${what}: it is how your code reads it (data.${name}), so use letters, digits and _ only.`
       );
     }
-    if (!DATA_KINDS.includes(kind as never)) {
+    // A kind, or a kind with a default value.
+    if (isRecord(field)) {
+      for (const key of Object.keys(field)) {
+        if (key !== 'type' && key !== 'default') {
+          fail(
+            `"${key}" is not something the data "${name}" of ${what} has. It can have: type, default.`
+          );
+        }
+      }
+      if (!DATA_KINDS.includes(field.type as never)) {
+        fail(
+          `The data "${name}" of ${what} has the type ${JSON.stringify(field.type) ?? typeof field.type}, which does not exist. Kinds are: ${kinds}.`
+        );
+      }
+      if (
+        field.default !== undefined &&
+        (typeof field.default !== field.type ||
+          (field.type === 'number' && !Number.isFinite(field.default)))
+      ) {
+        fail(
+          `The default value of the data "${name}" of ${what} must be a ${field.type as string}, got ${JSON.stringify(field.default) ?? typeof field.default}.`
+        );
+      }
+      continue;
+    }
+    if (!DATA_KINDS.includes(field as never)) {
       fail(
-        `The data "${name}" of ${what} has the kind ${JSON.stringify(kind) ?? typeof kind}, which does not exist. Kinds are: ${DATA_KINDS.map(one => `'${one}'`).join(', ')}.`
+        `The data "${name}" of ${what} has the kind ${JSON.stringify(field) ?? typeof field}, which does not exist. Kinds are: ${kinds}, or { type: 'number', default: 1 } for a value with a default.`
       );
     }
   }
@@ -255,9 +282,10 @@ function readModal(path: string, config: unknown): LoadedModal {
     'run',
   ]);
   if (
-    typeof config.title !== 'string' ||
-    config.title.trim() === '' ||
-    config.title.length > Limits.ModalTitle
+    !isDynamic(config.title) &&
+    (typeof config.title !== 'string' ||
+      config.title.trim() === '' ||
+      config.title.length > Limits.ModalTitle)
   ) {
     fail(
       `The title of ${what} is a text of 1 to ${Limits.ModalTitle} characters.`

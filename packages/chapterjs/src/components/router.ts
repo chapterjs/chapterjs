@@ -25,6 +25,8 @@ import {
   type Reporter,
 } from '../interactions/dispatch.js';
 import type { Context } from '../structures/context.js';
+import type { What } from '../messages/phrases.js';
+import { audienceLocale, translation } from '../messages/translate.js';
 import {
   ComponentInteraction,
   ModalInteraction,
@@ -90,7 +92,7 @@ export class ComponentRouter {
 
     const { path, parts } = decodeCustomId(data.custom_id);
     const entry = this.#components.get(path);
-    const what = isModal
+    const what: What = isModal
       ? 'form'
       : (data as RawMessageComponentData).component_type ===
           ComponentType.Button
@@ -127,14 +129,14 @@ export class ComponentRouter {
           (data as RawMessageComponentData).component_type)
     ) {
       // Sent before the file was renamed, removed or changed of kind.
-      refuse(interaction, `This ${what} is not available any more.`);
+      refuse(interaction, 'gone', { what });
       return;
     }
     const { component, file } = entry;
     const values = readData(component.data, parts);
     if (!values) {
       // The data of the file changed since the message was sent.
-      refuse(interaction, `This ${what} is out of date.`);
+      refuse(interaction, 'outdated', { what });
       return;
     }
     const name = component.path;
@@ -144,11 +146,10 @@ export class ComponentRouter {
       user,
       author.member,
       component.where,
-      what,
       warning => this.#options.onWarning(file, `${name} ${warning}`)
     );
     if (!placed.place) {
-      refuse(interaction, placed.refusal);
+      refuse(interaction, placed.refusal, { what });
       return;
     }
     const { place } = placed;
@@ -157,10 +158,7 @@ export class ComponentRouter {
       component.who === 'author' &&
       rawMessage?.interaction_metadata?.user.id !== user.id
     ) {
-      refuse(
-        interaction,
-        `Only the person who used the command can use this ${what}.`
-      );
+      refuse(interaction, 'authorOnly', { what });
       return;
     }
     remember(interaction, {
@@ -191,7 +189,7 @@ export class ComponentRouter {
             : {};
     } catch (error) {
       this.#options.onError(file, error);
-      refuse(interaction, `Something went wrong while running this ${what}.`);
+      refuse(interaction, 'failed', { what });
       return;
     }
     const context = Object.freeze({
@@ -201,6 +199,15 @@ export class ComponentRouter {
       data: Object.freeze(values),
       ...specific,
       ...placeContext(place, component.where),
+      // `t` speaks the language of who will read the answer.
+      ...translation(
+        ctx,
+        audienceLocale({
+          person: raw.locale,
+          guild: place.guild,
+          ephemeral: 'ephemeral' in component ? component.ephemeral : false,
+        })
+      ),
     });
 
     runInteraction({

@@ -20,6 +20,7 @@ import type {
 import type { RawEmoji } from '../discord/types/emoji.js';
 import type { RawInteractionCallbackModalData } from '../discord/types/interaction.js';
 import type { EmojiInput } from '../structures/message.js';
+import type { Translator } from '../messages/messages.js';
 
 declare const brand: unique symbol;
 
@@ -100,10 +101,46 @@ interface RawOf {
   modal: RawInteractionCallbackModalData;
 }
 
+/**
+ * What a piece sends: known when the piece is made, or computed when the
+ * message is sent, with `t` in the language of who will read it (a piece
+ * whose texts are functions).
+ */
+export type Deferred<R> = R | ((t: Translator) => R);
+
 /** A piece as the framework sees it. */
 export interface Rendered<Kind extends PieceKind = PieceKind> {
   kind: Kind;
+  raw: Deferred<RawOf[Kind]>;
+}
+
+/** A piece with what it sends, known: after `resolve()`. */
+export interface Resolved<Kind extends PieceKind = PieceKind> {
+  kind: Kind;
   raw: RawOf[Kind];
+}
+
+/** What a piece sends, for the language of who will read it. */
+export function resolve<Kind extends PieceKind>(
+  rendered: Rendered<Kind>,
+  t: Translator
+): Resolved<Kind> {
+  const { kind, raw } = rendered;
+  return { kind, raw: typeof raw === 'function' ? raw(t) : raw };
+}
+
+/**
+ * What a piece made of others sends: known now when every child is, else
+ * computed when the message is sent, from what the children send then.
+ */
+export function compose<R>(
+  children: readonly Rendered[],
+  build: (raws: readonly unknown[]) => R
+): Deferred<R> {
+  if (children.every(child => typeof child.raw !== 'function')) {
+    return build(children.map(child => child.raw));
+  }
+  return (t: Translator) => build(children.map(child => resolve(child, t).raw));
 }
 
 const INSTANCE = Symbol.for('chapterjs.component');
@@ -111,7 +148,7 @@ const INSTANCE = Symbol.for('chapterjs.component');
 /** Makes a piece. `raw` is frozen: a piece never changes once made. */
 export function piece<Kind extends PieceKind>(
   kind: Kind,
-  raw: RawOf[Kind]
+  raw: Deferred<RawOf[Kind]>
 ): Piece<Kind> {
   return Object.freeze({
     [INSTANCE]: true,

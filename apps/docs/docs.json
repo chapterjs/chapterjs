@@ -97,6 +97,11 @@
             "pages": ["presence"]
           },
           {
+            "group": "Translations",
+            "icon": "languages",
+            "pages": ["translated-messages"]
+          },
+          {
             "group": "Messages and memory",
             "icon": "message-square",
             "pages": ["messages", "memory"]
@@ -141,7 +146,8 @@
               "reference/embed",
               "reference/layout",
               "reference/task",
-              "reference/presence"
+              "reference/presence",
+              "reference/messages"
             ]
           },
           {

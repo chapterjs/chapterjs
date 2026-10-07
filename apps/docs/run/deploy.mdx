@@ -33,7 +33,7 @@ A bot is online as long as `chapterjs start` runs. On your computer it stops whe
     Keep the development dependencies if you want the build to check the types there: without TypeScript, `chapterjs build` says `ℹ Types were not checked` and goes on.
   </Step>
   <Step title="Give it the token">
-    Set `BOT_TOKEN` the way the machine does it: an environment variable, the "secrets" of a host, or a `.env` file in the folder. The real environment wins over the file. The token is the only value `chapterjs start` requires.
+    Set `BOT_TOKEN` the way the machine does it: an environment variable, the "secrets" of a host, or a `.env` file in the folder. It is the token of your **production** application, not the one of the `.env` on your computer: see [A second bot for development](/run/start#a-second-bot-for-development). The real environment wins over the file. The token is the only value `chapterjs start` requires.
 
     ```bash .env
     BOT_TOKEN=
@@ -102,8 +102,8 @@ That is all. Many hosts ask for a "build command" and a "start command": give th
 
 | Variable | Required | What it does |
 | --- | --- | --- |
-| `BOT_TOKEN` | Yes | The token of your bot. |
-| `DEV_GUILD_ID` | No | The ID of your test server. When it is set, production leaves that server alone, so `chapterjs dev` can run the same bot there while this one runs everywhere else: see [Your test server stays yours](/run/start#your-test-server-stays-yours). |
+| `BOT_TOKEN` | Yes | The token of your production bot. |
+| `DEV_GUILD_ID` | No | The ID of your test server. When it is set, production leaves that server alone, so `chapterjs dev` can run the same bot there while this one runs everywhere else. Only for one bot doing both: see [A second bot for development](/run/start#a-second-bot-for-development). |
 | `NODE_OPTIONS` | No | Options for Node itself. `--max-old-space-size=4096` gives the bot 4096 MB of memory: only for a large bot, when `chapterjs start` asks for it (see below). |
 | `NO_COLOR` | No | Set to anything to print without colors. Colors are already off when the output is not a terminal. |
 

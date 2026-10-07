@@ -7,15 +7,22 @@ import { Limits } from '../discord/api.js';
 import type { RawSelectOption } from '../discord/types/component.js';
 import type { EmojiInput } from '../structures/message.js';
 import { emojiOf } from './instance.js';
+import type { DataShape } from './custom-id.js';
+import {
+  isDynamic,
+  resolveText,
+  type DynamicText,
+  type TextContext,
+} from './component.js';
 
 /** One option of a menu, with everything Discord shows for it. */
-export interface RichOption {
-  /** What the person sees (100 characters at most). */
-  label: string;
+export interface RichOption<Data extends DataShape = DataShape> {
+  /** What the person sees (100 characters at most): a text, or a function of `t` and the data. */
+  label: DynamicText<Data>;
   /** What your code receives (100 characters at most). */
   value: string;
-  /** A second line under the label (100 characters at most). */
-  description?: string;
+  /** A second line under the label (100 characters at most): a text, or a function of `t` and the data. */
+  description?: DynamicText<Data>;
   /** An emoji before the label. */
   emoji?: EmojiInput;
   /** Shows the option as picked when the menu appears. */
@@ -27,8 +34,50 @@ export interface RichOption {
  * is), an object whose keys are what is shown and values what your code
  * receives, or a list of `RichOption` for descriptions and emojis.
  */
-export type SelectOptions =
-  readonly string[] | Readonly<Record<string, string>> | readonly RichOption[];
+export type SelectOptions<Data extends DataShape = DataShape> =
+  | readonly string[]
+  | Readonly<Record<string, string>>
+  | readonly RichOption<Data>[];
+
+/** An option as a file declared it, its texts maybe computed when sent. */
+export type LoadedOption = Omit<RawSelectOption, 'label' | 'description'> & {
+  label: DynamicText;
+  description?: DynamicText;
+};
+
+/** The options as Discord takes them, their texts computed for who reads. */
+export function resolveOptions(
+  what: string,
+  options: readonly LoadedOption[],
+  context: TextContext
+): RawSelectOption[] {
+  return options.map((option, index) => {
+    const { label, description, ...rest } = option;
+    const resolved = resolveText(
+      `The label of option ${index + 1} of ${what}`,
+      label,
+      context,
+      { max: Limits.SelectOptionText }
+    )!;
+    const second = resolveText(
+      `The description of option ${index + 1} of ${what}`,
+      description,
+      context,
+      { max: Limits.SelectOptionText }
+    );
+    return {
+      ...rest,
+      label: resolved,
+      ...(second !== undefined ? { description: second } : {}),
+    };
+  });
+}
+
+/** Whether a text of an option is computed when the message is sent. */
+export const hasDynamicOption = (options: readonly LoadedOption[]): boolean =>
+  options.some(
+    option => isDynamic(option.label) || isDynamic(option.description)
+  );
 
 /** What `run` receives for one picked option, typed from the declaration. */
 export type OptionValue<Options extends SelectOptions> =
@@ -51,9 +100,9 @@ export function readOptions(
   what: string,
   options: unknown,
   { min = 1, max = Limits.SelectOptions }: { min?: number; max?: number } = {}
-): RawSelectOption[] {
+): LoadedOption[] {
   const example = `options: ['Pizza', 'Pasta'], options: { 'Shown text': 'value' } or options: [{ label: '...', value: '...', description: '...' }]`;
-  let list: RawSelectOption[];
+  let list: LoadedOption[];
   if (Array.isArray(options)) {
     list = options.map((item: unknown, index) => {
       if (typeof item === 'string') return { label: item, value: item };
@@ -72,19 +121,25 @@ export function readOptions(
           );
         }
       }
-      if (typeof rich.label !== 'string' || typeof rich.value !== 'string') {
+      if (
+        (typeof rich.label !== 'string' && !isDynamic(rich.label)) ||
+        typeof rich.value !== 'string'
+      ) {
         fail(
           `Option ${index + 1} of ${what} needs a label and a value, both texts.`
         );
       }
-      const option: RawSelectOption = {
-        label: rich.label as string,
+      const option: LoadedOption = {
+        label: rich.label as DynamicText,
         value: rich.value as string,
       };
       if (rich.description !== undefined) {
-        if (typeof rich.description !== 'string')
+        if (
+          typeof rich.description !== 'string' &&
+          !isDynamic(rich.description)
+        )
           fail(`The description of option ${index + 1} of ${what} is a text.`);
-        option.description = rich.description as string;
+        option.description = rich.description as DynamicText;
       }
       if (rich.emoji !== undefined)
         option.emoji = emojiOf(
@@ -122,7 +177,8 @@ export function readOptions(
       ['value', option.value],
       ['description', option.description],
     ] as const) {
-      if (text === undefined) continue;
+      // A function is checked when the message is sent.
+      if (text === undefined || isDynamic(text)) continue;
       if (text.trim() === '' || text.length > Limits.SelectOptionText) {
         fail(
           `The ${field} of an option of ${what} is ${text.length} characters long: Discord accepts between 1 and ${Limits.SelectOptionText}.`

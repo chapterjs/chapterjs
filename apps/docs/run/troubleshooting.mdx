@@ -93,7 +93,7 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     `chapterjs dev` only runs your bot in your test server, so a command or an event of private messages only can't be tried there. It works with [`chapterjs start`](/run/start).
   </Accordion>
   <Accordion title="ℹ /name is not the same here as in production, so … shows it twice">
-    You are changing a command that is already online for everyone. Your test server shows both until production runs your version: see [Commands are shown once](/run/start#commands-are-shown-once).
+    You are changing a command that is already online for everyone. Your test server shows both until production runs your version. A second application for development never shows that: see [A second bot for development](/run/start#a-second-bot-for-development).
   </Accordion>
   <Accordion title="✗ Discord refused the commands of your project: …">
     Discord did not accept what your commands declare (a name, a description, an option…): the rest of the line is Discord's own message, with the field it refused. The bot keeps running with the commands Discord already has. Fix the file and save.
@@ -195,8 +195,11 @@ Every message of ChapterJS says what happened, then what to do. This page gather
   <Accordion title="You need the … permission to use this command.">
     The person lacks a permission the command asks for with `permissions`, where they used it. See [Who can use a command](/commands#who-can-use-a-command).
   </Accordion>
+  <Accordion title="These answers are in English">
+    The phrases the bot answers by itself can be translated in the language files of `src/messages/`: see [What the bot answers by itself](/translated-messages#what-the-bot-answers-by-itself).
+  </Accordion>
   <Accordion title="A command is missing, or shown twice">
-    Commands appear at once in your test server with `chapterjs dev`, and everywhere with `chapterjs start`. If one is missing, the terminal said why when it started: a name Discord refused, or two files that are the same command. Shown twice: see [Commands are shown once](/run/start#commands-are-shown-once). A command the person can't see is one whose `permissions` they don't have: see [Who can use a command](/commands#who-can-use-a-command).
+    Commands appear at once in your test server with `chapterjs dev`, and everywhere with `chapterjs start`. If one is missing, the terminal said why when it started: a name Discord refused, or two files that are the same command. Shown twice: see [One bot for dev and production](/run/start#one-bot-for-dev-and-production). A command the person can't see is one whose `permissions` they don't have: see [Who can use a command](/commands#who-can-use-a-command).
   </Accordion>
   <Accordion title="The bot stays online after I stopped it">
     Press `Ctrl+C` once and let it disconnect: you see `✓ Disconnected` and the bot goes offline at once. A second `Ctrl+C` stops the process without waiting, and Discord then keeps the bot online until it notices the connection is gone.

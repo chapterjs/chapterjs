@@ -68,6 +68,8 @@ In `chapterjs dev`, saving `src/presence.ts` changes the presence at once, witho
 
 A file that does not load is reported with what is wrong, and the bot keeps the last presence that worked. Deleting the file puts the bot back to online with nothing shown. Discord accepts a few changes of presence per minute: when you save faster than that, only the latest one is sent, when it may be.
 
+The presence is the bot's, not the server's. With one bot for dev and production, what you try here may be shown to everyone: see [A second bot for development](/run/start#a-second-bot-for-development).
+
 <CardGroup cols={2}>
   <Card title="presence() reference" icon="activity" href="/reference/presence">
     Every field of the presence file.

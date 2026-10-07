@@ -21,6 +21,7 @@ import type { EmojiInput } from '../structures/message.js';
 import {
   emojiOf,
   piece,
+  compose,
   renderedOf,
   type ActionRowComponent,
   type ButtonComponent,
@@ -161,10 +162,13 @@ export function row(
       `A row holds ${Limits.ActionRowButtons} buttons at most, got ${rendered.length}.`
     );
   }
-  return piece('row', {
-    type: ComponentType.ActionRow,
-    components: rendered.map(one => one.raw as RawActionRowChildComponent),
-  });
+  return piece(
+    'row',
+    compose(rendered, raws => ({
+      type: ComponentType.ActionRow,
+      components: raws as RawActionRowChildComponent[],
+    }))
+  );
 }
 
 /**
@@ -250,22 +254,22 @@ export function section(
       `Beside a section goes a button or a thumbnail(), got a ${side.kind}.`
     );
   }
-  const raw: RawSection = {
-    type: ComponentType.Section,
-    components: list.map(
-      (content, index) =>
-        ({
-          type: ComponentType.TextDisplay,
-          content: checkText(
-            `Text ${index + 1} of a section`,
-            content,
-            Limits.TextDisplayTotal
-          )!,
-        }) satisfies RawTextDisplay
-    ),
-    accessory: side.raw as RawSection['accessory'],
-  };
-  return piece('section', raw);
+  const displays: RawTextDisplay[] = list.map((content, index) => ({
+    type: ComponentType.TextDisplay,
+    content: checkText(
+      `Text ${index + 1} of a section`,
+      content,
+      Limits.TextDisplayTotal
+    )!,
+  }));
+  return piece(
+    'section',
+    compose([side], ([accessory]): RawSection => ({
+      type: ComponentType.Section,
+      components: displays,
+      accessory: accessory as RawSection['accessory'],
+    }))
+  );
 }
 
 /**
@@ -382,14 +386,15 @@ export function container(
       );
     }
   }
-  return piece('container', {
-    type: ComponentType.Container,
-    components: components.map(
-      child => child.raw as RawContainerChildComponent
-    ),
-    ...(color !== undefined ? { accent_color: color } : {}),
-    ...(spoiler ? { spoiler: true } : {}),
-  });
+  return piece(
+    'container',
+    compose(components, raws => ({
+      type: ComponentType.Container,
+      components: raws as RawContainerChildComponent[],
+      ...(color !== undefined ? { accent_color: color } : {}),
+      ...(spoiler ? { spoiler: true } : {}),
+    }))
+  );
 }
 
 /**
@@ -402,28 +407,26 @@ export function autoRows(
   where: string
 ): Rendered[] {
   const result: Rendered[] = [];
-  let buttons: RawButton[] = [];
+  let buttons: Rendered[] = [];
+  const asRow = (children: readonly Rendered[]): Rendered => ({
+    kind: 'row',
+    raw: compose(children, raws => ({
+      type: ComponentType.ActionRow,
+      components: raws as RawActionRowChildComponent[],
+    })),
+  });
   const flush = (): void => {
     if (buttons.length === 0) return;
-    result.push({
-      kind: 'row',
-      raw: { type: ComponentType.ActionRow, components: buttons },
-    });
+    result.push(asRow(buttons));
     buttons = [];
   };
   for (const one of pieces) {
     if (one.kind === 'button') {
-      buttons.push(one.raw as RawButton);
+      buttons.push(one);
       if (buttons.length === Limits.ActionRowButtons) flush();
     } else if (one.kind === 'select') {
       flush();
-      result.push({
-        kind: 'row',
-        raw: {
-          type: ComponentType.ActionRow,
-          components: [one.raw as RawActionRowChildComponent],
-        },
-      });
+      result.push(asRow([one]));
     } else if (one.kind === 'thumbnail') {
       fail(
         `A thumbnail only goes beside a section: section(['...'], thumbnail(...)). It can't be in ${where} on its own.`

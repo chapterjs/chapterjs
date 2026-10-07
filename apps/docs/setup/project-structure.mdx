@@ -24,6 +24,10 @@ A project made with `create chapter` looks like this. Everything your bot does l
         </Tree.Folder>
       </Tree.Folder>
       <Tree.Folder name="tasks" />
+      <Tree.Folder name="messages" defaultOpen>
+        <Tree.File name="en-US.ts" highlight />
+        <Tree.File name="fr.ts" highlight />
+      </Tree.Folder>
       <Tree.File name="presence.ts" highlight />
     </Tree.Folder>
     <Tree.File name=".env" />
@@ -45,6 +49,7 @@ ChapterJS never asks you to register anything. A file is a command or a reaction
 | `src/components/buttons/`, `selects/`, `modals/`, `embeds/` | A button, a select menu, a form or an embed, told apart by its path: `buttons/again.ts` is the button Discord sends back as `buttons/again` | `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed({ ... })` |
 | `src/tasks/`                                                | Something the bot does by itself, every so often or at given times: `report.ts` is the task `report`                                        | `task({ ... })`                                                          |
 | `src/presence.ts`                                           | The one file that says what the bot shows under its name: its status and what it is doing                                                   | `presence({ ... })`                                                      |
+| `src/messages/`                                             | One language of the bot per file, named after it: `fr.ts` is the French; every function then receives `t`                                   | `language({ ... })`                                                      |
 
 All are imported from the same place, in every file:
 

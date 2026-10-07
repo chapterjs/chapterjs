@@ -13,7 +13,10 @@ const again = button({
   data: { count: 'number' },
   async run({ interaction, data }) {
     const count = data.count + 1;
-    await interaction.update({ content: `Pong! ×${count}`, components: [again({ count })] });
+    await interaction.update({
+      content: `Pong! ×${count}`,
+      components: [again({ count })],
+    });
   },
 });
 
@@ -29,7 +32,10 @@ import again from '../components/buttons/again';
 export default command({
   description: 'Replies with Pong!',
   async run({ interaction }) {
-    await interaction.reply({ content: 'Pong!', components: [again({ count: 1 })] });
+    await interaction.reply({
+      content: 'Pong!',
+      components: [again({ count: 1 })],
+    });
   },
 });
 ```
@@ -37,12 +43,16 @@ export default command({
 That is all: the path of the file (`buttons/again`) is what Discord sends back when the button is clicked, with the data the button carries. ChapterJS finds the file, checks that the data still matches, and runs your function with `data.count` as a number. Buttons that follow each other are put in rows for you, 5 per row.
 
 <Note>
-  Everything a button file declares, and the types behind it, are in the [reference](/reference/button). The `interaction` of a button is a [ComponentInteraction](/reference/interaction#componentinteraction).
+  Everything a button file declares, and the types behind it, are in the
+  [reference](/reference/button). The `interaction` of a button is a
+  [ComponentInteraction](/reference/interaction#componentinteraction).
 </Note>
 
 ## What a button carries
 
 `data` is what the button keeps between the message that shows it and the click: a name and a kind for each value, `'string'`, `'number'` or `'boolean'`. You give the values when you put the button in a message; `run` receives them typed, whatever happened meanwhile (a restart, another process). Discord keeps them in the button itself, so there is nothing to store.
+
+A value can have a default, which makes it optional where the button is put in a message: `data: { page: { type: 'number', default: 1 } }`. Then `next()`, `next({})` and `next` alone carry `page: 1`, `next({ page: 7 })` carries 7, and `run` always receives a number. A wrong default (`default: 'one'` on a `'number'`) is underlined, and refused when the file loads.
 
 ```ts src/components/buttons/ban.ts
 import { button } from 'chapterjs';
@@ -101,7 +111,9 @@ const next = button({
     const last = page >= 5;
     await interaction.update({
       content: `Page ${page} of 5`,
-      components: [next({ page }, { disabled: last, label: last ? 'The end' : 'Next' })],
+      components: [
+        next({ page }, { disabled: last, label: last ? 'The end' : 'Next' }),
+      ],
     });
   },
 });
@@ -119,7 +131,9 @@ export default command({
   async run({ interaction }) {
     await interaction.reply({
       content: 'Everything is explained here:',
-      components: [linkButton({ label: 'Documentation', url: 'https://chapterjs.dev' })],
+      components: [
+        linkButton({ label: 'Documentation', url: 'https://chapterjs.dev' }),
+      ],
     });
   },
 });
@@ -129,11 +143,11 @@ export default command({
 
 The `interaction` of a button has everything the interaction of a command has (`reply()`, `defer()`, `edit()`, `followUp()`, `delete()`), plus three things:
 
-| Method | What it does |
-| --- | --- |
-| `interaction.update(message)` | Changes the message the button is on. `components: []` removes the buttons. |
-| `interaction.deferUpdate()` | Answers with nothing: the message stays as it is, and `update()` can come later. |
-| `interaction.showModal(form)` | Opens a [form](/components/modals). |
+| Method                        | What it does                                                                     |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| `interaction.update(message)` | Changes the message the button is on. `components: []` removes the buttons.      |
+| `interaction.deferUpdate()`   | Answers with nothing: the message stays as it is, and `update()` can come later. |
+| `interaction.showModal(form)` | Opens a [form](/components/modals).                                              |
 
 `interaction.message` is the message the button is on, as a [Message](/reference/message).
 

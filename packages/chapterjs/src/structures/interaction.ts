@@ -31,6 +31,9 @@ import {
   type MessageEditOptions,
   type MessageOptions,
 } from './payload.js';
+import { resolve } from '../components/instance.js';
+import { translatorOf } from '../messages/translate.js';
+import type { Translator } from '../messages/messages.js';
 import type { User } from './user.js';
 
 export type InteractionData = Omit<
@@ -88,7 +91,10 @@ export class Interaction extends IdStructure<InteractionData> {
   static {
     isUpdating = interaction => interaction.#state === 'updating';
     updateMessage = (interaction, message) => {
-      const { body, files } = buildMessage(message, { edit: true });
+      const { body, files } = buildMessage(message, {
+        edit: true,
+        t: interaction.#t(interaction.#ephemeral),
+      });
       return interaction.#run(async () => {
         const { rest, entities } = ctxOf(interaction);
         const {
@@ -168,7 +174,14 @@ export class Interaction extends IdStructure<InteractionData> {
           {
             body: {
               type: InteractionCallbackType.Modal,
-              data: rendered.raw as RawInteractionCallbackModalData,
+              // A form is seen by the person alone: in their language.
+              data: resolve(
+                rendered,
+                translatorOf(ctxOf(interaction), {
+                  person: interaction.locale,
+                  ephemeral: true,
+                })
+              ).raw as RawInteractionCallbackModalData,
             },
             auth: false,
           }
@@ -259,6 +272,15 @@ export class Interaction extends IdStructure<InteractionData> {
     }
   }
 
+  /** `t` for an answer: the person when they alone see it, else the server. */
+  #t(ephemeral: boolean | undefined): Translator {
+    return translatorOf(ctxOf(this), {
+      person: this.locale,
+      guild: this.guild,
+      ephemeral: ephemeral ?? this.#ephemeral,
+    }) as Translator;
+  }
+
   #flags(ephemeral: boolean | undefined, flags = 0): number {
     return (ephemeral ?? this.#ephemeral)
       ? flags | MessageFlags.Ephemeral
@@ -273,7 +295,9 @@ export class Interaction extends IdStructure<InteractionData> {
   reply(message: InteractionReply): Promise<Message> {
     const options =
       typeof message === 'string' ? { content: message } : message;
-    const { body, files } = buildMessage(options);
+    const { body, files } = buildMessage(options, {
+      t: this.#t(options.ephemeral),
+    });
     return this.#run(async () => {
       const { rest, entities } = ctxOf(this);
       const { id, token, application_id: applicationId } = dataOf(this);
@@ -363,7 +387,10 @@ export class Interaction extends IdStructure<InteractionData> {
    * @see https://docs.discord.com/developers/interactions/receiving-and-responding#edit-original-interaction-response
    */
   edit(message: string | MessageEditOptions): Promise<Message> {
-    const { body, files } = buildMessage(message, { edit: true });
+    const { body, files } = buildMessage(message, {
+      edit: true,
+      t: this.#t(undefined),
+    });
     return this.#run(async () => {
       if (this.#state === 'waiting') {
         throw new Error(
@@ -389,7 +416,9 @@ export class Interaction extends IdStructure<InteractionData> {
   followUp(message: InteractionReply): Promise<Message> {
     const options =
       typeof message === 'string' ? { content: message } : message;
-    const { body, files } = buildMessage(options);
+    const { body, files } = buildMessage(options, {
+      t: this.#t(options.ephemeral),
+    });
     return this.#run(async () => {
       if (this.#state === 'waiting') {
         throw new Error(

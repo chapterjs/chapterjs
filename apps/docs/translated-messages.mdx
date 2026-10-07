@@ -1,0 +1,229 @@
+---
+title: 'Translated messages'
+description: 'Answer each person in their language, with one file per language in src/messages/'
+---
+
+The texts your bot answers with live in `src/messages/`, one file per language, named after the language. Every function of your project then receives `t`, which gives a text in the right language.
+
+```ts src/messages/en-US.ts
+import { language } from 'chapterjs';
+
+export default language({
+  default: true,
+  texts: {
+    pong: 'Pong!',
+    welcome: 'Welcome {name}, you are member #{count}!',
+    next: 'Page {page}',
+    members: { one: '{count} member', other: '{count} members' },
+  },
+});
+```
+
+```ts src/messages/fr.ts
+import { language } from 'chapterjs';
+
+export default language({
+  texts: {
+    pong: 'Pong !',
+    welcome: 'Bienvenue {name}, tu es le membre n°{count} !',
+    next: 'Page {page}',
+    members: { one: '{count} membre', other: '{count} membres' },
+  },
+});
+```
+
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Says hello',
+  async run({ interaction, guild, user, t }) {
+    await interaction.reply(
+      t('welcome', { name: user.displayName, count: guild.memberCount ?? 1 })
+    );
+  },
+});
+```
+
+That is all: a person whose Discord is in French reads "Bienvenue…", anyone else "Welcome…". `t` knows the keys of your files and the `{placeholders}` of each text: a key that does not exist, or a missing `{count}`, is underlined in your editor.
+
+<Note>
+  Everything a language file declares, and the type of `t`, is in the
+  [reference](/reference/messages).
+</Note>
+
+## The files
+
+- **The name of the file is the language**, as the [`Locale`](/reference/enums#locale) values write it: `en-US.ts`, `fr.ts`, `de.ts`, `es-ES.ts`, `pt-BR.ts`, `ja.ts`… A name Discord does not know is refused before the file even runs, with the list.
+- **`default: true`** marks the language used when the one of a person or of a server is not there. Exactly one file says so; with a single file, it goes without saying.
+- **Every language has the texts of the default one**, with the same placeholders. A text missing in a language, one in excess, or a `{name}` that became `{nom}`, is reported on that file, with the key: the language is left out until it matches again, and the others keep working.
+- **A placeholder** is a name between braces, made of letters, digits and `_`: `{name}`, `{count}`. It takes a text or a number. A number is written the way the language writes numbers (`1,234` in English, `1 234` in French, `1.234` in German): give it as a text to keep it as is, like a year or an id.
+- **A brace written as is** is doubled: `'{{name}}'` shows `{name}`.
+- A folder in parentheses only groups files, like everywhere in `src/`, and a file starting with `_` is never a language: free for what the files share.
+
+## Plurals
+
+A text that depends on a number has one form per quantity, like `members` above. Its `count` picks the form, following the rules of the language: English says "1 member" and "0 members", French says "0 membre", Russian and Arabic have more forms.
+
+```ts src/commands/count.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Counts the members',
+  async run({ interaction, guild, t }) {
+    await interaction.reply(t('members', { count: guild.memberCount ?? 0 }));
+  },
+});
+```
+
+The forms are `zero`, `one`, `two`, `few`, `many` and `other`. `other` is always there; write the forms your language uses, the others fall back to `other`. `count` is a number, and `{count}` in a form is that number; a form may have other placeholders, given the same way. A plural in one language can be a plain text in another (`'{count} membre(s)'`), as long as the placeholders match.
+
+## Which language t speaks
+
+A message is sent once, and everyone in the channel reads the same text: Discord does not translate it per reader. So `t` speaks the language of **those who will read** what you send, not of the person who used the command:
+
+| What you send                                                                                               | The language                                 |
+| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| An answer only the person sees (`ephemeral: true` on the command, the button, the menu or the form), a form | The one of the person                        |
+| A private message                                                                                           | The one of the person                        |
+| A public message in a server                                                                                | The one of the server, when Discord knows it |
+| The `ready` event, a task                                                                                   | The default one                              |
+
+Discord only knows the language of a **Community** server. Elsewhere it says `en-US` whatever the server speaks, so a public message there uses the default language of your file: a French bot with `default: 'fr'` speaks French in every server, and a bot in many languages follows the big servers that set theirs.
+
+When that language is not in the file, `t` takes one of the same language in another region (`en-GB` reads the `'en-US'` texts, `es-419` the `'es-ES'` ones, `zh-TW` the `'zh-CN'` ones: add the file when that is not what you want), and the default one otherwise. `t.locale` says which one was taken, and `t.in('fr')` is the same `t` for another language, to write to someone else:
+
+```ts src/events/memberJoin/notify.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild, t }) => {
+  // `t` speaks the language of the server; the owner may prefer another.
+  const owner = await guild.fetchOwner();
+  await owner.send(
+    t.in('fr')('welcome', {
+      name: member.displayName,
+      count: guild.memberCount ?? 1,
+    })
+  );
+});
+```
+
+<Warning>
+  `t` is given to your function before it runs, for the audience the file
+  declares. An answer made private at the call (`interaction.reply({
+  ephemeral: true, content: t('pong') })`) in a command that is not
+  `ephemeral` keeps the language of the server in `content`, while the
+  texts of its components are computed for the person. Put `ephemeral:
+  true` in the file when the answer is for the person alone.
+</Warning>
+
+## The texts of a button, a menu, a form
+
+A label, a placeholder or a title is written in the file of the component. To translate it, make it a function: it receives `t`, in the language of who will read the message, and the `data` the component carries. It runs when the message is sent.
+
+```ts src/components/buttons/next.ts
+import { button } from 'chapterjs';
+
+const next = button({
+  label: ({ t, data }) => t('next', { page: data.page + 1 }),
+  data: { page: 'number' },
+  async run({ interaction, data }) {
+    await interaction.update({ components: [next({ page: data.page + 1 })] });
+  },
+});
+
+export default next;
+```
+
+This works for the `label` of a button, the `placeholder` of a menu and the `label` and `description` of its options, the `title` of a form and the `label`, `description`, `placeholder` and `content` of its fields. A text written as is stays as it is. What the function returns is checked against the limits of Discord when the message is sent.
+
+## What the bot answers by itself
+
+When the bot can't run what was asked, it answers by itself: a command used where it does not work, a button of an old message, a `run` that threw. These phrases are in English. Translate the ones you want in `framework`, with the words for a command, a button, a menu and a form, which `{what}` stands for:
+
+```ts src/messages/fr.ts
+import { language } from 'chapterjs';
+
+export default language({
+  texts: { pong: 'Pong !' },
+  framework: {
+    command: 'commande',
+    button: 'bouton',
+    guildOnly: "Cette {what} ne s'utilise que sur un serveur.",
+    failed: "Quelque chose s'est mal passé avec cette {what}.",
+    needsPermissions: {
+      one: 'Il te faut la permission {permissions} pour cette commande.',
+      other: 'Il te faut les permissions {permissions} pour cette commande.',
+    },
+  },
+});
+```
+
+The phrases, with their English text, are listed in [`FrameworkTexts`](/reference/messages#frameworktexts). A phrase is answered in the language of the person, from the file that translates it; a phrase a file does not translate stays in English. A phrase without the placeholders of the English one is refused when the file loads.
+
+## The names and descriptions of commands
+
+What Discord shows of a command before it is used (its name, its description, its options and their choices) is registered once, in every language: Discord picks the language. Give them in the `commands` of each language file, by the path of the command file:
+
+```ts src/messages/fr.ts
+import { language } from 'chapterjs';
+
+export default language({
+  texts: { pong: 'Pong !' },
+  commands: {
+    ping: { description: 'Répond Pong !' },
+    'mod/ban': {
+      name: 'bannir',
+      description: 'Bannit un membre',
+      options: { target: { name: 'qui', description: 'Qui bannir' } },
+    },
+  },
+});
+```
+
+Your editor offers the commands of the project here, the ones without `description` in their file: a command that does not exist, or one its file describes, is underlined (once `chapterjs dev` or `chapterjs build` ran the command files). An option or a choice that does not exist is reported when the file loads.
+
+A command has its texts in one place. **Without `description` in its file**, the language files describe it: the default language gives the description Discord shows to everyone (and the description of each option that has none in the file), the other languages their translations. **With `description` in its file**, the file owns its texts, with its own [`locales`](/commands/translations) for translations, and a language file that mentions it is an error:
+
+```text
+✗ src/messages/fr.ts /ping is described in src/commands/ping.ts: remove its description there to translate it here, or remove it here.
+```
+
+A command without description anywhere is left out, and says where to write one:
+
+```text
+✗ src/commands/ping.ts This command has no description: write it in src/messages/en-US.ts (commands: { "ping": { description: '...' } }), or in the file (description: '...').
+```
+
+A command, an option or a choice that the project does not have is an error on that language file, with the command named; the rest of the file is used.
+
+## In development
+
+In `chapterjs dev`, saving a language file changes its texts at once, and the commands are registered again when what Discord shows of them changed. A file that does not load, or no longer matches the default language, is reported with what is wrong, and that language keeps its last texts that worked. When the first language is added, or the last one removed, the types of `t` follow:
+
+```text
+↻ Types updated
+```
+
+A text used with a placeholder missing is an error of your code, reported with the file and the line, and the person gets a plain answer:
+
+```text
+✗ src/commands/hello.ts:6 The message "welcome" needs {count}: t('welcome', { name, count })
+```
+
+<CardGroup cols={2}>
+  <Card
+    title="language() reference"
+    icon="languages"
+    href="/reference/messages"
+  >
+    Every field of a language file, and the type of t.
+  </Card>
+  <Card
+    title="Command translations"
+    icon="terminal"
+    href="/commands/translations"
+  >
+    The name and the description of a command in each language.
+  </Card>
+</CardGroup>

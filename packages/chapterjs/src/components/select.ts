@@ -16,6 +16,13 @@ import type { Channel } from '../structures/channel.js';
 import type { ComponentInteraction } from '../structures/interaction.js';
 import type { Role } from '../structures/role.js';
 import type { User } from '../structures/user.js';
+import type { TranslationContext } from '../messages/messages.js';
+import {
+  isDynamic,
+  resolveText,
+  type DynamicText,
+  type TextContext,
+} from './component.js';
 import type {
   ComponentWhere,
   InteractiveConfig,
@@ -26,12 +33,16 @@ import {
   checkData,
   encodeCustomId,
   type DataShape,
+  type DataInputOf,
   type DataValuesOf,
 } from './custom-id.js';
 import { createFile } from './file.js';
 import type { Rendered, SelectComponent } from './instance.js';
 import {
+  hasDynamicOption,
+  resolveOptions,
   readOptions,
+  type LoadedOption,
   type OptionValue,
   type SelectOptions,
 } from './options.js';
@@ -59,9 +70,13 @@ interface EntityValues {
 }
 
 /** What a select menu looks like. */
-export interface SelectLook {
-  /** The text shown when nothing is picked (150 characters at most). */
-  placeholder?: string;
+export interface SelectLook<Data extends DataShape = DataShape> {
+  /**
+   * The text shown when nothing is picked (150 characters at most):
+   * written as is, or a function of `t` and the data, run when the
+   * message is sent.
+   */
+  placeholder?: DynamicText<Data>;
   /** Shows the menu greyed out, impossible to use. */
   disabled?: boolean;
 }
@@ -77,7 +92,7 @@ export interface SelectInstanceOptions extends SelectLook {
 
 /** What every select file declares, whatever its kind. */
 interface SelectConfigBase<Data extends DataShape, Where extends ComponentWhere>
-  extends SelectLook, InteractiveConfig<Data, Where> {
+  extends SelectLook<Data>, InteractiveConfig<Data, Where> {
   /** How many things must be picked at least (0 to 25). 1 by default. */
   min?: number;
   /** How many things can be picked at most (1 to 25). 1 by default. */
@@ -89,12 +104,13 @@ export type SelectContext<
   Picked,
   Data extends DataShape = {},
   Where extends ComponentWhere = 'guild',
-> = InteractiveContext<Data> & {
-  /** What was picked, in the order of the menu. */
-  values: Picked[];
-  /** The first thing picked; `undefined` when nothing was (a menu with `min: 0`). */
-  value: Picked | undefined;
-} & PlaceOf<Where, ComponentInteraction>;
+> = InteractiveContext<Data> &
+  TranslationContext & {
+    /** What was picked, in the order of the menu. */
+    values: Picked[];
+    /** The first thing picked; `undefined` when nothing was (a menu with `min: 0`). */
+    value: Picked | undefined;
+  } & PlaceOf<Where, ComponentInteraction>;
 
 /** A menu of texts you declare. */
 export interface StringSelectConfig<
@@ -145,12 +161,18 @@ export type SelectConfig<
 export type SelectFile<Data extends DataShape = {}> = {
   /** What the file gave to `select()`, not checked yet. */
   readonly config: unknown;
-} & ({} extends DataValuesOf<Data>
+} & ({} extends Data
   ? ((options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
-  : (
-      data: DataValuesOf<Data>,
-      options?: SelectInstanceOptions
-    ) => SelectComponent);
+  : {} extends DataInputOf<Data>
+    ? ((
+        data?: DataInputOf<Data>,
+        options?: SelectInstanceOptions
+      ) => SelectComponent) &
+        SelectComponent
+    : (
+        data: DataInputOf<Data>,
+        options?: SelectInstanceOptions
+      ) => SelectComponent);
 
 /**
  * Declares a select menu. Export the result as the default export of a
@@ -191,8 +213,8 @@ export interface LoadedSelect {
   readonly kind: 'select';
   readonly path: string;
   readonly type: SelectType;
-  /** The options of a menu of texts, as Discord takes them. */
-  readonly options: readonly RawSelectOption[];
+  /** The options of a menu of texts, their texts maybe computed when sent. */
+  readonly options: readonly LoadedOption[];
   readonly channelTypes: readonly ChannelType[] | undefined;
   readonly look: SelectLook;
   readonly min: number;
@@ -244,8 +266,10 @@ export function readRange(
 export function readPlaceholder(
   what: string,
   value: unknown
-): string | undefined {
+): DynamicText | undefined {
   if (value === undefined) return undefined;
+  // A function is checked when the message is sent.
+  if (isDynamic(value)) return value;
   if (
     typeof value !== 'string' ||
     value.trim() === '' ||
@@ -363,22 +387,39 @@ export function renderSelect(
     hasData ? args[1] : args[0]
   );
   const merged = { ...loaded.look, ...look };
-  const base = {
-    custom_id: encodeCustomId(loaded.path, loaded.data, values),
-    ...(merged.placeholder !== undefined
-      ? { placeholder: merged.placeholder }
-      : {}),
-    ...(loaded.min !== 1 ? { min_values: loaded.min } : {}),
-    ...(loaded.max !== 1 ? { max_values: loaded.max } : {}),
-    ...(merged.disabled ? { disabled: true } : {}),
-  };
-  let raw: RawSelectMenu;
-  if (loaded.type === 'string') {
+  const dynamic =
+    isDynamic(merged.placeholder) || hasDynamicOption(loaded.options);
+  const make = (context: TextContext): RawSelectMenu => {
+    const placeholder = resolveText(
+      `The placeholder of ${name}`,
+      merged.placeholder,
+      context,
+      { max: Limits.SelectPlaceholder }
+    );
+    const base = {
+      custom_id: encodeCustomId(loaded.path, loaded.data, values),
+      ...(placeholder !== undefined ? { placeholder } : {}),
+      ...(loaded.min !== 1 ? { min_values: loaded.min } : {}),
+      ...(loaded.max !== 1 ? { max_values: loaded.max } : {}),
+      ...(merged.disabled ? { disabled: true } : {}),
+    };
+    if (loaded.type !== 'string') {
+      return {
+        type: SELECT_TYPES[loaded.type],
+        ...base,
+        ...(loaded.channelTypes
+          ? { channel_types: [...loaded.channelTypes] }
+          : {}),
+        ...(defaults
+          ? { default_values: defaults as RawSelectDefaultValue[] }
+          : {}),
+      } as RawSelectMenu;
+    }
     const picked = defaults as string[] | undefined;
-    raw = {
+    return {
       type: ComponentType.StringSelect,
       ...base,
-      options: loaded.options
+      options: resolveOptions(name, loaded.options, context)
         .map(option =>
           picked
             ? {
@@ -395,17 +436,12 @@ export function renderSelect(
             : option
         ),
     };
-  } else {
-    raw = {
-      type: SELECT_TYPES[loaded.type],
-      ...base,
-      ...(loaded.channelTypes
-        ? { channel_types: [...loaded.channelTypes] }
-        : {}),
-      ...(defaults
-        ? { default_values: defaults as RawSelectDefaultValue[] }
-        : {}),
-    } as RawSelectMenu;
-  }
-  return { kind: 'select', raw };
+  };
+  // Texts computed when the message is sent wait for who will read it.
+  return {
+    kind: 'select',
+    raw: dynamic
+      ? t => make({ t, data: values })
+      : make({ t: undefined as never, data: values }),
+  };
 }

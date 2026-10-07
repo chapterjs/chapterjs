@@ -9,19 +9,71 @@ import { Limits } from '../discord/api.js';
 /** The kinds of values a component can carry in its `data`. */
 export type DataKind = 'string' | 'number' | 'boolean';
 
-/** What a component carries: a name for each value, and its kind. */
-export type DataShape = Readonly<Record<string, DataKind>>;
+/**
+ * One value a component carries: its kind, or its kind with a default
+ * value, which makes it optional where the component is put in a message.
+ */
+export type DataField =
+  | DataKind
+  | { type: 'string'; default?: string }
+  | { type: 'number'; default?: number }
+  | { type: 'boolean'; default?: boolean };
 
-/** The values of a `data` declaration, typed from it. */
-export type DataValuesOf<Shape extends DataShape> = {
-  [Name in keyof Shape]: Shape[Name] extends 'string'
+/** What a component carries: a name for each value, and its kind. */
+export type DataShape = Readonly<Record<string, DataField>>;
+
+/** The kind of a field, however it was written. */
+type KindOf<Field extends DataField> = Field extends DataKind
+  ? Field
+  : Field extends { type: infer Kind }
+    ? Kind
+    : never;
+
+type ValueOf<Field extends DataField> =
+  KindOf<Field> extends 'string'
     ? string
-    : Shape[Name] extends 'number'
+    : KindOf<Field> extends 'number'
       ? number
       : boolean;
+
+/** The names of the fields that have a default value. */
+type WithDefault<Shape extends DataShape> = {
+  [Name in keyof Shape]: Shape[Name] extends { default: {} } ? Name : never;
+}[keyof Shape];
+
+/**
+ * The values of a `data` declaration, typed from it: what `run` and the
+ * texts of the component receive. A value with a default is always there.
+ */
+export type DataValuesOf<Shape extends DataShape> = {
+  [Name in keyof Shape]: ValueOf<Shape[Name]>;
+};
+
+/**
+ * What a message gives to a component: the values of its `data`, those
+ * with a default value being optional.
+ */
+export type DataInputOf<Shape extends DataShape> = {
+  [Name in Exclude<keyof Shape, WithDefault<Shape>>]: ValueOf<Shape[Name]>;
+} & {
+  [Name in WithDefault<Shape>]?: ValueOf<Shape[Name]>;
 };
 
 export const DATA_KINDS: readonly DataKind[] = ['string', 'number', 'boolean'];
+
+/** The kind of a field, however it was written. */
+export const kindOf = (field: DataField): DataKind =>
+  typeof field === 'string' ? field : field.type;
+
+/** The default value of a field, if it has one. */
+export const defaultOf = (
+  field: DataField
+): string | number | boolean | undefined =>
+  typeof field === 'string' ? undefined : field.default;
+
+/** Whether a component can be put in a message without data. */
+export const needsNoData = (shape: DataShape): boolean =>
+  Object.values(shape).every(field => defaultOf(field) !== undefined);
 
 /** Fields are separated by `:`; a `:` or a `\` inside a value is escaped. */
 const SEPARATOR = ':';
@@ -63,7 +115,15 @@ export function checkData(
     }
     return {};
   }
-  const example = `${what}({ ${names.map(name => `${name}: ${shape[name] === 'string' ? "'...'" : shape[name] === 'number' ? '1' : 'true'}`).join(', ')} })`;
+  const example = `${what}({ ${names
+    .filter(name => defaultOf(shape[name]!) === undefined)
+    .map(
+      name =>
+        `${name}: ${kindOf(shape[name]!) === 'string' ? "'...'" : kindOf(shape[name]!) === 'number' ? '1' : 'true'}`
+    )
+    .join(', ')} })`;
+  // Every value has a default: the component is used as is, or with some.
+  if (values === undefined && needsNoData(shape)) values = {};
   if (typeof values !== 'object' || values === null || Array.isArray(values)) {
     throw new TypeError(`${what} needs its data: write ${example}.`);
   }
@@ -77,8 +137,9 @@ export function checkData(
   }
   const result: Record<string, string | number | boolean> = {};
   for (const name of names) {
-    const value = given[name];
-    const kind = shape[name]!;
+    const fallback = defaultOf(shape[name]!);
+    const value = given[name] === undefined ? fallback : given[name];
+    const kind = kindOf(shape[name]!);
     const got = JSON.stringify(value) ?? typeof value;
     if (
       typeof value !== kind ||
@@ -135,7 +196,7 @@ export function readData(
   const values: Record<string, string | number | boolean> = {};
   for (const [index, name] of names.entries()) {
     const part = parts[index]!;
-    switch (shape[name]) {
+    switch (kindOf(shape[name]!)) {
       case 'number': {
         const number = Number(part);
         if (part.trim() === '' || !Number.isFinite(number)) return null;

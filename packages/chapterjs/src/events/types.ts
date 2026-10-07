@@ -35,14 +35,14 @@ export declare function event<
     }
 ): EventFile;
 `
-        : `import type { EventContexts, EventFile } from '#chapterjs';
+        : `import type { ContextOf, EventFile } from '#chapterjs';
 
 /**
  * Says what to do when \`${name}\` happens. Export the result as the default
  * export of a file of src/events/${name}/.
  */
 export declare function event(
-  handler: (context: EventContexts['${name}']) => unknown
+  handler: (context: ContextOf<'${name}'>) => unknown
 ): EventFile;
 `,
     };

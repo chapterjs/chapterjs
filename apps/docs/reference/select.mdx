@@ -36,9 +36,11 @@ What `select()` returns: the default export of a select file. Import it where yo
 
 ```ts
 type SelectFile<Data extends DataShape = {}> = { readonly config: unknown } &
-  ({} extends DataValuesOf<Data>
+  ({} extends Data
     ? ((options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
-    : (data: DataValuesOf<Data>, options?: SelectInstanceOptions) => SelectComponent)
+    : {} extends DataInputOf<Data>
+      ? ((data?: DataInputOf<Data>, options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
+      : (data: DataInputOf<Data>, options?: SelectInstanceOptions) => SelectComponent)
 ```
 
 <ResponseField name="config" type="unknown">
@@ -106,8 +108,8 @@ The kinds of menus: texts you declare, or things of the server.
 
 What a select menu looks like.
 
-<ResponseField name="placeholder" type="string">
-  The text shown when nothing is picked (150 characters at most).
+<ResponseField name="placeholder" type="DynamicText<Data>">
+  The text shown when nothing is picked (150 characters at most): written as is, or a function of `t` and the data, run when the message is sent. See [DynamicText](/reference/messages#dynamictext).
 </ResponseField>
 
 <ResponseField name="disabled" type="boolean">
@@ -136,16 +138,16 @@ The options of a menu: a list of texts (each is shown and received as is), an ob
 
 One option of a menu, with everything Discord shows for it.
 
-<ResponseField name="label" type="string" required>
-  What the person sees (100 characters at most).
+<ResponseField name="label" type="DynamicText<Data>" required>
+  What the person sees (100 characters at most): a text, or a function of `t` and the data.
 </ResponseField>
 
 <ResponseField name="value" type="string" required>
   What your code receives (100 characters at most).
 </ResponseField>
 
-<ResponseField name="description" type="string">
-  A second line under the label (100 characters at most).
+<ResponseField name="description" type="DynamicText<Data>">
+  A second line under the label (100 characters at most): a text, or a function of `t` and the data.
 </ResponseField>
 
 <ResponseField name="emoji" type="EmojiInput">

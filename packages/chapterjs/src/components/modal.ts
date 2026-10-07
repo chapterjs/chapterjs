@@ -17,17 +17,29 @@ import type { ModalInteraction } from '../structures/interaction.js';
 import type { Attachment, Message } from '../structures/message.js';
 import type { Role } from '../structures/role.js';
 import type { User } from '../structures/user.js';
-import type { ComponentWhere, PlaceOf } from './component.js';
+import type { TranslationContext } from '../messages/messages.js';
+import {
+  isDynamic,
+  resolveText,
+  type ComponentWhere,
+  type DynamicText,
+  type PlaceOf,
+  type TextContext,
+} from './component.js';
 import {
   checkData,
   encodeCustomId,
   type DataShape,
+  type DataInputOf,
   type DataValuesOf,
 } from './custom-id.js';
 import { createFile } from './file.js';
 import type { ModalComponent, Rendered } from './instance.js';
 import {
+  hasDynamicOption,
   readOptions,
+  resolveOptions,
+  type LoadedOption,
   type OptionValue,
   type SelectOptions,
 } from './options.js';
@@ -40,10 +52,13 @@ import {
 
 /** What every field of a form has: how it is named for the person. */
 interface FieldBase {
-  /** The name of the field, above it (45 characters at most). */
-  label: string;
-  /** A help text under the label (100 characters at most). */
-  description?: string;
+  /**
+   * The name of the field, above it (45 characters at most): written as
+   * is, or a function of `t` and the data, run when the form opens.
+   */
+  label: DynamicText;
+  /** A help text under the label (100 characters at most): a text, or a function of `t` and the data. */
+  description?: DynamicText;
 }
 
 /** A text the person types. */
@@ -52,8 +67,8 @@ export interface TextField extends FieldBase {
   type: 'text';
   /** One line (`'short'`, the default) or several (`'paragraph'`). */
   style?: 'short' | 'paragraph';
-  /** The text shown while the field is empty (100 characters at most). */
-  placeholder?: string;
+  /** The text shown while the field is empty (100 characters at most): a text, or a function of `t` and the data. */
+  placeholder?: DynamicText;
   /** Whether the person must fill it in. `true` by default. */
   required?: boolean;
   /** The shortest text accepted, in characters (0 to 4000). */
@@ -72,8 +87,8 @@ export interface SelectField<
   type: 'select';
   /** The options (25 at most), written like the options of a select menu. */
   options: Options;
-  /** The text shown when nothing is picked (150 characters at most). */
-  placeholder?: string;
+  /** The text shown when nothing is picked (150 characters at most): a text, or a function of `t` and the data. */
+  placeholder?: DynamicText;
   /** How many options must be picked at least (0 to 25). 1 by default. */
   min?: number;
   /** How many options can be picked at most (1 to 25). 1 by default. */
@@ -86,8 +101,8 @@ export interface SelectField<
 export interface EntityField extends FieldBase {
   /** The kind of field: what Discord lists. */
   type: 'user' | 'role' | 'mentionable' | 'channel';
-  /** The text shown when nothing is picked (150 characters at most). */
-  placeholder?: string;
+  /** The text shown when nothing is picked (150 characters at most): a text, or a function of `t` and the data. */
+  placeholder?: DynamicText;
   /** How many things must be picked at least (0 to 25). 1 by default. */
   min?: number;
   /** How many things can be picked at most (1 to 25). 1 by default. */
@@ -152,8 +167,8 @@ export interface CheckboxField extends FieldBase {
 export interface NoteField {
   /** The kind of field: a text to read. */
   type: 'note';
-  /** The text, with Markdown. */
-  content: string;
+  /** The text, with Markdown: written as is, or a function of `t` and the data. */
+  content: DynamicText;
 }
 
 /** One field of a form. */
@@ -237,7 +252,8 @@ export type ModalContext<
   data: DataValuesOf<Data>;
   /** The message whose button or menu opened the form; `null` when a command did. */
   message: Message | null;
-} & PlaceOf<Where, ModalInteraction>;
+} & TranslationContext &
+  PlaceOf<Where, ModalInteraction>;
 
 /** What a modal file gives to `modal()`. */
 export interface ModalConfig<
@@ -245,8 +261,11 @@ export interface ModalConfig<
   Data extends DataShape = {},
   Where extends ComponentWhere = 'guild',
 > {
-  /** The title of the form (45 characters at most). */
-  title: string;
+  /**
+   * The title of the form (45 characters at most): written as is, or a
+   * function of `t` and the data, run when the form opens.
+   */
+  title: DynamicText;
   /** The fields, by name (1 to 5). `run` receives them under the same names. */
   fields: Fields;
   /**
@@ -287,13 +306,19 @@ export type ModalFile<
 > = {
   /** What the file gave to `modal()`, not checked yet. */
   readonly config: unknown;
-} & ({} extends DataValuesOf<Data>
+} & ({} extends Data
   ? ((options?: ModalInstanceOptions<Fields>) => ModalComponent) &
       ModalComponent
-  : (
-      data: DataValuesOf<Data>,
-      options?: ModalInstanceOptions<Fields>
-    ) => ModalComponent);
+  : {} extends DataInputOf<Data>
+    ? ((
+        data?: DataInputOf<Data>,
+        options?: ModalInstanceOptions<Fields>
+      ) => ModalComponent) &
+        ModalComponent
+    : (
+        data: DataInputOf<Data>,
+        options?: ModalInstanceOptions<Fields>
+      ) => ModalComponent);
 
 /**
  * Declares a form. Export the result as the default export of a file of
@@ -329,8 +354,8 @@ export function modal<
 export interface LoadedField {
   readonly name: string;
   readonly field: ModalField;
-  /** The options of a menu, radio or checkboxes, as Discord takes them. */
-  readonly options: readonly RawSelectOption[];
+  /** The options of a menu, radio or checkboxes, their texts maybe computed when sent. */
+  readonly options: readonly LoadedOption[];
   readonly required: boolean;
   readonly min: number;
   readonly max: number;
@@ -340,7 +365,8 @@ export interface LoadedField {
 export interface LoadedModal {
   readonly kind: 'modal';
   readonly path: string;
-  readonly title: string;
+  /** The title (45 characters at most): a text, or computed when the form opens. */
+  readonly title: DynamicText;
   readonly fields: readonly LoadedField[];
   readonly data: DataShape;
   readonly where: ComponentWhere;
@@ -394,6 +420,8 @@ function checkText(
 ): string | undefined {
   if (value === undefined)
     return required ? fail(`${what} is missing.`) : undefined;
+  // A function is checked when the form opens.
+  if (isDynamic(value)) return undefined;
   if (typeof value !== 'string')
     return fail(`${what} is a text, got ${typeof value}.`);
   if (value.length < min || value.length > max) {
@@ -467,7 +495,7 @@ export function readField(name: string, given: unknown): LoadedField {
     { required: false }
   );
   const required = checkBoolean(`"required" of ${what}`, given.required, true);
-  let options: RawSelectOption[] = [];
+  let options: LoadedOption[] = [];
   let range = { min: 1, max: 1 };
   switch (type) {
     case 'text': {
@@ -568,12 +596,29 @@ export function readField(name: string, given: unknown): LoadedField {
 /** The label and the input of one field, as Discord takes them. */
 function renderField(
   loaded: LoadedField,
-  prefill: unknown
+  prefill: unknown,
+  context: TextContext
 ): RawLabel | { type: typeof ComponentType.TextDisplay; content: string } {
   const { name, field, required, min, max } = loaded;
+  const what = `the field "${name}"`;
   if (field.type === 'note') {
-    return { type: ComponentType.TextDisplay, content: field.content };
+    return {
+      type: ComponentType.TextDisplay,
+      content: resolveText(`The content of ${what}`, field.content, context, {
+        max: Limits.TextDisplayTotal,
+      })!,
+    };
   }
+  const placeholder =
+    'placeholder' in field
+      ? resolveText(`The placeholder of ${what}`, field.placeholder, context, {
+          max:
+            field.type === 'text'
+              ? Limits.TextInputPlaceholder
+              : Limits.SelectPlaceholder,
+        })
+      : undefined;
+  const options = resolveOptions(what, loaded.options, context);
   const base = { custom_id: name };
   const picked = Array.isArray(prefill)
     ? (prefill as string[])
@@ -601,9 +646,7 @@ function renderField(
         ...(min !== 0 ? { min_length: min } : {}),
         ...(max !== Limits.TextInputLength ? { max_length: max } : {}),
         ...(required ? {} : { required: false }),
-        ...(field.placeholder !== undefined
-          ? { placeholder: field.placeholder }
-          : {}),
+        ...(placeholder !== undefined ? { placeholder } : {}),
         ...((prefill ?? field.value) !== undefined
           ? { value: (prefill ?? field.value) as string }
           : {}),
@@ -613,10 +656,8 @@ function renderField(
       component = {
         type: ComponentType.StringSelect,
         ...base,
-        options: withDefaults(loaded.options),
-        ...(field.placeholder !== undefined
-          ? { placeholder: field.placeholder }
-          : {}),
+        options: withDefaults(options),
+        ...(placeholder !== undefined ? { placeholder } : {}),
         ...(min !== 1 ? { min_values: min } : {}),
         ...(max !== 1 ? { max_values: max } : {}),
         ...(required ? {} : { required: false }),
@@ -629,9 +670,7 @@ function renderField(
       component = {
         type: SELECT_TYPES[field.type],
         ...base,
-        ...(field.placeholder !== undefined
-          ? { placeholder: field.placeholder }
-          : {}),
+        ...(placeholder !== undefined ? { placeholder } : {}),
         ...(min !== 1 ? { min_values: min } : {}),
         ...(max !== 1 ? { max_values: max } : {}),
         ...(required ? {} : { required: false }),
@@ -654,7 +693,7 @@ function renderField(
       component = {
         type: ComponentType.RadioGroup,
         ...base,
-        options: withDefaults(loaded.options),
+        options: withDefaults(options),
         ...(required ? {} : { required: false }),
       };
       break;
@@ -662,7 +701,7 @@ function renderField(
       component = {
         type: ComponentType.CheckboxGroup,
         ...base,
-        options: withDefaults(loaded.options),
+        options: withDefaults(options),
         ...(min !== 1 ? { min_values: min } : {}),
         ...(max !== loaded.options.length ? { max_values: max } : {}),
         ...(required ? {} : { required: false }),
@@ -679,12 +718,18 @@ function renderField(
       break;
     }
   }
+  const description = resolveText(
+    `The description of ${what}`,
+    field.description,
+    context,
+    { max: Limits.LabelDescription }
+  );
   return {
     type: ComponentType.Label,
-    label: field.label,
-    ...(field.description !== undefined
-      ? { description: field.description }
-      : {}),
+    label: resolveText(`The label of ${what}`, field.label, context, {
+      max: Limits.LabelText,
+    })!,
+    ...(description !== undefined ? { description } : {}),
     component,
   };
 }
@@ -768,12 +813,26 @@ export function renderModal(
   }
   const values = checkData(name, loaded.data, hasData ? args[0] : undefined);
   const prefill = readPrefill(loaded, name, hasData ? args[1] : args[0]);
-  const raw: RawInteractionCallbackModalData = {
+  const make = (context: TextContext): RawInteractionCallbackModalData => ({
     custom_id: encodeCustomId(loaded.path, loaded.data, values),
-    title: loaded.title,
+    title: resolveText(`The title of ${name}`, loaded.title, context, {
+      max: Limits.ModalTitle,
+    })!,
     components: loaded.fields.map(field =>
-      renderField(field, prefill[field.name])
+      renderField(field, prefill[field.name], context)
     ),
+  });
+  // Texts computed when the form opens wait for the language of the person.
+  const dynamic =
+    isDynamic(loaded.title) ||
+    loaded.fields.some(
+      ({ field, options }) =>
+        Object.values(field).some(isDynamic) || hasDynamicOption(options)
+    );
+  return {
+    kind: 'modal',
+    raw: dynamic
+      ? t => make({ t, data: values })
+      : make({ t: undefined as never, data: values }),
   };
-  return { kind: 'modal', raw };
 }
