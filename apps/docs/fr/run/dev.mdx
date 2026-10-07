@@ -1,0 +1,246 @@
+---
+title: 'chapterjs dev'
+description: 'Faire tourner votre bot sur votre serveur de test pendant que vous l’écrivez, avec chaque fichier rechargé à l’enregistrement'
+---
+
+`chapterjs dev` fait tourner le bot du dossier courant sur votre serveur de test, et recharge vos fichiers quand vous les enregistrez. C’est ce que lance le script `dev` de votre projet :
+
+<CodeGroup>
+```bash pnpm
+pnpm dev
+```
+
+```bash npm
+npm run dev
+```
+
+```bash yarn
+yarn dev
+```
+
+```bash bun
+bun dev
+```
+</CodeGroup>
+
+```text
+✓ Connected to My Server as my-bot
+ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT
+✓ 1 command, 2 events loaded
+✓ Commands updated on My Server
+```
+
+C’est tout : le bot est en ligne sur votre serveur de test, vos commandes y apparaissent, et chaque fichier de `src/` est surveillé. Tout ce dont la commande a besoin de Discord est déduit de vos fichiers : les intents de la deuxième ligne, ce dont le bot [se souvient](/fr/memory), les commandes à enregistrer.
+
+<Note>Les options, les variables d’environnement et les codes de sortie de la commande sont dans la [référence du CLI](/fr/reference/cli#chapterjs-dev).</Note>
+
+## Ce dont elle a besoin
+
+Un fichier `.env` à la racine de votre projet, avec deux valeurs :
+
+```bash .env
+BOT_TOKEN=
+DEV_GUILD_ID=
+```
+
+Où les trouver est dans [Votre application Discord](/fr/setup/discord-application). Une valeur réglée dans le vrai environnement l’emporte sur le fichier.
+
+<Info>
+  **`BOT_TOKEN` est le token d’une application de dev, pas du bot qui est en ligne pour tout le monde.** Nous recommandons deux applications dès le départ : un bot pour votre ordinateur, un bot pour la production. Avec un seul bot pour les deux, votre serveur de test affiche en double chaque commande que vous modifiez, et la présence, les intents privilégiés et le token de production sont partagés avec ce que vous essayez. Comment la mettre en place : [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement).
+</Info>
+
+Sans le fichier, la commande s’arrête avant toute autre chose :
+
+```text
+✗ There is no .env file in this folder.
+  Copy .env.example to .env, then fill in BOT_TOKEN and DEV_GUILD_ID.
+```
+
+Et elle doit tourner dans le dossier de votre bot, celui qui contient `package.json` et `src/` :
+
+```text
+✗ There is no src folder here.
+  Run this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapter".
+```
+
+## Ce qu’elle vérifie pour vous
+
+Avant de se connecter, `chapterjs dev` s’assure que tout est en place. Quand quelque chose manque, elle dit quoi et comment le corriger, et quand vous êtes dans un terminal, elle attend la correction au lieu de vous faire tout recommencer :
+
+<AccordionGroup>
+  <Accordion title="Une valeur de .env est fausse">
+    Chaque problème est affiché d’un coup : une valeur vide, encore la valeur d’exemple, un token avec un espace dedans, un identifiant de serveur qui n’est pas fait de chiffres. La commande s’arrête ; corrigez `.env` et relancez-la.
+
+    ```text
+    ✗ .env: BOT_TOKEN is still the example value.
+      Copy the token of your bot from https://discord.com/developers/applications → your application → Bot → Reset Token.
+    ✗ .env: DEV_GUILD_ID is empty.
+      In Discord, right-click your test server → Copy Server ID (enable Settings → Advanced → Developer Mode to see it).
+    ```
+  </Accordion>
+  <Accordion title="Le token est refusé">
+    Discord ne reconnaît pas le token, généralement parce qu’il a été réinitialisé. La commande s’arrête.
+
+    ```text
+    ✗ Discord refused the bot token. Copy it again from the Developer Portal (your application → Bot → Reset Token) into BOT_TOKEN in your .env file.
+    ```
+  </Accordion>
+  <Accordion title="Le bot n’est pas sur votre serveur de test">
+    Vous recevez un lien qui ajoute le bot à ce serveur, avec toutes les permissions : un serveur de test est un terrain de jeu. Ouvrez-le, confirmez, et la commande continue toute seule.
+
+    ```text
+    ⚠ Your bot is not in your dev server yet (DEV_GUILD_ID=123456789012345678).
+      Open this link to add it:
+      https://discord.com/oauth2/authorize?client_id=...&scope=bot+applications.commands&permissions=8&guild_id=123456789012345678&disable_guild_select=true
+      If the link shows another server, DEV_GUILD_ID is not the ID of a server you manage.
+      Waiting for the bot to be added...
+    ✓ The bot joined My Server
+    ```
+  </Accordion>
+  <Accordion title="Un intent privilégié n’est pas activé">
+    Certains [événements](/fr/events#intents--rien-à-lister) ont besoin d’une option activée pour votre bot dans le Developer Portal. Vous recevez les fichiers qui en ont besoin et le lien vers la bonne page. Activez-la, enregistrez, et la commande continue toute seule.
+
+    ```text
+    ⚠ Your files need an option that is not enabled for your bot:
+      - Message Content Intent, needed by src/events/messageCreate/ping.ts
+      Enable it under "Privileged Gateway Intents", then save:
+      https://discord.com/developers/applications/123456789012345678/bot
+      Waiting for you to enable it...
+    ✓ Privileged intents enabled
+    ```
+
+    Les trois options et les fichiers qui en ont besoin sont dans [Votre application Discord](/fr/setup/discord-application#intents-privilégiés).
+  </Accordion>
+</AccordionGroup>
+
+<Info>
+  La commande n’attend que lorsqu’elle tourne dans un terminal. Lancée par un autre programme, les deux mêmes messages sont des erreurs (`✗`) et la commande s’arrête avec le code de sortie 1.
+</Info>
+
+## Rechargement à l’enregistrement
+
+Enregistrez un fichier et votre bot utilise la nouvelle version, sans se déconnecter :
+
+```text
+↻ Reloaded in 12 ms, 1 command, 2 events loaded
+```
+
+Chaque fichier de `src/` est surveillé : vos [commandes](/fr/commands), vos [événements](/fr/events) et les fichiers qu’ils importent. Un nouveau fichier ou un nouveau dossier est pris en compte dès qu’il est enregistré, et plusieurs fichiers enregistrés d’un coup font un seul rechargement. Un fichier enregistré pendant le démarrage de la commande n’est pas perdu : il est rechargé juste après.
+
+Un fichier avec une erreur n’arrête jamais votre bot. L’erreur est affichée avec le fichier et la ligne, et **la dernière version qui fonctionnait continue de tourner** jusqu’à ce que vous la corrigiez :
+
+```text
+✗ src/events/messageCreate/ping.ts:4 Expression expected
+⚠ Reloaded with an error: that file keeps running its last working version
+```
+
+Avec plusieurs fichiers cassés, le message les compte : `⚠ Reloaded with 2 errors: those files keep running their last working version`. Un fichier qui n’a jamais fonctionné est mis de côté jusqu’à ce qu’il fonctionne.
+
+<Info>
+  Recharger relance vos fichiers depuis zéro : une variable gardée dans un fichier (un compteur, une liste...) revient à sa première valeur à chaque enregistrement. Les paquets de `node_modules` ne sont pas rechargés.
+</Info>
+
+### Quand vos fichiers ont besoin de plus de Discord
+
+Les intents sont donnés à Discord à la connexion du bot. Quand un fichier que vous enregistrez a besoin d’un intent que la connexion n’a pas (un nouveau dossier d’événement, un fichier qui écoute maintenant les messages privés), le bot se reconnecte tout seul :
+
+```text
+↻ Your files now need more from Discord (GUILD_MEMBERS): reconnecting...
+✓ Reconnected, 3 events loaded
+```
+
+Si cet intent est privilégié et pas encore activé, vous recevez le même message et la même attente qu’avant la connexion. L’événement `ready` tourne une fois par démarrage, pas quand le bot se reconnecte.
+
+## Vos commandes sur votre serveur de test
+
+Vos commandes sont enregistrées sur votre serveur de test uniquement, où elles apparaissent immédiatement. Discord n’est prévenu à nouveau que quand quelque chose que les gens voient a changé (un nom, une description, une option, une traduction) : changer ce que *fait* une commande ne coûte aucune requête, et relancer le bot non plus.
+
+```text
+✓ Commands updated on My Server
+```
+
+Lors d’un rechargement, la ligne est `↻ Commands updated on Discord`. Quand Discord refuse ce que déclarent vos fichiers, le bot continue de tourner avec les commandes que Discord a déjà :
+
+```text
+✗ Discord refused the commands of your project: Discord refused PUT /applications/{application.id}/guilds/{guild.id}/commands: Invalid Form Body (50035)
+    [0].name: Command name is invalid
+```
+
+Une commande que la production affiche déjà pour tout le monde, exactement comme votre fichier la déclare, n’est pas ajoutée une seconde fois. Pendant que vous en modifiez une, votre serveur de test l’affiche en double et la commande vous le dit une fois :
+
+```text
+ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
+```
+
+Une application de dev n’affiche jamais cela : voir [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement).
+
+## Seulement votre serveur de test
+
+En dev, votre bot ne voit que le serveur de `DEV_GUILD_ID`. Ce qui se passe dans les autres serveurs où il se trouve, et en messages privés, est ignoré, et les intents qui ne servent qu’aux messages privés ne sont pas demandés. C’est le rôle de [`chapterjs start`](/fr/run/start), qui peut faire tourner le même bot pour tout le monde en même temps.
+
+Ce qui ne fonctionne qu’en messages privés ne peut pas être essayé en dev, et `chapterjs dev` nomme le fichier une fois :
+
+```text
+ℹ src/commands/settings.ts /settings only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+ℹ src/events/messageCreate/inbox.ts this messageCreate file only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+```
+
+## Les types de votre projet
+
+Au démarrage, `chapterjs dev` écrit les types de votre projet dans le dossier `.chapterjs/` : c’est ainsi que `event` sait, dans chaque [dossier d’événement](/fr/events), ce que reçoit sa fonction. Le dossier est ignoré par git et supprimable.
+
+[`chapterjs sync`](/fr/reference/cli#chapterjs-sync) les écrit sans lancer le bot. Les projets créés avec `create chapter` le lancent après chaque installation, pour que votre éditeur connaisse les types tout de suite.
+
+Pour vérifier les types de tout votre projet depuis un terminal, utilisez le script `typecheck` de votre projet :
+
+<CodeGroup>
+```bash pnpm
+pnpm typecheck
+```
+
+```bash npm
+npm run typecheck
+```
+
+```bash yarn
+yarn typecheck
+```
+
+```bash bun
+bun typecheck
+```
+</CodeGroup>
+
+<Warning>
+  Il lance `tsc -b`. Un simple `tsc` ne vérifie rien dans un projet ChapterJS : vos fichiers sont vérifiés par les projets de `.chapterjs/`, que seuls `tsc -b` et votre éditeur suivent.
+</Warning>
+
+## Pendant que le bot tourne
+
+La connexion à Discord est gardée en vie par le framework. Quand elle tombe, le bot se reconnecte tout seul et vos fichiers continuent de tourner :
+
+```text
+⚠ Connection to Discord lost, reconnecting...
+↻ Reconnected to Discord
+```
+
+Une erreur dans une de vos fonctions est affichée avec le fichier et la ligne, et n’arrête rien d’autre : voir [quand votre fonction échoue](/fr/commands/answering#quand-votre-fonction-échoue). Le bot s’occupe aussi de sa propre mémoire : voir [Mémoire](/fr/memory).
+
+## Arrêter
+
+Appuyez sur `Ctrl+C`. Le bot se déconnecte proprement et passe hors ligne immédiatement :
+
+```text
+✓ Disconnected
+```
+
+Un second `Ctrl+C` arrête le processus sans attendre ; Discord affiche alors le bot en ligne jusqu’à ce qu’il remarque que la connexion a disparu.
+
+<CardGroup cols={2}>
+  <Card title="chapterjs build" icon="wrench" href="/fr/run/build">
+    Vérifier votre bot et le compiler pour la production.
+  </Card>
+  <Card title="Dépannage" icon="bug" href="/fr/run/troubleshooting">
+    Chaque message, et quoi en faire.
+  </Card>
+</CardGroup>

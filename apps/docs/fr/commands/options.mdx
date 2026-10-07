@@ -1,0 +1,217 @@
+---
+title: 'Options'
+description: 'Déclarer ce que les gens remplissent après le nom d’une commande, et le recevoir typé dans votre fonction'
+---
+
+Les options sont ce que les gens remplissent après le nom d’une commande. Déclarez-les sous forme d’objet, et `run` reçoit leurs valeurs **déjà typées** : vous n’écrivez jamais un type.
+
+```ts src/commands/mod/ban.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Bannit un membre',
+  permissions: ['BanMembers'],
+  options: {
+    target: { type: 'user', description: 'Qui bannir', required: true },
+    reason: { type: 'string', description: 'Pourquoi', maxLength: 200 },
+    days: { type: 'integer', description: 'Jours de messages à supprimer', min: 0, max: 7 },
+  },
+  async run({ interaction, options, guild }) {
+    // options.target : User
+    // options.reason : string | undefined
+    // options.days : number | undefined
+    await guild.ban(options.target, {
+      reason: options.reason,
+      deleteMessageSeconds: (options.days ?? 0) * 86_400,
+    });
+    await interaction.reply(`${options.target.displayName} a été banni.`);
+  },
+});
+```
+
+C’est tout : Discord demande `target`, `reason` et `days` dans cet ordre, et votre éditeur sait que `options.target` est un `User` et que `options.reason` peut manquer.
+
+<Note>
+  Chaque champ de chaque sorte d’option est dans la [référence](/fr/reference/command#les-options).
+</Note>
+
+## Déclarer une option
+
+La clé est le nom de l’option, la valeur dit ce qu’elle est. Chaque option a un `type` et une `description` (de 1 à 100 caractères, affichée sous son nom) :
+
+| `type` | Ce que la personne remplit | Ce que reçoit `run` |
+| --- | --- | --- |
+| `'string'` | Un texte | `string` |
+| `'integer'` | Un nombre entier | `number` |
+| `'number'` | N’importe quel nombre | `number` |
+| `'boolean'` | Vrai ou faux | `boolean` |
+| `'user'` | Un utilisateur | [`User`](/fr/reference/user) |
+| `'role'` | Un rôle | [`Role`](/fr/reference/role) |
+| `'channel'` | Un salon | [`Channel`](/fr/reference/channels) |
+| `'mentionable'` | Un utilisateur ou un rôle | `User \| Role` |
+| `'attachment'` | Un fichier | [`Attachment`](/fr/reference/data#attachment) |
+
+Les noms suivent les règles de Discord : lettres minuscules, chiffres, `-` et `_`, 32 caractères au plus. Une commande a 25 options au plus.
+
+## Obligatoire ou facultative
+
+Une option est **facultative** sauf si elle dit `required: true`. Dans `run`, une option obligatoire est toujours là ; une facultative peut être `undefined`, et votre éditeur vous le rappelle :
+
+```ts src/commands/greet.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Salue quelqu’un',
+  options: {
+    who: { type: 'user', description: 'Qui saluer', required: true },
+    message: { type: 'string', description: 'Quoi dire' },
+  },
+  async run({ interaction, options }) {
+    // options.who : User
+    // options.message : string | undefined
+    await interaction.reply(`${options.message ?? 'Bonjour'}, ${options.who.displayName} !`);
+  },
+});
+```
+
+Discord veut les options obligatoires en premier. Vous pouvez les déclarer dans n’importe quel ordre : ChapterJS met les obligatoires en premier pour vous, et garde l’ordre que vous avez écrit pour le reste.
+
+## Les choix
+
+Avec `choices`, la personne choisit dans une liste au lieu de taper, et la valeur est typée comme l’un des choix. Une option `string`, `integer` ou `number` peut avoir entre 1 et 25 choix :
+
+```ts src/commands/color.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Choisit une couleur',
+  options: {
+    // Une liste : ce que voit la personne est ce que reçoit votre code.
+    color: { type: 'string', description: 'Votre couleur', choices: ['red', 'green'], required: true },
+    // Un objet : la clé est affichée, la valeur est reçue.
+    size: { type: 'integer', description: 'Quelle taille', choices: { Petit: 1, Grand: 2 } },
+  },
+  async run({ interaction, options }) {
+    // options.color : 'red' | 'green'
+    // options.size : 1 | 2 | undefined
+    await interaction.reply(`Vous avez choisi ${options.color}.`);
+  },
+});
+```
+
+Les choix d’une option `string` sont des textes, ceux d’une option `integer` ou `number` sont des nombres ; ce qui est affiché fait de 1 à 100 caractères. Le même choix ne peut pas apparaître deux fois.
+
+## Limiter ce qui est tapé
+
+Un texte peut recevoir une longueur, un nombre un intervalle :
+
+| Champ | Pour | Signification |
+| --- | --- | --- |
+| `minLength` | `string` | Le texte le plus court accepté, en caractères (0 à 6000) |
+| `maxLength` | `string` | Le texte le plus long accepté, en caractères (1 à 6000) |
+| `min` | `integer`, `number` | La plus petite valeur acceptée |
+| `max` | `integer`, `number` | La plus grande valeur acceptée |
+
+Discord refuse ce qui est en dehors avant même que la commande n’atteigne votre bot. Pour une option `integer`, `min`, `max` et les choix sont des nombres entiers.
+
+## Seulement certaines sortes de salons
+
+`channelTypes` dit quelles sortes de salons peuvent être choisies. Par défaut, toutes :
+
+```ts src/commands/announce.ts
+import { command, ChannelType } from 'chapterjs';
+
+export default command({
+  description: 'Annonce quelque chose dans un salon',
+  permissions: ['ManageGuild'],
+  options: {
+    channel: { type: 'channel', description: 'Où', channelTypes: [ChannelType.GuildText], required: true },
+    text: { type: 'string', description: 'Quoi dire', required: true, maxLength: 2000 },
+  },
+  async run({ interaction, options }) {
+    if (!options.channel.isTextBased()) return interaction.reply('Choisissez un salon textuel.');
+    await options.channel.send(options.text);
+    await interaction.reply({ content: 'Fait.', ephemeral: true });
+  },
+});
+```
+
+Les valeurs sont celles de [`ChannelType`](/fr/reference/enums#channeltype). Ce que reçoit `run` est toujours un [`Channel`](/fr/reference/channels) : vérifiez sa sorte avec `isTextBased()` ou `isVoice()` avant d’utiliser ce que seule cette sorte possède.
+
+## Ce qui est vérifié
+
+Tout ce que déclare une option est vérifié au chargement du fichier, par rapport aux limites de Discord. Une erreur est expliquée dans votre terminal avant que Discord ne la refuse, avec le fichier devant :
+
+<AccordionGroup>
+  <Accordion title="Un nom que Discord refuse">
+    ```text
+    ✗ src/commands/ban.ts "Target" can't be the name of an option: use lowercase letters, digits, - and _ only, 32 characters at most.
+    ```
+  </Accordion>
+  <Accordion title="Un type qui n’existe pas">
+    ```text
+    ✗ src/commands/ban.ts The type of the option "target" is "member", which does not exist. Types are: string, integer, number, boolean, user, role, channel, mentionable, attachment.
+    ```
+  </Accordion>
+  <Accordion title="Un champ que le type n’a pas">
+    ```text
+    ✗ src/commands/ban.ts "min" is not something the option "reason" has. It can have: type, description, required, choices, minLength, maxLength.
+    ```
+  </Accordion>
+  <Accordion title="Une description manquante ou trop longue">
+    ```text
+    ✗ src/commands/ban.ts the option "target" needs a description: a short text that says what it is for, like description: 'Bans a member'.
+    ```
+
+    ```text
+    ✗ src/commands/ban.ts The description of the option "target" is 120 characters long: Discord accepts 100 at most.
+    ```
+  </Accordion>
+  <Accordion title="Trop d’options">
+    ```text
+    ✗ src/commands/big.ts This command has 26 options: Discord accepts 25 at most.
+    ```
+  </Accordion>
+  <Accordion title="Les choix">
+    ```text
+    ✗ src/commands/color.ts the option "color" has 26 choices: Discord accepts between 1 and 25.
+    ```
+
+    ```text
+    ✗ src/commands/color.ts The choices of the option "size" must be numbers, since its type is integer: got "big".
+    ```
+
+    ```text
+    ✗ src/commands/color.ts The choice 1.5 of the option "size" is not a whole number.
+    ```
+
+    ```text
+    ✗ src/commands/color.ts the option "color" has the same choice twice.
+    ```
+  </Accordion>
+  <Accordion title="Un intervalle impossible à remplir">
+    ```text
+    ✗ src/commands/ban.ts the option "days" can never be filled in: its "min" (8) is greater than its "max" (7).
+    ```
+
+    ```text
+    ✗ src/commands/ban.ts "maxLength" of the option "reason" is between 0 and 6000, got 9000.
+    ```
+  </Accordion>
+  <Accordion title="Les sortes de salons">
+    ```text
+    ✗ src/commands/announce.ts "channelTypes" of the option "channel" is a list of ChannelType values, like [ChannelType.GuildText].
+    ```
+  </Accordion>
+</AccordionGroup>
+
+Votre éditeur souligne la plupart de ces erreurs avant même que vous n’enregistriez : les types de `command()` n’acceptent que ce qui existe.
+
+<CardGroup cols={2}>
+  <Card title="Répondre" icon="message-square" href="/fr/commands/answering">
+    Répondre, différer, modifier, envoyer une suite.
+  </Card>
+  <Card title="Traductions" icon="languages" href="/fr/commands/translations">
+    Options et choix dans la langue de chaque personne.
+  </Card>
+</CardGroup>

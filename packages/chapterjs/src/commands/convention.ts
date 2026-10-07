@@ -7,7 +7,13 @@ import { ALL_PERMISSIONS } from '../discord/permissions.js';
 import { ChannelType } from '../discord/types/channel.js';
 import { Locale } from '../discord/types/common.js';
 import { PermissionFlags } from '../discord/types/permissions.js';
+import {
+  COOLDOWN_SCOPES,
+  NO_COOLDOWN,
+  type CooldownLimits,
+} from '../interactions/cooldown.js';
 import type { Convention } from '../loader/loader.js';
+import { DURATION_EXAMPLE, parseDuration } from '../util/duration.js';
 import {
   isCommandFile,
   type CommandConfig,
@@ -58,6 +64,8 @@ export interface LoadedCommand {
   readonly where: CommandWhere;
   readonly nsfw: boolean;
   readonly ephemeral: boolean;
+  /** How long each person, channel and server waits between two uses. */
+  readonly cooldown: CooldownLimits;
   readonly run: (context: CommandContext) => unknown;
 }
 
@@ -102,6 +110,7 @@ const COMMAND_KEYS = [
   'where',
   'nsfw',
   'ephemeral',
+  'cooldown',
   'run',
 ];
 
@@ -158,6 +167,59 @@ function checkWhere(value: unknown): CommandWhere {
     );
   }
   return value as CommandWhere;
+}
+
+/** The shortest cooldown accepted, in milliseconds. */
+const MIN_COOLDOWN = 1000;
+
+function checkCooldown(value: unknown, where: CommandWhere): CooldownLimits {
+  if (value === undefined) return NO_COOLDOWN;
+  const example = `cooldown: '10s' (${DURATION_EXAMPLE}) for each person, or cooldown: { user: '10s', channel: '5s', guild: '1m' } for each place`;
+  const duration = (what: string, text: unknown): number => {
+    if (typeof text !== 'string' || text.trim() === '') {
+      return fail(
+        `${what} is a duration, got ${JSON.stringify(text) ?? typeof text}: ${example}.`
+      );
+    }
+    const ms = parseDuration(text);
+    if (ms === null) {
+      return fail(
+        `${what} is ${JSON.stringify(text)}, which is not a duration: ${example}.`
+      );
+    }
+    if (ms < MIN_COOLDOWN) {
+      return fail(
+        `${what} is ${JSON.stringify(text)}: a cooldown is 1 second at least. Leave it out for none.`
+      );
+    }
+    return ms;
+  };
+  if (typeof value === 'string') {
+    return Object.freeze({
+      ...NO_COOLDOWN,
+      user: duration('"cooldown"', value),
+    });
+  }
+  if (!isRecord(value)) {
+    return fail(
+      `"cooldown" says how long to wait before the command can be used again: ${example}.`
+    );
+  }
+  checkKeys('"cooldown"', value, COOLDOWN_SCOPES);
+  const limits = { ...NO_COOLDOWN };
+  for (const scope of COOLDOWN_SCOPES) {
+    if (value[scope] === undefined) continue;
+    limits[scope] = duration(`"${scope}" of "cooldown"`, value[scope]);
+  }
+  if (limits.user + limits.channel + limits.guild === 0) {
+    return fail(`"cooldown" is empty: ${example}. Leave it out for none.`);
+  }
+  if (where === 'dm' && limits.guild > 0) {
+    return fail(
+      `"cooldown" has "guild", but this command only works in private messages (where: 'dm'), where there is no server: use "user".`
+    );
+  }
+  return Object.freeze(limits);
 }
 
 function checkOption(
@@ -548,6 +610,7 @@ export const commandsConvention: Convention<LoadedCommand> = {
     options.sort(
       (a, b) => Number(b.required === true) - Number(a.required === true)
     );
+    const where = checkWhere(config.where);
     return Object.freeze({
       ...checkLocales(config.locales, options),
       path: Object.freeze(parts),
@@ -555,9 +618,10 @@ export const commandsConvention: Convention<LoadedCommand> = {
       description,
       options: Object.freeze(options),
       permissions: checkPermissions(config.permissions),
-      where: checkWhere(config.where),
+      where,
       nsfw: checkBoolean('"nsfw"', config.nsfw),
       ephemeral: checkBoolean('"ephemeral"', config.ephemeral),
+      cooldown: checkCooldown(config.cooldown, where),
       run: config.run as LoadedCommand['run'],
     });
   },

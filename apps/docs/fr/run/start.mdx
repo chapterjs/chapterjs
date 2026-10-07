@@ -1,0 +1,236 @@
+---
+title: 'chapterjs start'
+description: 'Faire tourner pour tout le monde le bot que vous avez compilé, sur un processus ou plusieurs'
+---
+
+`chapterjs start` fait tourner votre bot dans chaque serveur où il se trouve, après que [`chapterjs build`](/fr/run/build) l’a préparé. C’est ce que lance le script `start` de votre projet, sur la machine qui héberge votre bot :
+
+<CodeGroup>
+```bash pnpm
+pnpm start
+```
+
+```bash npm
+npm run start
+```
+
+```bash yarn
+yarn start
+```
+
+```bash bun
+bun start
+```
+</CodeGroup>
+
+```text
+✓ Commands updated for everyone
+✓ Online as my-bot in 128 servers
+ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT
+✓ 4 commands, 6 events loaded
+```
+
+C’est tout : le bot est en ligne partout, avec ses commandes affichées dans chaque serveur et en messages privés. Il fait tourner ce qu’a gardé `chapterjs build`, pas vos fichiers tels qu’ils sont maintenant.
+
+<Note>L’option `--processes`, les variables d’environnement et les codes de sortie sont dans la [référence du CLI](/fr/reference/cli#chapterjs-start).</Note>
+
+## Ce qui change par rapport au dev
+
+| | `chapterjs dev` | `chapterjs start` |
+| --- | --- | --- |
+| Serveurs | Votre serveur de test uniquement | Chaque serveur, sauf votre serveur de test quand il le connaît |
+| Messages privés | Jamais | Oui |
+| Commandes | Affichées sur votre serveur de test, immédiatement | Affichées partout, pour tout le monde |
+| Un fichier qui ne peut pas tourner | Garde sa dernière version qui fonctionnait | Trouvé par `chapterjs build`, avant que quoi que ce soit ne soit en ligne |
+| Enregistrer un fichier | Le recharge | Rien : recompilez et relancez |
+| Quelque chose à corriger sur Discord | Vous attend | S’arrête et dit quoi corriger |
+| Processus | Un seul | Autant que la taille de votre bot l’exige |
+
+## Ce dont elle a besoin
+
+Une valeur : le token de votre bot.
+
+```bash .env
+BOT_TOKEN=
+```
+
+Sur un hébergeur, vous n’envoyez généralement aucun fichier `.env` : vous donnez `BOT_TOKEN` dans ses réglages (souvent appelés « variables d’environnement » ou « secrets »). Les deux fonctionnent, et le vrai environnement l’emporte quand les deux sont là. Sans lui :
+
+```text
+✗ BOT_TOKEN is not set.
+  Give it to the bot the way your host does it (its "environment variables" or "secrets"), or in a .env file in this folder.
+  Copy the token of your bot from https://discord.com/developers/applications → your application → Bot → Reset Token.
+```
+
+<Warning>
+  Votre token est un mot de passe. Ne le mettez jamais dans votre code, et ne commitez jamais votre fichier `.env`.
+</Warning>
+
+Et une compilation. Sans elle, ou avec une compilation faite par une autre version de ChapterJS, la commande s’arrête et dit quoi lancer :
+
+```text
+✗ There is no build of your bot here.
+  Run "chapterjs build" first (the build script of your project), then start again.
+```
+
+Quand vos fichiers ont changé depuis la compilation, le bot démarre quand même, avec la compilation :
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+Une compilation qui ne peut plus tourner (un paquet ou Node a changé depuis qu’elle a été faite) arrête la commande : `✗ The build of your bot can't run any more: ...`, suivi de `Run "chapterjs build" again: it says what to fix.`
+
+## Ce qu’elle vérifie
+
+Le processus que vous lancez vérifie tout une fois, pour tous les processus du bot, avant que quoi que ce soit ne soit en ligne :
+
+- **Le token.** Un token refusé arrête la commande : `✗ Discord refused the bot token. ...`
+- **Les intents privilégiés** dont vos fichiers ont besoin. Rien n’attend en production : le message est une erreur et la commande s’arrête.
+  ```text
+  ✗ Your files need an option that is not enabled for your bot:
+    - Message Content Intent, needed by src/events/messageCreate/ping.ts
+    Enable it under "Privileged Gateway Intents", then save:
+    https://discord.com/developers/applications/123456789012345678/bot
+  ```
+- **Les commandes**, enregistrées pour tout le monde, seulement quand elles ont changé depuis le dernier démarrage depuis ce dossier : `✓ Commands updated for everyone`. Rien n’est envoyé sinon, et rien n’est affiché.
+- **Combien de sessions le bot peut encore démarrer aujourd’hui.** Discord le limite, et réinitialise le token d’un bot qui dépasse, alors ChapterJS s’arrête avant :
+  ```text
+  ✗ The bot needs to start 1 session(s) but Discord only allows 0 more until 10/7/2026, 9:00:00 AM. Going over that limit makes Discord reset the bot token, so the bot is not started. This usually means it was restarted too many times: wait, then start it again.
+  ```
+
+## Un second bot pour le développement
+
+<Info>
+  **Nous recommandons deux applications dès le départ : un bot pour le développement sur votre ordinateur, un bot pour la production.** Discord n’a aucun moyen de séparer ce qu’un bot fait sur votre ordinateur de ce qu’il fait pour tout le monde : ses commandes, sa présence, ses réglages et ses limites sont ceux du bot, dans chaque serveur à la fois.
+</Info>
+
+Si vous n’avez qu’une application, créez-en une seconde pour votre ordinateur : ouvrez le [Developer Portal](https://discord.com/developers/applications), cliquez à nouveau sur **New Application** (nommez-la d’après votre bot, avec « dev » dans le nom), et copiez le token de sa page **Bot** dans le `.env` de votre ordinateur. La production garde le token de la première application.
+
+```bash .env on your computer
+BOT_TOKEN=the token of the dev application
+DEV_GUILD_ID=
+```
+
+Ajoutez le bot de dev à votre serveur de test (`chapterjs dev` affiche le lien) et activez-y les mêmes intents privilégiés quand vos fichiers en ont besoin : `chapterjs dev` dit lesquels. À partir de là, les deux bots n’ont rien en commun :
+
+- votre serveur de test n’affiche que les commandes du bot de dev, exactement comme vos fichiers les déclarent, et jamais une en double ;
+- la présence, les intents privilégiés et le token de production restent tels quels pendant que vous essayez des choses ;
+- Discord compte ce que fait chaque bot de son côté : les sessions qu’il peut démarrer par jour, les requêtes qu’il peut envoyer.
+
+Le reste de cette page sur le dev concerne un seul bot qui fait les deux.
+
+## Un seul bot pour le dev et la production
+
+Un bot en production et `chapterjs dev` peuvent aussi partager un token. Ajoutez `DEV_GUILD_ID` à côté de `BOT_TOKEN` en production aussi, avec la même valeur que sur votre ordinateur :
+
+```bash .env
+BOT_TOKEN=
+DEV_GUILD_ID=
+```
+
+La production laisse alors ce serveur tranquille, et vous pouvez continuer à travailler avec `chapterjs dev` sur le **même bot** pendant qu’il est en ligne pour tout le monde :
+
+- ce qui se passe sur votre serveur de test n’est géré que par `chapterjs dev` ;
+- ce qui se passe partout ailleurs, et en messages privés, n’est géré que par `chapterjs start`.
+
+Ils ne répondent jamais à la même chose. Sans `DEV_GUILD_ID`, la production fait tourner chaque serveur, votre serveur de test compris.
+
+Ce qu’un seul bot ne peut pas séparer :
+
+- **Les commandes.** Votre serveur de test affiche les commandes de tout le monde, comme n’importe quel serveur. `chapterjs dev` ne les ajoute pas une seconde fois : il n’y enregistre que les commandes **nouvelles ou différentes** dans votre projet. Utilisée sur votre serveur de test, une commande fait toujours tourner le code de votre ordinateur. Pendant que vous modifiez une commande déjà en production, votre serveur de test l’affiche en double (la vôtre, et celle que tout le monde a), et `chapterjs dev` vous le dit une fois :
+
+  ```text
+  ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
+  ```
+
+  Une commande pour tout le monde appartient au bot, pas à un serveur : Discord ne donne aucun moyen de la cacher dans un serveur, et la retirer la retirerait pour tout le monde. C’est pourquoi deux bots sont le moyen de ne jamais voir cela.
+
+- **La présence.** `src/presence.ts` est envoyé par les deux, pour un seul bot : Discord ne dit pas laquelle des deux il affiche. Celle que vous essayez sur votre ordinateur peut être vue par tout le monde.
+- **Le Developer Portal.** Un intent privilégié que vous activez pour essayer un événement est activé pour la production aussi, et réinitialiser le token arrête la production.
+- **Les limites.** Les sessions qu’un bot peut démarrer par jour et les requêtes qu’il peut envoyer sont comptées pour le bot : ce qu’utilise `chapterjs dev` est pris à la production.
+
+## Gros bots
+
+Discord découpe les gros bots en plusieurs connexions, appelées shards. ChapterJS demande à Discord combien il en faut et les ouvre tout seul.
+
+Quand il y en a beaucoup, il les répartit aussi sur **plusieurs processus**, pour que votre bot utilise chaque processeur de la machine. Vous le voyez sur la première ligne :
+
+```text
+✓ Online as my-bot in 18420 servers (20 shards, 5 processes)
+```
+
+Chaque processus fait tourner votre projet pour sa part des serveurs, et ce qu’il affiche commence par son numéro :
+
+```text
+[3] ✗ src/commands/poll.ts:8 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+```
+
+- **Rien à configurer.** Un processus est utilisé pour 4 shards, jamais plus que le nombre de processeurs de votre machine. Un bot de moins de quelques milliers de serveurs tourne dans un seul processus.
+- **Un processus qui s’arrête tout seul est relancé**, et ses serveurs reviennent en un instant. Les autres ne s’en aperçoivent pas. Un processus qui a tourné plus d’une minute repart immédiatement ; un qui tombe sans cesse attend un peu plus à chaque fois, jusqu’à une minute.
+  ```text
+  ⚠ Process 3 of 5 stopped by itself (exit code 1): starting it again. Its servers are back in a moment.
+  ```
+- **Arrêter le bot les arrête tous**, proprement. Quand Discord refuse le bot pour de bon dans un processus, chaque processus s’arrête et la commande se termine avec le code de sortie 1.
+
+Pour choisir le nombre vous-même, passez-le. Il n’est jamais supérieur au nombre de shards :
+
+<CodeGroup>
+```bash pnpm
+pnpm start --processes 8
+```
+
+```bash npm
+npm run start -- --processes 8
+```
+
+```bash yarn
+yarn start --processes 8
+```
+
+```bash bun
+bun start --processes 8
+```
+</CodeGroup>
+
+Toute autre chose après `start` est refusée :
+
+```text
+✗ chapterjs start takes one option: --processes followed by a number, like "chapterjs start --processes 4". Got "--processes many".
+```
+
+### Ce que cela veut dire pour votre code
+
+Chaque processus a sa propre mémoire. Une variable d’un processus n’est pas vue par les autres :
+
+```ts
+// Un compteur par processus : avec 5 processus, 5 nombres différents.
+let commandsUsed = 0;
+```
+
+- L’événement `ready` tourne une fois dans chaque processus, avec les serveurs de ce processus.
+- `guilds` et tout ce dont votre bot [se souvient](/fr/memory) sont ceux du processus.
+- Les messages privés sont tous gérés par le premier processus.
+
+Pour partager quelque chose entre processus, gardez-le en dehors d’eux, dans une base de données.
+
+<Note>
+  Chaque processus tourne sur la même machine. Répartir un bot sur plusieurs machines n’est [pas encore disponible](/fr/not-yet).
+</Note>
+
+## Arrêter
+
+Appuyez sur `Ctrl+C`, ou laissez votre hébergeur arrêter le processus. Le bot se déconnecte proprement et passe hors ligne immédiatement :
+
+```text
+✓ Disconnected
+```
+
+<CardGroup cols={2}>
+  <Card title="Déployer" icon="server" href="/fr/run/deploy">
+    Mettre votre bot sur une machine qui reste allumée.
+  </Card>
+  <Card title="Dépannage" icon="bug" href="/fr/run/troubleshooting">
+    Chaque message, et quoi en faire.
+  </Card>
+</CardGroup>

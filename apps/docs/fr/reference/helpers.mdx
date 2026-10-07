@@ -1,0 +1,212 @@
+---
+title: 'Helpers'
+description: 'Mentionner des utilisateurs, salons, rôles et commandes, écrire des dates que chacun lit dans son fuseau horaire, travailler avec des identifiants et des URL d’images'
+---
+
+De petites fonctions et des types exportés par `chapterjs` pour écrire des messages et travailler avec des identifiants et des images.
+
+<Note>
+  Comment envoyer ce qu’ils produisent est dans le guide [Messages](/fr/messages) ; tout ce qu’un message peut contenir est dans [Options des messages](/fr/reference/message-options).
+</Note>
+
+```ts
+import { timestamp, TimestampStyle, type GuildMember } from 'chapterjs';
+
+function welcome(member: GuildMember) {
+  return `Bienvenue ${member} ! Vous êtes arrivé ${timestamp(member.joinedAt ?? new Date(), TimestampStyle.Relative)}.`;
+}
+```
+
+## Mentions
+
+Une structure mise dans un texte devient sa mention : `${user}` est `<@id>`, `${channel}` est `<#id>`, `${role}` est `<@&id>`. Quand vous n’avez qu’un identifiant, utilisez ces fonctions. Elles fabriquent du texte ; Discord le transforme en mention à l’affichage du message.
+
+### userMention()
+
+```ts
+userMention(userId: Snowflake): `<@${string}>`
+```
+
+`<@USER_ID>` : mentionne un utilisateur.
+
+### channelMention()
+
+```ts
+channelMention(channelId: Snowflake): `<#${string}>`
+```
+
+`<#CHANNEL_ID>` : fait un lien vers un salon.
+
+### roleMention()
+
+```ts
+roleMention(roleId: Snowflake): `<@&${string}>`
+```
+
+`<@&ROLE_ID>` : mentionne un rôle.
+
+### commandMention()
+
+```ts
+commandMention(name: string, commandId: Snowflake): `</${string}:${string}>`
+```
+
+`</NAME:COMMAND_ID>` : une commande slash cliquable. Le nom comprend le groupe et la sous-commande quand il y en a (`"foo group bar"`).
+
+### emojiMention()
+
+```ts
+emojiMention(name: string, emojiId: Snowflake, animated?: boolean): string
+```
+
+`<:NAME:ID>` ou `<a:NAME:ID>` : un emoji personnalisé.
+
+### GuildNavigation
+
+Types de navigation du serveur : des liens vers un onglet du serveur courant. Mettez la valeur telle quelle dans un message.
+
+| Nom | Valeur | Ouvre |
+| --- | --- | --- |
+| `GuildNavigation.Customize` | `'<id:customize>'` | L’onglet Salons et rôles, avec les questions d’intégration |
+| `GuildNavigation.Browse` | `'<id:browse>'` | L’onglet Parcourir les salons |
+| `GuildNavigation.Guide` | `'<id:guide>'` | L’onglet Guide du serveur |
+| `GuildNavigation.LinkedRoles` | `'<id:linked-roles>'` | L’onglet Rôles associés |
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#message-formatting)
+
+## Dates
+
+### timestamp()
+
+```ts
+timestamp(date: Date | number, style?: TimestampStyle): string
+```
+
+`<t:TIMESTAMP>` ou `<t:TIMESTAMP:STYLE>` : une date montrée à chaque lecteur dans son fuseau horaire et sa langue. Les horodatages sont exprimés en secondes.
+
+Un `number` est un nombre de millisecondes depuis l’époque Unix, comme `Date.now()`. Quelque chose qui n’est pas une date lève une `TypeError` :
+
+```text
+timestamp() needs a valid date.
+```
+
+### TimestampStyle
+
+Comment `timestamp()` est affiché. Sans style, Discord utilise `LongDateShortTime`.
+
+| Nom | Valeur | Affiché comme |
+| --- | --- | --- |
+| `TimestampStyle.ShortTime` | `'t'` | 16:20 |
+| `TimestampStyle.MediumTime` | `'T'` | 16:20:30 |
+| `TimestampStyle.ShortDate` | `'d'` | 20/04/2021 |
+| `TimestampStyle.LongDate` | `'D'` | 20 avril 2021 |
+| `TimestampStyle.LongDateShortTime` | `'f'` | 20 avril 2021 à 16:20 (par défaut) |
+| `TimestampStyle.FullDateShortTime` | `'F'` | mardi 20 avril 2021 à 16:20 |
+| `TimestampStyle.ShortDateShortTime` | `'s'` | 20/04/2021 16:20 |
+| `TimestampStyle.ShortDateMediumTime` | `'S'` | 20/04/2021 16:20:30 |
+| `TimestampStyle.Relative` | `'R'` | il y a 4 ans |
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#message-formatting-timestamp-styles)
+
+## Identifiants
+
+### Snowflake
+
+Un identifiant Discord : un nombre de 64 bits écrit sous forme de chaîne.
+
+```ts
+type Snowflake = string
+```
+
+Chaque `id` en est un, et chaque option qui prend un identifiant prend un `Snowflake`. C’est du texte parce que le nombre est trop grand pour un `number` JavaScript : ne le transformez jamais en nombre.
+
+### isSnowflake()
+
+```ts
+isSnowflake(value: unknown): value is Snowflake
+```
+
+Si une valeur ressemble à un identifiant Discord : sert à refuser une mauvaise valeur (un nom, une mention, un nombre) avant qu’elle ne soit envoyée à Discord.
+
+### snowflakeTimestamp()
+
+```ts
+snowflakeTimestamp(id: Snowflake): number
+```
+
+Quand a été créé ce qu’identifie un snowflake, en millisecondes depuis l’époque Unix : `(snowflake >> 22) + 1420070400000`.
+
+Les structures ont déjà `createdAt` ; ceci est pour un identifiant seul.
+
+### snowflakeFromTimestamp()
+
+```ts
+snowflakeFromTimestamp(timestamp: number | Date): Snowflake
+```
+
+Le plus petit snowflake créé à un moment donné : permet à une pagination `before` / `after` de partir d’une date.
+
+```ts
+import { snowflakeFromTimestamp, type TextChannel } from 'chapterjs';
+
+async function sinceYesterday(channel: TextChannel) {
+  const yesterday = Date.now() - 24 * 3600 * 1000;
+  return channel.fetchMessages({ after: snowflakeFromTimestamp(yesterday), limit: 100 });
+}
+```
+
+Une date d’avant l’existence de Discord lève une `RangeError` :
+
+```text
+Discord ids start in 2015: the date is too early.
+```
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#snowflakes)
+
+## Images
+
+### ImageOptions
+
+Ce que prend chaque méthode qui se termine par `URL` : `user.avatarURL()`, `member.avatarURL()`, `guild.iconURL()`, `guild.bannerURL()`, `guild.splashURL()`, `role.iconURL()`, `emoji.url()`...
+
+<ResponseField name="format" type="ImageFormat">Le format du fichier. Par défaut : WebP, que recommande Discord puisqu’il fonctionne pour les images fixes et animées, quoi qui ait été téléversé.</ResponseField>
+<ResponseField name="size" type="ImageSize">La taille en pixels : une puissance de deux entre 16 et 4096.</ResponseField>
+<ResponseField name="animated" type="boolean">`false` pour obtenir la première image d’une image animée. Par défaut, une image animée reste animée.</ResponseField>
+
+```ts
+import type { User } from 'chapterjs';
+
+function bigAvatar(user: User) {
+  return user.avatarURL({ format: 'png', size: 1024 });
+}
+```
+
+Ce que vous obtenez suit quelques règles :
+
+- Demander `'gif'` pour une image qui n’est pas animée donne un PNG à la place.
+- Une image animée ne reste animée qu’en WebP (par défaut) ou en GIF ; `animated: false` donne sa première image.
+- Une mauvaise valeur lève une `RangeError` avant qu’aucune URL ne soit fabriquée :
+
+```text
+"bmp" is not an image format. Use png, jpg, webp or gif.
+```
+
+```text
+100 is not an image size. Use a power of two between 16 and 4096 (64, 128, 256...).
+```
+
+### ImageFormat
+
+```ts
+type ImageFormat = 'png' | 'jpg' | 'jpeg' | 'webp' | 'gif'
+```
+
+### ImageSize
+
+La taille d’une image peut être n’importe quelle puissance de deux entre 16 et 4096.
+
+```ts
+type ImageSize = 16 | 32 | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096
+```
+
+[Documentation de Discord](https://docs.discord.com/developers/reference#image-formatting)

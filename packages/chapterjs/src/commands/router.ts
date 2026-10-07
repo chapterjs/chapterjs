@@ -14,6 +14,12 @@ import {
   type RawApplicationCommandInteractionDataOption,
   type RawInteraction,
 } from '../discord/types/interaction.js';
+import { timestamp, TimestampStyle } from '../discord/formatting.js';
+import {
+  checkCooldown,
+  MemoryCooldowns,
+  type CooldownStore,
+} from '../interactions/cooldown.js';
 import {
   authorOf,
   placeContext,
@@ -30,7 +36,17 @@ import { toCamelCase } from '../util/case.js';
 import type { CommandContext } from './command.js';
 import { commandName, type CommandEntry } from './tree.js';
 
-export type CommandRouterOptions = Reporter;
+export interface CommandRouterOptions extends Reporter {
+  /** Where the last uses of the commands with a `cooldown` are kept. */
+  cooldowns?: CooldownStore;
+}
+
+/**
+ * How long a refusal for a cooldown may wait before deleting itself: the
+ * token of an interaction lives 15 minutes, with room for the request.
+ * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object
+ */
+const DELETE_WITHIN = 14 * 60_000;
 
 const SUB = ApplicationCommandOptionType.SubCommand;
 const GROUP = ApplicationCommandOptionType.SubCommandGroup;
@@ -38,9 +54,12 @@ const GROUP = ApplicationCommandOptionType.SubCommandGroup;
 export class CommandRouter {
   #commands = new Map<string, CommandEntry>();
   readonly #options: CommandRouterOptions;
+  // Kept by the router, not the entries: a reload keeps the cooldowns.
+  readonly #cooldowns: CooldownStore;
 
   constructor(options: CommandRouterOptions) {
     this.#options = options;
+    this.#cooldowns = options.cooldowns ?? new MemoryCooldowns();
   }
 
   /** Replaces every command (after a load or a reload). */
@@ -110,6 +129,22 @@ export class CommandRouter {
       }
     }
 
+    // Used too soon: the person is told when, and nothing runs.
+    const again = checkCooldown(
+      this.#cooldowns,
+      path.join(' '),
+      command.cooldown,
+      {
+        user: user.id,
+        channel: place.channel.id,
+        guild: place.guild?.id,
+      }
+    );
+    if (again > 0) {
+      this.#refuseUntil(interaction, again);
+      return;
+    }
+
     let options: Record<string, unknown>;
     try {
       options = this.#readOptions(ctx, raw, data, given, entry);
@@ -150,6 +185,30 @@ export class CommandRouter {
         'finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.',
       run: () => command.run(context),
     });
+  }
+
+  /**
+   * Tells the person when they can use the command again. Discord shows a
+   * relative time ("in 5 seconds") that counts down, but keeps counting
+   * ("52 seconds ago") once passed: the answer is deleted when the
+   * cooldown ends, as long as the interaction can still be edited (15
+   * minutes); beyond that, the date and time are shown instead.
+   */
+  #refuseUntil(interaction: CommandInteraction, until: number): void {
+    const at = Math.ceil(until / 1000) * 1000;
+    const wait = at - Date.now();
+    const deletable = wait <= DELETE_WITHIN;
+    const when = timestamp(
+      at,
+      deletable ? TimestampStyle.Relative : TimestampStyle.LongDateShortTime
+    );
+    const refused = refuse(interaction, 'cooldown', { what: 'command', when });
+    if (!deletable) return;
+    const timer = setTimeout(() => {
+      refused.then(() => interaction.delete()).catch(() => {});
+    }, wait);
+    // Nothing of the bot waits for it: the process may stop meanwhile.
+    timer.unref();
   }
 
   /** The value of each declared option, as structures where it applies. */

@@ -1,0 +1,135 @@
+---
+title: 'Options'
+description: 'Let people fill in values after a command, receive them typed, and let the editor tell you what may be missing'
+---
+
+`/dice` always rolls six sides. Let people choose: `/dice sides:20`. That is an **option**: something the person fills in after the name of the command, which Discord asks for in its menu and sends to your bot with the command.
+
+## Declaring an option
+
+Add `options` to the command. Each key is the name of an option, each value says what it is:
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Rolls a die',
+  options: {
+    sides: { type: 'integer', description: 'How many sides', min: 2, max: 100 },
+  },
+  async run({ interaction, user, options }) {
+    const sides = options.sides ?? 6;
+    const roll = Math.floor(Math.random() * sides) + 1;
+    await interaction.reply(
+      `${user.displayName} rolled a ${roll} on a ${sides}-sided die.`
+    );
+  },
+});
+```
+
+Save, and use `/dice` again: Discord now offers `sides`, refuses a value under 2 or over 100 before it even reaches your bot, and lets you leave it out.
+
+Three things to notice in `run`:
+
+- **`options` is new in the object `run` receives.** It holds what the person filled in, under the names you declared.
+- **`options.sides` is a number, and the editor knows it.** Hover it: `number | undefined`. You declared `type: 'integer'`, so the framework typed it for you. Nothing to convert, nothing to check.
+- **`undefined` is there because the option is optional.** An option is optional unless it says `required: true`, and your code has to handle its absence: `?? 6` does. Remove the `?? 6` and the editor underlines `sides` in `Math.random() * sides`: "possibly undefined". That is the point of the types: the mistake is caught in the editor, not by a person using the command.
+
+## Every kind of option
+
+`type` says what Discord asks for, and decides what `run` receives:
+
+| `type`          | The person fills in      | `options.name` is    |
+| --------------- | ------------------------ | -------------------- |
+| `'string'`      | A text                   | `string`             |
+| `'integer'`     | A whole number           | `number`             |
+| `'number'`      | Any number               | `number`             |
+| `'boolean'`     | True or false            | `boolean`            |
+| `'user'`        | A user, picked in a list | A `User`             |
+| `'role'`        | A role                   | A `Role`             |
+| `'channel'`     | A channel                | A `Channel`          |
+| `'mentionable'` | A user or a role         | A `User` or a `Role` |
+| `'attachment'`  | A file                   | An `Attachment`      |
+
+Every option has a `type` and a `description` (1 to 100 characters, shown under its name in the menu). Names follow the same rules as command names: lowercase, letters, digits, `-` and `_`.
+
+## A user option: /whois
+
+An option of type `user` gives you the person as an object, not as a text. Create `src/commands/whois.ts`:
+
+```ts src/commands/whois.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Tells you about someone',
+  options: {
+    who: { type: 'user', description: 'Who to look at', required: true },
+  },
+  async run({ interaction, options }) {
+    const user = options.who;
+    const created = user.createdAt.toDateString();
+    await interaction.reply(
+      `${user.displayName} (${user.username}) joined Discord on ${created}.`
+    );
+  },
+});
+```
+
+`required: true` means Discord refuses to send the command without it, so `options.who` is always there: hover it, it is a `User`, with no `undefined`. A `User` has a name, an avatar, the date the account was created, and more: the next page is about what these objects give you.
+
+## Choices
+
+When the possible values are known in advance, `choices` turns the option into a list the person picks from, and the value your code receives is typed as one of the choices:
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Rolls a die',
+  options: {
+    sides: {
+      type: 'integer',
+      description: 'Which die',
+      choices: { d6: 6, d20: 20, d100: 100 },
+    },
+  },
+  async run({ interaction, user, options }) {
+    // options.sides: 6 | 20 | 100 | undefined
+    const sides = options.sides ?? 6;
+    const roll = Math.floor(Math.random() * sides) + 1;
+    await interaction.reply(
+      `${user.displayName} rolled a ${roll} on a d${sides}.`
+    );
+  },
+});
+```
+
+An object gives a label (shown) and a value (received); a plain list (`choices: ['red', 'green']`) uses the same text for both. Between 1 and 25 choices.
+
+## Points of attention
+
+- **Required options first.** Discord wants them before the optional ones. You can write them in any order: the framework sorts them for you.
+- **Only the person's input is validated by Discord.** `min`, `max`, `minLength`, `maxLength` and `choices` are enforced by Discord before your code runs. What _you_ do with the value is yours to check.
+- **25 options at most** per command. If you need more, you probably want several commands.
+- **A mistake in a declaration is caught when the file loads**, with a message saying what to write. A `type` that does not exist, a field the type does not have, a `min` above the `max`: each has its own message, and the editor underlines most of them first.
+
+## Recap
+
+- `options` declares what people fill in; `run` receives `options.name`, typed from the declaration.
+- Optional by default: handle `undefined`, or say `required: true`.
+- `user`, `role` and `channel` options give you objects, not ids.
+- `choices` makes a list, and types the value as one of the choices.
+
+<CardGroup cols={2}>
+  <Card
+    title="Answering"
+    icon="message-circle-reply"
+    href="/tutorial/answering"
+  >
+    Private answers, slow answers, and what the person sees when your code
+    fails.
+  </Card>
+  <Card title="Guide: Options" icon="book-open" href="/commands/options">
+    Every field of every kind of option.
+  </Card>
+</CardGroup>

@@ -167,6 +167,30 @@ export type CommandLocales<Options extends CommandOptions = CommandOptions> = {
  */
 export type CommandWhere = 'guild' | 'dm' | 'both';
 
+/**
+ * A duration, as a number and a unit: `s`, `m`, `h` or `d`, like `'30s'`,
+ * `'10m'`, `'2h'`, `'1d'`. Several parts add up: `'1h30m'`.
+ */
+export type Duration = `${number}${'s' | 'm' | 'h' | 'd'}${string}`;
+
+/**
+ * How long to wait before the command can be used again: a duration, for
+ * each person; or one per place, each optional: `user` for each person,
+ * `channel` for each channel, `guild` for each server (not for a command
+ * of private messages). Someone who uses it too soon gets a private
+ * answer saying when they can, and `run` does not run.
+ */
+export type Cooldown =
+  | Duration
+  | {
+      /** Each person waits this long between two uses, wherever they are. */
+      readonly user?: Duration;
+      /** Each channel waits this long, whoever used it. */
+      readonly channel?: Duration;
+      /** Each server waits this long, whoever used it, wherever. */
+      readonly guild?: Duration;
+    };
+
 /** What a command used in a server receives about where it was used. */
 export interface CommandInGuild {
   /** The use of the command: what to answer with. */
@@ -259,6 +283,12 @@ export interface CommandConfig<
   nsfw?: boolean;
   /** Make the answers of the command only visible to who used it. */
   ephemeral?: boolean;
+  /**
+   * How long to wait before the command can be used again: `'10s'` for
+   * each person, or `{ user, channel, guild }` for each place. Someone who
+   * uses it too soon gets a private answer saying when they can.
+   */
+  cooldown?: Cooldown;
   /** What to do when someone uses the command. */
   run: (context: CommandContext<Options, Where>) => unknown;
 }

@@ -1,0 +1,280 @@
+---
+title: 'Données'
+description: 'Lire les objets simples que vous obtenez pour les pièces jointes, réactions, étiquettes, remplacements de permissions, bannissements, journaux d’audit, événements, règles et stickers'
+---
+
+Certaines choses n’ont pas de classe à elles : vous les obtenez sous forme d’objets simples, avec les champs de Discord écrits en camelCase. Elles n’ont pas de méthodes, et rien sur elles n’envoie de requête.
+
+<Note>
+  Les structures qui ont leur propre page sont listées dans la [vue d’ensemble](/fr/reference). Ce que contient un message quand vous en envoyez un est dans [Options des messages](/fr/reference/message-options).
+</Note>
+
+Deux choses valent partout sur cette page :
+
+- Une date est un `string` au format ISO 8601 (`'2026-10-06T12:00:00.000000+00:00'`) : `new Date(value)` la transforme en `Date`.
+- Un utilisateur dans des données simples est lui aussi une donnée simple (`id`, `username`, `globalName`, `avatar`...), pas un [`User`](/fr/reference/user). Seul `Ban` contient un vrai `User`.
+
+```ts
+import type { Message } from 'chapterjs';
+
+function images(message: Message) {
+  return message.attachments.filter(file => file.contentType?.startsWith('image/'));
+}
+```
+
+## Attachment
+
+Un fichier joint à un message. Vous les lisez dans `message.attachments`.
+
+<ResponseField name="id" type="Snowflake" required>L’identifiant de la pièce jointe.</ResponseField>
+<ResponseField name="filename" type="string" required>Le nom du fichier.</ResponseField>
+<ResponseField name="title" type="string">Le titre du fichier.</ResponseField>
+<ResponseField name="description" type="string">Ce que montre le fichier, pour les personnes qui ne peuvent pas le voir (1024 caractères au plus).</ResponseField>
+<ResponseField name="contentType" type="string">Le type de média du fichier (`image/png`).</ResponseField>
+<ResponseField name="size" type="number" required>La taille du fichier, en octets.</ResponseField>
+<ResponseField name="url" type="string" required>L’URL du fichier.</ResponseField>
+<ResponseField name="proxyUrl" type="string" required>L’URL du fichier à travers le relais de Discord.</ResponseField>
+<ResponseField name="height" type="number | null">La hauteur, pour une image ou une vidéo.</ResponseField>
+<ResponseField name="width" type="number | null">La largeur, pour une image ou une vidéo.</ResponseField>
+<ResponseField name="placeholder" type="string">Un tout petit aperçu flou d’une image ou d’une vidéo, sous forme de thumbhash.</ResponseField>
+<ResponseField name="placeholderVersion" type="number">La version de cet aperçu.</ResponseField>
+<ResponseField name="ephemeral" type="boolean">Si le fichier appartient à un message éphémère : il disparaît avec lui.</ResponseField>
+<ResponseField name="durationSecs" type="number">La durée d’un fichier audio ou vidéo, en secondes.</ResponseField>
+<ResponseField name="waveform" type="string">La forme d’onde échantillonnée d’un message vocal, en base64.</ResponseField>
+<ResponseField name="flags" type="number">Les drapeaux de la pièce jointe, sous forme de champ de bits.</ResponseField>
+<ResponseField name="clipParticipants" type="object[]">Pour un clip d’un stream, les utilisateurs qui étaient dans le stream (données simples).</ResponseField>
+<ResponseField name="clipCreatedAt" type="string">Pour un clip d’un stream, quand il a été enregistré.</ResponseField>
+<ResponseField name="application" type="object | null">Pour un clip d’un stream, l’application qui était streamée, quand Discord l’a reconnue (données simples).</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#attachment-object-attachment-structure)
+
+## Reaction
+
+Les réactions d’un emoji sur un message. Vous les lisez dans `message.reactions`, une entrée par emoji.
+
+<ResponseField name="count" type="number" required>Combien de fois l’emoji a été utilisé, super réactions comprises.</ResponseField>
+<ResponseField name="countDetails" type="object" required>
+  Le même nombre, détaillé.
+  <Expandable title="champs">
+    <ResponseField name="normal" type="number" required>Combien de réactions normales.</ResponseField>
+    <ResponseField name="burst" type="number" required>Combien de super réactions.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="me" type="boolean" required>Si le bot a réagi avec cet emoji.</ResponseField>
+<ResponseField name="meBurst" type="boolean" required>Si le bot a fait une super réaction avec cet emoji.</ResponseField>
+<ResponseField name="emoji" type="object" required>
+  L’emoji.
+  <Expandable title="champs">
+    <ResponseField name="id" type="Snowflake | null">L’identifiant d’un emoji personnalisé ; `null` pour un emoji standard.</ResponseField>
+    <ResponseField name="name" type="string | null">Le nom d’un emoji personnalisé, ou le caractère d’un emoji standard.</ResponseField>
+    <ResponseField name="animated" type="boolean">Si un emoji personnalisé est animé.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="burstColors" type="string[]" required>Les couleurs des super réactions, sous forme de texte hexadécimal.</ResponseField>
+
+Pour réagir ou lire qui a réagi, voir [Message](/fr/reference/message) : `react()`, `fetchReactionUsers()`.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#reaction-object-reaction-structure)
+
+## ForumTag
+
+Une étiquette que peuvent avoir les publications d’un forum. Vous les lisez dans `forum.availableTags`, et les passez dans `availableTags` quand vous [créez](/fr/reference/options#channelcreateoptions) ou [modifiez](/fr/reference/options#guildchanneleditoptions) un salon forum.
+
+<ResponseField name="id" type="Snowflake" required>L’identifiant de l’étiquette.</ResponseField>
+<ResponseField name="name" type="string" required>Le nom de l’étiquette (0 à 20 caractères).</ResponseField>
+<ResponseField name="moderated" type="boolean" required>Si seuls les membres avec la permission `ManageThreads` peuvent ajouter l’étiquette à une publication ou la retirer.</ResponseField>
+<ResponseField name="emojiId" type="Snowflake | null" required>L’identifiant d’un emoji personnalisé du serveur affiché à côté de l’étiquette.</ResponseField>
+<ResponseField name="emojiName" type="string | null" required>Un emoji standard affiché à côté de l’étiquette, sous forme de son caractère.</ResponseField>
+
+Une étiquette a soit `emojiId`, soit `emojiName`, ou aucun des deux.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#forum-tag-object-forum-tag-structure)
+
+## ThreadMember
+
+Quelqu’un dans un fil, et depuis quand. `thread.fetchMembers()` en renvoie une liste.
+
+<ResponseField name="id" type="Snowflake">L’identifiant du fil.</ResponseField>
+<ResponseField name="userId" type="Snowflake">L’identifiant de l’utilisateur.</ResponseField>
+<ResponseField name="joinTimestamp" type="string" required>Quand l’utilisateur a rejoint le fil pour la dernière fois.</ResponseField>
+<ResponseField name="flags" type="number" required>Les réglages de l’utilisateur pour le fil, sous forme de champ de bits ; aujourd’hui seulement les notifications.</ResponseField>
+
+Pour obtenir le membre derrière, utilisez `guild.fetchMember(threadMember.userId)`.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#thread-member-object-thread-member-structure)
+
+## PermissionOverwrite
+
+Ce qu’un rôle ou un membre a le droit ou non de faire dans un salon. Vous les lisez dans `channel.permissionOverwrites`.
+
+<ResponseField name="id" type="Snowflake" required>L’identifiant du rôle ou du membre.</ResponseField>
+<ResponseField name="type" type="'role' | 'member'" required>S’il s’applique à un rôle ou à un membre.</ResponseField>
+<ResponseField name="allow" type="Permissions" required>Ce qui est autorisé, quoi que dise le serveur.</ResponseField>
+<ResponseField name="deny" type="Permissions" required>Ce qui est refusé, quoi que dise le serveur.</ResponseField>
+
+`allow` et `deny` sont des ensembles [`Permissions`](/fr/reference/permissions), donc `overwrite.allow.has('SendMessages')` fonctionne. Pour changer un remplacement, utilisez `channel.setPermissions()` et `channel.deletePermissions()` ; le champ `permissionOverwrites` de [`ChannelCreateOptions`](/fr/reference/options#channelcreateoptions) a une autre forme, celle que prend Discord.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#overwrite-object-overwrite-structure)
+
+## Ban
+
+Un bannissement d’un serveur. `guild.fetchBan()` en renvoie un, `guild.fetchBans()` une liste.
+
+<ResponseField name="user" type="User" required>Qui est banni.</ResponseField>
+<ResponseField name="reason" type="string | null" required>Pourquoi, quand une raison a été donnée.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild#ban-object-ban-structure)
+
+## AuditLog
+
+Ce que les modérateurs et les bots ont fait sur un serveur : ses entrées, de la plus récente à la plus ancienne, et ce à quoi elles font référence. `guild.fetchAuditLog()` en renvoie un.
+
+<ResponseField name="auditLogEntries" type="object[]" required>
+  Les entrées, de la plus récente à la plus ancienne.
+  <Expandable title="champs d’une entrée">
+    <ResponseField name="id" type="Snowflake" required>L’identifiant de l’entrée.</ResponseField>
+    <ResponseField name="actionType" type="AuditLogEvent" required>Ce qui s’est passé : une valeur de [`AuditLogEvent`](/fr/reference/enums#auditlogevent).</ResponseField>
+    <ResponseField name="targetId" type="string | null" required>L’identifiant de ce qui a été touché : un webhook, un utilisateur, un rôle...</ResponseField>
+    <ResponseField name="userId" type="Snowflake | null" required>L’identifiant de l’utilisateur ou de l’app qui l’a fait.</ResponseField>
+    <ResponseField name="reason" type="string">La raison donnée (1 à 512 caractères).</ResponseField>
+    <ResponseField name="changes" type="object[]">
+      Ce qui a changé sur la cible.
+      <Expandable title="champs d’un changement">
+        <ResponseField name="key" type="string" required>Le nom de ce qui a changé, avec quelques exceptions que liste Discord.</ResponseField>
+        <ResponseField name="oldValue" type="unknown">La valeur avant.</ResponseField>
+        <ResponseField name="newValue" type="unknown">La valeur après.</ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="options" type="object">
+      Plus de détails pour certaines sortes d’entrées. Chaque champ peut manquer ; les nombres et les jours sont du texte, tels que Discord les envoie.
+      <Expandable title="champs">
+        <ResponseField name="applicationId" type="Snowflake">L’identifiant de l’app dont les permissions ont été changées.</ResponseField>
+        <ResponseField name="autoModerationRuleName" type="string">Le nom de la règle de modération automatique qui s’est déclenchée.</ResponseField>
+        <ResponseField name="autoModerationRuleTriggerType" type="string">Ce qui déclenche cette règle.</ResponseField>
+        <ResponseField name="channelId" type="Snowflake">Le salon où c’est arrivé.</ResponseField>
+        <ResponseField name="count" type="string">Combien de choses ont été touchées.</ResponseField>
+        <ResponseField name="deleteMemberDays" type="string">Au bout de combien de jours d’inactivité les membres ont été retirés.</ResponseField>
+        <ResponseField name="id" type="Snowflake">L’identifiant du rôle ou du membre dont le remplacement a changé.</ResponseField>
+        <ResponseField name="membersRemoved" type="string">Combien de membres le nettoyage a retirés.</ResponseField>
+        <ResponseField name="messageId" type="Snowflake">L’identifiant du message épinglé ou désépinglé.</ResponseField>
+        <ResponseField name="roleName" type="string">Le nom du rôle, quand `type` vaut `"0"`.</ResponseField>
+        <ResponseField name="type" type="string">De qui le remplacement a changé : `"0"` un rôle, `"1"` un membre.</ResponseField>
+        <ResponseField name="integrationType" type="string">La sorte d’intégration qui l’a fait.</ResponseField>
+        <ResponseField name="status" type="string">Le nouveau statut du salon vocal.</ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="users" type="object[]" required>Les utilisateurs auxquels font référence les entrées (données simples).</ResponseField>
+<ResponseField name="webhooks" type="object[]" required>Les webhooks auxquels font référence les entrées (données simples).</ResponseField>
+<ResponseField name="threads" type="object[]" required>Les fils auxquels font référence les entrées (données simples).</ResponseField>
+<ResponseField name="integrations" type="object[]" required>Les intégrations auxquelles font référence les entrées, en partie (données simples).</ResponseField>
+<ResponseField name="applicationCommands" type="object[]" required>Les commandes auxquelles font référence les entrées (données simples).</ResponseField>
+<ResponseField name="autoModerationRules" type="AutoModerationRule[]" required>Les règles de modération automatique auxquelles font référence les entrées.</ResponseField>
+<ResponseField name="guildScheduledEvents" type="ScheduledEvent[]" required>Les événements programmés auxquels font référence les entrées.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/audit-log#audit-log-object-audit-log-structure)
+
+## ScheduledEvent
+
+Un événement programmé sur un serveur : quand il a lieu, où, et à quelle fréquence. `guild.fetchScheduledEvents()` en renvoie une liste, `guild.createScheduledEvent()` celui qu’il a créé.
+
+<ResponseField name="id" type="Snowflake" required>L’identifiant de l’événement.</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>L’identifiant du serveur.</ResponseField>
+<ResponseField name="channelId" type="Snowflake | null" required>L’identifiant du salon où a lieu l’événement ; `null` quand il a lieu hors de Discord.</ResponseField>
+<ResponseField name="creatorId" type="Snowflake | null">L’identifiant de l’utilisateur qui a créé l’événement.</ResponseField>
+<ResponseField name="name" type="string" required>Le nom de l’événement (1 à 100 caractères).</ResponseField>
+<ResponseField name="description" type="string | null">La description de l’événement (1 à 1000 caractères).</ResponseField>
+<ResponseField name="scheduledStartTime" type="string" required>Quand l’événement commence.</ResponseField>
+<ResponseField name="scheduledEndTime" type="string | null" required>Quand l’événement se termine ; toujours réglé pour un événement hors de Discord.</ResponseField>
+<ResponseField name="privacyLevel" type="2" required>Qui peut voir l’événement : `2`, les membres du serveur.</ResponseField>
+<ResponseField name="status" type="1 | 2 | 3 | 4" required>`1` programmé, `2` en cours, `3` terminé, `4` annulé.</ResponseField>
+<ResponseField name="entityType" type="1 | 2 | 3" required>Où il a lieu : `1` un salon de conférence, `2` un salon vocal, `3` hors de Discord.</ResponseField>
+<ResponseField name="entityId" type="Snowflake | null" required>L’identifiant de ce à quoi l’événement est lié, quand il y en a un.</ResponseField>
+<ResponseField name="entityMetadata" type="object | null" required>
+  Plus de détails sur le lieu.
+  <Expandable title="champs">
+    <ResponseField name="location" type="string">Où a lieu l’événement, pour un événement hors de Discord (1 à 100 caractères).</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="creator" type="object">L’utilisateur qui a créé l’événement (données simples).</ResponseField>
+<ResponseField name="userCount" type="number">Combien d’utilisateurs sont intéressés par l’événement.</ResponseField>
+<ResponseField name="image" type="string | null">Le hash de l’image de couverture.</ResponseField>
+<ResponseField name="recurrenceRule" type="object | null" required>
+  À quelle fréquence l’événement se répète ; `null` quand il n’a lieu qu’une fois.
+  <Expandable title="champs">
+    <ResponseField name="start" type="string" required>Quand la répétition commence.</ResponseField>
+    <ResponseField name="end" type="string | null" required>Quand la répétition se termine.</ResponseField>
+    <ResponseField name="frequency" type="0 | 1 | 2 | 3" required>`0` chaque année, `1` chaque mois, `2` chaque semaine, `3` chaque jour.</ResponseField>
+    <ResponseField name="interval" type="number" required>L’espacement entre deux occurrences, en unités de `frequency` : chaque semaine avec un intervalle de `2` veut dire une semaine sur deux.</ResponseField>
+    <ResponseField name="byWeekday" type="number[] | null" required>Les jours de la semaine où il se répète, de `0` (lundi) à `6` (dimanche).</ResponseField>
+    <ResponseField name="byNWeekday" type="object[] | null" required>Des jours d’une semaine donnée du mois : `{ n, day }`, avec `n` la semaine (1 à 5) et `day` le jour.</ResponseField>
+    <ResponseField name="byMonth" type="number[] | null" required>Les mois où il se répète, de `1` (janvier) à `12` (décembre).</ResponseField>
+    <ResponseField name="byMonthDay" type="number[] | null" required>Les jours du mois où il se répète.</ResponseField>
+    <ResponseField name="byYearDay" type="number[] | null" required>Les jours de l’année où il se répète (1 à 364).</ResponseField>
+    <ResponseField name="count" type="number | null" required>Combien de fois il se répète avant de s’arrêter.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/guild-scheduled-event#guild-scheduled-event-object-guild-scheduled-event-structure)
+
+## AutoModerationRule
+
+Une règle que Discord applique tout seul aux messages d’un serveur : ce qui la déclenche, et ce qu’elle fait alors. `guild.fetchAutoModerationRules()` en renvoie une liste.
+
+<ResponseField name="id" type="Snowflake" required>L’identifiant de la règle.</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>L’identifiant du serveur.</ResponseField>
+<ResponseField name="name" type="string" required>Le nom de la règle.</ResponseField>
+<ResponseField name="creatorId" type="Snowflake" required>L’identifiant de l’utilisateur qui a créé la règle.</ResponseField>
+<ResponseField name="eventType" type="1 | 2" required>Quand la règle est vérifiée : `1` un membre envoie ou modifie un message, `2` un membre modifie son profil.</ResponseField>
+<ResponseField name="triggerType" type="1 | 3 | 4 | 5 | 6" required>Ce qui la déclenche : `1` des mots d’une liste, `3` du spam, `4` des mots d’une liste prédéfinie de Discord, `5` trop de mentions, `6` des mots d’une liste dans le profil d’un membre.</ResponseField>
+<ResponseField name="triggerMetadata" type="object" required>
+  Les détails du déclencheur. Les champs présents dépendent de `triggerType`.
+  <Expandable title="champs">
+    <ResponseField name="keywordFilter" type="string[]">Les mots ou parties de mots recherchés (1000 au plus).</ResponseField>
+    <ResponseField name="regexPatterns" type="string[]">Les expressions régulières testées sur le contenu (10 au plus).</ResponseField>
+    <ResponseField name="presets" type="number[]">Les listes prédéfinies de Discord recherchées : `1` grossièretés, `2` contenu sexuel, `3` insultes.</ResponseField>
+    <ResponseField name="allowList" type="string[]">Les mots qui ne déclenchent jamais la règle (100 ou 1000 au plus, selon le déclencheur).</ResponseField>
+    <ResponseField name="mentionTotalLimit" type="number">Combien de rôles et d’utilisateurs différents un message peut mentionner (50 au plus).</ResponseField>
+    <ResponseField name="mentionRaidProtectionEnabled" type="boolean">Si les raids de mentions sont détectés tout seuls.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="actions" type="object[]" required>
+  Ce qui se passe quand la règle se déclenche.
+  <Expandable title="champs d’une action">
+    <ResponseField name="type" type="1 | 2 | 3 | 4" required>`1` bloquer le message, `2` envoyer une alerte dans un salon, `3` exclure temporairement le membre, `4` empêcher le membre d’utiliser le texte, le vocal et les autres interactions.</ResponseField>
+    <ResponseField name="metadata" type="object">
+      Ce dont l’action a besoin.
+      <Expandable title="champs">
+        <ResponseField name="channelId" type="Snowflake">Le salon où l’alerte est envoyée.</ResponseField>
+        <ResponseField name="durationSeconds" type="number">Combien de temps dure l’exclusion, en secondes.</ResponseField>
+        <ResponseField name="customMessage" type="string | null">Ce qui est dit au membre quand son message est bloqué.</ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="enabled" type="boolean" required>Si la règle est active.</ResponseField>
+<ResponseField name="exemptRoles" type="Snowflake[]" required>Les identifiants des rôles que la règle ignore (20 au plus).</ResponseField>
+<ResponseField name="exemptChannels" type="Snowflake[]" required>Les identifiants des salons que la règle ignore (50 au plus).</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/auto-moderation#auto-moderation-rule-object-auto-moderation-rule-structure)
+
+## Sticker
+
+Un sticker : celui d’un serveur, ou un sticker standard d’un pack. `guild.fetchStickers()` renvoie ceux d’un serveur.
+
+<ResponseField name="id" type="Snowflake" required>L’identifiant du sticker.</ResponseField>
+<ResponseField name="packId" type="Snowflake">Pour un sticker standard, l’identifiant de son pack.</ResponseField>
+<ResponseField name="name" type="string" required>Le nom du sticker.</ResponseField>
+<ResponseField name="description" type="string | null" required>La description du sticker.</ResponseField>
+<ResponseField name="tags" type="string" required>Les mots qui suggèrent le sticker pendant la saisie (200 caractères au plus).</ResponseField>
+<ResponseField name="type" type="1 | 2" required>`1` un sticker standard d’un pack, `2` un sticker d’un serveur.</ResponseField>
+<ResponseField name="formatType" type="1 | 2 | 3 | 4" required>Le format de l’image : `1` PNG, `2` APNG, `3` Lottie, `4` GIF.</ResponseField>
+<ResponseField name="available" type="boolean">Si le sticker d’un serveur peut être utilisé ; `false` quand le serveur a perdu les boosts nécessaires.</ResponseField>
+<ResponseField name="guildId" type="Snowflake">L’identifiant du serveur à qui appartient le sticker.</ResponseField>
+<ResponseField name="user" type="object">L’utilisateur qui a téléversé le sticker (données simples).</ResponseField>
+<ResponseField name="sortValue" type="number">La place d’un sticker standard dans son pack.</ResponseField>
+
+Pour en envoyer un, passez son identifiant dans les `stickers` d’un message : voir [Options des messages](/fr/reference/message-options).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/sticker#sticker-object-sticker-structure)

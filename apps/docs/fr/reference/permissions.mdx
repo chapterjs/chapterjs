@@ -1,0 +1,245 @@
+---
+title: 'Permissions'
+description: 'Vérifier ce que peut faire un membre, lire ce que permet un rôle, et écrire des permissions par leur nom'
+---
+
+Les permissions s’écrivent toujours par leur nom, comme `'BanMembers'` : votre éditeur les complète et refuse une faute de frappe. Rien ici n’envoie de requête : tout est calculé à partir de ce que sait le bot.
+
+<Note>
+  Pour exiger des permissions avant qu’une commande ne tourne, déclarez-les dans le fichier de la commande : voir [Commandes](/fr/commands). Ce que répond ChapterJS quand le bot lui-même n’a pas une permission est dans [Erreurs](/fr/reference/errors#ce-que-voit-la-personne).
+</Note>
+
+```ts
+import type { GuildChannel, GuildMember } from 'chapterjs';
+
+function canPost(member: GuildMember, channel: GuildChannel) {
+  const permissions = member.permissionsIn(channel);
+  const missing = permissions.missing(['SendMessages', 'AttachFiles']);
+  return missing.length === 0 ? 'Allez-y' : `Il manque : ${missing.join(', ')}`;
+}
+```
+
+## D’où viennent les permissions
+
+| Lisez | Donne | Page |
+| --- | --- | --- |
+| `member.permissions` | Ce que le membre peut faire sur le serveur, d’après ses rôles | [GuildMember](/fr/reference/member) |
+| `member.permissionsIn(channel)` | La même chose, modifiée par ce que le salon autorise ou refuse | [GuildMember](/fr/reference/member#permissionsin) |
+| `channel.permissionsFor(member)` | Pareil que `member.permissionsIn(channel)` | [Salons](/fr/reference/channels) |
+| `role.permissions` | Ce que le rôle permet sur le serveur | [Role](/fr/reference/role) |
+| `channel.permissionOverwrites` | Ce que chaque rôle et chaque membre a le droit ou non de faire dans le salon | [PermissionOverwrite](/fr/reference/data#permissionoverwrite) |
+
+Pour écrire des permissions, passez des noms à `guild.createRole()`, `role.edit()` ([`RoleCreateOptions`](/fr/reference/options#rolecreateoptions), [`RoleEditOptions`](/fr/reference/options#roleeditoptions)) et `channel.setPermissions()`.
+
+## Comment elles sont calculées
+
+Le calcul suit les [règles de permissions de Discord](https://docs.discord.com/developers/topics/permissions#permission-overwrites), en quatre étapes :
+
+1. **Sur le serveur.** Le propriétaire peut tout faire. Sinon, un membre a ce que permet le rôle @everyone, plus ce que permet chacun de ses rôles ; un membre avec `Administrator` peut tout faire.
+2. **Dans un salon.** Les remplacements du salon changent cela : d’abord celui pour @everyone, puis ceux des rôles du membre combinés, puis celui du membre lui-même. Chacun retire ce qu’il refuse, puis ajoute ce qu’il autorise. Un administrateur n’est jamais concerné par les remplacements.
+3. **Ce qui en découle.** Un membre qui ne peut pas `ViewChannel` ne peut rien y faire. Un membre qui ne peut pas `SendMessages` ne peut pas non plus `MentionEveryone`, `SendTtsMessages`, `AttachFiles` ni `EmbedLinks`.
+4. **Exclusion temporaire.** Un membre exclu temporairement ne garde que `ViewChannel` et `ReadMessageHistory`, sauf s’il est administrateur.
+
+`member.permissions` applique les étapes 1 et 4 ; `member.permissionsIn(channel)` et `channel.permissionsFor(member)` appliquent les quatre. Un fil utilise les permissions du salon où il se trouve.
+
+## Permissions
+
+Un ensemble de permissions qui ne change jamais : chaque opération renvoie un nouvel ensemble. Discord écrit les permissions sous forme de texte parce qu’elles ne tiennent pas dans un nombre ordinaire.
+
+```ts
+import { Permissions } from 'chapterjs';
+
+const moderator = new Permissions(['KickMembers', 'BanMembers']);
+moderator.has('KickMembers'); // true
+moderator.add('ModerateMembers').toArray(); // ['KickMembers', 'BanMembers', 'ModerateMembers']
+```
+
+### Propriétés
+
+<ResponseField name="bits" type="bigint" required>Les permissions sous forme d’un seul nombre, chaque bit étant une permission.</ResponseField>
+
+### constructor
+
+```ts
+new Permissions(bits?: PermissionResolvable | string)
+```
+
+Construit un ensemble à partir d’un nom, d’une liste de noms, de bits, d’un autre ensemble, ou du texte qu’utilise Discord (`'2048'`). Sans argument, l’ensemble est vide. Un nom qui n’est pas une permission lève une `TypeError` :
+
+```text
+"BanMember" is not a permission. Permissions are: CreateInstantInvite, KickMembers, BanMembers, ...
+```
+
+### has()
+
+```ts
+has(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boolean
+```
+
+Si chaque permission donnée est dans l’ensemble. Un administrateur a toutes les permissions, sauf si `{ checkAdmin: false }` est passé.
+
+### any()
+
+```ts
+any(permission: PermissionResolvable, options?: { checkAdmin?: boolean }): boolean
+```
+
+Si au moins une des permissions données est dans l’ensemble.
+
+### missing()
+
+```ts
+missing(permission: PermissionResolvable): PermissionName[]
+```
+
+Les permissions données qui ne sont pas dans l’ensemble, par nom.
+
+### add()
+
+```ts
+add(permission: PermissionResolvable): Permissions
+```
+
+Un nouvel ensemble avec les permissions données ajoutées.
+
+### remove()
+
+```ts
+remove(permission: PermissionResolvable): Permissions
+```
+
+Un nouvel ensemble sans les permissions données.
+
+### toArray()
+
+```ts
+toArray(): PermissionName[]
+```
+
+Les noms des permissions de l’ensemble, dans l’ordre de la documentation.
+
+### toString()
+
+```ts
+toString(): string
+```
+
+Le texte qu’attend Discord dans une requête.
+
+### toJSON()
+
+```ts
+toJSON(): string
+```
+
+Le texte qu’attend Discord dans une requête.
+
+<Info>
+  `has()`, `any()` et `missing()` répondent pour un administrateur comme s’il avait tout. Passez `{ checkAdmin: false }` à `has()` ou `any()` pour vérifier le bit exact.
+</Info>
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/permissions)
+
+## PermissionResolvable
+
+Une permission, ou plusieurs : par nom, sous forme de bits, ou sous forme d’ensemble.
+
+```ts
+type PermissionResolvable =
+  | PermissionName
+  | bigint
+  | Permissions
+  | readonly (PermissionName | bigint)[]
+```
+
+Chaque méthode de `Permissions`, et chaque option qui prend des permissions, en accepte un. Autre chose qu’un nom, un bigint, un ensemble ou une liste de ceux-ci lève une `TypeError` :
+
+```text
+A permission is a name like "BanMembers", got number.
+```
+
+## PermissionName
+
+Le nom d’une permission : une clé de `PermissionFlags`, comme listé ci-dessous.
+
+```ts
+type PermissionName = keyof typeof PermissionFlags
+```
+
+| Nom | Ce qu’elle permet |
+| --- | --- |
+| `CreateInstantInvite` | Créer des invitations |
+| `KickMembers` | Expulser des membres |
+| `BanMembers` | Bannir des membres |
+| `Administrator` | Tout, et ignorer les remplacements des salons |
+| `ManageChannels` | Créer, modifier et supprimer des salons |
+| `ManageGuild` | Modifier le serveur |
+| `AddReactions` | Ajouter de nouvelles réactions aux messages (réagir avec une réaction existante ne demande rien) |
+| `ViewAuditLog` | Lire le journal d’audit |
+| `PrioritySpeaker` | Être entendu plus fort dans un salon vocal |
+| `Stream` | Passer en direct |
+| `ViewChannel` | Voir un salon : lire ses messages, le rejoindre si c’est un salon vocal |
+| `SendMessages` | Envoyer des messages dans un salon et créer des publications dans un forum (pas envoyer de messages dans les fils) |
+| `SendTtsMessages` | Envoyer des messages `/tts` |
+| `ManageMessages` | Supprimer les messages des autres |
+| `EmbedLinks` | Avoir un aperçu des liens que l’on envoie |
+| `AttachFiles` | Téléverser des images et des fichiers |
+| `ReadMessageHistory` | Lire les messages plus anciens |
+| `MentionEveryone` | Utiliser `@everyone` et `@here` |
+| `UseExternalEmojis` | Utiliser les emojis personnalisés d’autres serveurs |
+| `ViewGuildInsights` | Lire les statistiques du serveur |
+| `Connect` | Rejoindre un salon vocal |
+| `Speak` | Parler dans un salon vocal |
+| `MuteMembers` | Rendre des membres muets dans un salon vocal |
+| `DeafenMembers` | Rendre des membres sourds dans un salon vocal |
+| `MoveMembers` | Déplacer des membres entre salons vocaux |
+| `UseVad` | Utiliser la détection de voix dans un salon vocal |
+| `ChangeNickname` | Changer son propre surnom |
+| `ManageNicknames` | Changer les surnoms des autres |
+| `ManageRoles` | Créer, modifier et supprimer des rôles |
+| `ManageWebhooks` | Créer, modifier et supprimer des webhooks |
+| `ManageGuildExpressions` | Modifier et supprimer les emojis, stickers et sons créés par n’importe qui |
+| `UseApplicationCommands` | Utiliser les commandes slash et les commandes de menu contextuel |
+| `RequestToSpeak` | Demander la parole dans un salon de conférence |
+| `ManageEvents` | Modifier et supprimer les événements programmés créés par n’importe qui |
+| `ManageThreads` | Supprimer et archiver des fils, et voir chaque fil privé |
+| `CreatePublicThreads` | Créer des fils publics et d’annonces |
+| `CreatePrivateThreads` | Créer des fils privés |
+| `UseExternalStickers` | Utiliser les stickers personnalisés d’autres serveurs |
+| `SendMessagesInThreads` | Envoyer des messages dans les fils |
+| `UseEmbeddedActivities` | Utiliser des activités (apps avec le drapeau `EMBEDDED`) |
+| `ModerateMembers` | Exclure temporairement des membres : ils ne peuvent ni écrire ni réagir dans le chat et les fils, ni parler dans les salons vocaux et de conférence |
+| `ViewCreatorMonetizationAnalytics` | Lire les statistiques des abonnements de rôles |
+| `UseSoundboard` | Utiliser la soundboard dans un salon vocal |
+| `CreateGuildExpressions` | Créer des emojis, stickers et sons, et modifier et supprimer les siens |
+| `CreateEvents` | Créer des événements programmés, et modifier et supprimer les siens |
+| `UseExternalSounds` | Utiliser les sons de soundboard d’autres serveurs |
+| `SendVoiceMessages` | Envoyer des messages vocaux |
+| `SetVoiceChannelStatus` | Régler le statut d’un salon vocal |
+| `SendPolls` | Envoyer des sondages |
+| `UseExternalApps` | Laisser les apps installées par les utilisateurs répondre publiquement ; sinon leurs réponses ne sont visibles que par la personne. Seulement pour les apps qui ne sont pas aussi installées sur le serveur |
+| `PinMessages` | Épingler et désépingler des messages |
+| `BypassSlowmode` | Ignorer le mode lent |
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/permissions#permissions-bitwise-permission-flags)
+
+## PermissionFlags
+
+Le bit de chaque permission, par nom : `PermissionFlags.BanMembers` vaut `4n` (`1n << 2n`). C’est ce dont est fait `PermissionName`, et ce par rapport à quoi `bits` est lu.
+
+```ts
+import { PermissionFlags, Permissions } from 'chapterjs';
+
+const bits = PermissionFlags.KickMembers | PermissionFlags.BanMembers;
+new Permissions(bits).toArray(); // ['KickMembers', 'BanMembers']
+```
+
+Vous en avez rarement besoin : les noms font la même chose, de façon lisible. Servez-vous-en quand vous travaillez avec les bits bruts de Discord, par exemple pour les combiner avec `|` ou les comparer à un nombre venu d’ailleurs.
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/permissions#permissions-bitwise-permission-flags)
+
+## La hiérarchie
+
+Avoir une permission ne suffit pas toujours : un membre ne peut expulser, bannir, renommer ou donner des rôles qu’aux membres dont le rôle le plus haut est en dessous du sien. `member.isHigherThan(other)` et `role.isHigherThan(other)` répondent à cela. Il en va de même pour votre bot : son rôle le plus haut doit être au-dessus du membre qu’il modère.
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/permissions#permission-hierarchy)

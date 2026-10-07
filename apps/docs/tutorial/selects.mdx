@@ -1,0 +1,116 @@
+---
+title: 'Select menus'
+description: 'Add a menu to a message with options you declare, or filled with the users, roles and channels of the server, and receive what was picked typed'
+---
+
+A select menu is a dropdown under a message. It is a component like a button, so everything from the previous page applies: a file, a path, `data`, `who`, `update()`. What is new is the **options**, and what `run` receives from them.
+
+## A menu with your options
+
+Create `src/components/selects/pet.ts`:
+
+```ts src/components/selects/pet.ts
+import { select } from 'chapterjs';
+
+export default select({
+  placeholder: 'Pick your favorite',
+  options: { 'Cat 🐱': 'cat', 'Dog 🐶': 'dog', 'Axolotl 🦎': 'axolotl' },
+  async run({ interaction, user, value }) {
+    await interaction.update({
+      content: `${user.displayName} is a ${value} person.`,
+      components: [],
+    });
+  },
+});
+```
+
+And a command that shows it:
+
+```ts src/commands/pet.ts
+import { command } from 'chapterjs';
+import pet from '../components/selects/pet';
+
+export default command({
+  description: 'Asks for your favorite pet',
+  async run({ interaction }) {
+    await interaction.reply({ content: 'Which one?', components: [pet] });
+  },
+});
+```
+
+Hover `value` in the file: it is `'cat' | 'dog' | 'axolotl'`, not a `string`. The framework typed it from the options, so a typo in a comparison (`value === 'cta'`) is underlined. `values` is the list of everything picked, for menus that allow several.
+
+The menu has no `data`, so it is put in the message as is: `components: [pet]`. A menu takes a whole row by itself.
+
+## Three ways to write options
+
+| Write                                                                           | When                                               |
+| ------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `['Pizza', 'Pasta']`                                                            | What is shown is what your code receives           |
+| `{ 'Pizza 🍕': 'pizza' }`                                                       | Keys are shown, values are what your code receives |
+| `[{ label: 'Pizza', value: 'pizza', description: 'With cheese', emoji: '🍕' }]` | With a description, an emoji, or `default: true`   |
+
+Up to 25 options. `min` and `max` say how many can be picked (1 by default): with `max: 3`, `values` holds up to three, and `min: 0` allows picking nothing.
+
+## Menus filled by Discord
+
+With a `type`, you declare no option: Discord fills the menu with the server. `'user'`, `'role'`, `'mentionable'` (users and roles) or `'channel'`. `values` is then a list of `User`, `Role`, `User | Role` or `Channel`:
+
+```ts src/components/selects/helper-role.ts
+import { select } from 'chapterjs';
+
+export default select({
+  type: 'role',
+  placeholder: 'Which role helps newcomers?',
+  async run({ interaction, value }) {
+    await interaction.update({
+      content: `Newcomers will be helped by ${value}.`,
+      components: [],
+    });
+  },
+});
+```
+
+For a channel menu, `channelTypes` narrows what is listed: `channelTypes: [ChannelType.GuildText]` shows text channels only, with `ChannelType` imported from `chapterjs`.
+
+## What a menu is shown with
+
+Where you put the menu in a message, a second argument changes what is shown: `placeholder`, `disabled`, and `defaults`, what is picked when the menu appears (the values of the options, or the ids of the users, roles or channels):
+
+```ts src/commands/pet-default.ts
+import { command } from 'chapterjs';
+import pet from '../components/selects/pet';
+
+export default command({
+  description: 'Asks for your favorite pet, cat preselected',
+  async run({ interaction }) {
+    await interaction.reply({
+      content: 'Which one?',
+      components: [pet({ defaults: ['cat'] })],
+    });
+  },
+});
+```
+
+A menu with `data` takes it first: `menu({ page: 2 }, { defaults: ['cat'] })`.
+
+## Points of attention
+
+- **A menu answers like a button**: `update()` to change its message, `reply()` for a new one, within 3 seconds (the framework defers after 2).
+- **`value` is the first pick**, `values` all of them. With `max: 1`, they say the same thing.
+- **An old message with a renamed file** answers "This menu is not available any more.", like a button.
+
+## Recap
+
+- A menu is a file of `src/components/selects/`, with `options` or a `type`.
+- `value` and `values` are typed from the options, or are structures for a `type`.
+- `defaults`, `placeholder` and `disabled` are set where the menu is put in a message.
+
+<CardGroup cols={2}>
+  <Card title="Forms" icon="clipboard-list" href="/tutorial/forms">
+    Ask for text and choices in a window that opens in Discord.
+  </Card>
+  <Card title="Guide: Select menus" icon="book-open" href="/components/selects">
+    The same, in short.
+  </Card>
+</CardGroup>

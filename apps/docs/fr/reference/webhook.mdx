@@ -1,0 +1,124 @@
+---
+title: 'Webhook'
+description: 'Publier des messages dans un salon sous n’importe quel nom et avatar, et gérer les webhooks d’un serveur'
+---
+
+Un `Webhook` est un moyen de publier des messages dans un salon sous n’importe quel nom. Vous en obtenez un depuis `channel.createWebhook()`, `channel.fetchWebhooks()` ou `guild.fetchWebhooks()`.
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function relay(channel: TextChannel, author: string, text: string) {
+  const webhook = await channel.createWebhook({ name: 'Relay' });
+  await webhook.send({ content: text, username: author });
+}
+```
+
+<Note>
+  Ce que peut contenir un message est dans [Messages](/fr/messages) ; ce que prend `send()` ici est [WebhookMessageOptions](/fr/reference/message-options#webhookmessageoptions).
+</Note>
+
+<Warning>
+  Le token d’un webhook permet à n’importe qui de publier avec. Il n’apparaît jamais quand vous affichez un webhook ou appelez `toJSON()`, et le bot ne le donne jamais à votre code.
+</Warning>
+
+## Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand il a été créé : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="name" type="string | null">
+  Le nom par défaut avec lequel publie le webhook.
+</ResponseField>
+
+<ResponseField name="channelId" type="Snowflake | null">
+  L’identifiant du salon où publie le webhook.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  L’identifiant du serveur du webhook.
+</ResponseField>
+
+<ResponseField name="canSend" type="boolean">
+  Si le bot peut publier avec : seulement les webhooks qu’il a créés.
+</ResponseField>
+
+## Helpers
+
+Ils lisent ce dont le bot se souvient : ils n’envoient jamais de requête.
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données du webhook, sans son token : un token est un secret.
+
+## Actions
+
+### send()
+
+```ts
+send(message: string | WebhookMessageOptions): Promise<Message>
+```
+
+Publie un message avec le webhook. Un texte seul est son contenu ; voir [WebhookMessageOptions](/fr/reference/message-options#webhookmessageoptions) pour le reste.
+
+Seul le bot qui a créé un webhook peut publier avec (`canSend`). Sinon `send()` lève une erreur :
+
+```text
+This webhook was not created by the bot: Discord only lets its creator post with it.
+```
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#execute-webhook)
+
+### edit()
+
+```ts
+edit(
+  options: { name?: string; avatar?: string | null; channelId?: Snowflake },
+  reason?: string
+): Promise<Webhook>
+```
+
+Change le nom, l’avatar ou le salon du webhook. Voir les [options de modification d’un webhook](#options-de-modification-d’un-webhook).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#modify-webhook)
+
+### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Supprime le webhook.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#delete-webhook)
+
+## Types
+
+### Options de modification d’un webhook
+
+Ce que prend `edit()`. Chaque champ peut être laissé de côté : seul ce que vous passez change.
+
+<ResponseField name="name" type="string">
+  Le nom par défaut du webhook.
+</ResponseField>
+
+<ResponseField name="avatar" type="string | null">
+  L’image de l’avatar par défaut du webhook, sous forme de data URI (`data:image/png;base64,...`) ; `null` la retire.
+</ResponseField>
+
+<ResponseField name="channelId" type="Snowflake">
+  L’identifiant du salon vers lequel déplacer le webhook.
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#modify-webhook-json-params)
+
+`WebhookMessageOptions` est dans [Options des messages](/fr/reference/message-options#webhookmessageoptions).

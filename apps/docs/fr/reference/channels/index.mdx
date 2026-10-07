@@ -1,0 +1,467 @@
+---
+title: 'Salons'
+description: 'Distinguer les sortes de salons, et utiliser ce qu’a chaque salon, chaque salon d’un serveur et chaque salon avec des messages'
+---
+
+Un salon est l’endroit où les choses se passent dans Discord : un salon textuel, un salon vocal, une catégorie, un forum, un fil ou une conversation privée. Chaque sorte a sa propre classe, et toutes partagent ce qu’a `Channel`. Vous en obtenez un depuis `guild.channels`, `message.channel`, le `channel` d’une commande, ou une option `channel`.
+
+```ts
+import type { Channel } from 'chapterjs';
+
+async function announce(channel: Channel, text: string) {
+  if (!channel.isTextBased()) return; // une catégorie ou un forum : pas de messages là
+  await channel.send(text);
+
+  if (channel.isThread() && channel.archived) await channel.unarchive();
+}
+```
+
+<Note>
+  Comment envoyer, modifier et lire des messages est dans [Envoyer des messages](/fr/messages). Cette page liste ce qu’ont les salons ; chaque sorte a sa propre page ci-dessous.
+</Note>
+
+## Quelle sorte de salon
+
+Un salon obtenu depuis `guild.channels` ou `message.channel` peut être de n’importe quelle sorte. Demandez-le avant d’utiliser ce que seule une sorte possède : à l’intérieur du `if`, votre éditeur connaît la sorte.
+
+| Méthode | Vrai pour | Classe |
+| --- | --- | --- |
+| `isText()` | Un salon textuel ou d’annonces d’un serveur | [`TextChannel`](/fr/reference/channels/text) |
+| `isVoice()` | Un salon vocal ou de conférence | [`VoiceChannel`](/fr/reference/channels/voice) |
+| `isCategory()` | Une catégorie, qui regroupe des salons | [`CategoryChannel`](/fr/reference/channels/category) |
+| `isForum()` | Un salon forum ou média, fait de publications | [`ForumChannel`](/fr/reference/channels/forum) |
+| `isThread()` | Un fil, ou une publication d’un forum | [`ThreadChannel`](/fr/reference/channels/thread) |
+| `isDM()` | Une conversation privée | [`DMChannel`](/fr/reference/channels/dm) |
+| `isGuildChannel()` | Tout salon d’un serveur qui n’est pas un fil | [`GuildChannel`](#guildchannel) |
+| `isTextBased()` | Tout salon où des messages peuvent être envoyés | [`TextBasedChannel`](#textbasedchannel) |
+
+`type` dit la même chose sous forme de valeur de [`ChannelType`](/fr/reference/enums#channeltype) :
+
+| `ChannelType` | Classe |
+| --- | --- |
+| `GuildText`, `GuildAnnouncement` | `TextChannel` |
+| `GuildVoice`, `GuildStageVoice` | `VoiceChannel` |
+| `GuildCategory` | `CategoryChannel` |
+| `GuildForum`, `GuildMedia` | `ForumChannel` |
+| `AnnouncementThread`, `PublicThread`, `PrivateThread` | `ThreadChannel` |
+| `Dm`, `GroupDm` | `DMChannel` |
+
+Une sorte que Discord a ajoutée après cette version reste utilisable : comme `GuildChannel` quand elle est dans un serveur, comme `Channel` sinon.
+
+<CardGroup cols={2}>
+  <Card title="TextChannel" icon="hash" href="/fr/reference/channels/text">
+    Un salon textuel ou d’annonces d’un serveur.
+  </Card>
+  <Card title="VoiceChannel" icon="volume-2" href="/fr/reference/channels/voice">
+    Un salon vocal ou de conférence : on y parle, et on peut aussi y écrire.
+  </Card>
+  <Card title="CategoryChannel" icon="layout-grid" href="/fr/reference/channels/category">
+    Une catégorie : elle regroupe des salons.
+  </Card>
+  <Card title="ForumChannel" icon="list" href="/fr/reference/channels/forum">
+    Un salon forum ou média : il ne contient que des publications, qui sont des fils.
+  </Card>
+  <Card title="ThreadChannel" icon="message-circle" href="/fr/reference/channels/thread">
+    Un fil, ou une publication d’un forum.
+  </Card>
+  <Card title="DMChannel" icon="mail" href="/fr/reference/channels/dm">
+    Une conversation privée entre le bot et un utilisateur.
+  </Card>
+</CardGroup>
+
+## Channel
+
+Un salon de n’importe quelle sorte. Utilisez les méthodes `is...()` pour savoir de quelle sorte il est et obtenir les propriétés et les actions de cette sorte. Chaque classe de cette section a ce qui est listé ici.
+
+### Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand il a été créé : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="type" type="ChannelType">
+  La sorte de salon, sous forme de valeur de `ChannelType`.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  L’identifiant du serveur du salon ; `null` pour un salon privé.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild | null">
+  Le serveur du salon ; `null` pour un salon privé.
+</ResponseField>
+
+### Helpers
+
+Ils lisent ce que le bot sait déjà : ils n’envoient jamais de requête.
+
+#### isTextBased()
+
+```ts
+isTextBased(): this is TextBasedChannel
+```
+
+Si des messages peuvent y être envoyés.
+
+#### isGuildChannel()
+
+```ts
+isGuildChannel(): this is GuildChannel
+```
+
+S’il appartient à un serveur et n’est pas un fil.
+
+#### isText()
+
+```ts
+isText(): this is TextChannel
+```
+
+Un salon textuel ou d’annonces d’un serveur.
+
+#### isVoice()
+
+```ts
+isVoice(): this is VoiceChannel
+```
+
+Un salon vocal ou de conférence.
+
+#### isCategory()
+
+```ts
+isCategory(): this is CategoryChannel
+```
+
+Une catégorie, qui regroupe des salons.
+
+#### isForum()
+
+```ts
+isForum(): this is ForumChannel
+```
+
+Un salon forum ou média, fait de publications.
+
+#### isThread()
+
+```ts
+isThread(): this is ThreadChannel
+```
+
+Un fil, ou une publication d’un forum.
+
+#### isDM()
+
+```ts
+isDM(): this is DMChannel
+```
+
+Une conversation privée.
+
+#### toString()
+
+```ts
+toString(): string
+```
+
+`<#id>` : fait un lien vers le salon quand il est mis dans un message.
+
+#### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de Discord sous forme d’objet simple, avec des noms en camelCase.
+
+### Lire depuis Discord
+
+#### fetch()
+
+```ts
+fetch(): Promise<Channel>
+```
+
+Demande à Discord les dernières données du salon.
+
+### Actions
+
+#### delete()
+
+```ts
+delete(reason?: string): Promise<void>
+```
+
+Supprime le salon (le ferme, pour une conversation privée).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#deleteclose-channel)
+
+## GuildChannel
+
+Un salon d’un serveur (pas un fil). `TextChannel`, `VoiceChannel`, `CategoryChannel` et `ForumChannel` ont tout ce qui est listé ici, plus ce qu’a [`Channel`](#channel).
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function lock(channel: TextChannel) {
+  const everyone = channel.guild.everyoneRole;
+  // Plus personne ne peut écrire, mais tout le monde lit encore.
+  await channel.setPermissions(everyone, { deny: ['SendMessages'] }, 'Salon verrouillé');
+}
+```
+
+### Propriétés
+
+<ResponseField name="guildId" type="Snowflake">
+  L’identifiant du serveur du salon.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  Le serveur du salon.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Le nom du salon.
+</ResponseField>
+
+<ResponseField name="position" type="number">
+  Où se trouve le salon dans la liste.
+</ResponseField>
+
+<ResponseField name="parentId" type="Snowflake | null">
+  L’identifiant de la catégorie du salon, quand il est dans une.
+</ResponseField>
+
+<ResponseField name="parent" type="CategoryChannel | null">
+  La catégorie du salon, quand il est dans une et qu’elle est connue.
+</ResponseField>
+
+<ResponseField name="nsfw" type="boolean">
+  Si le salon est soumis à une limite d’âge.
+</ResponseField>
+
+<ResponseField name="permissionOverwrites" type="PermissionOverwrite[]">
+  Ce que les rôles et les membres ont le droit ou non de faire dans ce salon. Chaque entrée est un [`PermissionOverwrite`](/fr/reference/data#permissionoverwrite).
+</ResponseField>
+
+### Helpers
+
+#### permissionsFor()
+
+```ts
+permissionsFor(member: GuildMember): Permissions
+```
+
+Ce qu’un membre peut faire dans ce salon : ses permissions sur le serveur, modifiées par les remplacements du salon.
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/permissions#permission-overwrites)
+
+### Lire depuis Discord
+
+#### fetchInvites()
+
+```ts
+fetchInvites(): Promise<Invite[]>
+```
+
+Les invitations qui mènent à ce salon.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#get-channel-invites)
+
+#### fetchWebhooks()
+
+```ts
+fetchWebhooks(): Promise<Webhook[]>
+```
+
+Les webhooks qui publient dans ce salon.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#get-channel-webhooks)
+
+### Actions
+
+#### edit()
+
+```ts
+edit(options: GuildChannelEditOptions, reason?: string): Promise<this>
+```
+
+Modifie le salon. Les options sont un [`GuildChannelEditOptions`](/fr/reference/options#guildchanneleditoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#modify-channel)
+
+#### setPermissions()
+
+```ts
+setPermissions(
+  target: Role | GuildMember | User,
+  permissions: { allow?: PermissionResolvable; deny?: PermissionResolvable },
+  reason?: string
+): Promise<void>
+```
+
+Autorise ou refuse des permissions à un rôle ou à un membre dans ce salon. Les permissions qui ne sont dans aucune des deux listes suivent le serveur.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#edit-channel-permissions)
+
+#### deletePermissions()
+
+```ts
+deletePermissions(target: Snowflake | { id: Snowflake }, reason?: string): Promise<void>
+```
+
+Retire ce qui a été réglé pour un rôle ou un membre dans ce salon.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#delete-channel-permission)
+
+#### createInvite()
+
+```ts
+createInvite(options?: InviteCreateOptions, reason?: string): Promise<Invite>
+```
+
+Crée une invitation vers ce salon. Les options sont un [`InviteCreateOptions`](/fr/reference/options#invitecreateoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#create-channel-invite)
+
+#### createWebhook()
+
+```ts
+createWebhook(options: { name: string; avatar?: string | null }, reason?: string): Promise<Webhook>
+```
+
+Crée un webhook qui publie dans ce salon : voir [Webhook](/fr/reference/webhook).
+
+<ResponseField name="name" type="string" required>
+  Le nom du webhook (1 à 80 caractères).
+</ResponseField>
+
+<ResponseField name="avatar" type="string | null">
+  L’image de l’avatar par défaut du webhook, sous forme de data URI (`data:image/png;base64,...`).
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/webhook#create-webhook)
+
+## Salons avec des messages
+
+`TextChannel`, `VoiceChannel`, `ThreadChannel` et `DMChannel` peuvent tous envoyer et lire des messages : ils partagent les propriétés et méthodes de cette section. Ensemble, ils forment le type [`TextBasedChannel`](#textbasedchannel).
+
+```ts
+import type { TextChannel } from 'chapterjs';
+
+async function clean(channel: TextChannel) {
+  const messages = await channel.fetchMessages({ limit: 100 });
+  const fromBots = messages.filter(message => message.author.bot);
+  const deleted = await channel.bulkDelete(fromBots, 'Nettoyage des messages de bots');
+  await channel.send(`${deleted} messages supprimés.`);
+}
+```
+
+### Propriétés
+
+<ResponseField name="messages" type="ReadonlyMap<Snowflake, Message>">
+  Les messages du salon dont le bot se souvient.
+</ResponseField>
+
+<ResponseField name="lastMessageId" type="Snowflake | null">
+  L’identifiant du dernier message envoyé dans le salon, quand il est connu.
+</ResponseField>
+
+<Info>
+  `messages` est vide sauf si l’un de vos fichiers demande de se souvenir des messages : voir [ce dont le bot se souvient](/fr/memory). `fetchMessage()` et `fetchMessages()` fonctionnent toujours.
+</Info>
+
+### Lire depuis Discord
+
+#### fetchMessage()
+
+```ts
+fetchMessage(id: Snowflake, options?: { force?: boolean }): Promise<Message>
+```
+
+Un message du salon : depuis la mémoire du bot, sinon depuis Discord.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#get-channel-message)
+
+#### fetchMessages()
+
+```ts
+fetchMessages(options?: FetchMessagesOptions): Promise<Message[]>
+```
+
+Les derniers messages du salon, du plus récent au plus ancien. Les options sont un [`FetchMessagesOptions`](/fr/reference/options#fetchmessagesoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#get-channel-messages)
+
+#### fetchPins()
+
+```ts
+fetchPins(): Promise<Message[]>
+```
+
+Les messages épinglés du salon, le dernier épinglé en premier.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#get-channel-pins)
+
+### Actions
+
+#### send()
+
+```ts
+send(message: MessageInput): Promise<Message>
+```
+
+Envoie un message dans le salon. Ce qu’elle accepte est un [`MessageInput`](/fr/reference/message-options#messageinput).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#create-message)
+
+#### bulkDelete()
+
+```ts
+bulkDelete(messages: readonly (Snowflake | { id: Snowflake })[], reason?: string): Promise<number>
+```
+
+Supprime plusieurs messages d’un coup. Les messages de plus de deux semaines ne peuvent pas être supprimés en masse : ils sont laissés de côté, et ne sont pas comptés dans le résultat.
+
+Renvoie combien de messages ont été supprimés.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/message#bulk-delete-messages)
+
+#### sendTyping()
+
+```ts
+sendTyping(): Promise<void>
+```
+
+Affiche « le bot est en train d’écrire… » pendant 10 secondes, ou jusqu’à ce qu’il envoie un message.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#trigger-typing-indicator)
+
+## Types
+
+### TextBasedChannel
+
+```ts
+type TextBasedChannel = GuildTextBasedChannel | DMChannel
+```
+
+Tout salon où des messages peuvent être envoyés. C’est ce que donnent `message.channel` et `interaction.channel` ; `isTextBased()` restreint un `Channel` à ce type.
+
+### GuildTextBasedChannel
+
+```ts
+type GuildTextBasedChannel = TextChannel | VoiceChannel | ThreadChannel
+```
+
+Tout salon d’un serveur où des messages peuvent être envoyés. C’est le `channel` d’un [`GuildMessage`](/fr/reference/message#guildmessage) et d’une commande utilisée sur un serveur.
+
+### Ailleurs
+
+- [`PermissionOverwrite`](/fr/reference/data#permissionoverwrite) : une entrée de `permissionOverwrites`.
+- [`GuildChannelEditOptions`](/fr/reference/options#guildchanneleditoptions), [`InviteCreateOptions`](/fr/reference/options#invitecreateoptions) et [`FetchMessagesOptions`](/fr/reference/options#fetchmessagesoptions) : ce que prennent `edit()`, `createInvite()` et `fetchMessages()`.
+- [`MessageInput`](/fr/reference/message-options#messageinput) : ce que prend `send()`.

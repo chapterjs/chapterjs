@@ -1,0 +1,385 @@
+---
+title: 'command()'
+description: 'Tout ce que déclare un fichier de commande, chaque sorte d’option, et ce que reçoit la fonction run'
+---
+
+`command()` est ce qu’un fichier de `src/commands/` exporte par défaut. Elle prend un objet, `CommandConfig`, et type `run` d’après lui.
+
+```ts src/commands/ping.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Replies with Pong!',
+  async run({ interaction }) {
+    await interaction.reply('Pong!');
+  },
+});
+```
+
+<Note>
+  Comment écrire une commande, ses options, ses réponses et ses traductions est dans le [guide](/fr/commands). Cette page liste ce qui existe.
+</Note>
+
+## command()
+
+```ts
+command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild'>(config: CommandConfig<Options, Where>): CommandFile<Options, Where>
+```
+
+Déclare une commande slash. Exportez le résultat comme export par défaut d’un fichier de `src/commands/` : le chemin du fichier est le nom de la commande (`src/commands/mod/ban.ts` est `/mod ban`).
+
+`Options` et `Where` sont déduits de ce que vous passez : vous ne les écrivez jamais.
+
+### CommandFile
+
+```ts
+interface CommandFile<Options extends CommandOptions = CommandOptions, Where extends CommandWhere = CommandWhere>
+```
+
+Ce que renvoie `command()` : l’export par défaut d’un fichier de commande. Il garde les options et l’endroit que le fichier a déclarés.
+
+<ResponseField name="config" type="CommandConfig<Options, Where>">
+  Ce que le fichier a donné à `command()`, pas encore vérifié.
+</ResponseField>
+
+## CommandConfig
+
+Ce qu’un fichier de commande donne à `command()` : ce qu’est la commande et ce qu’elle fait.
+
+<ResponseField name="description" type="string">
+  Ce que fait la commande, affiché sous son nom (1 à 100 caractères). Ici, avec `locales` pour ses traductions ; ou laissée de côté, et chaque texte de la commande (description, options, leurs choix, traductions) vient des fichiers de langue de `src/messages/`. L’un ou l’autre.
+</ResponseField>
+
+<ResponseField name="run" type="(context: CommandContext<Options, Where>) => unknown" required>
+  Ce qu’il faut faire quand quelqu’un utilise la commande.
+</ResponseField>
+
+<ResponseField name="options" type="CommandOptions">
+  Ce que l’utilisateur peut remplir (25 options au plus).
+</ResponseField>
+
+<ResponseField name="locales" type="CommandLocales<Options>">
+  La commande dans d’autres langues : Discord montre à chaque personne les noms et descriptions de sa langue. Votre code reçoit toujours les noms déclarés ci-dessus, quelle que soit la langue.
+
+  [Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#localization)
+</ResponseField>
+
+<ResponseField name="permissions" type="readonly PermissionName[]">
+  Les permissions dont un membre a besoin pour utiliser la commande. Les administrateurs d’un serveur peuvent changer qui la voit dans les réglages du serveur.
+</ResponseField>
+
+<ResponseField name="where" type="CommandWhere">
+  Où la commande peut être utilisée : `'guild'` (sur les serveurs, par défaut), `'dm'` (en messages privés avec le bot) ou `'both'`. Ce que reçoit `run` suit.
+</ResponseField>
+
+<ResponseField name="nsfw" type="boolean">
+  N’afficher la commande que dans les salons soumis à une limite d’âge.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean">
+  Rendre les réponses de la commande visibles seulement par qui l’a utilisée.
+</ResponseField>
+
+<ResponseField name="cooldown" type="Cooldown">
+  Combien de temps attendre avant que la commande puisse être utilisée à nouveau : `'10s'` pour chaque personne, ou `{ user, channel, guild }` pour chaque endroit. Quelqu’un qui l’utilise trop tôt reçoit une réponse privée qui dit quand il pourra.
+</ResponseField>
+
+### CommandWhere
+
+```ts
+CommandWhere = 'guild' | 'dm' | 'both'
+```
+
+Où une commande peut être utilisée : sur les serveurs (`'guild'`), en messages privés avec le bot (`'dm'`), ou les deux.
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#interaction-contexts)
+
+### Cooldown
+
+```ts
+Cooldown = Duration | { readonly user?: Duration; readonly channel?: Duration; readonly guild?: Duration }
+```
+
+Combien de temps attendre avant que la commande puisse être utilisée à nouveau : une durée, pour chaque personne ; ou une par endroit, chacune facultative : `user` pour chaque personne, `channel` pour chaque salon, `guild` pour chaque serveur (pas pour une commande de messages privés). Quelqu’un qui l’utilise trop tôt reçoit une réponse privée qui dit quand il pourra, et `run` ne tourne pas.
+
+<ResponseField name="user" type="Duration">
+  Chaque personne attend autant entre deux utilisations, où qu’elle soit.
+</ResponseField>
+
+<ResponseField name="channel" type="Duration">
+  Chaque salon attend autant, quel que soit qui l’a utilisée.
+</ResponseField>
+
+<ResponseField name="guild" type="Duration">
+  Chaque serveur attend autant, quel que soit qui l’a utilisée, et où.
+</ResponseField>
+
+### Duration
+
+```ts
+Duration = `${number}${'s' | 'm' | 'h' | 'd'}${string}`
+```
+
+Une durée, sous forme d’un nombre et d’une unité : `s`, `m`, `h` ou `d`, comme `'30s'`, `'10m'`, `'2h'`, `'1d'`. Plusieurs parties s’additionnent : `'1h30m'`.
+
+## Les options
+
+### CommandOptions
+
+```ts
+CommandOptions = Readonly<Record<string, CommandOption>>
+```
+
+Les options d’une commande, par nom. Un nom est fait de lettres minuscules, de chiffres, de `-` et de `_`, 32 caractères au plus.
+
+### CommandOption
+
+```ts
+CommandOption = StringOption | NumberOption | ChannelOption | SimpleOption
+```
+
+Une option d’une commande. Chaque sorte a ces champs :
+
+<ResponseField name="type" type="string" required>
+  La sorte d’option : `'string'`, `'integer'`, `'number'`, `'boolean'`, `'user'`, `'role'`, `'channel'`, `'mentionable'` ou `'attachment'`.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  À quoi sert l’option, affiché sous son nom (1 à 100 caractères). Ici quand la commande a sa `description` ici ; sinon dans le fichier de la langue par défaut de `src/messages/`.
+</ResponseField>
+
+<ResponseField name="required" type="boolean">
+  Si l’utilisateur doit la remplir. Par défaut, elle est facultative.
+</ResponseField>
+
+### StringOption
+
+Un texte que l’utilisateur tape, ou choisit parmi des `choices`.
+
+<ResponseField name="type" type="'string'" required>
+  La sorte d’option : un texte.
+</ResponseField>
+
+<ResponseField name="choices" type="readonly string[] | Readonly<Record<string, string>>">
+  Les seules valeurs que l’utilisateur peut choisir (25 au plus) : une liste, ou un objet dont les clés sont ce que voit l’utilisateur et les valeurs ce que reçoit votre code.
+</ResponseField>
+
+<ResponseField name="minLength" type="number">
+  Le texte le plus court accepté, en caractères (0 à 6000).
+</ResponseField>
+
+<ResponseField name="maxLength" type="number">
+  Le texte le plus long accepté, en caractères (1 à 6000).
+</ResponseField>
+
+### NumberOption
+
+Un nombre entier (`integer`) ou n’importe quel nombre (`number`).
+
+<ResponseField name="type" type="'integer' | 'number'" required>
+  La sorte d’option : un nombre entier, ou n’importe quel nombre.
+</ResponseField>
+
+<ResponseField name="choices" type="readonly number[] | Readonly<Record<string, number>>">
+  Les seules valeurs que l’utilisateur peut choisir (25 au plus) : une liste, ou un objet dont les clés sont ce que voit l’utilisateur et les valeurs ce que reçoit votre code.
+</ResponseField>
+
+<ResponseField name="min" type="number">
+  La plus petite valeur acceptée.
+</ResponseField>
+
+<ResponseField name="max" type="number">
+  La plus grande valeur acceptée.
+</ResponseField>
+
+Pour une option `'integer'`, `min`, `max` et les choix doivent être des nombres entiers.
+
+### ChannelOption
+
+Un salon que l’utilisateur choisit.
+
+<ResponseField name="type" type="'channel'" required>
+  La sorte d’option : un salon.
+</ResponseField>
+
+<ResponseField name="channelTypes" type="readonly ChannelType[]">
+  Les sortes de salons qui peuvent être choisies. Par défaut, toutes. Les valeurs sont celles de [`ChannelType`](/fr/reference/enums#channeltype).
+</ResponseField>
+
+### SimpleOption
+
+Vrai ou faux, un utilisateur, un rôle, un utilisateur ou un rôle, ou un fichier.
+
+<ResponseField name="type" type="'boolean' | 'user' | 'role' | 'mentionable' | 'attachment'" required>
+  La sorte d’option : ce que l’utilisateur choisit.
+</ResponseField>
+
+### OptionValuesOf
+
+```ts
+OptionValuesOf<Options extends CommandOptions>
+```
+
+Les valeurs des options, typées d’après leur déclaration : une option obligatoire est toujours là, une facultative peut être `undefined`. C’est le type de `options` dans `run`.
+
+| `type` | Valeur |
+| --- | --- |
+| `'string'` | `string` |
+| `'integer'` | `number` |
+| `'number'` | `number` |
+| `'boolean'` | `boolean` |
+| `'user'` | [`User`](/fr/reference/user) |
+| `'role'` | [`Role`](/fr/reference/role) |
+| `'channel'` | [`Channel`](/fr/reference/channels) |
+| `'mentionable'` | `User \| Role` |
+| `'attachment'` | [`Attachment`](/fr/reference/data#attachment) |
+
+Avec `choices`, la valeur est l’union des choix : `'red' | 'green'` pour `choices: ['red', 'green']`, `1 | 2` pour `choices: { Small: 1, Large: 2 }`.
+
+## Ce que reçoit run
+
+### CommandContext
+
+```ts
+CommandContext<Options extends CommandOptions = CommandOptions, Where extends CommandWhere = 'guild'>
+```
+
+Ce que reçoit la fonction `run` d’une commande. Il suit `where` : sur un serveur, le serveur, le membre et le salon sont là ; en messages privés, ils n’existent pas ; dans les deux, `if (guild)` dit lequel c’est, pour tout à la fois.
+
+Quoi que dise `where`, il a :
+
+<ResponseField name="options" type="OptionValuesOf<Options>" required>
+  Ce que l’utilisateur a rempli.
+</ResponseField>
+
+<ResponseField name="user" type="User" required>
+  Qui a utilisé la commande.
+</ResponseField>
+
+<ResponseField name="t" type="Translator">
+  Les textes de `src/messages/`, dans la bonne langue. Seulement quand le projet y a une langue : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
+</ResponseField>
+
+Et le reste suit `where` :
+
+| `where` | Le reste du contexte |
+| --- | --- |
+| `'guild'` (par défaut) | `CommandInGuild` |
+| `'dm'` | `CommandInDm` |
+| `'both'` | `CommandInGuild \| CommandInPrivate` |
+
+### CommandInGuild
+
+Ce que reçoit une commande utilisée sur un serveur à propos de l’endroit où elle a été utilisée.
+
+<ResponseField name="interaction" type="GuildCommandInteraction" required>
+  L’utilisation de la commande : de quoi répondre.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où la commande a été utilisée.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember" required>
+  Qui a utilisé la commande, en tant que membre du serveur.
+</ResponseField>
+
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon où la commande a été utilisée.
+</ResponseField>
+
+### CommandInDm
+
+Ce que reçoit une commande utilisée seulement en messages privés : pas de serveur.
+
+<ResponseField name="interaction" type="DmCommandInteraction" required>
+  L’utilisation de la commande : de quoi répondre.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  La conversation privée où la commande a été utilisée.
+</ResponseField>
+
+### CommandInPrivate
+
+Ce que reçoit une commande qui fonctionne aux deux endroits quand elle est utilisée dans un message privé : `guild` est `null`, et le vérifier dit le reste.
+
+<ResponseField name="interaction" type="PrivateCommandInteraction" required>
+  L’utilisation de la commande : de quoi répondre.
+</ResponseField>
+
+<ResponseField name="guild" type="null" required>
+  Pas de serveur : la commande a été utilisée dans un message privé.
+</ResponseField>
+
+<ResponseField name="member" type="null" required>
+  Pas de membre : la personne est `user`.
+</ResponseField>
+
+<ResponseField name="channel" type="DMChannel" required>
+  La conversation privée où la commande a été utilisée.
+</ResponseField>
+
+Les interactions elles-mêmes sont décrites dans [Interaction](/fr/reference/interaction).
+
+## Traductions
+
+### CommandLocales
+
+```ts
+CommandLocales<Options extends CommandOptions = CommandOptions> = {
+  readonly [Language in Locale]?: CommandTranslation<Options>;
+}
+```
+
+Les traductions d’une commande, par langue. Les clés sont les valeurs de [`Locale`](/fr/reference/enums#locale) : `fr`, `de`, `es-ES`...
+
+### CommandTranslation
+
+La traduction d’une commande dans une langue. Tout est facultatif : ce qui n’est pas traduit est affiché tel que déclaré.
+
+<ResponseField name="name" type="string">
+  Le nom de la commande dans cette langue (mêmes règles qu’un nom).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  La description de la commande dans cette langue (1 à 100 caractères).
+</ResponseField>
+
+<ResponseField name="options" type="{ readonly [Name in keyof Options]?: OptionTranslation }">
+  La traduction de chaque option, par le nom déclaré dans `options`.
+</ResponseField>
+
+### OptionTranslation
+
+La traduction d’une option. Tout est facultatif.
+
+<ResponseField name="name" type="string">
+  Le nom de l’option dans cette langue (mêmes règles qu’un nom).
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  La description de l’option dans cette langue (1 à 100 caractères).
+</ResponseField>
+
+<ResponseField name="choices" type="{ readonly [Choice: string]?: string }">
+  Comment s’appelle chaque choix dans cette langue. Les clés sont les choix tels que déclarés : les valeurs d’une liste, ou les clés d’un objet. Chaque valeur fait de 1 à 100 caractères.
+</ResponseField>
+
+## Les limites
+
+Ce que déclare un fichier est vérifié à son chargement, par rapport aux limites de Discord, avec un message qui dit quoi écrire :
+
+| Quoi | Limite |
+| --- | --- |
+| Un nom (commande, option, nom traduit) | Lettres minuscules, chiffres, `-` et `_`, 32 caractères au plus |
+| Une description (commande, option, description traduite) | 1 à 100 caractères |
+| Profondeur d’une commande | Une commande, un groupe et une sous-commande : 2 dossiers au plus |
+| Options d’une commande | 25 au plus |
+| Choix d’une option | 1 à 25, chacun affiché en 1 à 100 caractères, aucun en double |
+| `minLength`, `maxLength` | Nombres entiers entre 0 et 6000, `minLength` pas au-dessus de `maxLength` |
+| `min`, `max` | `min` pas au-dessus de `max` ; nombres entiers pour une option `'integer'` |
+| Les noms traduits des options | Pas deux options avec le même nom dans une langue |
+| `cooldown` | Une durée d’une seconde au moins ; pas de `guild` pour une commande avec `where: 'dm'` |
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-naming)

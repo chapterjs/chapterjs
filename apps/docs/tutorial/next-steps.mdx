@@ -1,0 +1,56 @@
+---
+title: "What's next"
+description: 'A checklist of what you can do now, the habits that keep a bot healthy, and where to look when you need something'
+---
+
+You went from an empty folder to a bot that is online for everyone. Here is what you know, the habits worth keeping, and where to look from now on.
+
+## What you can do now
+
+- **Create a project** with `create chapter`, give it a token and a test server, run it with `chapterjs dev`.
+- **Write a command** as a file of `src/commands/`, with options typed for you, answers public or private, slow or immediate.
+- **React to events** with a folder of `src/events/`, members and messages included, with intents worked out from your files.
+- **Add buttons, menus and forms** as files of `src/components/`, carrying data, surviving restarts.
+- **Reuse embeds** and build messages out of components.
+- **Schedule tasks**, set the **presence**, and **speak several languages** with `t`.
+- **Build and deploy**, with a second application for production.
+
+## Habits that keep a bot healthy
+
+- **Read the terminal.** Every message says what happened, then what to do. A `✗` with a file and a line is the fastest route to a fix.
+- **Let the editor work for you.** When something is underlined, it is a mistake that would have reached a person. When nothing is completed, run `chapterjs sync`.
+- **Keep `run` short**, and the logic in `src/lib/`.
+- **Think about who reads a message**: `ephemeral` for the person, `allowedMentions` for texts you repeat, `t` for the language.
+- **Ask Discord for the least**: the fewest privileged intents, the fewest permissions in the invite link.
+- **Build before every deploy**, and never share a token.
+
+## Where to look
+
+| You want                             | Go to                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| How to do one thing, fast            | The **Guide** tab: one page per feature                                                                    |
+| Every field, method and type         | The **Reference** tab: `command()`, `event()`, the structures, the CLI                                     |
+| What a message of the terminal means | [Troubleshooting](/run/troubleshooting)                                                                    |
+| Whether a feature exists             | [What's not there yet](/not-yet)                                                                           |
+| What Discord itself allows           | The [Discord developer documentation](https://docs.discord.com/developers), the source of every limit here |
+
+## Ideas for your bot
+
+A few things that fit in a file each, with what you learned:
+
+- `/poll` with a `string` option per answer, sending a poll (sending messages).
+- A `messageCreate` file that answers "gg" with a reaction (message events).
+- A `/ticket` command that opens a form and creates a private thread with `channel.startThread()` (forms, channels).
+- A `memberUpdate` file that logs nickname changes in a channel (events).
+- A task that posts the number of members every Sunday (tasks, translations).
+
+Each of these is a page of the Guide away. Enjoy your bot.
+
+<CardGroup cols={2}>
+  <Card title="Guide" icon="book-open" href="/quickstart">
+    One page per feature.
+  </Card>
+  <Card title="Reference" icon="code" href="/reference">
+    Everything, structure by structure.
+  </Card>
+</CardGroup>

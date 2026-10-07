@@ -1,0 +1,97 @@
+---
+title: 'Compiler'
+description: 'Vérifier chaque fichier et les types de votre bot, et le compiler en un seul fichier que la production fait tourner'
+---
+
+Votre bot fonctionne sur votre ordinateur avec `chapterjs dev`. Le mettre en ligne pour tout le monde se fait en deux étapes : le **compiler**, puis le **lancer** sur une machine qui reste allumée. Cette page est la première étape, et les raisons derrière.
+
+## Pourquoi compiler
+
+`chapterjs dev` fait tourner vos fichiers tels qu’ils sont, les recharge à l’enregistrement, et garde la dernière version qui fonctionnait d’un fichier cassé. C’est ce qu’il faut pendant que vous écrivez. En production, c’est l’inverse qu’il faut : rien ne doit changer sous le bot, et un fichier cassé ne doit jamais être en ligne. Alors la production fait tourner une **compilation** : un instantané de votre bot, vérifié de fond en comble et compilé en un seul fichier. Si un fichier ne peut pas tourner, il n’y a pas de compilation, et rien n’est mis en ligne par erreur.
+
+## La lancer
+
+<CodeGroup>
+```bash pnpm
+pnpm build
+```
+
+```bash npm
+npm run build
+```
+
+```bash yarn
+yarn build
+```
+
+```bash bun
+bun run build
+```
+</CodeGroup>
+
+```text
+✓ Types checked
+✓ Built in .chapterjs/build: 8 commands, 6 events, 7 components, 2 tasks, a presence, messages in 2 languages (31 kB)
+ℹ Run chapterjs start to put it online.
+```
+
+La compilation n’a pas besoin de token et ne parle jamais à Discord : lancez-la n’importe où, aussi souvent que vous voulez.
+
+## Ce qu’elle fait
+
+<Steps>
+  <Step title="Vérifie les types">
+    Ce que souligne votre éditeur, pour tout le projet d’un coup, avec le TypeScript de votre projet. Une erreur arrête la compilation :
+
+    ```text
+    ✗ Your project has type errors, so it was not built:
+      src/commands/warn.ts(12,25): error TS18047: 'member' is possibly 'null'.
+    ```
+
+    C’est le moment où le « aucun type à écrire » de l’éditeur paie : chaque erreur qu’il pouvait souligner est attrapée ici, avant que quoi que ce soit soit en ligne. Le script `typecheck` de votre projet lance la même vérification seule.
+  </Step>
+  <Step title="Lance chaque fichier une fois">
+    Chaque commande, événement, composant, tâche et fichier de langue est chargé et vérifié, exactement comme le fait `chapterjs dev` quand vous enregistrez : un nom que Discord refuse, une option sans description, deux fichiers qui sont la même commande. Chaque fichier cassé est signalé, puis la compilation s’arrête.
+  </Step>
+  <Step title="Compile le bot">
+    Tout devient un seul fichier JavaScript, `.chapterjs/build/bot.js` : vos fichiers, ce qu’ils importent de votre projet, et rien de ce qui n’est pas utilisé. Les noms que vous avez écrits sont gardés, avec une correspondance vers vos fichiers, pour qu’une erreur en production dise toujours `src/commands/warn.ts:12`.
+  </Step>
+  <Step title="Lance ce qu’elle a compilé">
+    Le fichier compilé est chargé une fois, comme la production le chargera. Un fichier qui tourne depuis `src/` mais pas une fois compilé arrête la compilation.
+  </Step>
+</Steps>
+
+Une compilation qui échoue ne laisse rien derrière elle : la compilation précédente est d’abord supprimée, pour qu’il n’y ait jamais un bot à moitié compilé à lancer par erreur.
+
+## Ce qui est dans la compilation, et ce qui n’y est pas
+
+| | Dans la compilation |
+| --- | --- |
+| Vos commandes, événements, composants, tâches, présence, langues | Oui |
+| Ce qu’ils importent de votre projet, où que ce soit | Oui |
+| Les paquets que vous avez installés | Non : ils restent dans `node_modules`, dont la production a aussi besoin |
+| Les fichiers que votre code lit en tournant (un JSON, un fichier de base de données, `public/`) | Non : gardez-les à côté du projet |
+| Vos sources | Non : la correspondance ne contient que des noms de fichiers et des lignes |
+
+La compilation est faite par esbuild, fourni avec ChapterJS : rien à installer, rien à configurer, et il n’est chargé que par `chapterjs build`.
+
+## Points d’attention
+
+- **La compilation est un instantané.** Une fois compilé, modifier un fichier ne change rien jusqu’à ce que vous recompiliez. `chapterjs start` vous le rappelle quand les sources ont changé depuis la compilation.
+- **Une compilation appartient à une version de ChapterJS.** Après avoir mis à jour le paquet, recompilez ; une compilation d’une autre version est refusée avec quoi lancer.
+- **Gardez TypeScript installé là où vous compilez.** Sans lui, la compilation dit `ℹ Types were not checked` et continue : la première ligne de défense a disparu.
+
+## Récapitulatif
+
+- `chapterjs build` vérifie les types, lance chaque fichier, compile le bot dans `.chapterjs/build`, et lance le résultat une fois.
+- Tout fichier invalide fait échouer la compilation ; une compilation échouée ne laisse rien.
+- La production fait tourner la compilation, pas vos fichiers.
+
+<CardGroup cols={2}>
+  <Card title="Mettre en ligne" icon="rocket" href="/fr/tutorial/deploy">
+    Lancer la compilation sur une machine qui reste allumée, avec l’application de production.
+  </Card>
+  <Card title="Guide : chapterjs build" icon="book-open" href="/fr/run/build">
+    La même chose, avec chaque message.
+  </Card>
+</CardGroup>

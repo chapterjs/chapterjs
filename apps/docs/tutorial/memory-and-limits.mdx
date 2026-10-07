@@ -1,0 +1,70 @@
+---
+title: 'Memory and limits'
+description: 'What your bot remembers so that reading costs nothing, how it keeps its memory under control, and the limits of Discord it handles without you'
+---
+
+Two things happen behind your files that are worth understanding once, so that nothing surprises you later: what the bot keeps in memory, and the limits Discord puts on every bot. Neither needs a line of code from you.
+
+## What the bot remembers
+
+In [What you receive](/tutorial/what-you-receive), reading `guild.name` or `member.roles` cost no request. That is because the bot **remembers** what Discord tells it: when it connects, Discord describes every server it is in, and then sends every change. The bot keeps that in memory and answers from it.
+
+Not everything is kept, and what is kept follows your files, the way intents do:
+
+| What                                             | How many                                                                                            | Why                                                                 |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Servers, channels, threads, roles, custom emojis | All of them                                                                                         | Few, and everything else refers to them                             |
+| Your bot as a member of each server              | Always                                                                                              | `guild.me` is never missing                                         |
+| Members                                          | The 100 seen most recently in each server; 1000 when a file of `src/events/memberLeave/` needs them | A server can have millions; a bot rarely needs the silent ones      |
+| Users                                            | Every one it met                                                                                    | They come with members and messages                                 |
+| Messages                                         | None                                                                                                | By far the most frequent thing, and most bots never read an old one |
+
+"Seen" means Discord just sent that member: they wrote, used a command, joined or changed.
+
+This has two consequences for your code, both already met in this tutorial:
+
+- **Nothing depends on a member being remembered.** What comes with an event or a command is always there: the author of a message, who used a command, the member who joined. `guild.members` is what the bot knows, not everyone; to get one precise member, `guild.fetchMember()` asks Discord when it has to.
+- **"As it was" depends on it.** `member` in `memberLeave` is `null` when the bot never saw that person; `message` in `messageDelete` is `null` since no message is kept.
+
+## How memory stays under control
+
+A bot in many servers can still fill the memory of its process. Before that happens, the bot remembers less by itself: it looks at its memory every 30 seconds, and when it stays above 80% of what Node may use, it halves what it keeps (50 members per server instead of 100, then 25...) and tells you with `ℹ`. When memory is fine again, it goes back up, and says so. Servers, channels and roles are never touched.
+
+Only when it already remembers as little as it can and memory is still full does it ask you for something, once:
+
+```text
+⚠ The bot uses 1990 MB of the 2048 MB of memory it can use, and already remembers as little as it can: 1840 servers and 61200 channels, which it needs. Remembering less freed 35 MB. If your own code keeps things that only grow (a list, a Map), that is what fills it: look there first. Otherwise give the bot more memory: set NODE_OPTIONS=--max-old-space-size=4096 (in MB) on a machine that has that much.
+```
+
+The number in "freed" tells you where the memory goes. **Little**, like here: the bot is not what fills it; look in your own code for a list or a `Map` you add to and never empty (a cooldown map that never forgets, a log kept in memory). **A lot**, and still full: your bot is large; give it more memory.
+
+## The limits of Discord
+
+Discord protects itself from bots that ask too much. Every one of these is handled by the framework, and listed here so that you recognise them if they ever show up in a message:
+
+| Limit                                                                                                         | What the framework does                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Rate limits**: a bot may only send so many requests per second, per channel, per server                     | Requests wait their turn by themselves. A burst of `send()` goes out as fast as Discord allows, never faster, and nothing is lost. |
+| **3 seconds** to answer an interaction                                                                        | Deferred for you after 2 seconds.                                                                                                  |
+| **Sizes**: 2000 characters per message, 256 per embed title, 25 options, 100 characters of data per button... | Checked before sending, with the limit in the error.                                                                               |
+| **Presence changes**: a few per minute                                                                        | Only the latest is sent, when it may be.                                                                                           |
+| **Sessions**: a bot may only connect so many times per day                                                    | The bot refuses to start when it would go over, since Discord resets the token of a bot that does.                                 |
+| **Large bots**: a single connection may not carry too many servers                                            | The bot asks Discord how many connections (shards) it needs and opens them.                                                        |
+| **Privileged intents**                                                                                        | Asked for only when a file needs them; the terminal waits for the switch.                                                          |
+
+The one limit that is yours to respect is the one Discord enforces on **people**: a bot that pings, posts or edits too much is removed by the people who added it. The framework can't help with that.
+
+## Recap
+
+- The bot remembers servers, channels, roles fully; members partially; messages not at all. Reading costs nothing, and what comes with an event is always there.
+- It frees memory by itself and tells you; it only asks when nothing is left to give up.
+- Rate limits, sizes, the 3 seconds, sessions and shards are handled: you never write code for them.
+
+<CardGroup cols={2}>
+  <Card title="Building" icon="wrench" href="/tutorial/build">
+    Check the whole bot and compile it for production.
+  </Card>
+  <Card title="Guide: What your bot remembers" icon="book-open" href="/memory">
+    The same, with every message.
+  </Card>
+</CardGroup>

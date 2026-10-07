@@ -1,0 +1,143 @@
+---
+title: 'Buttons'
+description: 'Put a button under a message, carry data in it, run code when it is clicked, and decide who may click'
+---
+
+A message can carry buttons. When someone clicks one, Discord sends your bot an interaction, like for a command, and your bot answers. This page adds a "Roll again" button to `/dice`, and explains how a click finds its way back to your code.
+
+## A button is a file
+
+A button is a file of `src/components/buttons/`. It says what the button looks like and what to do when it is clicked. Create `src/components/buttons/reroll.ts`:
+
+```ts src/components/buttons/reroll.ts
+import { button } from 'chapterjs';
+
+const reroll = button({
+  label: 'Roll again',
+  emoji: '🎲',
+  data: { sides: 'number' },
+  async run({ interaction, user, data }) {
+    const roll = Math.floor(Math.random() * data.sides) + 1;
+    await interaction.update({
+      content: `${user.displayName} rolled a ${roll} on a d${data.sides}.`,
+      components: [reroll({ sides: data.sides })],
+    });
+  },
+});
+
+export default reroll;
+```
+
+Then put it in the answer of `/dice`:
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+import reroll from '../components/buttons/reroll';
+
+export default command({
+  description: 'Rolls a die',
+  options: {
+    sides: { type: 'integer', description: 'How many sides', min: 2, max: 100 },
+  },
+  async run({ interaction, user, options }) {
+    const sides = options.sides ?? 6;
+    const roll = Math.floor(Math.random() * sides) + 1;
+    await interaction.reply({
+      content: `${user.displayName} rolled a ${roll} on a d${sides}.`,
+      components: [reroll({ sides })],
+    });
+  },
+});
+```
+
+Use `/dice sides:20`: the answer has a button. Click it: the message changes to a new roll, with the button still there.
+
+## How a click finds your file
+
+When Discord shows a button, it has to remember which one it is, so that a click can be sent back to the right bot with the right meaning. Discord does that with a short text attached to the button, which the bot chooses, and gets back on click.
+
+In ChapterJS, **that text is the path of the file**: `buttons/reroll`. You never write it, you never see it, and it can't collide with another button, since two files can't have the same path. When the click comes back, the framework reads the path, finds the file, and runs its `run`. This is the same rule as for commands: where the file is says what it is.
+
+## Data: what a button carries
+
+The button needs to know how many sides the die has, and nothing is stored anywhere between the message and the click. So the button **carries** it: `data: { sides: 'number' }` declares a value, `reroll({ sides })` gives it when the button is put in a message, and `run` receives it as `data.sides`, typed as a number.
+
+Where does it live? In the button itself, next to the path, inside the message on Discord. That makes it:
+
+- **Stateless.** Restart the bot, and a click on a week-old message still carries `sides`. Nothing to store, nothing to clean.
+- **Limited.** Discord gives 100 characters to the path and the data together. Carry ids, not names; a number, not a whole object. Carrying too much is an error where the button is made, with how much room there is.
+- **Typed.** `data` has three kinds: `'string'`, `'number'` and `'boolean'`. `reroll({ sides: 'six' })` is underlined in the editor.
+
+A button without `data` is put in a message as is, without calling it: `components: [close]`.
+
+## Answering a click
+
+The `interaction` of a button has everything a command's has (`reply()`, `defer()`, `edit()`, `followUp()`, `delete()`), plus three things that only make sense for a click:
+
+| Method                        | What it does                                                                |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `interaction.update(message)` | Changes the message the button is on. `components: []` removes the buttons. |
+| `interaction.deferUpdate()`   | Answers with nothing: the message stays as it is.                           |
+| `interaction.showModal(form)` | Opens a form (a later page).                                                |
+
+`update()` is what you want most of the time: the person clicked on a message, and expects that message to change, not a new one to appear. `interaction.message` is that message, as a `Message`.
+
+Like a command, a click must be answered within 3 seconds, and the framework defers for you after 2, in a way the person does not see. A button whose `run` finishes without answering is a warning in your terminal, since the person reads "This interaction failed".
+
+## Who may click
+
+By default, everyone who sees the message can click. For a button that belongs to the person who used the command, `who: 'author'`: anyone else reads "Only the person who used the command can use this button." in private, and `run` never starts. Here is a "Close" button that removes the message:
+
+```ts src/components/buttons/close.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Close',
+  style: 'secondary',
+  who: 'author',
+  async run({ interaction }) {
+    await interaction.update({ content: 'Closed.', components: [] });
+  },
+});
+```
+
+`style` is `'primary'` (blue), `'secondary'` (grey), `'success'` (green) or `'danger'` (red). The file gives the default look; where you put the button in a message, a second argument changes it for that message: `reroll({ sides }, { disabled: true })`.
+
+A button that only opens a link runs nothing in your bot, so it has no file: `linkButton({ label: 'Docs', url: 'https://...' })`, written where the message is.
+
+## Rows
+
+Discord puts buttons in rows of up to 5. You never make rows yourself: buttons that follow each other in `components` are put in rows for you, 5 per row, and a menu takes a whole row. To choose the rows yourself, `row([...])` exists.
+
+## When a file changes
+
+A button lives on in the messages it was sent in, long after you changed your code. The framework handles each case without ever crashing:
+
+| What changed                                                         | A click on an old message answers        |
+| -------------------------------------------------------------------- | ---------------------------------------- |
+| The file was renamed or deleted                                      | "This button is not available any more." |
+| Its `data` changed shape (a value added, removed or of another kind) | "This button is out of date."            |
+| Only `run` changed                                                   | Runs the new code, with the old data     |
+
+## Points of attention
+
+- **`update()` once, like `reply()`.** After it, the interaction is answered; use `interaction.message.edit()` for a second change.
+- **Carry ids.** `data: { userId: 'string' }`, then `guild.fetchMember(data.userId)` in `run`, rather than carrying a name that can change and takes room.
+- **Hot reload needs nothing.** The command file imports the button file; saving either reloads both together.
+- **Buttons have a `where` too**, like commands, which decides what `run` receives about the place.
+
+## Recap
+
+- A button is a file of `src/components/buttons/`; its path is what a click sends back.
+- `data` is what the button carries in the message, typed, surviving restarts.
+- `update()` changes the message the button is on; `who: 'author'` keeps it for the person.
+- Old messages are answered plainly when the file changed.
+
+<CardGroup cols={2}>
+  <Card title="Select menus" icon="list" href="/tutorial/selects">
+    Let people pick among options, users, roles or channels.
+  </Card>
+  <Card title="Guide: Buttons" icon="book-open" href="/components">
+    The same, in short.
+  </Card>
+</CardGroup>

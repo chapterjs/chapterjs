@@ -1,0 +1,148 @@
+---
+title: 'Going online'
+description: 'Run your bot for everyone with the production application, on a machine that stays on, and keep it running'
+---
+
+The last step. Your bot is built; now it runs on a machine that does not turn off, as the **production** application, in every server that adds it. This page goes through what changes from dev, the steps on the machine, and what keeps the bot running.
+
+## What changes from dev
+
+|                             | `chapterjs dev`                    | `chapterjs start`                               |
+| --------------------------- | ---------------------------------- | ----------------------------------------------- |
+| Servers                     | Your test server only              | Every server the bot is in                      |
+| Private messages            | Ignored                            | Handled                                         |
+| Commands                    | Shown in your test server, at once | Shown everywhere, for everyone                  |
+| Saving a file               | Reloads it                         | Nothing: build and start again                  |
+| A file that can't run       | Keeps its last working version     | Stopped by the build, before anything is online |
+| Something to fix on Discord | Waits for you                      | Stops and says what to fix                      |
+| Processes                   | One                                | As many as the size of the bot needs            |
+
+## The production application
+
+Remember the second application from [Your Discord application](/tutorial/discord-application)? This is where it comes in. On the **Bot** page of the production application:
+
+1. **Reset Token** and copy it. It goes on the machine, never on your computer.
+2. Enable the same **Privileged Gateway Intents** as on the dev application: your files are the same, so they need the same ones. `chapterjs start` lists what is missing, but in production it stops instead of waiting.
+
+To add the production bot to a server, build the invite link yourself, since `chapterjs start` runs in every server and has no reason to print one: in the Developer Portal, **OAuth2** → **URL Generator**, tick `bot` and `applications.commands`, pick the permissions your bot needs, and share the link. Give it only what your files use: people trust a bot that asks for little.
+
+## Try it on your computer first
+
+Before any machine, run production once locally, to see it work. In the `.env` of your project, put the production token in place of the dev one for a minute, build, and start:
+
+<CodeGroup>
+```bash pnpm
+pnpm start
+```
+
+```bash npm
+npm run start
+```
+
+```bash yarn
+yarn start
+```
+
+```bash bun
+bun start
+```
+
+</CodeGroup>
+
+```text
+✓ Commands updated for everyone
+✓ Online as buddy in 1 server
+ℹ Intents computed from your files: GUILDS, GUILD_MEMBERS, GUILD_MESSAGES, MESSAGE_CONTENT
+✓ 8 commands, 6 events, 7 components, 2 tasks, a presence, messages in 2 languages loaded
+```
+
+The commands are registered for everyone, and private messages reach the bot: the `where: 'dm'` files you could not try in dev work now. Stop it with `Ctrl+C`, and put the dev token back in `.env`.
+
+<Info>
+  `chapterjs start` only needs `BOT_TOKEN`. When `DEV_GUILD_ID` is also there,
+  production ignores that server, so that a dev bot and a production bot sharing
+  one token never answer twice. With two applications you do not need that, and
+  the machine only gets the token.
+</Info>
+
+## On the machine
+
+A machine that stays on is a server you rent, a container, or a host made for Node applications. The steps are the same everywhere:
+
+<Steps>
+  <Step title="Put the project there">
+    Clone your repository, or copy the folder without `node_modules` and
+    `.chapterjs` (both are made on the machine). The machine needs Node.js 22.18
+    or newer and your package manager.
+  </Step>
+  <Step title="Install">
+    The install command of your package manager, in the folder. It also writes
+    the types of the project.
+  </Step>
+  <Step title="Give it the token">
+    Set `BOT_TOKEN` the way the machine does it: an environment variable, the
+    "secrets" of a host, or a `.env` file in the folder. The real environment
+    wins over the file. This is the token of the **production** application.
+  </Step>
+  <Step title="Build, then start">
+    The `build` script, then the `start` script. Many hosts ask for a "build
+    command" and a "start command": give them these two.
+  </Step>
+</Steps>
+
+<Warning>
+  Never commit `.env`, and never put the token in your code: whoever has it
+  controls your bot. If it leaks, reset it on the **Bot** page and give the new
+  one to the machine.
+</Warning>
+
+## Keeping it running
+
+`chapterjs start` runs until it is stopped. Two things end it:
+
+- **A stop asked by the machine** (`Ctrl+C`, or the host stopping the process): the bot disconnects cleanly, prints `✓ Disconnected`, and exits with code 0. Give it a few seconds before killing it.
+- **Something to fix**: a refused token, a privileged intent not enabled, no build. The message says what, and the command exits with code 1.
+
+Use what the machine offers to start the bot again when it exits and when the machine reboots: a process manager, the "restart" setting of a host, a system service. But do not restart blindly in a tight loop: a bot that stops with code 1 has something to fix, and starting it again changes nothing. Discord limits how many times a day a bot may connect, and resets the token of one that goes over; ChapterJS stops before that limit rather than let it happen:
+
+```text
+✗ The bot needs to start 1 session(s) but Discord only allows 0 more until 10/7/2026, 9:00:00 AM. Going over that limit makes Discord reset the bot token, so the bot is not started. This usually means it was restarted too many times: wait, then start it again.
+```
+
+Inside `chapterjs start`, nothing needs your help: the connection is kept alive and reconnected when it drops, and a large bot's processes are started again when one stops.
+
+## Updating the bot
+
+Put the new files on the machine, build, start again. Until you build, the running bot keeps the previous build, and `chapterjs start` reminds you:
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+A host that takes the project from git does the first steps by itself on every push: then updating is pushing.
+
+## When the bot grows
+
+Discord splits large bots into several connections, called shards, and ChapterJS opens them by itself. With many of them, it also spreads them over several processes, so the bot uses every CPU of the machine; you see it in the first line:
+
+```text
+✓ Online as buddy in 18420 servers (20 shards, 5 processes)
+```
+
+Nothing to configure, and a bot under a few thousand servers runs in one process. What it means for your code was said in [Organising](/tutorial/organising#storing-data): each process has its own memory, so anything shared lives in a database.
+
+## Recap
+
+- Production is the second application: its token goes on the machine, its intents are enabled by hand, its invite link is made in the Developer Portal.
+- On the machine: install, set `BOT_TOKEN`, build, start; a host takes the two scripts as its build and start commands.
+- Exit code 0 is a clean stop, 1 is something to fix; let the machine restart the bot, never in a tight loop.
+- Updating is building and starting again.
+
+<CardGroup cols={2}>
+  <Card title="What's next" icon="flag" href="/tutorial/next-steps">
+    A checklist, and where to go from here.
+  </Card>
+  <Card title="Guide: Deploy" icon="book-open" href="/run/deploy">
+    The same steps, with every variable and message.
+  </Card>
+</CardGroup>

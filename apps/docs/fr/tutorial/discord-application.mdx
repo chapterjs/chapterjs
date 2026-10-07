@@ -1,0 +1,82 @@
+---
+title: 'Votre application Discord'
+description: 'Créer l’application de votre bot dans le Developer Portal, copier son token et l’identifiant de votre serveur de test, et comprendre pourquoi il vous faut deux applications'
+---
+
+Votre programme a besoin d’un compte bot avec lequel se connecter. Cette page le crée, et récupère les deux valeurs que votre projet va demander : le **token** du bot et l’**identifiant** de votre serveur de test. Cela prend quelques minutes, entièrement dans un navigateur.
+
+## Pourquoi deux applications
+
+Vous êtes sur le point de créer une application. Créez-en **deux** : une au nom de votre bot avec « dev » dedans (`buddy dev`), une avec le nom final (`buddy`). Voici pourquoi, pour que vous ne sautiez pas cette étape.
+
+Les commandes slash appartiennent au bot, pas à un serveur. Quand le bot de production enregistre `/dice` pour tout le monde, chaque serveur où il se trouve la voit, votre serveur de test compris. Si vous modifiez ensuite `/dice` sur votre ordinateur avec le même bot, votre serveur de test affiche les deux versions côte à côte, et vous ne savez plus laquelle vous utilisez. La présence (ce que le bot affiche sous son nom), les options du Developer Portal et les limites quotidiennes de Discord sont partagées de la même façon : ce que vous essayez sur votre ordinateur se voit chez tout le monde.
+
+Avec deux applications, le bot de dev est à vous pour tout casser, et le bot de production ne voit jamais ce que vous essayez. Le token de celui de dev va sur votre ordinateur ; le token de l’autre va sur la machine qui hébergera le bot, bien plus loin dans ce tutoriel. D’ici là, vous n’utilisez que celui de dev.
+
+## Créer les applications
+
+<Steps>
+  <Step title="Ouvrir le Developer Portal">
+    Allez sur [discord.com/developers/applications](https://discord.com/developers/applications) et connectez-vous avec votre compte Discord.
+  </Step>
+  <Step title="New Application">
+    Cliquez sur **New Application**, donnez-lui un nom, acceptez les conditions et cliquez sur **Create**. Le nom est ce que les gens voient dans la liste des membres, alors choisissez-le avec soin ; il peut être changé plus tard.
+
+    Faites-le deux fois : une fois avec « dev » dans le nom, une fois sans.
+  </Step>
+  <Step title="La page Bot">
+    Dans le menu de gauche de l’application **dev**, ouvrez **Bot**. Cette page est le compte bot de l’application : son nom d’utilisateur, son avatar, son token, et trois options sur lesquelles nous revenons plus bas.
+  </Step>
+</Steps>
+
+## Copier le token
+
+Sur la page **Bot** de l’application **dev**, cliquez sur **Reset Token**, confirmez, et copiez ce qui apparaît. Discord montre un token **une seule fois** : quand vous quittez la page, il est masqué pour de bon. Si vous le perdez, cliquez à nouveau sur **Reset Token** ; l’ancien cesse de fonctionner partout où il était utilisé, et c’est aussi ce qu’il faut faire s’il fuit un jour.
+
+Gardez-le quelque part une minute : la page suivante le met dans votre projet. Ensuite, oubliez où vous l’aviez gardé et effacez-le de là.
+
+<Warning>
+  Le token est le mot de passe de votre bot. Ne le mettez jamais dans votre code, ne le commitez jamais, ne le collez jamais dans une discussion ou une capture d’écran. Un projet créé avec `create chapter` le garde dans un fichier `.env` que git ignore.
+</Warning>
+
+## Copier l’identifiant de votre serveur de test
+
+Chaque serveur, salon, utilisateur et message sur Discord a un **identifiant** (ID) : un nombre de 17 à 20 chiffres qui ne change jamais, même quand le nom change. Votre projet a besoin de l’identifiant de votre serveur de test, pour que `chapterjs dev` sache où faire tourner votre bot.
+
+Les identifiants sont cachés tant que vous n’activez pas le **Mode développeur** dans Discord : **Paramètres utilisateur** → **Avancés** → **Mode développeur**. Ensuite, faites un clic droit sur votre serveur de test dans la liste des serveurs et choisissez **Copier l’identifiant du serveur**.
+
+<Info>
+  Discord appelle un serveur une *guild* dans son API. Vous verrez ce mot dans quelques noms (`DEV_GUILD_ID`, `guild` dans votre code) : il désigne toujours un serveur.
+</Info>
+
+## Ajouter le bot à votre serveur de test
+
+Rien à faire pour l’instant. Un bot s’ajoute à un serveur par un lien que Discord génère à partir de l’application. `chapterjs dev` affiche ce lien la première fois qu’il tourne alors que le bot n’est pas encore dans le serveur, et attend que vous l’ouvriez. Vous le verrez à la page suivante.
+
+## Les trois intents privilégiés
+
+Toujours sur la page **Bot**, sous **Privileged Gateway Intents**, il y a trois interrupteurs : **Presence Intent**, **Server Members Intent** et **Message Content Intent**. Ce sont les intents privilégiés du chapitre précédent : ce qu’un bot doit demander la permission d’utiliser, parce que c’est plus personnel que le reste.
+
+Laissez-les désactivés pour l’instant. ChapterJS vous prévient quand un de vos fichiers en a besoin, avec le nom du fichier et le lien vers cette page, et attend que vous l’activiez. Activer ce que vous n’utilisez pas est la seule chose à éviter : un bot présent dans 100 serveurs ou plus doit être vérifié par Discord pour garder ses intents privilégiés, et moins il en demande, plus c’est facile.
+
+| Option | Nécessaire quand votre bot |
+| --- | --- |
+| **Server Members Intent** | Réagit aux membres qui arrivent, partent ou changent (`src/events/memberJoin/`, `memberLeave/`, `memberUpdate/`) |
+| **Message Content Intent** | Lit le texte des messages que les gens écrivent (`src/events/messageCreate/`, `messageUpdate/`) |
+| **Presence Intent** | Rien dans ChapterJS ne l’utilise aujourd’hui |
+
+## Récapitulatif
+
+- Deux applications : `my-bot dev` pour votre ordinateur, `my-bot` pour la production.
+- Le **token** du bot de dev, depuis **Bot** → **Reset Token** : montré une fois, c’est un mot de passe.
+- L’**identifiant** de votre serveur de test, avec le Mode développeur activé : clic droit → **Copier l’identifiant du serveur**.
+- Les intents privilégiés restent désactivés jusqu’à ce qu’un de vos fichiers en ait besoin.
+
+<CardGroup cols={2}>
+  <Card title="Créer le projet" icon="folder-plus" href="/fr/tutorial/create-project">
+    Mettre les deux valeurs dans un projet et voir le bot se connecter.
+  </Card>
+  <Card title="Guide : Votre application Discord" icon="book-open" href="/fr/setup/discord-application">
+    Les mêmes étapes, droit au but, avec chaque message du CLI.
+  </Card>
+</CardGroup>

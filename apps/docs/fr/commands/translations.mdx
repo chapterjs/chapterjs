@@ -1,0 +1,142 @@
+---
+title: 'Traductions'
+description: 'Afficher le nom, la description, les options et les choix d’une commande dans la langue de chaque personne'
+---
+
+Discord montre à chaque personne les commandes dans sa langue, quand la commande a une traduction pour elle. Ajoutez `locales` à une commande, avec une entrée par langue :
+
+```ts src/commands/greet.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Greets someone',
+  options: {
+    who: { type: 'user', description: 'Who to greet', required: true },
+    tone: { type: 'string', description: 'How', choices: ['warm', 'formal'] },
+  },
+  locales: {
+    fr: {
+      name: 'saluer',
+      description: 'Salue quelqu’un',
+      options: {
+        who: { name: 'qui', description: 'Qui saluer' },
+        tone: { name: 'ton', description: 'Comment', choices: { warm: 'Chaleureux', formal: 'Formel' } },
+      },
+    },
+    'es-ES': { description: 'Saluda a alguien' },
+  },
+  async run({ interaction, options }) {
+    // Whatever the language of the person, the names are the ones you declared.
+    const hello = options.tone === 'formal' ? 'Good day' : 'Hey';
+    await interaction.reply(`${hello}, ${options.who.displayName}!`);
+  },
+});
+```
+
+C’est tout : une personne francophone voit `/saluer qui ton` et choisit « Chaleureux » ; votre code reçoit toujours `options.who` et `'warm'`. Ici la commande est écrite en anglais et traduite en français ; l’inverse fonctionne de la même façon, avec `'en-US'` dans `locales`.
+
+<Info>
+  `locales` est ce que Discord affiche avant que la commande ne soit utilisée. Une commande sans `description` dans son fichier les a dans les `commands` des [fichiers de langue](/fr/translated-messages#les-noms-et-descriptions-des-commandes) de `src/messages/` à la place, à côté des textes du bot : une commande a ses textes à un seul endroit, et l’éditeur n’y propose que les commandes que leur fichier ne décrit pas. Ce que répond votre bot se traduit avec `t`.
+</Info>
+
+<Note>
+  La forme de `locales` est dans la [référence](/fr/reference/command#commandlocales).
+</Note>
+
+## Ce qui peut être traduit
+
+| Dans une langue | Champ | Règles |
+| --- | --- | --- |
+| La commande | `name` | Mêmes règles qu’un nom : lettres minuscules, chiffres, `-` et `_`, 32 caractères au plus |
+| | `description` | 1 à 100 caractères |
+| Une option | `options.<name>.name` | Mêmes règles qu’un nom |
+| | `options.<name>.description` | 1 à 100 caractères |
+| Ses choix | `options.<name>.choices` | Un objet : chaque clé est un choix tel que vous l’avez déclaré, chaque valeur fait de 1 à 100 caractères |
+
+- **Tout est facultatif.** Traduisez seulement ce que vous voulez, dans les langues que vous voulez : ce qui manque est affiché tel que déclaré.
+- **Votre code ne change pas.** `options.who` est toujours `options.who` pour une personne francophone qui voit `qui`, et un choix est toujours `'warm'` quand la personne a choisi « Chaleureux ».
+- **Votre éditeur le vérifie.** Une langue que Discord ne connaît pas, une option que la commande n’a pas ou un choix qui n’existe pas est souligné.
+- Les clés de `choices` sont les choix **tels que vous les avez déclarés** : les valeurs d’une liste (`'warm'`), ou les clés d’un objet (`'Small'` pour `{ Small: 1 }`). Les choix d’une option numérique s’écrivent comme des textes : `{ '1': 'Un' }`.
+
+## Les langues
+
+Les clés de `locales` sont les langues de Discord, telles que les écrivent les valeurs de [`Locale`](/fr/reference/enums#locale) : `fr`, `de`, `es-ES`, `pt-BR`, `ja`... Une langue que Discord ne connaît pas est refusée au chargement du fichier :
+
+```text
+✗ src/commands/greet.ts "en" is not a language Discord knows. Languages are: id, da, de, en-GB, en-US, es-ES, es-419, fr, hr, it, lt, hu, nl, no, pl, pt-BR, ro, fi, sv-SE, vi, tr, cs, el, bg, ru, uk, hi, th, zh-CN, ja, zh-TW, ko.
+```
+
+L’anglais est deux langues, `en-GB` et `en-US` ; l’espagnol est `es-ES` et `es-419` ; le chinois est `zh-CN` et `zh-TW`.
+
+## Les dossiers ne sont pas traduits
+
+Un dossier n’est pas traduit : `/mod ban` peut s’afficher `/mod bannir`, jamais `/modération bannir`. Le nom d’un dossier est ce que Discord affiche dans toutes les langues. Si votre bot parle une seule langue, nommez le dossier dans cette langue.
+
+## Ce qui est vérifié
+
+Les traductions sont vérifiées au chargement du fichier, comme le reste de la commande :
+
+<AccordionGroup>
+  <Accordion title="Un nom traduit que Discord refuse">
+    ```text
+    ✗ src/commands/greet.ts "Saluer" can't be the name of this command in the "fr" translation: use lowercase letters, digits, - and _ only, 32 characters at most.
+    ```
+  </Accordion>
+  <Accordion title="Une description trop longue">
+    ```text
+    ✗ src/commands/greet.ts The description of this command in the "fr" translation is 120 characters long: Discord accepts 100 at most.
+    ```
+  </Accordion>
+  <Accordion title="Une option ou un choix que la commande n’a pas">
+    ```text
+    ✗ src/commands/greet.ts the "fr" translation translates an option "whom" that this command does not have. Its options are: who, tone.
+    ```
+
+    ```text
+    ✗ src/commands/greet.ts the "fr" translation translates a choice "cold" that the option "tone" does not have. Its choices are: warm, formal.
+    ```
+
+    ```text
+    ✗ src/commands/greet.ts the "fr" translation translates choices of the option "who", which has no choices.
+    ```
+  </Accordion>
+  <Accordion title="Deux options avec le même nom dans une langue">
+    Dans chaque langue, chaque option garde un nom à elle, traduit ou non :
+
+    ```text
+    ✗ src/commands/greet.ts In the "fr" translation, the options "who" and "tone" would both be called "qui".
+    ```
+
+    ```text
+    ✗ src/commands/greet.ts In the "fr" translation, the option "who" is called "tone", which is the name of another option.
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Répondre dans sa langue
+
+Les traductions changent ce que Discord **affiche**. Pour **répondre** dans la langue de la personne, lisez `interaction.locale` dans votre fonction : c’est la langue de son Discord.
+
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Says hello in your language',
+  locales: {
+    fr: { name: 'bonjour', description: 'Dit bonjour dans votre langue' },
+  },
+  async run({ interaction }) {
+    const hello = interaction.locale === 'fr' ? 'Bonjour !' : 'Hello!';
+    await interaction.reply(hello);
+  },
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="Événements" icon="zap" href="/fr/events">
+    Réagir à ce qui se passe sur Discord.
+  </Card>
+  <Card title="Référence : command()" icon="braces" href="/fr/reference/command">
+    Chaque champ et type d’une commande.
+  </Card>
+</CardGroup>

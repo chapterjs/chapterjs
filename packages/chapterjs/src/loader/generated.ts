@@ -20,9 +20,19 @@ export interface TypedFolder {
   id: string;
   /**
    * The folder, from the project folder, with `/`. It may contain `**` to
-   * be found at any depth (inside `(group)` folders).
+   * be found at any depth (inside `(group)` folders). It may also be one
+   * file (`src/messages/fr.ts`): a file whose 'chapterjs' is its own.
    */
   folder: string;
+  /**
+   * What the project of this folder includes on top of its declarations:
+   * `shared` (what every file of the project gets, the default) and/or
+   * `main` (what the files outside typed folders get). A folder whose
+   * files `shared` refers to (a language file, which types `t` for every
+   * other file) takes `main` alone: through `shared`, the other files of
+   * its family would be checked with its declarations.
+   */
+  includes?: readonly ('shared' | 'main')[];
   /**
    * The declarations 'chapterjs' has in this folder, on top of what the
    * package exports. Written like a `.d.ts` that imports the package from
@@ -69,9 +79,9 @@ function generatedFiles(
       `${HEADER}${shared.replaceAll("'#chapterjs'", `'${specifier}'`)}`
     );
   }
-  // What only the files outside typed folders get: written apart, so that
-  // what it refers to (the command files, for the languages) is only
-  // checked by the one project that holds them.
+  // What only the files outside typed folders get, and the typed folders
+  // that ask for it (`includes`): the commands a language file may
+  // translate.
   const mainOnly = main === '' ? [] : ['../types/main.d.ts'];
   if (main !== '') {
     files.set(
@@ -88,7 +98,10 @@ function generatedFiles(
       exclude: folders.map(({ folder }) => `../../${folder}`),
     })
   );
-  for (const { id, folder, declarations } of folders) {
+  for (const { id, folder, declarations, includes } of folders) {
+    const more = (includes ?? ['shared']).flatMap(what =>
+      what === 'shared' ? everywhere : mainOnly
+    );
     files.set(
       `projects/${id}.json`,
       json({
@@ -96,7 +109,7 @@ function generatedFiles(
         compilerOptions: { paths: { chapterjs: [`../types/${id}.d.ts`] } },
         // The declaration file is listed too: a folder that does not exist
         // yet is then a valid, empty project, typed as soon as it exists.
-        include: [`../../${folder}`, `../types/${id}.d.ts`, ...everywhere],
+        include: [`../../${folder}`, `../types/${id}.d.ts`, ...more],
       })
     );
     files.set(`types/${id}.d.ts`, types(declarations));

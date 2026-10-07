@@ -1,0 +1,135 @@
+---
+title: 'Votre application Discord'
+description: 'Créer l’application de votre bot, récupérer son token et l’identifiant de votre serveur de test, et activer ce dont vos fichiers ont besoin'
+---
+
+Un bot est une application Discord avec un compte bot. Vous la créez dans le [Developer Portal](https://discord.com/developers/applications), et `chapterjs dev` a besoin de deux choses venant d’elle : le token du bot et l’identifiant du serveur dans lequel vous testez.
+
+<Info>
+  **Créez deux applications dès le départ : une pour le développement, une pour la production.** Nommez-les d’après votre bot, avec « dev » dans le nom de la première (`my-bot dev`, `my-bot`). Le token de celle de dev va dans le `.env` de votre ordinateur, le token de l’autre sur la machine qui hébergera votre bot. Une commande pour tout le monde appartient au bot, pas à un serveur : avec un seul bot pour les deux, votre serveur de test affiche en double chaque commande que vous modifiez, et la présence, les intents privilégiés et le token de production sont partagés avec ce que vous essayez. Pourquoi en détail : [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement).
+</Info>
+
+<Steps>
+  <Step title="Créer l’application">
+    Ouvrez le [Developer Portal](https://discord.com/developers/applications), cliquez sur **New Application** et donnez-lui un nom : c’est le nom que les gens voient. Faites-le deux fois, une fois pour le bot de dev et une fois pour le bot de production.
+
+    Ouvrez ensuite la page **Bot** de l’application. C’est là que vit le compte bot de votre application : son nom d’utilisateur, son avatar et son token.
+  </Step>
+  <Step title="Copier le token">
+    Sur la page **Bot** de l’application de **dev**, cliquez sur **Reset Token** et copiez le token affiché. Discord montre un token une seule fois : si vous le perdez, réinitialisez-le à nouveau, ce qui fait cesser de fonctionner l’ancien partout où il était utilisé.
+
+    Mettez-le dans le fichier `.env` de votre projet :
+
+    ```bash .env
+    BOT_TOKEN=
+    DEV_GUILD_ID=
+    ```
+
+    <Warning>
+      Le token est le mot de passe de votre bot : qui le possède contrôle le bot. Ne le partagez jamais, ne le mettez jamais dans votre code, et ne commitez jamais `.env`. Un projet créé avec `create chapter` l’ignore déjà dans git.
+    </Warning>
+  </Step>
+  <Step title="Copier l’identifiant de votre serveur de test">
+    Votre serveur de test est l’endroit où `chapterjs dev` fait tourner votre bot. N’importe quel serveur que vous gérez convient : créez-en un pour votre bot si vous n’en avez pas.
+
+    Les identifiants de serveur sont cachés tant que vous n’activez pas le **Mode développeur** dans Discord : **Paramètres** → **Avancés** → **Mode développeur**. Faites ensuite un clic droit sur votre serveur et choisissez **Copier l’identifiant du serveur**. L’identifiant est un nombre de 17 à 20 chiffres. Mettez-le dans `DEV_GUILD_ID`.
+  </Step>
+  <Step title="Ajouter le bot à votre serveur de test">
+    Rien à chercher : lancez votre bot, et `chapterjs dev` affiche le lien quand le bot n’est pas encore dans le serveur.
+
+    ```text
+    ⚠ Your bot is not in your dev server yet (DEV_GUILD_ID=123456789012345678).
+      Open this link to add it:
+      https://discord.com/oauth2/authorize?client_id=...&scope=bot+applications.commands&permissions=8&guild_id=123456789012345678&disable_guild_select=true
+      If the link shows another server, DEV_GUILD_ID is not the ID of a server you manage.
+      Waiting for the bot to be added...
+    ```
+
+    Ouvrez le lien, confirmez, et la commande continue toute seule :
+
+    ```text
+    ✓ The bot joined My Server
+    ```
+
+    Le lien ajoute le bot à ce serveur uniquement, avec toutes les permissions (`permissions=8` est Administrateur) : un serveur de test est un terrain de jeu. Il demande aussi le scope `applications.commands`, qui permet au bot d’avoir des commandes slash là-bas.
+  </Step>
+</Steps>
+
+C’est tout : lancez `chapterjs dev` et votre bot est en ligne sur votre serveur de test. Le reste de cette page porte sur les trois options de la page **Bot** dont certains fichiers ont besoin.
+
+<Note>Ce que `chapterjs dev` lit dans `.env`, et dans quel ordre, est dans la [référence du CLI](/fr/reference/cli#env).</Note>
+
+## Intents privilégiés
+
+Discord n’envoie à un bot que ce qu’il a demandé, et trois choses doivent être activées à la main, sous **Privileged Gateway Intents** sur la page **Bot** de votre application : **Presence Intent**, **Server Members Intent** et **Message Content Intent**. Vous ne les listez jamais dans votre code : ChapterJS déduit ce dont vos fichiers ont besoin, et ne vous demande d’activer une option que quand un fichier en a besoin.
+
+| Option à activer | Nécessaire pour les fichiers de |
+| --- | --- |
+| **Message Content Intent** | `src/events/messageCreate/`, `src/events/messageUpdate/` |
+| **Server Members Intent** | `src/events/memberJoin/`, `src/events/memberLeave/`, `src/events/memberUpdate/` |
+| **Presence Intent** | Rien pour l’instant : aucun événement de ChapterJS ne l’utilise |
+
+Quand un fichier a besoin d’une option qui n’est pas activée, `chapterjs dev` dit quels fichiers et donne le lien vers la page, puis attend :
+
+```text
+⚠ Your files need an option that is not enabled for your bot:
+  - Message Content Intent, needed by src/events/messageCreate/ping.ts
+  Enable it under "Privileged Gateway Intents", then save:
+  https://discord.com/developers/applications/123456789012345678/bot
+  Waiting for you to enable it...
+```
+
+Activez l’option, cliquez sur **Save Changes**, et la commande continue :
+
+```text
+✓ Privileged intents enabled
+```
+
+Quand plusieurs options manquent, le message les liste toutes, avec les fichiers qui ont besoin de chacune :
+
+```text
+⚠ Your files need options that are not enabled for your bot:
+  - Server Members Intent, needed by src/events/memberJoin/welcome.ts
+  - Message Content Intent, needed by src/events/messageCreate/ping.ts, src/events/messageUpdate/edits.ts
+  Enable them under "Privileged Gateway Intents", then save:
+  https://discord.com/developers/applications/123456789012345678/bot
+  Waiting for you to enable them...
+```
+
+La même vérification a lieu quand un fichier que vous enregistrez pendant que le bot tourne a besoin d’une nouvelle option : le bot se reconnecte tout seul une fois l’option activée. Voir [chapterjs dev](/fr/run/dev).
+
+<Info>
+  `chapterjs dev` n’attend que lorsqu’il tourne dans un terminal. Lancé par un autre programme, et en production avec [`chapterjs start`](/fr/run/start), le même message est une erreur (`✗`) et la commande s’arrête.
+</Info>
+
+<Info>
+  Un bot présent dans 100 serveurs ou plus doit être vérifié par Discord pour garder ses intents privilégiés. D’ici là, les options peuvent être activées librement sur la page **Bot**.
+</Info>
+
+## Quand une valeur ne va pas
+
+Chaque valeur de `.env` est vérifiée avant toute tentative, et chaque problème est affiché d’un coup, avec comment le corriger :
+
+```text
+✗ .env: BOT_TOKEN is empty.
+  Copy the token of your bot from https://discord.com/developers/applications → your application → Bot → Reset Token.
+✗ .env: DEV_GUILD_ID is "my-server", which is not a server ID (an ID only has digits).
+  In Discord, right-click your test server → Copy Server ID.
+```
+
+Un token que Discord ne reconnaît pas est refusé dès la première requête :
+
+```text
+✗ Discord refused the bot token. Copy it again from the Developer Portal (your application → Bot → Reset Token) into BOT_TOKEN in your .env file.
+```
+
+Chaque message est listé dans [Dépannage](/fr/run/troubleshooting).
+
+<CardGroup cols={2}>
+  <Card title="Structure du projet" icon="folder-tree" href="/fr/setup/project-structure">
+    À quoi sert chaque dossier et fichier de votre projet.
+  </Card>
+  <Card title="chapterjs dev" icon="play" href="/fr/run/dev">
+    Faire tourner votre bot sur votre serveur de test pendant que vous l’écrivez.
+  </Card>
+</CardGroup>

@@ -1,0 +1,167 @@
+---
+title: 'What you receive'
+description: 'The objects your functions receive: users, members, servers, channels and messages, what they tell you without a request, and what they can do'
+---
+
+`run` receives `interaction`, `user`, `options`... and also `member`, `guild` and `channel`. These are the **structures** of ChapterJS: objects that wrap what Discord sent, with readable names and actions. Everything you do in a bot goes through them, so this page is a guided tour. It uses `/whois` and a new command, `/warn`.
+
+## The object run receives
+
+In a command used in a server:
+
+| Name          | What it is                                                                    |
+| ------------- | ----------------------------------------------------------------------------- |
+| `interaction` | The use of the command: how to answer.                                        |
+| `options`     | What the person filled in.                                                    |
+| `user`        | Who used the command, as a Discord **user**: the account.                     |
+| `member`      | The same person as a **member** of this server: nickname, roles, permissions. |
+| `guild`       | The **server** the command was used in.                                       |
+| `channel`     | The **channel** it was used in.                                               |
+
+User and member are the same person seen from two sides. A `User` is the account: username, avatar, when it was created. A `GuildMember` is that account in one server: the nickname, the roles, what they may do here, when they joined. Someone in three servers is one user and three members.
+
+In a server, `member`, `guild` and `channel` are **always there**. You never write `guild?.name` or check for `null`: the framework guarantees them, and the editor knows it. (A command can also work in private messages, where there is no server; that is a `where` setting shown in the Guide.)
+
+## Reading costs nothing
+
+Open `/whois` again and show more:
+
+```ts src/commands/whois.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Tells you about someone',
+  options: {
+    who: { type: 'user', description: 'Who to look at', required: true },
+  },
+  async run({ interaction, options, guild }) {
+    const user = options.who;
+    const member = await guild.fetchMember(user);
+    const roles = member.roles.map(role => role.name).join(', ') || 'none';
+    await interaction.reply(
+      `${member.displayName} joined ${guild.name} on ${member.joinedAt?.toDateString() ?? 'an unknown date'}. ` +
+        `Roles: ${roles}. Highest: ${member.highestRole.name}.`
+    );
+  },
+});
+```
+
+Two kinds of things happen here, and the difference matters:
+
+- **Properties read what the bot already knows.** `guild.name`, `member.roles`, `member.highestRole`: no request to Discord, the answer is immediate. The bot remembers its servers, their channels and roles, because Discord told it when it connected and tells it every change.
+- **`fetch…()` methods ask Discord.** `guild.fetchMember(user)` gets a member the bot may not know yet, and `await` is needed. The bot answers from memory when it can and asks Discord otherwise.
+
+The rule to remember: a property never sends a request, and a `fetch…()` does. Anything you can read without `await` is free.
+
+<Info>
+  Why `fetchMember` for a member, while `guild.name` is just there? A server can
+  have millions of members, so a bot can't remember all of them: it keeps the
+  ones it saw recently. Servers, channels and roles are few, so it keeps them
+  all. The page [Memory and limits](/tutorial/memory-and-limits) says exactly
+  what is kept.
+</Info>
+
+`member.joinedAt` is `Date | null` because Discord does not always send it: the `?.` and `??` are honest. In ChapterJS, a value is nullable only when it may really be missing; what can't be missing never is.
+
+## Actions: asking Discord to do something
+
+Every structure has methods that do something: `channel.send()`, `member.addRole()`, `member.kick()`, `message.react()`. They send a request, so they are `await`ed, and they can fail, since Discord may refuse.
+
+Here is `/warn`, which times someone out for ten minutes and tells them in private:
+
+```ts src/commands/warn.ts
+import { command, DiscordApiError } from 'chapterjs';
+
+export default command({
+  description: 'Warns a member with a short timeout',
+  permissions: ['ModerateMembers'],
+  options: {
+    who: { type: 'user', description: 'Who to warn', required: true },
+    reason: {
+      type: 'string',
+      description: 'Why',
+      required: true,
+      maxLength: 200,
+    },
+  },
+  async run({ interaction, options, guild, member }) {
+    const target = await guild.fetchMember(options.who);
+    if (!member.isHigherThan(target)) {
+      await interaction.reply({
+        content: 'You can only warn members below you.',
+        ephemeral: true,
+      });
+      return;
+    }
+    await target.timeout(10 * 60 * 1000, options.reason);
+    let told = 'and they were told in private';
+    try {
+      await target.send(`You were warned in ${guild.name}: ${options.reason}`);
+    } catch (error) {
+      // 50007: this person does not accept private messages.
+      if (!(error instanceof DiscordApiError && error.code === 50007))
+        throw error;
+      told = 'but their private messages are closed';
+    }
+    await interaction.reply(
+      `${target.displayName} was warned for 10 minutes, ${told}.`
+    );
+  },
+});
+```
+
+Things to see:
+
+- **`permissions: ['ModerateMembers']`** says who may use the command. Discord hides it from the others, and the framework checks again when it is used: someone without the permission reads "You need the ModerateMembers permission to use this command." and `run` never starts. Permissions are written by name, and the editor completes them.
+- **`member.isHigherThan(target)`** compares roles: Discord refuses to moderate someone whose highest role is above yours, so checking first gives a better answer than letting Discord refuse.
+- **`timeout(duration, reason)`** takes milliseconds, and a reason that goes to the audit log of the server. Actions that appear in the audit log all take a `reason`.
+- **`try` / `catch` around `send()`.** Some people close their private messages; Discord then refuses with the code `50007`. The error is a `DiscordApiError`, and its `code` is the thing to test: the text may change, the code never does. Anything else is rethrown, so that a real problem is reported.
+
+## The structures you will meet
+
+| Structure                                         | What it is           | Where you get it                                  |
+| ------------------------------------------------- | -------------------- | ------------------------------------------------- |
+| `User`                                            | An account           | `user`, `options.who`, `message.author`           |
+| `GuildMember`                                     | A user in one server | `member`, `guild.fetchMember()`, `message.member` |
+| `Guild`                                           | A server             | `guild`, `member.guild`, `message.guild`          |
+| `Role`                                            | A role of a server   | `member.roles`, `guild.roles`                     |
+| `TextChannel`, `VoiceChannel`, `ThreadChannel`... | A channel            | `channel`, `guild.channels`, `message.channel`    |
+| `Message`                                         | A message            | What `send()` returns, the events about messages  |
+
+A few properties worth knowing by heart: `user.displayName` (the name to show), `user.username` (the unique handle), `member.displayName` (the nickname when there is one), `guild.me` (your bot as a member of this server, always there), `guild.everyoneRole`, `channel.name`.
+
+Channels come in kinds, and only some can receive a message. When you have a channel without knowing its kind, `channel.isTextBased()` tells you whether it can:
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function announce(guild: Guild, text: string) {
+  const general = [...guild.channels.values()].find(
+    channel => channel.name === 'general'
+  );
+  if (general?.isTextBased()) await general.send(text);
+}
+```
+
+Every structure has a page in the Reference with all its properties and methods; `GuildMember` is a good one to skim.
+
+## Mentions in a text
+
+Put a structure in a text and it becomes a mention: `${member}` pings the member, `${channel}` links the channel, `${role}` pings the role. `/whois` could answer `${member} joined on...` to make the name clickable.
+
+## Recap
+
+- `user` is the account, `member` the person in this server, `guild` the server, `channel` the channel; in a server, none of them is ever missing.
+- A property reads what the bot knows, at once; a `fetch…()` asks Discord.
+- Actions are `await`ed and can fail; `DiscordApiError.code` says why.
+- `permissions` on a command decides who may use it, before `run`.
+
+<CardGroup cols={2}>
+  <Card title="Sending messages" icon="mail" href="/tutorial/sending-messages">
+    Texts, embeds, files, mentions, polls, and what to do with a message once
+    sent.
+  </Card>
+  <Card title="Reference: GuildMember" icon="code" href="/reference/member">
+    Every property and action of a member.
+  </Card>
+</CardGroup>

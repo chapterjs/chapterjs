@@ -1,0 +1,210 @@
+---
+title: 'Dépannage'
+description: 'Chaque message que votre bot peut vous afficher, et quoi en faire'
+---
+
+Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette page les rassemble, avec le symbole que vous voyez devant. Les messages sont affichés en anglais par le CLI : ils sont cités ici tels quels, pour que vous les retrouviez.
+
+| Symbole | Signification |
+| --- | --- |
+| `✓` | Quelque chose a fonctionné |
+| `ℹ` | Quelque chose à savoir |
+| `↻` | Un rechargement ou une reconnexion |
+| `⚠` | Quelque chose à regarder ; le bot continue de tourner |
+| `✗` | Quelque chose a échoué : ce qui s’est passé, puis quoi faire |
+
+<Note>Les commandes, variables et codes de sortie sont dans la [référence du CLI](/fr/reference/cli).</Note>
+
+## Avant la connexion
+
+<AccordionGroup>
+  <Accordion title="✗ There is no .env file in this folder.">
+    `chapterjs dev` a besoin de `BOT_TOKEN` et `DEV_GUILD_ID`. Copiez `.env.example` vers `.env` et remplissez-les : voir [Votre application Discord](/fr/setup/discord-application).
+  </Accordion>
+  <Accordion title="✗ .env: BOT_TOKEN is empty. / is still the example value.">
+    Copiez le token depuis le Developer Portal : votre application → **Bot** → **Reset Token**. Un token n’est montré qu’une fois, et le réinitialiser rend l’ancien invalide partout où il était utilisé. Le message dit `Environment:` au lieu de `.env:` quand la valeur vient de l’environnement et non du fichier.
+  </Accordion>
+  <Accordion title="✗ .env: BOT_TOKEN contains a space, so it is not a whole token.">
+    La valeur a été coupée, ou quelque chose a été collé avec. Copiez à nouveau le token depuis le Developer Portal, d’un seul tenant. Un `Bot ` devant ne pose pas de problème : il est retiré.
+  </Accordion>
+  <Accordion title="✗ .env: DEV_GUILD_ID is empty.">
+    Dans Discord, faites un clic droit sur votre serveur de test → **Copier l’identifiant du serveur**. Si vous ne le voyez pas, activez **Paramètres** → **Avancés** → **Mode développeur**.
+  </Accordion>
+  <Accordion title='✗ DEV_GUILD_ID is "…", which is not a server ID (an ID only has digits).'>
+    Un identifiant de serveur est un nombre de 17 à 20 chiffres : pas le nom du serveur, pas un lien d’invitation. Copiez-le à nouveau : clic droit sur votre serveur de test → **Copier l’identifiant du serveur**. En production, où il est facultatif, vous pouvez aussi le retirer.
+  </Accordion>
+  <Accordion title="✗ BOT_TOKEN is not set.">
+    `chapterjs start` n’a trouvé ni fichier `.env` ni `BOT_TOKEN` dans l’environnement. Sur un hébergeur, donnez `BOT_TOKEN` dans ses réglages (souvent appelés « variables d’environnement » ou « secrets »), ou mettez-le dans un fichier `.env` à côté de `package.json`. L’environnement l’emporte quand les deux sont là.
+  </Accordion>
+  <Accordion title="✗ There is no src folder here.">
+    Lancez la commande dans le dossier de votre bot, celui qui contient `package.json`. Pour commencer un projet, lancez `pnpm create chapter`.
+  </Accordion>
+  <Accordion title="✗ Discord refused the bot token.">
+    Le token n’est plus celui de votre bot, généralement parce qu’il a été réinitialisé. Copiez-le à nouveau depuis le Developer Portal dans `BOT_TOKEN`. Rien ne peut fonctionner tant que ce n’est pas corrigé, donc la commande s’arrête.
+  </Accordion>
+  <Accordion title="✗ Discord could not be reached for GET …">
+    La requête n’a jamais atteint Discord, ou Discord a échoué à répétition. Vérifiez votre connexion internet et [discordstatus.com](https://discordstatus.com), puis relancez.
+  </Accordion>
+  <Accordion title="✗ Discord refused a request the framework needs to start: …">
+    Discord a répondu à l’une des premières requêtes par une erreur que le framework n’attendait pas. La suite de la ligne est le message de Discord lui-même. Vérifiez le token et l’identifiant de votre serveur de test, puis relancez ; si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le message.
+  </Accordion>
+  <Accordion title="⚠ Your bot is not in your dev server yet (DEV_GUILD_ID=…).">
+    Le message vous donne un lien : ouvrez-le et confirmez. Dans un terminal, `chapterjs dev` attend (`Waiting for the bot to be added...`) et continue tout seul avec `✓ The bot joined …`. Si le lien affiche un autre serveur, `DEV_GUILD_ID` n’est pas l’identifiant d’un serveur que vous gérez. Lancé par un autre programme, le même message est un `✗` et la commande s’arrête.
+  </Accordion>
+  <Accordion title="⚠ Your files need an option that is not enabled for your bot: …">
+    Un de vos dossiers a besoin d’un intent privilégié : **Message Content Intent** pour `messageCreate` et `messageUpdate`, **Server Members Intent** pour `memberJoin`, `memberLeave` et `memberUpdate`. Le message liste les fichiers qui ont besoin de chacun et donne le lien vers la bonne page : activez l’option sous **Privileged Gateway Intents**, puis enregistrez. Dans un terminal, `chapterjs dev` attend (`Waiting for you to enable it...`) et continue avec `✓ Privileged intents enabled`. Lancé par un autre programme, et toujours avec `chapterjs start`, le même message est un `✗` et la commande s’arrête. Voir [Intents privilégiés](/fr/setup/discord-application#intents-privilégiés).
+  </Accordion>
+  <Accordion title="✗ Discord refused the connection: the bot uses privileged intents (…) that are not enabled.">
+    Discord a fermé la connexion à cause d’un intent privilégié, alors que la vérification avant la connexion était passée : l’option a été désactivée pendant que le bot tournait, ou l’application a été modifiée entre-temps. Activez-la dans le Developer Portal (votre application → **Bot** → **Privileged Gateway Intents**) et relancez.
+  </Accordion>
+  <Accordion title="✗ The bot needs to start N session(s) but Discord only allows M more until …">
+    Discord limite le nombre de connexions d’un bot par jour, et réinitialise le token d’un bot qui dépasse. ChapterJS s’arrête avant. Cela veut généralement dire que le bot a été relancé trop de fois : cherchez ce qui le fait s’arrêter, puis relancez-le après l’heure donnée dans le message.
+  </Accordion>
+  <Accordion title="✗ The bot is in too many servers for a single connection: it must use more shards.">
+    Discord a refusé une connexion qui porte trop de serveurs. ChapterJS demande à Discord combien de connexions ouvrir avant de se connecter, donc relancez le bot ; si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues).
+  </Accordion>
+  <Accordion title="✗ Discord refused the shard of this connection … / ✗ Discord refused the intents sent by the framework. This is a bug in ChapterJS">
+    Discord a refusé quelque chose que le framework a calculé lui-même. Relancez le bot ; si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le message.
+  </Accordion>
+  <Accordion title="✗ Discord no longer accepts the gateway version this version of ChapterJS speaks: update ChapterJS.">
+    Mettez à jour le paquet `chapterjs` de votre projet, puis recompilez et relancez.
+  </Accordion>
+  <Accordion title="✗ Discord closed the connection for good (close code …).">
+    Discord a mis fin à la connexion pour une raison qu’une reconnexion ne peut pas corriger, avec un code que le framework ne sait pas expliquer. Relancez ; si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le code.
+  </Accordion>
+  <Accordion title="ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/">
+    Votre `src/` n’a ni commande ni événement. Le bot se connecte quand même. Ajoutez un fichier : voir [Structure du projet](/fr/setup/project-structure).
+  </Accordion>
+</AccordionGroup>
+
+## Pendant que votre bot tourne
+
+<AccordionGroup>
+  <Accordion title="✗ src/…:line …, then ⚠ Reloaded with an error: that file keeps running its last working version">
+    Un fichier que vous avez enregistré ne peut pas tourner : la première ligne le nomme, avec la ligne et ce qui ne va pas. Votre bot est toujours en ligne avec la dernière version de ce fichier qui fonctionnait. Corrigez le fichier et enregistrez : il se recharge. Un fichier qui n’a jamais fonctionné est mis de côté jusqu’à ce qu’il fonctionne.
+  </Accordion>
+  <Accordion title="✗ src/…:line … (while the bot runs)">
+    Une de vos fonctions a levé une erreur : la ligne nomme le fichier et la ligne de votre code, et le reste est l’erreur. Rien d’autre ne s’arrête. Pour une commande, la personne a reçu une courte réponse privée. Voir [quand votre fonction échoue](/fr/commands/answering#quand-votre-fonction-échoue).
+  </Accordion>
+  <Accordion title="↻ Your files now need more from Discord (…): reconnecting...">
+    Un fichier que vous avez ajouté écoute quelque chose que la connexion n’avait pas demandé (un nouveau dossier d’événement). ChapterJS se reconnecte tout seul avec ce qu’il faut et dit `✓ Reconnected, … loaded` ; si cela demande un intent privilégié, voir plus haut.
+  </Accordion>
+  <Accordion title="ℹ … only works in private messages, and chapterjs dev only runs your bot in …">
+    `chapterjs dev` ne fait tourner votre bot que sur votre serveur de test, donc une commande ou un événement réservé aux messages privés ne peut pas y être essayé. Cela fonctionne avec [`chapterjs start`](/fr/run/start).
+  </Accordion>
+  <Accordion title="ℹ /name is not the same here as in production, so … shows it twice">
+    Vous modifiez une commande déjà en ligne pour tout le monde. Votre serveur de test affiche les deux jusqu’à ce que la production fasse tourner votre version. Une seconde application pour le développement n’affiche jamais cela : voir [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement).
+  </Accordion>
+  <Accordion title="✗ Discord refused the commands of your project: …">
+    Discord n’a pas accepté ce que déclarent vos commandes (un nom, une description, une option…) : la suite de la ligne est le message de Discord lui-même, avec le champ refusé. Le bot continue de tourner avec les commandes que Discord a déjà. Corrigez le fichier et enregistrez.
+  </Accordion>
+  <Accordion title="⚠ Connection to Discord lost, reconnecting...">
+    Rien à faire : le bot se reconnecte tout seul, et vous le dit avec `↻ Reconnected to Discord`. Vos fichiers continuent de tourner.
+  </Accordion>
+  <Accordion title='⚠ src/commands/… /name finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.'>
+    Votre fonction `run` s’est terminée sans appeler `interaction.reply()`. Chaque commande doit répondre : voir [Répondre](/fr/commands/answering).
+  </Accordion>
+  <Accordion title="⚠ src/commands/… /name was used in a channel the bot can't answer in (…): it did not run.">
+    La commande a été utilisée là où le bot ne peut pas envoyer de message (une sorte de salon qu’il ne gère pas, ou un endroit que Discord n’a pas décrit). La personne a lu « This command can not be used here. » et votre fonction n’a pas tourné.
+  </Accordion>
+  <Accordion title="⚠ A … event was not given to your files: Discord did not let the bot read the channel it happened in (…).">
+    Un événement s’est produit dans un salon que le bot ne connaît pas encore (un fil qu’il n’a jamais vu, par exemple), et Discord a refusé de le décrire : le bot n’a pas la permission de voir ce salon. Vos fichiers n’ont pas tourné pour cet événement. Donnez au bot l’accès au salon s’il doit y réagir.
+  </Accordion>
+  <Accordion title="⚠ An event of Discord (…) could not be read: …">
+    Quelque chose dans un événement envoyé par Discord n’a pas pu être appliqué à ce dont le bot se souvient. Vos fichiers ont quand même reçu l’événement. Si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le message.
+  </Accordion>
+  <Accordion title="ℹ Memory was getting full (…): the bot now remembers … members per server at most">
+    Le bot se souvient de moins de membres par serveur, et votre code fonctionne de la même façon. Rien à faire : voir [Mémoire](/fr/memory). Quand la mémoire va mieux, `ℹ Memory is fine again: the bot remembers up to … members per server again.` le dit.
+  </Accordion>
+  <Accordion title="⚠ The bot uses … of the … of memory it can use, and already remembers as little as it can">
+    Le message dit combien se souvenir de moins a libéré. **Peu** : cherchez dans votre propre code quelque chose qui ne fait que grandir (une liste, une `Map` à laquelle vous ajoutez sans jamais la vider). **Beaucoup**, et c’est toujours plein : votre bot est gros ; donnez-lui plus de mémoire avec `NODE_OPTIONS=--max-old-space-size=4096` (en MB) sur une machine qui a autant. Voir [Mémoire](/fr/memory).
+  </Accordion>
+  <Accordion title="⚠ Process N of M stopped by itself (…): starting it again. Its servers are back in a moment.">
+    Un des processus d’un gros bot s’est arrêté. Il est relancé tout seul : immédiatement quand il avait tourné plus d’une minute, après un délai croissant sinon. Regardez les lignes qui commencent par `[N]` juste avant pour voir pourquoi il s’est arrêté.
+  </Accordion>
+  <Accordion title="✗ Something unexpected happened: … This is probably a bug in ChapterJS">
+    Merci d’[ouvrir une issue](https://github.com/chapterjs/chapterjs/issues) avec le message. La commande s’arrête.
+  </Accordion>
+</AccordionGroup>
+
+## Compiler et lancer
+
+<AccordionGroup>
+  <Accordion title="✗ Your project has type errors, so it was not built:">
+    Les lignes en dessous sont ce que souligne votre éditeur. Corrigez-les, ou trouvez-les toutes d’un coup avec le script `typecheck` de votre projet. La compilation ne livre jamais un fichier dont les types ne passent pas.
+  </Accordion>
+  <Accordion title="ℹ Types were not checked: TypeScript is not installed in this project (or it has no tsconfig.json).">
+    La compilation continue sans vérifier les types. Pour les vérifier là où vous compilez, installez aussi les dépendances de développement de votre projet, et gardez le `tsconfig.json` du modèle.
+  </Accordion>
+  <Accordion title="✗ This file can't run, so your bot was not built. / can't be compiled / can't run once compiled">
+    Les lignes au-dessus nomment chaque fichier et ce qui ne va pas, comme le fait `chapterjs dev` quand vous enregistrez. Corrigez-les et recompilez. `can't be compiled` est un fichier que le compilateur n’a pas pu lire ; `can't run once compiled` est un fichier qui tourne depuis `src/` mais pas dans le bot compilé.
+  </Accordion>
+  <Accordion title="✗ There is no build of your bot here.">
+    `chapterjs start` fait tourner ce qu’a préparé `chapterjs build`, et rien d’autre. Lancez d’abord le script `build`, sur la même machine ou avant d’envoyer `.chapterjs/build`.
+  </Accordion>
+  <Accordion title="✗ This build was made with chapterjs X, and this is chapterjs Y.">
+    La version de ChapterJS a changé depuis la compilation. Relancez `chapterjs build`.
+  </Accordion>
+  <Accordion title="⚠ Your files changed since the last build: the bot runs the build, not your changes.">
+    En production, enregistrer un fichier ne change rien jusqu’à ce que vous recompiliez. Lancez `chapterjs build`, puis relancez.
+  </Accordion>
+  <Accordion title="✗ The build of your bot can't run any more: …">
+    La compilation tournait quand elle a été faite ; quelque chose a changé autour depuis (un paquet, la version de Node). Relancez `chapterjs build` : il dit quoi corriger.
+  </Accordion>
+  <Accordion title="✗ This file of the build can't run any more, so the bot was not started.">
+    Un fichier de la compilation ne passe plus les vérifications qu’il passait à la compilation. Relancez `chapterjs build` : il dit quoi corriger.
+  </Accordion>
+  <Accordion title='✗ chapterjs start takes one option: --processes followed by a number, like "chapterjs start --processes 4". Got "…".'>
+    `chapterjs start` ne prend que `--processes` avec un nombre entier de 1 ou plus. Avec un gestionnaire de paquets, mettez `--` avant l’option quand il en a besoin : `npm run start -- --processes 4`.
+  </Accordion>
+  <Accordion title='✗ "…" is not a command.'>
+    Le CLI `chapterjs` a quatre commandes : `dev`, `build`, `start` et `sync`. L’aide affichée sous le message les liste.
+  </Accordion>
+</AccordionGroup>
+
+## Ce que les gens voient sur Discord
+
+<AccordionGroup>
+  <Accordion title="L’application ne répond pas">
+    Votre fonction `run` s’est terminée sans appeler `interaction.reply()`. `chapterjs dev` vous prévient (`⚠ … finished without answering`). Chaque commande doit répondre : voir [Répondre](/fr/commands/answering).
+  </Accordion>
+  <Accordion title="Échec de l’interaction">
+    Quelqu’un a cliqué sur un bouton ou un menu déroulant, ou envoyé un formulaire, et son `run` s’est terminé sans répondre. `chapterjs dev` vous prévient (`⚠ … finished without answering`). Répondez avec `interaction.update()`, `interaction.reply()`, ou `interaction.deferUpdate()` pour ne rien changer : voir [Boutons](/fr/components#répondre-à-un-clic).
+  </Accordion>
+  <Accordion title="This button is not available any more. / This menu… / This form…">
+    Le message est plus vieux que votre projet : le fichier du composant a été renommé, supprimé ou déplacé dans une autre sorte de dossier depuis l’envoi du message. Renvoyez le message, ou remettez le fichier.
+  </Accordion>
+  <Accordion title="This button is out of date.">
+    Les `data` du composant ont changé de forme depuis l’envoi du message (une valeur ajoutée, retirée ou d’une autre sorte). Les vieux messages transportent les anciennes données : renvoyez le message.
+  </Accordion>
+  <Accordion title="⚠ … was still running when its next time came: that run was skipped.">
+    Une [tâche](/fr/tasks) a pris plus de temps que l’intervalle entre deux passages. Le passage suivant attend son tour ; rendez la tâche plus rapide, ou lancez-la moins souvent.
+  </Accordion>
+  <Accordion title="⚠ … was due while the bot was not connected: that run was skipped.">
+    Une tâche devait tourner pendant que le bot se reconnectait à Discord. Elle tourne à nouveau à son prochain horaire.
+  </Accordion>
+  <Accordion title="Only the person who used the command can use this button.">
+    Le composant dit `who: 'author'`, et quelqu’un d’autre a cliqué. C’est ce que vous avez demandé : voir [Qui peut cliquer](/fr/components#qui-peut-cliquer).
+  </Accordion>
+  <Accordion title="Something went wrong while running this command.">
+    Votre fonction `run` a levé une erreur. La personne reçoit cette courte réponse, en privé ; vous recevez l’erreur avec le fichier et la ligne dans votre terminal. Quand Discord a refusé une action pour une permission manquante, la personne lit « I don’t have the permission to do that here. » à la place.
+  </Accordion>
+  <Accordion title="This command can only be used in a server. / in a private message with me. / can not be used here.">
+    La commande a été utilisée là où elle ne fonctionne pas : une commande de serveur en message privé, une commande de messages privés sur un serveur, ou un endroit où le bot ne peut pas répondre. Les deux premiers viennent de `where` dans le fichier : voir [Serveurs et messages privés](/fr/commands#serveurs-et-messages-privés).
+  </Accordion>
+  <Accordion title="You need the … permission to use this command.">
+    La personne n’a pas une permission que la commande demande avec `permissions`, là où elle l’a utilisée. Voir [Qui peut utiliser une commande](/fr/commands#qui-peut-utiliser-une-commande).
+  </Accordion>
+  <Accordion title="You can use this command again in …">
+    La commande a un `cooldown`, et la personne l’a utilisée trop tôt. C’est ce que vous avez demandé : voir [Délais entre deux utilisations](/fr/commands#délais-entre-deux-utilisations). La réponse se supprime toute seule quand le délai se termine ; au-delà de 15 minutes, elle affiche la date et l’heure à la place.
+  </Accordion>
+  <Accordion title="Ces réponses sont en anglais">
+    Les phrases que le bot répond de lui-même peuvent être traduites dans les fichiers de langue de `src/messages/` : voir [Ce que le bot répond de lui-même](/fr/translated-messages#ce-que-le-bot-répond-de-lui-même).
+  </Accordion>
+  <Accordion title="Une commande manque, ou apparaît en double">
+    Les commandes apparaissent immédiatement sur votre serveur de test avec `chapterjs dev`, et partout avec `chapterjs start`. Si l’une manque, le terminal a dit pourquoi au démarrage : un nom que Discord a refusé, ou deux fichiers qui sont la même commande. En double : voir [Un seul bot pour le dev et la production](/fr/run/start#un-seul-bot-pour-le-dev-et-la-production). Une commande que la personne ne voit pas est une commande dont elle n’a pas les `permissions` : voir [Qui peut utiliser une commande](/fr/commands#qui-peut-utiliser-une-commande).
+  </Accordion>
+  <Accordion title="Le bot reste en ligne après que je l’ai arrêté">
+    Appuyez une fois sur `Ctrl+C` et laissez-le se déconnecter : vous voyez `✓ Disconnected` et le bot passe hors ligne immédiatement. Un second `Ctrl+C` arrête le processus sans attendre, et Discord garde alors le bot en ligne jusqu’à ce qu’il remarque que la connexion a disparu.
+  </Accordion>
+</AccordionGroup>

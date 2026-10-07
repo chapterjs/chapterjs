@@ -25,6 +25,8 @@ export type {
   CommandOption,
   CommandOptions,
   CommandTranslation,
+  Cooldown,
+  Duration,
   NumberOption,
   OptionTranslation,
   OptionValuesOf,

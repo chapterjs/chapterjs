@@ -1,0 +1,110 @@
+---
+title: 'Tâches'
+description: 'Faire faire quelque chose à votre bot tout seul, régulièrement ou à des heures données, avec un fichier par tâche'
+---
+
+Une tâche est un fichier de `src/tasks/`. Elle dit quand tourner et quoi faire ; ChapterJS la lance une fois le bot connecté, et continue de la lancer tant que le bot est en ligne.
+
+```ts src/tasks/report.ts
+import { task } from 'chapterjs';
+
+export default task({
+  cron: '0 9 * * 1',
+  timezone: 'Europe/Paris',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+      if (general?.isText()) await general.send(`Bonjour ! Nous sommes ${guild.memberCount ?? '?'} ici.`);
+    }
+  },
+});
+```
+
+C’est tout : chaque lundi à 9 h, heure de Paris, la tâche tourne avec les serveurs où se trouve le bot. Le nom du fichier est le nom de la tâche, et rien d’autre n’est à enregistrer.
+
+<Note>
+  Tout ce que déclare un fichier de tâche est dans la [référence](/fr/reference/task).
+</Note>
+
+## Régulièrement
+
+`every` est une durée : un nombre et une unité, `s`, `m`, `h` ou `d`. La tâche tourne à cet intervalle, compté à partir du moment où le bot se connecte.
+
+```ts src/tasks/cleanup.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '30m',
+  async run({ guilds }) {
+    console.log(`Vérification de ${guilds.size} serveurs`);
+  },
+});
+```
+
+`'30s'`, `'10m'`, `'2h'`, `'1d'` et `'1h30m'` fonctionnent tous ; une fois par seconde est le plus rapide.
+
+## À des heures données
+
+`cron` est une expression cron standard : minute, heure, jour du mois, mois et jour de la semaine.
+
+| Écrivez | Tourne |
+| --- | --- |
+| `'0 9 * * *'` | Chaque jour à 9 h |
+| `'*/15 * * * *'` | Toutes les 15 minutes |
+| `'0 9 * * 1-5'` | En semaine à 9 h |
+| `'30 18 * * fri'` | Le vendredi à 18 h 30 |
+| `'0 0 1 * *'` | Le premier de chaque mois à minuit |
+| `'0 12 1,15 * *'` | Le 1er et le 15 à midi |
+
+Sans `timezone`, la tâche suit l’horloge de la machine sur laquelle tourne le bot. Avec un fuseau (`'Europe/Paris'`, `'America/New_York'`...), elle suit cette horloge, changements d’heure compris : une heure qui n’existe pas ce jour-là est sautée, une heure qui arrive deux fois ne tourne qu’une fois.
+
+Un cron faux, ou qui n’arrive jamais (`'0 0 31 2 *'`), est une erreur au chargement du fichier, avec quoi écrire.
+
+## Tourner tout de suite
+
+`onStart: true` lance aussi la tâche une fois dès que le bot est connecté, sans attendre son premier horaire :
+
+```ts src/tasks/status.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '1h',
+  onStart: true,
+  run({ user, guilds, now }) {
+    console.log(`${now.toISOString()} : ${user.username} est sur ${guilds.size} serveurs`);
+  },
+});
+```
+
+## Ce que reçoit run
+
+| Champ | Ce que c’est |
+| --- | --- |
+| `user` | Le bot lui-même, un [User](/fr/reference/user) |
+| `guilds` | Les serveurs où se trouve le bot, comme les donne l’[événement `ready`](/fr/reference/events#ready) |
+| `now` | Le moment où ce passage était prévu, un `Date` |
+
+## Quand un passage est long, ou échoue
+
+Un passage encore en cours quand arrive l’horaire suivant n’est pas lancé deux fois : cet horaire est sauté, et votre terminal le dit.
+
+```text
+⚠ src/tasks/report.ts report was still running when its next time came (every 1s): that run was skipped.
+```
+
+Un passage qui lève une erreur est signalé avec le fichier et la ligne, et la tâche garde son prochain horaire. Rien n’arrête le bot.
+
+Pendant que le bot se reconnecte à Discord, une tâche qui devait tourner est sautée et signalée ; elle tourne à nouveau à son prochain horaire.
+
+## En développement, en production
+
+Dans `chapterjs dev`, enregistrer un fichier de tâche remplace ce qu’elle fait sans changer quand : une tâche qui tourne toutes les heures garde son prochain horaire à travers le rechargement. Changer `every` ou `cron` recompte la tâche à partir de l’enregistrement. Dans `chapterjs start`, un bot réparti sur [plusieurs processus](/fr/run/start#gros-bots) lance chaque tâche une fois, dans son premier processus.
+
+<CardGroup cols={2}>
+  <Card title="Référence : task()" icon="clock" href="/fr/reference/task">
+    Chaque champ d’un fichier de tâche, et ce que reçoit run.
+  </Card>
+  <Card title="Envoyer des messages" icon="mail" href="/fr/messages">
+    Ce qu’une tâche peut publier, et où.
+  </Card>
+</CardGroup>

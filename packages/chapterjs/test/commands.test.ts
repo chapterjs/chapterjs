@@ -802,7 +802,7 @@ export default command({
     [
       'src/commands/bad.ts',
       `import { command } from 'chapterjs';\nexport default command({ description: 'd', name: 'other', run() {} } as never);\n`,
-      /"name" is not something a command has\. It can have: description, options, locales, permissions, where, nsfw, ephemeral, run\./,
+      /"name" is not something a command has\. It can have: description, options, locales, permissions, where, nsfw, ephemeral, cooldown, run\./,
     ],
     [
       'src/commands/bad.ts',

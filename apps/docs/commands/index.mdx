@@ -184,10 +184,61 @@ export default command({
 
 Discord hides the command from members who lack the permissions, and ChapterJS checks again when it is used: someone without them gets a private answer saying which ones are missing ("You need the ManageMessages permission to use this command."), and your function does not run. Server admins can change who sees the command in the settings of their server.
 
-The names are the ones of [Permissions](/reference/permissions#every-permission): `['BanMembers']`, `['ManageMessages', 'ManageThreads']`... A name that does not exist is reported when the file loads.
+The names are the ones of [Permissions](/reference/permissions#permissionname): `['BanMembers']`, `['ManageMessages', 'ManageThreads']`... A name that does not exist is reported when the file loads.
 
 <Info>
   A command with subcommands is shown to the members who have what **every** subcommand asks for; each subcommand then checks its own permissions when it is used.
+</Info>
+
+## Cooldowns
+
+`cooldown` is how long a person waits before using the command again:
+
+```ts src/commands/daily.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Claims your daily reward',
+  cooldown: '1d',
+  async run({ interaction }) {
+    await interaction.reply('Here is your reward! 🎁');
+  },
+});
+```
+
+A duration is a number and a unit, `s`, `m`, `h` or `d`, 1 second at least; parts add up (`'1h30m'`). Someone who uses the command too soon gets a private answer saying when they can ("You can use this command again in 5 minutes.", with a time Discord shows in their language and counts down), and your function does not run. The answer deletes itself when the cooldown ends, so it never reads "5 minutes ago". A cooldown of more than 15 minutes, which outlives what Discord lets the bot delete, shows the date and time instead ("again 8 October 2026 17:12"). Each person has their own count, and each command too.
+
+A cooldown can also be for a channel or a server, whoever used it; the three can be combined:
+
+```ts src/commands/announce.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Pings everyone',
+  permissions: ['MentionEveryone'],
+  cooldown: { user: '10m', guild: '1h' },
+  async run({ interaction }) {
+    await interaction.reply('@everyone, something is happening!');
+  },
+});
+```
+
+| Key | Who waits |
+| --- | --- |
+| `user` | Each person, wherever they use the command. `cooldown: '10s'` is `cooldown: { user: '10s' }`. |
+| `channel` | Each channel, whoever uses it. |
+| `guild` | Each server, whoever uses it and wherever. Not for a command with `where: 'dm'`. |
+
+When several apply, the person is told the one that ends last. A use that was refused counts for nothing: the first use decides when the next one may happen.
+
+The last uses are kept in memory: they start empty when the bot starts, and `chapterjs dev` keeps them through a save. A duration that can't be read is reported when the file loads:
+
+```text
+✗ src/commands/daily.ts "cooldown" is "10 minutes", which is not a duration: cooldown: '10s' (a number and a unit: s, m, h or d, like '30s', '2h', '1d' or '1h30m') for each person, or cooldown: { user: '10s', channel: '5s', guild: '1m' } for each place.
+```
+
+<Info>
+  A large bot runs on [several processes](/run/start#large-bots), each with its own memory. Everything that happens in a server goes to the same process, so the cooldowns of a channel or a server always hold; the one of a person holds in each process, so someone may use the command once in a server of one process and once in a server of another.
 </Info>
 
 ## Other settings

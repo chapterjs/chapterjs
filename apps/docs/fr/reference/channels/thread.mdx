@@ -1,0 +1,166 @@
+---
+title: 'ThreadChannel'
+description: 'Un fil ou une publication de forum : archiver, verrouiller, membres et étiquettes'
+---
+
+Un `ThreadChannel` est un fil, ou une publication d’un forum. C’est ce que donne `channel.isThread()`, et ce que renvoient `message.startThread()`, `channel.startThread()` et `forum.createPost()`.
+
+```ts
+import type { ThreadChannel } from 'chapterjs';
+
+async function close(thread: ThreadChannel, reason: string) {
+  if (thread.archived) return;
+  await thread.send(`Je ferme ce fil : ${reason}`);
+  await thread.edit({ archived: true, locked: true }, reason);
+}
+```
+
+<Note>
+  Comment envoyer, modifier et lire des messages est dans [Envoyer des messages](/fr/messages).
+</Note>
+
+## Propriétés
+
+Il a aussi tout ce qu’a [Channel](/fr/reference/channels#channel) et [ce que partagent les salons avec des messages](/fr/reference/channels#salons-avec-des-messages). Un fil n’est pas un `GuildChannel` : il n’a pas de remplacements de permissions à lui, et prend les permissions du salon où il se trouve.
+
+<ResponseField name="guildId" type="Snowflake">
+  L’identifiant du serveur du fil.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild">
+  Le serveur du fil.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Le nom du fil.
+</ResponseField>
+
+<ResponseField name="parentId" type="Snowflake">
+  L’identifiant du salon où le fil a été créé.
+</ResponseField>
+
+<ResponseField name="parent" type="TextChannel | ForumChannel | null">
+  Le salon où le fil a été créé ; `null` quand il est d’une sorte que cette version ne connaît pas.
+</ResponseField>
+
+<ResponseField name="ownerId" type="Snowflake | null">
+  L’identifiant de l’utilisateur qui a créé le fil.
+</ResponseField>
+
+<ResponseField name="archived" type="boolean">
+  Si le fil est archivé.
+</ResponseField>
+
+<ResponseField name="locked" type="boolean">
+  Si seuls les modérateurs peuvent le désarchiver.
+</ResponseField>
+
+<ResponseField name="isPrivate" type="boolean">
+  Si seuls les membres invités et les modérateurs peuvent le voir.
+</ResponseField>
+
+<ResponseField name="archivedAt" type="Date | null">
+  Quand le fil a été archivé ou désarchivé pour la dernière fois.
+</ResponseField>
+
+<ResponseField name="memberCount" type="number">
+  Un nombre approximatif de membres du fil (s’arrête à 50).
+</ResponseField>
+
+<ResponseField name="appliedTags" type="readonly Snowflake[]">
+  Les identifiants des étiquettes de la publication, dans un forum.
+</ResponseField>
+
+## Helpers
+
+### permissionsFor()
+
+```ts
+permissionsFor(member: GuildMember): Permissions
+```
+
+Les fils héritent des permissions du salon où ils se trouvent.
+
+## Lire depuis Discord
+
+### fetchMembers()
+
+```ts
+fetchMembers(options?: { limit?: number; after?: Snowflake }): Promise<ThreadMember[]>
+```
+
+Qui est dans le fil (100 au plus par appel). Chaque entrée est un [`ThreadMember`](/fr/reference/data#threadmember).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#list-thread-members)
+
+## Actions
+
+### edit()
+
+```ts
+edit(options: ThreadEditOptions, reason?: string): Promise<this>
+```
+
+Modifie le fil : nom, archive, verrou, mode lent, étiquettes. Les options sont un [`ThreadEditOptions`](/fr/reference/options#threadeditoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#modify-channel)
+
+### archive()
+
+```ts
+archive(reason?: string): Promise<this>
+```
+
+Archive le fil : il quitte la liste des salons mais peut revenir.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#modify-channel)
+
+### unarchive()
+
+```ts
+unarchive(reason?: string): Promise<this>
+```
+
+Fait revenir un fil archivé.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#modify-channel)
+
+### join()
+
+```ts
+join(): Promise<void>
+```
+
+Fait rejoindre le fil au bot.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#join-thread)
+
+### leave()
+
+```ts
+leave(): Promise<void>
+```
+
+Fait quitter le fil au bot.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#leave-thread)
+
+### addMember()
+
+```ts
+addMember(user: Snowflake | { id: Snowflake }): Promise<void>
+```
+
+Ajoute un membre au fil.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#add-thread-member)
+
+### removeMember()
+
+```ts
+removeMember(user: Snowflake | { id: Snowflake }): Promise<void>
+```
+
+Retire un membre du fil.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/channel#remove-thread-member)

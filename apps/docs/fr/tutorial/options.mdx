@@ -1,0 +1,124 @@
+---
+title: 'Options'
+description: 'Laisser les gens remplir des valeurs après une commande, les recevoir typées, et laisser l’éditeur vous dire ce qui peut manquer'
+---
+
+`/dice` lance toujours un dé à six faces. Laissez les gens choisir : `/dice sides:20`. C’est une **option** : quelque chose que la personne remplit après le nom de la commande, que Discord demande dans son menu et envoie à votre bot avec la commande.
+
+## Déclarer une option
+
+Ajoutez `options` à la commande. Chaque clé est le nom d’une option, chaque valeur dit ce qu’elle est :
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Lance un dé',
+  options: {
+    sides: { type: 'integer', description: 'Combien de faces', min: 2, max: 100 },
+  },
+  async run({ interaction, user, options }) {
+    const sides = options.sides ?? 6;
+    const roll = Math.floor(Math.random() * sides) + 1;
+    await interaction.reply(`${user.displayName} a fait ${roll} sur un dé à ${sides} faces.`);
+  },
+});
+```
+
+Enregistrez, et utilisez à nouveau `/dice` : Discord propose maintenant `sides`, refuse une valeur inférieure à 2 ou supérieure à 100 avant même qu’elle n’atteigne votre bot, et vous laisse ne pas la remplir.
+
+Trois choses à remarquer dans `run` :
+
+- **`options` est nouveau dans l’objet que reçoit `run`.** Il contient ce que la personne a rempli, sous les noms que vous avez déclarés.
+- **`options.sides` est un nombre, et l’éditeur le sait.** Survolez-le : `number | undefined`. Vous avez déclaré `type: 'integer'`, alors le framework l’a typé pour vous. Rien à convertir, rien à vérifier.
+- **`undefined` est là parce que l’option est facultative.** Une option est facultative sauf si elle dit `required: true`, et votre code doit gérer son absence : `?? 6` le fait. Retirez le `?? 6` et l’éditeur souligne `sides` dans `Math.random() * sides` : « possibly undefined ». C’est tout l’intérêt des types : l’erreur est attrapée dans l’éditeur, pas par une personne qui utilise la commande.
+
+## Chaque type d’option
+
+`type` dit ce que Discord demande, et décide de ce que reçoit `run` :
+
+| `type` | La personne remplit | `options.name` est |
+| --- | --- | --- |
+| `'string'` | Un texte | `string` |
+| `'integer'` | Un nombre entier | `number` |
+| `'number'` | N’importe quel nombre | `number` |
+| `'boolean'` | Vrai ou faux | `boolean` |
+| `'user'` | Un utilisateur, choisi dans une liste | Un `User` |
+| `'role'` | Un rôle | Un `Role` |
+| `'channel'` | Un salon | Un `Channel` |
+| `'mentionable'` | Un utilisateur ou un rôle | Un `User` ou un `Role` |
+| `'attachment'` | Un fichier | Un `Attachment` |
+
+Chaque option a un `type` et une `description` (de 1 à 100 caractères, affichée sous son nom dans le menu). Les noms suivent les mêmes règles que les noms de commandes : minuscules, lettres, chiffres, `-` et `_`.
+
+## Une option utilisateur : /whois
+
+Une option de type `user` vous donne la personne sous forme d’objet, pas de texte. Créez `src/commands/whois.ts` :
+
+```ts src/commands/whois.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Vous parle de quelqu’un',
+  options: {
+    who: { type: 'user', description: 'Qui regarder', required: true },
+  },
+  async run({ interaction, options }) {
+    const user = options.who;
+    const created = user.createdAt.toDateString();
+    await interaction.reply(`${user.displayName} (${user.username}) a rejoint Discord le ${created}.`);
+  },
+});
+```
+
+`required: true` veut dire que Discord refuse d’envoyer la commande sans elle, donc `options.who` est toujours là : survolez-le, c’est un `User`, sans `undefined`. Un `User` a un nom, un avatar, la date de création du compte, et plus encore : la page suivante parle de ce que ces objets vous donnent.
+
+## Les choix
+
+Quand les valeurs possibles sont connues à l’avance, `choices` transforme l’option en une liste dans laquelle la personne choisit, et la valeur que reçoit votre code est typée comme l’un des choix :
+
+```ts src/commands/dice.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Lance un dé',
+  options: {
+    sides: {
+      type: 'integer',
+      description: 'Quel dé',
+      choices: { 'd6': 6, 'd20': 20, 'd100': 100 },
+    },
+  },
+  async run({ interaction, user, options }) {
+    // options.sides : 6 | 20 | 100 | undefined
+    const sides = options.sides ?? 6;
+    const roll = Math.floor(Math.random() * sides) + 1;
+    await interaction.reply(`${user.displayName} a fait ${roll} sur un d${sides}.`);
+  },
+});
+```
+
+Un objet donne une étiquette (affichée) et une valeur (reçue) ; une simple liste (`choices: ['red', 'green']`) utilise le même texte pour les deux. Entre 1 et 25 choix.
+
+## Points d’attention
+
+- **Les options obligatoires d’abord.** Discord les veut avant les facultatives. Vous pouvez les écrire dans n’importe quel ordre : le framework les trie pour vous.
+- **Seule la saisie de la personne est validée par Discord.** `min`, `max`, `minLength`, `maxLength` et `choices` sont appliqués par Discord avant que votre code ne tourne. Ce que *vous* faites de la valeur, c’est à vous de le vérifier.
+- **25 options au plus** par commande. S’il vous en faut plus, vous voulez probablement plusieurs commandes.
+- **Une erreur dans une déclaration est attrapée au chargement du fichier**, avec un message qui dit quoi écrire. Un `type` qui n’existe pas, un champ que le type n’a pas, un `min` au-dessus du `max` : chacun a son message, et l’éditeur souligne la plupart d’entre eux en premier.
+
+## Récapitulatif
+
+- `options` déclare ce que les gens remplissent ; `run` reçoit `options.name`, typé d’après la déclaration.
+- Facultatif par défaut : gérez `undefined`, ou dites `required: true`.
+- Les options `user`, `role` et `channel` vous donnent des objets, pas des identifiants.
+- `choices` fabrique une liste, et type la valeur comme l’un des choix.
+
+<CardGroup cols={2}>
+  <Card title="Répondre" icon="message-circle-reply" href="/fr/tutorial/answering">
+    Réponses privées, réponses lentes, et ce que voit la personne quand votre code échoue.
+  </Card>
+  <Card title="Guide : Options" icon="book-open" href="/fr/commands/options">
+    Chaque champ de chaque type d’option.
+  </Card>
+</CardGroup>

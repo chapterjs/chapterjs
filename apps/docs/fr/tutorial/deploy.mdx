@@ -1,0 +1,136 @@
+---
+title: 'Mettre en ligne'
+description: 'Faire tourner votre bot pour tout le monde avec l’application de production, sur une machine qui reste allumée, et le garder en marche'
+---
+
+La dernière étape. Votre bot est compilé ; il tourne maintenant sur une machine qui ne s’éteint pas, en tant qu’application de **production**, dans chaque serveur qui l’ajoute. Cette page passe en revue ce qui change par rapport au dev, les étapes sur la machine, et ce qui garde le bot en marche.
+
+## Ce qui change par rapport au dev
+
+| | `chapterjs dev` | `chapterjs start` |
+| --- | --- | --- |
+| Serveurs | Votre serveur de test uniquement | Chaque serveur où se trouve le bot |
+| Messages privés | Ignorés | Gérés |
+| Commandes | Affichées sur votre serveur de test, immédiatement | Affichées partout, pour tout le monde |
+| Enregistrer un fichier | Le recharge | Rien : recompilez et relancez |
+| Un fichier qui ne peut pas tourner | Garde sa dernière version qui fonctionnait | Arrêté par la compilation, avant que quoi que ce soit soit en ligne |
+| Quelque chose à corriger sur Discord | Vous attend | S’arrête et dit quoi corriger |
+| Processus | Un seul | Autant que la taille du bot l’exige |
+
+## L’application de production
+
+Vous vous souvenez de la seconde application de [Votre application Discord](/fr/tutorial/discord-application) ? C’est ici qu’elle intervient. Sur la page **Bot** de l’application de production :
+
+1. **Reset Token** et copiez-le. Il va sur la machine, jamais sur votre ordinateur.
+2. Activez les mêmes **Privileged Gateway Intents** que sur l’application de dev : vos fichiers sont les mêmes, donc ils ont besoin des mêmes. `chapterjs start` liste ce qui manque, mais en production il s’arrête au lieu d’attendre.
+
+Pour ajouter le bot de production à un serveur, fabriquez vous-même le lien d’invitation, puisque `chapterjs start` tourne dans chaque serveur et n’a aucune raison d’en afficher un : dans le Developer Portal, **OAuth2** → **URL Generator**, cochez `bot` et `applications.commands`, choisissez les permissions dont votre bot a besoin, et partagez le lien. Ne donnez que ce qu’utilisent vos fichiers : les gens font confiance à un bot qui demande peu.
+
+## L’essayer d’abord sur votre ordinateur
+
+Avant toute machine, lancez la production une fois en local, pour la voir fonctionner. Dans le `.env` de votre projet, mettez le token de production à la place de celui de dev pour une minute, compilez, et lancez :
+
+<CodeGroup>
+```bash pnpm
+pnpm start
+```
+
+```bash npm
+npm run start
+```
+
+```bash yarn
+yarn start
+```
+
+```bash bun
+bun start
+```
+</CodeGroup>
+
+```text
+✓ Commands updated for everyone
+✓ Online as buddy in 1 server
+ℹ Intents computed from your files: GUILDS, GUILD_MEMBERS, GUILD_MESSAGES, MESSAGE_CONTENT
+✓ 8 commands, 6 events, 7 components, 2 tasks, a presence, messages in 2 languages loaded
+```
+
+Les commandes sont enregistrées pour tout le monde, et les messages privés atteignent le bot : les fichiers `where: 'dm'` que vous ne pouviez pas essayer en dev fonctionnent maintenant. Arrêtez-le avec `Ctrl+C`, et remettez le token de dev dans `.env`.
+
+<Info>
+  `chapterjs start` n’a besoin que de `BOT_TOKEN`. Quand `DEV_GUILD_ID` est aussi là, la production ignore ce serveur, pour qu’un bot de dev et un bot de production partageant un token ne répondent jamais deux fois. Avec deux applications, vous n’en avez pas besoin, et la machine ne reçoit que le token.
+</Info>
+
+## Sur la machine
+
+Une machine qui reste allumée, c’est un serveur que vous louez, un conteneur, ou un hébergeur fait pour les applications Node. Les étapes sont les mêmes partout :
+
+<Steps>
+  <Step title="Y mettre le projet">
+    Clonez votre dépôt, ou copiez le dossier sans `node_modules` ni `.chapterjs` (les deux sont recréés sur la machine). La machine a besoin de Node.js 22.18 ou plus et de votre gestionnaire de paquets.
+  </Step>
+  <Step title="Installer">
+    La commande d’installation de votre gestionnaire de paquets, dans le dossier. Elle écrit aussi les types du projet.
+  </Step>
+  <Step title="Lui donner le token">
+    Réglez `BOT_TOKEN` comme le fait la machine : une variable d’environnement, les « secrets » d’un hébergeur, ou un fichier `.env` dans le dossier. Le vrai environnement l’emporte sur le fichier. C’est le token de l’application de **production**.
+  </Step>
+  <Step title="Compiler, puis lancer">
+    Le script `build`, puis le script `start`. Beaucoup d’hébergeurs demandent une « build command » et une « start command » : donnez-leur ces deux-là.
+  </Step>
+</Steps>
+
+<Warning>
+  Ne commitez jamais `.env`, et ne mettez jamais le token dans votre code : qui le possède contrôle votre bot. S’il fuit, réinitialisez-le sur la page **Bot** et donnez le nouveau à la machine.
+</Warning>
+
+## Le garder en marche
+
+`chapterjs start` tourne jusqu’à ce qu’on l’arrête. Deux choses le terminent :
+
+- **Un arrêt demandé par la machine** (`Ctrl+C`, ou l’hébergeur qui arrête le processus) : le bot se déconnecte proprement, affiche `✓ Disconnected`, et sort avec le code 0. Laissez-lui quelques secondes avant de le tuer.
+- **Quelque chose à corriger** : un token refusé, un intent privilégié non activé, pas de compilation. Le message dit quoi, et la commande sort avec le code 1.
+
+Utilisez ce que propose la machine pour relancer le bot quand il s’arrête et quand la machine redémarre : un gestionnaire de processus, le réglage « restart » d’un hébergeur, un service système. Mais ne relancez pas aveuglément en boucle serrée : un bot qui s’arrête avec le code 1 a quelque chose à corriger, et le relancer ne change rien. Discord limite le nombre de connexions d’un bot par jour, et réinitialise le token d’un bot qui dépasse ; ChapterJS s’arrête avant cette limite plutôt que de laisser faire :
+
+```text
+✗ The bot needs to start 1 session(s) but Discord only allows 0 more until 10/7/2026, 9:00:00 AM. Going over that limit makes Discord reset the bot token, so the bot is not started. This usually means it was restarted too many times: wait, then start it again.
+```
+
+À l’intérieur de `chapterjs start`, rien n’a besoin de vous : la connexion est gardée en vie et rétablie quand elle tombe, et les processus d’un gros bot sont relancés quand l’un d’eux s’arrête.
+
+## Mettre le bot à jour
+
+Mettez les nouveaux fichiers sur la machine, compilez, relancez. Tant que vous ne recompilez pas, le bot en marche garde la compilation précédente, et `chapterjs start` vous le rappelle :
+
+```text
+⚠ Your files changed since the last build: the bot runs the build, not your changes. Run "chapterjs build" to put them online.
+```
+
+Un hébergeur qui récupère le projet depuis git fait les premières étapes tout seul à chaque push : mettre à jour revient alors à pousser.
+
+## Quand le bot grandit
+
+Discord découpe les gros bots en plusieurs connexions, appelées shards, et ChapterJS les ouvre tout seul. Quand il y en a beaucoup, il les répartit aussi sur plusieurs processus, pour que le bot utilise chaque processeur de la machine ; vous le voyez sur la première ligne :
+
+```text
+✓ Online as buddy in 18420 servers (20 shards, 5 processes)
+```
+
+Rien à configurer, et un bot de moins de quelques milliers de serveurs tourne dans un seul processus. Ce que cela implique pour votre code a été dit dans [Organiser](/fr/tutorial/organising#stocker-des-données) : chaque processus a sa propre mémoire, donc tout ce qui est partagé vit dans une base de données.
+
+## Récapitulatif
+
+- La production est la seconde application : son token va sur la machine, ses intents s’activent à la main, son lien d’invitation se fabrique dans le Developer Portal.
+- Sur la machine : installer, régler `BOT_TOKEN`, compiler, lancer ; un hébergeur prend les deux scripts comme build et start command.
+- Le code de sortie 0 est un arrêt propre, 1 est quelque chose à corriger ; laissez la machine relancer le bot, jamais en boucle serrée.
+- Mettre à jour, c’est recompiler et relancer.
+
+<CardGroup cols={2}>
+  <Card title="Et ensuite" icon="flag" href="/fr/tutorial/next-steps">
+    Une liste de contrôle, et où aller à partir d’ici.
+  </Card>
+  <Card title="Guide : Déployer" icon="book-open" href="/fr/run/deploy">
+    Les mêmes étapes, avec chaque variable et chaque message.
+  </Card>
+</CardGroup>

@@ -16,10 +16,12 @@ export default command({
   },
 });
 
-// A command can ask for options, typed for you in `run`:
+// A command can ask for options, typed for you in `run`, and make each
+// person wait between two uses:
 //
 // export default command({
 //   description: 'Says hello to someone',
+//   cooldown: '10s',
 //   options: {
 //     who: { type: 'user', description: 'Who to greet', required: true },
 //   },

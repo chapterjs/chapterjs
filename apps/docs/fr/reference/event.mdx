@@ -1,0 +1,211 @@
+---
+title: 'event()'
+description: 'La fonction qu’exporte chaque fichier de src/events/, ses options et les types derrière ce que reçoit votre fonction'
+---
+
+<Note>
+  Comment écrire un fichier d’événement est dans [Événements](/fr/events) ; chaque événement, avec ce que reçoit sa fonction, est dans la [référence des événements](/fr/reference/events).
+</Note>
+
+`event()` est importé de `'chapterjs'` dans chaque fichier de `src/events/`, et typé pour le dossier où se trouve le fichier par le dossier `.chapterjs/` de votre projet : la même ligne d’import donne à votre fonction un membre dans `src/events/memberJoin/` et un rôle dans `src/events/roleDelete/`. Il n’existe que dans ces dossiers.
+
+```ts src/events/memberJoin/welcome.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild }) => {
+  await member.send(`Bienvenue sur ${guild.name} !`);
+});
+```
+
+## event()
+
+Dans le dossier d’un événement sans options :
+
+```ts
+event(handler: (context: EventContexts[Name]) => unknown): EventFile
+```
+
+Dit quoi faire quand `Name` se produit. Exportez le résultat comme export par défaut d’un fichier de `src/events/Name/`.
+
+Dans le dossier d’un événement avec options (`messageCreate`, `messageUpdate`, `messageDelete`) :
+
+```ts
+event<const Options extends EventOptions[Name] = {}>(
+  handler: (context: ContextOf<Name, Options>) => unknown,
+  options?: Options
+): EventFile
+```
+
+Dit quoi faire quand `Name` se produit. Exportez le résultat comme export par défaut d’un fichier de `src/events/Name/`. Ce que reçoit la fonction suit les options : ce qu’une option laisse passer n’est à gérer que dans les fichiers qui l’activent.
+
+`Name` est le nom du dossier. Une option que l’événement n’a pas est une erreur dans l’éditeur, et le fichier est aussi vérifié à son chargement (voir [Erreurs](#erreurs)).
+
+## Types
+
+Huit types vont avec `event()` : `EventName`, `EventContexts` et `ContextOf` pour ce que reçoit votre fonction, `EventFile` pour ce que renvoie `event()`, `EventOptions`, `MessageEventOptions`, `WhereEventOptions` et `EventWhere` pour ses options. Tous s’importent avec `import type { ... } from 'chapterjs'`.
+
+### EventName
+
+```ts
+type EventName = keyof EventContexts
+```
+
+Le nom d’un événement : le nom d’un dossier de `src/events/`.
+
+### EventContexts
+
+```ts
+interface EventContexts {
+  ready: { user: User; guilds: ReadonlyMap<Snowflake, Guild> };
+  messageCreate: { message: Message };
+  // ... one entry per event
+}
+```
+
+Ce que reçoit votre fonction, pour chaque événement. C’est la forme la plus large, comme si chaque option était activée : les événements sur les messages donnent un `Message` simple. Pour typer ce que reçoit un fichier avec des options données, utilisez `ContextOf`. Chaque entrée est listée dans la [référence des événements](/fr/reference/events).
+
+### ContextOf
+
+```ts
+type ContextOf<Name extends EventName, Options = object>
+```
+
+Ce que reçoit votre fonction pour un événement, selon les options que son fichier a passées à `event()`. `EventContexts` est la forme la plus large : chaque option activée.
+
+C’est le type à utiliser pour une fonction partagée par plusieurs fichiers :
+
+```ts src/lib/log.ts
+import type { ContextOf } from 'chapterjs';
+
+export function logJoin({ member, guild }: ContextOf<'memberJoin'>) {
+  console.log(`${member.displayName} a rejoint ${guild.name}`);
+}
+
+export function logPrivate({ message }: ContextOf<'messageCreate', { where: 'dm' }>) {
+  console.log(`${message.author.username} : ${message.content}`);
+}
+```
+
+Sans options, `ContextOf<'messageCreate'>` est ce que reçoit un fichier sans second argument : un [`MemberMessage`](/fr/reference/message#membermessage).
+
+### EventFile
+
+```ts
+interface EventFile {
+  readonly handler: (context: never) => unknown;
+  readonly options: unknown;
+}
+```
+
+Ce que renvoie `event()` : l’export par défaut d’un fichier d’événement.
+
+<ResponseField name="handler" type="(context: never) => unknown" required>
+  La fonction à lancer quand l’événement se produit.
+</ResponseField>
+<ResponseField name="options" type="unknown" required>
+  Ce que le fichier a passé en second argument, pas encore vérifié.
+</ResponseField>
+
+### EventOptions
+
+```ts
+interface EventOptions {
+  messageCreate: MessageEventOptions;
+  messageUpdate: MessageEventOptions;
+  messageDelete: WhereEventOptions;
+}
+```
+
+Les options qu’un fichier peut donner à `event()` en second argument, pour les événements qui en ont.
+
+### MessageEventOptions
+
+Options des événements sur les messages.
+
+<ResponseField name="bots" type="boolean">
+  Tourner aussi pour les messages écrits par des bots (celui-ci compris) et par des webhooks. Par défaut, ils sont ignorés : un bot qui répond aux bots peut finir par se répondre à lui-même, ou à un autre bot, indéfiniment.
+</ResponseField>
+<ResponseField name="where" type="EventWhere">
+  Où le fichier écoute : `'guild'` (sur les serveurs, par défaut), `'dm'` (en messages privés avec le bot) ou `'both'`. Ce que reçoit la fonction suit : un serveur toujours là, jamais là, ou à vérifier.
+</ResponseField>
+
+### WhereEventOptions
+
+L’option des événements qui se produisent aussi en messages privés.
+
+<ResponseField name="where" type="EventWhere">
+  Où le fichier écoute : `'guild'` (sur les serveurs, par défaut), `'dm'` (en messages privés avec le bot) ou `'both'`. Ce que reçoit la fonction suit : un serveur toujours là, jamais là, ou à vérifier.
+</ResponseField>
+
+### EventWhere
+
+```ts
+type EventWhere = 'guild' | 'dm' | 'both'
+```
+
+Où quelque chose se passe : sur les serveurs (`'guild'`), en messages privés avec le bot (`'dm'`), ou les deux.
+
+## Erreurs
+
+Un fichier qui n’est pas ce qu’attend `src/events/` est signalé avec son chemin au chargement, et ne fait jamais planter le bot. Dans `chapterjs dev`, le fichier garde sa dernière version qui fonctionnait, s’il en avait une ; dans `chapterjs build`, la compilation échoue.
+
+<AccordionGroup>
+  <Accordion title="Un fichier directement dans src/events/">
+    ```text
+    ✗ src/events/ping.ts This file is directly in src/events/. Put it in a folder named after the event it reacts to, like src/events/messageCreate/ping.ts. Events are: ready, messageCreate, messageUpdate, messageDelete, memberJoin, memberUpdate, memberLeave, guildJoin, guildLeave, channelCreate, channelUpdate, channelDelete, roleCreate, roleUpdate, roleDelete.
+    ```
+  </Accordion>
+  <Accordion title="Un dossier qui n’est pas un événement">
+    ```text
+    ✗ src/events/memberjoin/welcome.ts The folder src/events/memberjoin is not named after an event. Did you mean "memberJoin"? Events are: ready, messageCreate, messageUpdate, messageDelete, memberJoin, memberUpdate, memberLeave, guildJoin, guildLeave, channelCreate, channelUpdate, channelDelete, roleCreate, roleUpdate, roleDelete.
+    ```
+
+    La partie `Did you mean` n’est là que quand un vrai événement est proche du nom.
+  </Accordion>
+  <Accordion title="Pas d’export par défaut">
+    ```text
+    ✗ src/events/messageCreate/ping.ts This file has no default export. It should look like: import { event } from 'chapterjs'; export default event(({ ... }) => { ... })
+    ```
+  </Accordion>
+  <Accordion title="Un export par défaut qui n’est pas event()">
+    ```text
+    ✗ src/events/ready/online.ts The default export of this file must be what event() returns: import { event } from 'chapterjs'; export default event(({ ... }) => { ... })
+    ```
+  </Accordion>
+  <Accordion title="event() sans fonction">
+    ```text
+    ✗ src/events/ready/online.ts:3 event() needs the function to run when the event happens: export default event(({ ... }) => { ... })
+    ```
+  </Accordion>
+  <Accordion title="Un second argument qui n’est pas un objet">
+    ```text
+    ✗ src/events/messageCreate/ping.ts The second argument of event() is its options, like { bots: true }. Options of messageCreate are: bots, where.
+    ```
+
+    Pour un événement sans options :
+
+    ```text
+    ✗ src/events/ready/online.ts The second argument of event() is its options, like { option: true }. ready has no options: remove the second argument of event().
+    ```
+  </Accordion>
+  <Accordion title="Une option qui n’existe pas">
+    ```text
+    ✗ src/events/messageCreate/ping.ts "bot" is not an option of messageCreate. Options of messageCreate are: bots, where.
+    ```
+
+    Pour un événement sans options :
+
+    ```text
+    ✗ src/events/ready/online.ts "bots" is not an option of ready. ready has no options: remove the second argument of event().
+    ```
+  </Accordion>
+  <Accordion title="Une mauvaise valeur">
+    ```text
+    ✗ src/events/messageCreate/ping.ts The option bots of messageCreate is true or false, got "yes".
+    ```
+
+    ```text
+    ✗ src/events/messageCreate/ping.ts The option where of messageCreate is 'guild', 'dm' or 'both', got "everywhere".
+    ```
+  </Accordion>
+</AccordionGroup>

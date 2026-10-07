@@ -1,0 +1,89 @@
+---
+title: 'task()'
+description: 'Tout ce que déclare un fichier de tâche : son horaire, son fuseau horaire, et ce que reçoit la fonction run'
+---
+
+`task()` est ce qu’un fichier de `src/tasks/` exporte par défaut. Elle prend un objet, `TaskConfig`.
+
+```ts src/tasks/cleanup.ts
+import { task } from 'chapterjs';
+
+export default task({
+  every: '10m',
+  async run({ guilds }) {
+    console.log(`Surveillance de ${guilds.size} serveurs`);
+  },
+});
+```
+
+<Note>
+  Comment écrire une tâche, et ce qui se passe quand un passage est long ou échoue, est dans le [guide](/fr/tasks). Cette page liste ce qui existe.
+</Note>
+
+## task()
+
+```ts
+task(config: TaskConfig): TaskFile
+```
+
+Déclare une tâche : quelque chose que le bot fait tout seul. Exportez le résultat comme export par défaut d’un fichier de `src/tasks/` : le nom du fichier est le nom de la tâche.
+
+### TaskFile
+
+Ce que renvoie `task()` : l’export par défaut d’un fichier de tâche.
+
+<ResponseField name="config" type="unknown">
+  Ce que le fichier a donné à `task()`, pas encore vérifié.
+</ResponseField>
+
+## TaskConfig
+
+Ce qu’un fichier de tâche donne à `task()` : quand elle tourne, et ce qu’elle fait. C’est un `EveryTaskConfig` ou un `CronTaskConfig` : l’un de `every` et `cron`, jamais les deux.
+
+<ResponseField name="run" type="(context: TaskContext) => unknown" required>
+  Ce que fait la tâche.
+</ResponseField>
+
+<ResponseField name="onStart" type="boolean">
+  Tourner aussi une fois dès que le bot est connecté, sans attendre le premier horaire.
+</ResponseField>
+
+### EveryTaskConfig
+
+Une tâche qui tourne régulièrement.
+
+<ResponseField name="every" type="string" required>
+  À quelle fréquence la tâche tourne : un nombre et une unité, `s`, `m`, `h` ou `d`, comme `'30s'`, `'10m'`, `'2h'`, `'1d'` ou `'1h30m'`. Une fois par seconde au plus. Compté à partir de la connexion du bot.
+</ResponseField>
+
+### CronTaskConfig
+
+Une tâche qui tourne à des heures données.
+
+<ResponseField name="cron" type="string" required>
+  Quand la tâche tourne, sous forme d’expression cron : minute, heure, jour du mois, mois et jour de la semaine, comme `'0 9 * * 1-5'` (9 h en semaine). `*`, les listes (`1,15`), les plages (`1-5`), les pas (`*/15`) et les noms (`mon`, `jan`) fonctionnent.
+</ResponseField>
+
+<ResponseField name="timezone" type="string">
+  Le fuseau horaire que suit le cron, comme `'Europe/Paris'`. L’horloge de la machine par défaut.
+</ResponseField>
+
+Quand le jour du mois et le jour de la semaine sont tous les deux donnés, la tâche tourne les jours qui correspondent à l’un ou l’autre, comme le fait cron.
+
+## TaskContext
+
+Ce que reçoit `run` : le bot, tel que le donne l’événement `ready`, et l’heure.
+
+<ResponseField name="user" type="User" required>
+  Le bot lui-même.
+</ResponseField>
+
+<ResponseField name="guilds" type="ReadonlyMap<Snowflake, Guild>" required>
+  Les serveurs où se trouve le bot.
+</ResponseField>
+
+<ResponseField name="now" type="Date" required>
+  Le moment où ce passage était prévu.
+</ResponseField>
+
+Une tâche reçoit aussi `t`, dans la langue par défaut, quand le projet a une langue dans `src/messages/` : voir [`TranslationContext`](/fr/reference/messages#translationcontext).

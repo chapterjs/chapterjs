@@ -1,0 +1,92 @@
+---
+title: 'The tools'
+description: 'Install Node.js, pick a package manager and an editor, and check that everything answers in a terminal'
+---
+
+Three tools are enough to write a bot: Node.js to run your code, a package manager to install ChapterJS, and an editor. This page makes sure you have them, and shows the few terminal commands the rest of the tutorial uses.
+
+## The terminal
+
+Everything that runs your bot is started from a terminal: a window where you type a command and read what it answers. On macOS it is the **Terminal** app; on Windows, **Windows Terminal** or **PowerShell**; on Linux, whatever your system calls it. Your editor also has one built in, which is the most convenient place for it.
+
+Two things to know:
+
+- A terminal is always "in" a folder. `cd my-bot` moves into the folder `my-bot`; the commands of this tutorial are run from the folder of your project.
+- A program that keeps running (like your bot) keeps the terminal busy. `Ctrl+C` stops it.
+
+## Node.js
+
+Node.js is what runs JavaScript outside of a browser. ChapterJS needs version **22.18 or newer**, because it relies on Node running TypeScript files directly, which older versions can't do.
+
+Install it from [nodejs.org](https://nodejs.org) (the LTS version is fine when it is 22.18 or newer), then check in a terminal:
+
+```bash
+node --version
+```
+
+It prints something like `v22.18.0`. If it prints a lower version, or "command not found", install it again and open a new terminal: a terminal opened before the install does not see it.
+
+## A package manager
+
+A package manager downloads the packages your project depends on (here, `chapterjs`) and runs the scripts of your project (`dev`, `build`, `start`). Node comes with **npm**. The others, **pnpm**, **yarn** and **bun**, do the same thing with small differences in speed and in how they store packages. Pick one; pnpm is the one the ChapterJS team uses.
+
+Check the one you chose:
+
+<CodeGroup>
+```bash pnpm
+pnpm --version
+```
+
+```bash npm
+npm --version
+```
+
+```bash yarn
+yarn --version
+```
+
+```bash bun
+bun --version
+```
+
+</CodeGroup>
+
+If pnpm is not installed, `corepack enable pnpm` turns it on, since it ships with Node; or follow [pnpm.io](https://pnpm.io/installation).
+
+<Warning>
+  Stick to one package manager per project. Each one keeps its own lock file
+  (`pnpm-lock.yaml`, `package-lock.json`...), and using two in turn leaves them
+  disagreeing, with errors that are hard to understand.
+</Warning>
+
+## An editor
+
+Any editor that understands TypeScript works, and [Visual Studio Code](https://code.visualstudio.com) does out of the box. The editor matters more than usual with ChapterJS: the framework generates the types of your project, and the editor reads them to complete what you type and to underline a mistake before you run anything. That is where a lot of the help comes from, so take the time to open your project in it rather than in a plain text editor.
+
+## A Discord account and a server to test in
+
+You need a Discord account and a server where you have the right to add a bot (any server you created works). Make one for your bot if you don't have one: a test server is a playground where mistakes bother nobody. In Discord, click the **+** at the bottom of the server list and choose **Create My Own**.
+
+## Recap
+
+- `node --version` says 22.18 or newer.
+- One package manager, checked with `--version`, and kept for the whole project.
+- An editor that understands TypeScript, Visual Studio Code for example.
+- A Discord account and a test server you manage.
+
+<CardGroup cols={2}>
+  <Card
+    title="Your Discord application"
+    icon="bot"
+    href="/tutorial/discord-application"
+  >
+    Create the bot account in the Developer Portal.
+  </Card>
+  <Card
+    title="Creating the project"
+    icon="folder-plus"
+    href="/tutorial/create-project"
+  >
+    One command, two values, and your bot is online.
+  </Card>
+</CardGroup>

@@ -1,0 +1,236 @@
+---
+title: 'Messages traduits'
+description: 'Répondre à chaque personne dans sa langue, avec un fichier par langue dans src/messages/'
+---
+
+Les textes avec lesquels votre bot répond vivent dans `src/messages/`, un fichier par langue, nommé d’après la langue. Chaque fonction de votre projet reçoit alors `t`, qui donne un texte dans la bonne langue.
+
+```ts src/messages/en-US.ts
+import { language } from 'chapterjs';
+
+export default language({
+  default: true,
+  texts: {
+    pong: 'Pong!',
+    welcome: 'Welcome {name}, you are member #{count}!',
+    next: 'Page {page}',
+    members: { one: '{count} member', other: '{count} members' },
+  },
+});
+```
+
+```ts src/messages/fr.ts
+import { language } from 'chapterjs';
+
+export default language({
+  texts: {
+    pong: 'Pong !',
+    welcome: 'Bienvenue {name}, tu es le membre n°{count} !',
+    next: 'Page {page}',
+    members: { one: '{count} membre', other: '{count} membres' },
+  },
+});
+```
+
+```ts src/commands/hello.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Dit bonjour',
+  async run({ interaction, guild, user, t }) {
+    await interaction.reply(
+      t('welcome', { name: user.displayName, count: guild.memberCount ?? 1 })
+    );
+  },
+});
+```
+
+C’est tout : une personne dont Discord est en français lit « Bienvenue… », tous les autres « Welcome… ». `t` connaît les clés de vos fichiers et les `{paramètres}` de chaque texte : une clé qui n’existe pas, ou un `{count}` manquant, est souligné dans votre éditeur.
+
+<Note>
+  Tout ce que déclare un fichier de langue, et le type de `t`, est dans la
+  [référence](/fr/reference/messages).
+</Note>
+
+## Les fichiers
+
+- **Le nom du fichier est la langue**, comme l’écrivent les valeurs de [`Locale`](/fr/reference/enums#locale) : `en-US.ts`, `fr.ts`, `de.ts`, `es-ES.ts`, `pt-BR.ts`, `ja.ts`… Un nom que Discord ne connaît pas est refusé avant même que le fichier ne tourne, avec la liste.
+- **`default: true`** marque la langue utilisée quand celle d’une personne ou d’un serveur n’est pas là. Exactement un fichier le dit ; avec un seul fichier, cela va sans dire. Quand deux fichiers le disent, les deux sont soulignés dans l’éditeur, sur leur `default: true`, une fois que `chapterjs dev` ou `chapterjs build` a fait tourner les fichiers : survolez-le pour lire quel autre fichier le dit.
+- **La langue par défaut a tous les textes** : `t` propose ses clés, et une langue qui n’en a pas une répond avec le texte de la langue par défaut. Un texte d’une autre langue que la langue par défaut n’a pas, ou un `{name}` devenu `{nom}`, est signalé sur ce fichier, avec la clé : la langue est mise de côté jusqu’à ce qu’elle corresponde à nouveau, et les autres continuent de fonctionner.
+- **Un paramètre** est un nom entre accolades, fait de lettres, de chiffres et de `_` : `{name}`, `{count}`. Il prend un texte ou un nombre. Un nombre est écrit comme la langue écrit les nombres (`1,234` en anglais, `1 234` en français, `1.234` en allemand) : donnez-le sous forme de texte pour le garder tel quel, comme une année ou un identifiant.
+- **Une accolade écrite telle quelle** est doublée : `'{{name}}'` affiche `{name}`.
+- Un dossier entre parenthèses ne fait que regrouper des fichiers, comme partout dans `src/`, et un fichier qui commence par `_` n’est jamais une langue : libre pour ce que partagent les fichiers.
+
+## Les pluriels
+
+Un texte qui dépend d’un nombre a une forme par quantité, comme `members` ci-dessus. Son `count` choisit la forme, selon les règles de la langue : l’anglais dit « 1 member » et « 0 members », le français dit « 0 membre », le russe et l’arabe ont plus de formes.
+
+```ts src/commands/count.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Compte les membres',
+  async run({ interaction, guild, t }) {
+    await interaction.reply(t('members', { count: guild.memberCount ?? 0 }));
+  },
+});
+```
+
+Les formes sont `zero`, `one`, `two`, `few`, `many` et `other`. `other` est toujours là ; écrivez les formes qu’utilise votre langue, les autres retombent sur `other`. `count` est un nombre, et `{count}` dans une forme est ce nombre ; une forme peut avoir d’autres paramètres, donnés de la même façon. Un pluriel dans une langue peut être un simple texte dans une autre (`'{count} membre(s)'`), tant que les paramètres correspondent.
+
+## Quelle langue parle t
+
+Un message est envoyé une fois, et tout le monde dans le salon lit le même texte : Discord ne le traduit pas pour chaque lecteur. Alors `t` parle la langue de **ceux qui liront** ce que vous envoyez, pas de la personne qui a utilisé la commande :
+
+| Ce que vous envoyez | La langue |
+| --- | --- |
+| Une réponse que seule la personne voit (`ephemeral: true` sur la commande, le bouton, le menu ou le formulaire), un formulaire | Celle de la personne |
+| Un bouton, un menu ou un formulaire d’un message que seule la personne voit | Celle de la personne |
+| Un message privé | Celle de la personne |
+| Un message public sur un serveur | Celle du serveur, quand Discord la connaît |
+| L’événement `ready`, une tâche | Celle par défaut |
+
+Discord ne connaît la langue que d’un serveur **Communauté**. Ailleurs, il dit `en-US` quelle que soit la langue du serveur, donc un message public y utilise la langue par défaut de votre fichier : un bot français avec `default: 'fr'` parle français dans chaque serveur, et un bot en plusieurs langues suit les grands serveurs qui ont réglé la leur.
+
+Quand cette langue n’est pas dans le fichier, `t` en prend une de la même langue dans une autre région (`en-GB` lit les textes `'en-US'`, `es-419` ceux de `'es-ES'`, `zh-TW` ceux de `'zh-CN'` : ajoutez le fichier quand ce n’est pas ce que vous voulez), et celle par défaut sinon. `t.locale` dit laquelle a été prise, et `t.in(locale, key, params)` donne un texte dans une autre langue, pour écrire à quelqu’un d’autre :
+
+```ts src/events/memberJoin/notify.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, guild, t }) => {
+  // `t` parle la langue du serveur ; le propriétaire peut en préférer une autre.
+  const owner = await guild.fetchOwner();
+  await owner.send(
+    t.in('fr', 'welcome', {
+      name: member.displayName,
+      count: guild.memberCount ?? 1,
+    })
+  );
+});
+```
+
+L’éditeur propose les langues de `src/messages/`, et une langue qui vient de Discord (`interaction.locale`, `guild.preferredLocale`) est prise telle quelle : `t` choisit la plus proche déclarée, comme ci-dessus. Pour écrire plusieurs textes dans cette langue, `t.in(locale)` seul est le même `t` pour elle : `const say = t.in(interaction.locale); say('pong')`.
+
+<Warning>
+  `t` est donné à votre fonction avant qu’elle ne tourne, pour le public que
+  déclare le fichier. Une réponse rendue privée au moment de l’appel
+  (`interaction.reply({ ephemeral: true, content: t('pong') })`) dans une
+  commande qui n’est pas `ephemeral` garde la langue du serveur dans
+  `content`, alors que les textes de ses composants sont calculés pour la
+  personne. Mettez `ephemeral: true` dans le fichier quand la réponse est
+  pour la personne seule : c’est alors aussi la valeur par défaut de ses
+  réponses, donc l’appel n’a besoin de rien. Les boutons et menus de cette
+  réponse n’ont besoin de rien non plus : un message que seule la personne
+  voit n’est lu que par elle, donc ce qu’ils répondent est pour elle.
+</Warning>
+
+## Les textes d’un bouton, d’un menu, d’un formulaire
+
+Une étiquette, un texte indicatif ou un titre s’écrit dans le fichier du composant. Pour le traduire, faites-en une fonction : elle reçoit `t`, dans la langue de qui lira le message, et les `data` que transporte le composant. Elle tourne au moment de l’envoi du message.
+
+```ts src/components/buttons/next.ts
+import { button } from 'chapterjs';
+
+const next = button({
+  label: ({ t, data }) => t('next', { page: data.page + 1 }),
+  data: { page: 'number' },
+  async run({ interaction, data }) {
+    await interaction.update({ components: [next({ page: data.page + 1 })] });
+  },
+});
+
+export default next;
+```
+
+Cela fonctionne pour le `label` d’un bouton, le `placeholder` d’un menu et le `label` et la `description` de ses options, le `title` d’un formulaire et le `label`, la `description`, le `placeholder` et le `content` de ses champs. Un texte écrit tel quel reste tel quel. Ce que renvoie la fonction est vérifié par rapport aux limites de Discord au moment de l’envoi.
+
+## Ce que le bot répond de lui-même
+
+Quand le bot ne peut pas lancer ce qui a été demandé, il répond de lui-même : une commande utilisée là où elle ne fonctionne pas, un bouton d’un vieux message, un `run` qui a levé une erreur. Ces phrases sont en anglais. Traduisez celles que vous voulez dans `framework`, avec les mots pour une commande, un bouton, un menu et un formulaire, que remplace `{what}` :
+
+```ts src/messages/fr.ts
+import { language } from 'chapterjs';
+
+export default language({
+  texts: { pong: 'Pong !' },
+  framework: {
+    command: 'commande',
+    button: 'bouton',
+    guildOnly: "Cette {what} ne s'utilise que sur un serveur.",
+    failed: "Quelque chose s'est mal passé avec cette {what}.",
+    needsPermissions: {
+      one: 'Il te faut la permission {permissions} pour cette commande.',
+      other: 'Il te faut les permissions {permissions} pour cette commande.',
+    },
+  },
+});
+```
+
+Les phrases, avec leur texte anglais, sont listées dans [`FrameworkTexts`](/fr/reference/messages#frameworktexts). Une phrase reçoit sa réponse dans la langue de la personne, depuis le fichier qui la traduit ; une phrase qu’un fichier ne traduit pas reste en anglais. Une phrase sans les paramètres de la phrase anglaise est refusée au chargement du fichier.
+
+## Les noms et descriptions des commandes
+
+Ce que Discord affiche d’une commande avant qu’elle ne soit utilisée (son nom, sa description, ses options et leurs choix) est enregistré une fois, dans chaque langue : c’est Discord qui choisit la langue. Donnez-les dans les `commands` de chaque fichier de langue, par le chemin du fichier de la commande :
+
+```ts src/messages/fr.ts
+import { language } from 'chapterjs';
+
+export default language({
+  texts: { pong: 'Pong !' },
+  commands: {
+    ping: { description: 'Répond Pong !' },
+    'mod/ban': {
+      name: 'bannir',
+      description: 'Bannit un membre',
+      options: { target: { name: 'qui', description: 'Qui bannir' } },
+    },
+  },
+});
+```
+
+Votre éditeur propose ici les commandes du projet, celles qui n’ont pas de `description` dans leur fichier : une commande qui n’existe pas, ou une que son fichier décrit, est soulignée (une fois que `chapterjs dev` ou `chapterjs build` a lancé les fichiers de commandes). Une option ou un choix qui n’existe pas est signalé au chargement du fichier.
+
+Une commande a ses textes à un seul endroit. **Sans `description` dans son fichier**, les fichiers de langue la décrivent : la langue par défaut donne la description que Discord montre à tout le monde (et la description de chaque option qui n’en a pas dans le fichier), les autres langues leurs traductions. **Avec `description` dans son fichier**, le fichier possède ses textes, avec ses propres [`locales`](/fr/commands/translations) pour les traductions, et un fichier de langue qui la mentionne est une erreur :
+
+```text
+✗ src/messages/fr.ts /ping is described in src/commands/ping.ts: remove its description there to translate it here, or remove it here.
+```
+
+Une commande sans description nulle part est mise de côté, et dit où en écrire une :
+
+```text
+✗ src/commands/ping.ts This command has no description: write it in src/messages/en-US.ts (commands: { "ping": { description: '...' } }), or in the file (description: '...').
+```
+
+Une commande, une option ou un choix que le projet n’a pas est une erreur sur ce fichier de langue, avec la commande nommée ; le reste du fichier est utilisé.
+
+## En développement
+
+Dans `chapterjs dev`, enregistrer un fichier de langue change ses textes immédiatement, et les commandes sont enregistrées à nouveau quand ce que Discord en montre a changé. Un fichier qui ne se charge pas, ou qui ne correspond plus à la langue par défaut, est signalé avec ce qui ne va pas, et cette langue garde ses derniers textes qui fonctionnaient. Quand la première langue est ajoutée, la dernière retirée, ou qu’un autre fichier devient celui par défaut, les types de `t` suivent (et deux fichiers disant `default: true` sont soulignés tous les deux) :
+
+```text
+↻ Types updated
+```
+
+Un texte utilisé avec un paramètre manquant est une erreur de votre code, signalée avec le fichier et la ligne, et la personne reçoit une réponse simple :
+
+```text
+✗ src/commands/hello.ts:6 The message "welcome" needs {count}: t('welcome', { name, count })
+```
+
+<CardGroup cols={2}>
+  <Card
+    title="Référence : language()"
+    icon="languages"
+    href="/fr/reference/messages"
+  >
+    Chaque champ d’un fichier de langue, et le type de t.
+  </Card>
+  <Card
+    title="Traductions des commandes"
+    icon="terminal"
+    href="/fr/commands/translations"
+  >
+    Le nom et la description d’une commande dans chaque langue.
+  </Card>
+</CardGroup>

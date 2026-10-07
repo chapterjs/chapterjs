@@ -1,0 +1,173 @@
+---
+title: 'Répondre'
+description: 'Répondre à une commande, garder la réponse privée, prendre son temps, la modifier, et savoir ce que voit la personne quand votre fonction échoue'
+---
+
+L’`interaction` que reçoit votre fonction est ce qui vous permet de répondre. `interaction.reply()` prend ce que prend n’importe quel message : un texte, ou un objet avec des embeds, des fichiers, des composants...
+
+```ts src/commands/secret.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Vous dit un secret',
+  async run({ interaction, user }) {
+    // Seule la personne qui a utilisé la commande voit cette réponse.
+    await interaction.reply({ content: `Votre identifiant est ${user.id}.`, ephemeral: true });
+    // Un autre message, après la réponse.
+    await interaction.followUp({ content: 'Gardez-le pour vous.', ephemeral: true });
+  },
+});
+```
+
+C’est tout : Discord affiche la réponse sous la commande, avec le nom de la personne qui l’a utilisée.
+
+<Note>
+  Tout ce qu’a une interaction est dans la [référence](/fr/reference/interaction). Ce qu’accepte `reply()` est listé dans [InteractionReplyOptions](/fr/reference/message-options#interactionreplyoptions).
+</Note>
+
+## Les cinq méthodes
+
+| Méthode | Ce qu’elle fait |
+| --- | --- |
+| `interaction.reply(message)` | Répond. Une fois par utilisation de la commande. |
+| `interaction.defer()` | Dit à Discord que la réponse arrive. |
+| `interaction.edit(message)` | Modifie la réponse. |
+| `interaction.followUp(message)` | Envoie un autre message, après la réponse. |
+| `interaction.delete()` | Supprime la réponse. |
+
+Les réponses sont envoyées l’une après l’autre, dans l’ordre où elles ont été demandées : vous pouvez appeler `reply()` et `followUp()` sans attendre que la première se termine, et elles arrivent dans cet ordre.
+
+Une commande répond **une fois**. Un second `reply()` lève une erreur, et dit quoi faire à la place :
+
+```text
+✗ src/commands/twice.ts:7 This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer.
+```
+
+De même, `edit()` et `followUp()` ont d’abord besoin d’une réponse : « There is no answer to edit yet: call interaction.reply() first. » et « A follow-up comes after an answer: call interaction.reply() first. »
+
+## Réponses que seule la personne voit
+
+Passez `ephemeral: true` à `reply()` ou `followUp()` pour ne montrer ce message qu’à la personne qui a utilisé la commande. Personne d’autre ne le voit, et elle peut le faire disparaître.
+
+Pour rendre **chaque** réponse d’une commande éphémère, mettez `ephemeral: true` sur la commande elle-même. Chaque `reply()` et `followUp()` peut encore dire le contraire avec son propre `ephemeral` :
+
+```ts src/commands/roll.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Lance un dé',
+  ephemeral: true,
+  async run({ interaction, user }) {
+    const roll = Math.floor(Math.random() * 6) + 1;
+    // Tout le monde voit le lancer...
+    await interaction.reply({ content: `${user.displayName} a fait ${roll}.`, ephemeral: false });
+    // ...et seule la personne voit l’astuce.
+    await interaction.followUp('Relancez /roll pour tenter votre chance.');
+  },
+});
+```
+
+## Quand la réponse prend du temps
+
+Discord veut une réponse en moins de 3 secondes. **Vous n’avez pas à vous en soucier** : après 2 secondes sans réponse, ChapterJS dit à Discord que la réponse arrive, la personne voit « réfléchit… », et votre `reply()` la complète, jusqu’à 15 minutes plus tard.
+
+```ts src/commands/report.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Prépare un long rapport',
+  async run({ interaction }) {
+    await sleep(10_000); // quelque chose de lent
+    await interaction.reply('Voici votre rapport.');
+  },
+});
+```
+
+Appelez vous-même `interaction.defer()` si vous voulez que « réfléchit… » apparaisse tout de suite, ou pour choisir à quoi ressemble la réponse :
+
+```ts src/commands/lookup.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Cherche quelque chose',
+  options: {
+    query: { type: 'string', description: 'Quoi chercher', required: true },
+  },
+  async run({ interaction, options }) {
+    await interaction.defer({ ephemeral: true });
+    const result = await search(options.query); // quelque chose de lent
+    await interaction.reply(result);
+  },
+});
+
+async function search(query: string): Promise<string> {
+  return `Rien trouvé pour ${query}.`;
+}
+```
+
+`interaction.deferred` dit si la réponse est encore à venir, et `interaction.answered` si elle a été envoyée ou promise.
+
+<Info>
+  Le fait qu’une réponse différée soit éphémère se décide au moment où elle est différée. Pour une commande lente dont la réponse doit être privée, mettez `ephemeral: true` sur la commande, ou appelez vous-même `interaction.defer({ ephemeral: true })` : quand ChapterJS diffère pour vous, il ne connaît que ce que dit la commande.
+</Info>
+
+## Modifier ou supprimer la réponse
+
+`edit()` modifie la réponse qui a été envoyée. Seul ce que vous passez change :
+
+```ts src/commands/countdown.ts
+import { command } from 'chapterjs';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+export default command({
+  description: 'Compte à rebours depuis 3',
+  async run({ interaction }) {
+    await interaction.reply('3...');
+    for (const step of ['2...', '1...', 'Partez !']) {
+      await sleep(1000);
+      await interaction.edit(step);
+    }
+  },
+});
+```
+
+`delete()` la retire. Les deux fonctionnent pendant 15 minutes après l’utilisation de la commande.
+
+## Quand votre fonction échoue
+
+Une erreur n’arrête jamais le bot. La personne reçoit une réponse courte et privée, et vous recevez l’erreur dans votre terminal avec le fichier et la ligne :
+
+```text
+✗ src/commands/mod/ban.ts:14 Discord refused PUT /guilds/{guild.id}/bans/{user.id}: Missing Permissions (50013)
+```
+
+Ce que lit la personne dépend de ce qui s’est passé :
+
+| Ce qui s’est passé | La personne lit |
+| --- | --- |
+| Discord a refusé une action pour une permission ou un accès manquant | « I don’t have the permission to do that here. » |
+| Tout le reste | « Something went wrong while running this command. » |
+
+Si la commande avait déjà répondu, la mauvaise nouvelle arrive dans un autre message privé ; si la réponse était en attente (« réfléchit… »), elle devient la réponse. Les deux phrases peuvent être traduites : voir [Ce que le bot répond de lui-même](/fr/translated-messages#ce-que-le-bot-répond-de-lui-même).
+
+<Tip>
+  Gardez la ligne de votre code : enchaînez avec `await`, pas avec `.then()`. Une erreur dans quelque chose que vous avez attendu est signalée avec la ligne qui l’a attendu.
+</Tip>
+
+## Une fonction qui ne répond jamais
+
+Une commande doit répondre. Quand `run` se termine sans appeler `reply()` (ou `defer()`), la personne voit « L’application ne répond pas », et votre terminal dit quelle commande :
+
+```text
+⚠ src/commands/silent.ts /silent finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.
+```
+
+<CardGroup cols={2}>
+  <Card title="Traductions" icon="languages" href="/fr/commands/translations">
+    Afficher la commande dans la langue de chaque personne.
+  </Card>
+  <Card title="Envoyer des messages" icon="mail" href="/fr/messages">
+    Embeds, fichiers, sondages : tout ce qu’une réponse peut contenir.
+  </Card>
+</CardGroup>

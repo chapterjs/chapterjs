@@ -1,0 +1,143 @@
+---
+title: 'Forms'
+description: 'Open a form in Discord from a command or a button, and receive what was filled in, typed field by field'
+---
+
+A form (Discord calls it a modal) is a window that opens in Discord with fields to fill in: texts, menus, checkboxes. It is the way to ask for more than a command's options can hold, like a paragraph of text. This page adds `/suggest`, which opens a form and posts the suggestion.
+
+## A form is a file
+
+Create `src/components/modals/suggest.ts`:
+
+```ts src/components/modals/suggest.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Suggest something',
+  fields: {
+    summary: { type: 'text', label: 'In a few words', maxLength: 80 },
+    details: {
+      type: 'text',
+      label: 'Tell us more',
+      style: 'paragraph',
+      required: false,
+    },
+    area: {
+      type: 'radio',
+      label: 'About',
+      options: ['The server', 'The bot', 'Events'],
+    },
+  },
+  async run({ interaction, user, fields, channel }) {
+    const details = fields.details ? `\n${fields.details}` : '';
+    await channel.send(
+      `**Suggestion from ${user.displayName}** (${fields.area})\n${fields.summary}${details}`
+    );
+    await interaction.reply({
+      content: 'Thanks, it was posted!',
+      ephemeral: true,
+    });
+  },
+});
+```
+
+A command opens it with `showModal()`:
+
+```ts src/commands/suggest.ts
+import { command } from 'chapterjs';
+import suggest from '../components/modals/suggest';
+
+export default command({
+  description: 'Suggests something for the server',
+  async run({ interaction }) {
+    await interaction.showModal(suggest);
+  },
+});
+```
+
+Use `/suggest`: the form opens. Fill it in, submit: `run` of the form runs, posts in the channel, and thanks you privately.
+
+Hover `fields` in the form file: `summary` is a `string`, `details` is `string | undefined` (not required), `area` is `'The server' | 'The bot' | 'Events'`. Each field is typed from its kind, like the options of a command.
+
+## Fields
+
+A form has 1 to 5 fields. Each has a `label` (45 characters at most) and an optional `description`. The kind decides what the person sees and what `run` receives:
+
+| `type`                                           | What it is                                                        | `fields.name` is           |
+| ------------------------------------------------ | ----------------------------------------------------------------- | -------------------------- | --------------------- |
+| `'text'`                                         | A text, on one line (`style: 'short'`) or several (`'paragraph'`) | `string`                   |
+| `'select'`                                       | A menu of `options`, written like a select menu's                 | A list of the values       |
+| `'user'`, `'role'`, `'mentionable'`, `'channel'` | A menu filled by Discord                                          | `User[]`, `Role[]`, `(User | Role)[]`, `Channel[]` |
+| `'files'`                                        | Files to upload                                                   | A list of attachments      |
+| `'radio'`                                        | One choice among 2 to 10 `options`                                | One value                  |
+| `'checkboxes'`                                   | Several choices among 1 to 10 `options`                           | A list of the values       |
+| `'checkbox'`                                     | Yes or no                                                         | `boolean`                  |
+| `'note'`                                         | A text to read, which nobody fills in                             | Not there                  |
+
+Every field is required unless it says `required: false`. `minLength` and `maxLength` bound a text; `min` and `max` say how many can be picked or uploaded.
+
+## From a button
+
+A button or a menu can open a form too. The form then knows the message of the button (`interaction.message`) and can change it with `update()` instead of sending a new message. The `data` of a form works like the data of a button: given when the form is opened, received typed in `run`:
+
+```ts src/components/buttons/edit-topic.ts
+import { button } from 'chapterjs';
+import topic from '../modals/topic';
+
+export default button({
+  label: 'Edit the topic',
+  data: { channelId: 'string' },
+  async run({ interaction, data }) {
+    await interaction.showModal(topic({ channelId: data.channelId }));
+  },
+});
+```
+
+```ts src/components/modals/topic.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'New topic',
+  data: { channelId: 'string' },
+  fields: {
+    topic: { type: 'text', label: 'Topic', maxLength: 1024 },
+  },
+  async run({ interaction, fields, data, guild }) {
+    const channel = guild.channels.get(data.channelId);
+    if (channel?.isText()) await channel.edit({ topic: fields.topic });
+    await interaction.update({
+      content: `Topic set to: ${fields.topic}`,
+      components: [],
+    });
+  },
+});
+```
+
+To fill some fields in advance, pass `values` where the form is opened: `topic({ channelId }, { values: { topic: 'Current topic' } })`.
+
+## Points of attention
+
+- **A form must be the first answer.** `showModal()` after a `reply()` or a `defer()` is refused by Discord: open the form first, answer the submission in the form's `run`.
+- **No form from a form.** Discord only opens a form in answer to a command or a component.
+- **The person has as long as they want.** A form is not bound by the 3 seconds; its submission is, and the framework defers for you.
+- **The answers of a form are those of a command**: `reply()`, `defer()`, `edit()`, `followUp()`, `delete()`, plus `update()` and `deferUpdate()` when a button opened it.
+
+## Recap
+
+- A form is a file of `src/components/modals/` with `title` and `fields`; `run` receives `fields` typed per kind.
+- `interaction.showModal(form)` opens it, from a command, a button or a menu, as the first answer.
+- `data` and `values` are given where the form is opened.
+
+<CardGroup cols={2}>
+  <Card
+    title="Embeds and layout"
+    icon="layout-template"
+    href="/tutorial/embeds-and-layout"
+  >
+    Write an embed once, and build messages out of texts, sections and
+    containers.
+  </Card>
+  <Card title="Guide: Forms" icon="book-open" href="/components/modals">
+    Every kind of field, in short.
+  </Card>
+</CardGroup>

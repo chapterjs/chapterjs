@@ -16,6 +16,7 @@ import {
   assembleMessages,
   commandsDeclarations,
   languagesConvention,
+  languageTypedFolders,
   messagesDeclarations,
   type LanguageEntry,
 } from '../src/messages/convention.js';
@@ -311,6 +312,7 @@ describe('the phrases of the framework', () => {
       'count',
       'permissions',
     ]);
+    expect(FRAMEWORK.get('cooldown')!.params).toEqual(['what', 'when']);
     expect(FRAMEWORK.get('command')!.params).toEqual([]);
   });
 
@@ -871,11 +873,11 @@ describe('a language file', () => {
     ],
     [
       { default: language({ texts: {}, framework: 'x' } as never) },
-      `"framework" is an object, one phrase per key: framework: { guildOnly: '...' }. It can have: command, button, menu, form, guildOnly, dmOnly, notHere, unavailable, gone, outdated, authorOnly, failed, missingPermission, needsPermissions.`,
+      `"framework" is an object, one phrase per key: framework: { guildOnly: '...' }. It can have: command, button, menu, form, guildOnly, dmOnly, notHere, unavailable, gone, outdated, authorOnly, failed, missingPermission, cooldown, needsPermissions.`,
     ],
     [
       { default: language({ texts: {}, framework: { hello: 'x' } } as never) },
-      '"hello" is not a phrase of the framework. It can be: command, button, menu, form, guildOnly, dmOnly, notHere, unavailable, gone, outdated, authorOnly, failed, missingPermission, needsPermissions.',
+      '"hello" is not a phrase of the framework. It can be: command, button, menu, form, guildOnly, dmOnly, notHere, unavailable, gone, outdated, authorOnly, failed, missingPermission, cooldown, needsPermissions.',
     ],
     [
       { default: language({ texts: {}, framework: { guildOnly: '' } }) },
@@ -1101,6 +1103,56 @@ declare module 'chapterjs' {
       messagesDeclarations([{ file: 'src/messages/nope.ts', path: '' }])
     ).toBe('');
   });
+
+  it('gives each language file its own language(), which refuses a second default', () => {
+    expect(languageTypedFolders([])).toEqual([]);
+    const files = [
+      { file: 'src/messages/_old.ts', path: '' },
+      { file: 'src/messages/nope.ts', path: '' },
+      { file: 'src/messages/fr.ts', path: '' },
+      { file: 'src/messages/en-US.ts', path: '' },
+      { file: 'src/messages/de.ts', path: '' },
+    ];
+    // Nothing known about the defaults (sync): the plain language().
+    const plain = languageTypedFolders(files);
+    expect(
+      plain.map(({ id, folder, includes }) => [id, folder, includes])
+    ).toEqual([
+      ['messages.fr', 'src/messages/fr.ts', ['main']],
+      ['messages.en-US', 'src/messages/en-US.ts', ['main']],
+      ['messages.de', 'src/messages/de.ts', ['main']],
+    ]);
+    for (const { declarations } of plain) {
+      expect(declarations).toContain('export declare function language<');
+      expect(declarations).toContain('config: LanguageConfig<T>\n');
+      expect(declarations).not.toContain('default?: false');
+    }
+    // One default: the other files refuse default: true, naming it.
+    const one = languageTypedFolders(files, ['src/messages/en-US.ts']);
+    const of = (folders: typeof one, id: string) =>
+      folders.find(folder => folder.id === id)!.declarations;
+    expect(of(one, 'messages.en-US')).not.toContain('default?: false');
+    expect(of(one, 'messages.fr')).toContain(
+      '/** src/messages/en-US.ts already says `default: true`: only one file of src/messages/ is the default language. Remove it there to make this one the default. */\n    default?: false;'
+    );
+    expect(of(one, 'messages.de')).toContain(
+      'src/messages/en-US.ts already says'
+    );
+    // Two: each one refuses because of the other, and the third names both.
+    const two = languageTypedFolders(files, [
+      'src/messages/fr.ts',
+      'src/messages/en-US.ts',
+    ]);
+    expect(of(two, 'messages.en-US')).toContain(
+      'src/messages/fr.ts already says'
+    );
+    expect(of(two, 'messages.fr')).toContain(
+      'src/messages/en-US.ts already says'
+    );
+    expect(of(two, 'messages.de')).toContain(
+      'src/messages/en-US.ts and src/messages/fr.ts already say `default: true`'
+    );
+  });
 });
 
 /** A project with TypeScript, as the scaffolder leaves it. */
@@ -1137,6 +1189,89 @@ const typeErrors = async (cwd: string, fake: FakeWorld) => {
 };
 
 describe.skipIf(process.platform === 'win32')('in the editor', () => {
+  it('underlines a second default: true once the files ran', async () => {
+    const fake = await world();
+    const cwd = typed({
+      'src/messages/en-US.ts': EN,
+      'src/messages/fr.ts': FR,
+      'src/commands/ping.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', run({ t }) { return t('pong'); } });
+`,
+    });
+    const errors = () => {
+      const result = spawnSync(
+        join(packageDir, 'node_modules/.bin/tsc'),
+        ['-b'],
+        { cwd, encoding: 'utf8' }
+      );
+      return [
+        ...new Set(
+          result.stdout
+            .split('\n')
+            .filter(line => line.includes('error TS'))
+            .map(line => line.replace(/\(\d+,\d+\).*/, ''))
+        ),
+      ].sort();
+    };
+    const declared = (locale: string) =>
+      readFileSync(
+        join(cwd, `.chapterjs/types/messages.${locale}.d.ts`),
+        'utf8'
+      );
+    // `sync` runs nothing: both files are fine for the editor.
+    await runDev(cwd, fake, ['sync']).exited;
+    expect(errors()).toEqual([]);
+    expect(
+      JSON.parse(
+        readFileSync(join(cwd, '.chapterjs/projects/messages.fr.json'), 'utf8')
+      ).include
+    ).toEqual([
+      '../../src/messages/fr.ts',
+      '../types/messages.fr.d.ts',
+      '../types/main.d.ts',
+    ]);
+
+    // One default: the other file refuses a second one, and that is all.
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ Connected');
+    expect(declared('fr')).toContain('src/messages/en-US.ts already says');
+    expect(declared('en-US')).not.toContain('default?: false');
+    expect(errors()).toEqual([]);
+
+    // A second one saved: both files are underlined because of the other,
+    // even though fr.ts keeps its last good version for the bot.
+    writeFileSync(
+      join(cwd, 'src/messages/fr.ts'),
+      FR.replace('  texts: {', '  default: true,\n  texts: {')
+    );
+    await cli.waitFor('✗ src/messages/fr.ts 2 languages say default: true');
+    await cli.waitFor('↻ Types updated');
+    expect(declared('fr')).toContain('src/messages/en-US.ts already says');
+    expect(declared('en-US')).toContain('src/messages/fr.ts already says');
+    const result = spawnSync(
+      join(packageDir, 'node_modules/.bin/tsc'),
+      ['-b'],
+      {
+        cwd,
+        encoding: 'utf8',
+      }
+    );
+    expect(result.stdout).toContain(
+      "src/messages/fr.ts(3,3): error TS2322: Type 'true' is not assignable to type 'false'."
+    );
+    expect(errors()).toEqual(['src/messages/en-US.ts', 'src/messages/fr.ts']);
+
+    // Fixed in fr.ts: the types follow, and en-US.ts is the default again.
+    writeFileSync(join(cwd, 'src/messages/fr.ts'), FR);
+    await cli.waitFor('↻ Types updated');
+    await cli.waitFor('messages in 2 languages loaded');
+    expect(declared('fr')).toContain('src/messages/en-US.ts already says');
+    expect(declared('en-US')).not.toContain('default?: false');
+    expect(errors()).toEqual([]);
+    cli.signal('SIGTERM');
+    await cli.exited;
+  }, 60_000);
+
   it('types the keys, the placeholders and the languages', async () => {
     const fake = await world();
     const cwd = typed({

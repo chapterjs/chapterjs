@@ -1,0 +1,56 @@
+---
+title: 'Et ensuite'
+description: 'Une liste de ce que vous savez faire maintenant, les habitudes qui gardent un bot en bonne santé, et où chercher quand vous avez besoin de quelque chose'
+---
+
+Vous êtes passé d’un dossier vide à un bot en ligne pour tout le monde. Voici ce que vous savez, les habitudes à garder, et où chercher à partir de maintenant.
+
+## Ce que vous savez faire maintenant
+
+- **Créer un projet** avec `create chapter`, lui donner un token et un serveur de test, le lancer avec `chapterjs dev`.
+- **Écrire une commande** en tant que fichier de `src/commands/`, avec des options typées pour vous, des réponses publiques ou privées, lentes ou immédiates.
+- **Réagir aux événements** avec un dossier de `src/events/`, membres et messages compris, avec des intents déduits de vos fichiers.
+- **Ajouter des boutons, des menus et des formulaires** en tant que fichiers de `src/components/`, qui transportent des données et survivent aux redémarrages.
+- **Réutiliser des embeds** et construire des messages avec des composants.
+- **Planifier des tâches**, régler la **présence**, et **parler plusieurs langues** avec `t`.
+- **Compiler et déployer**, avec une seconde application pour la production.
+
+## Les habitudes qui gardent un bot en bonne santé
+
+- **Lisez le terminal.** Chaque message dit ce qui s’est passé, puis quoi faire. Un `✗` avec un fichier et une ligne est le chemin le plus court vers une correction.
+- **Laissez l’éditeur travailler pour vous.** Quand quelque chose est souligné, c’est une erreur qui aurait atteint une personne. Quand rien n’est complété, lancez `chapterjs sync`.
+- **Gardez `run` court**, et la logique dans `src/lib/`.
+- **Pensez à qui lit un message** : `ephemeral` pour la personne, `allowedMentions` pour les textes que vous répétez, `t` pour la langue.
+- **Demandez le minimum à Discord** : le moins d’intents privilégiés possible, le moins de permissions possible dans le lien d’invitation.
+- **Compilez avant chaque déploiement**, et ne partagez jamais un token.
+
+## Où chercher
+
+| Vous voulez | Allez à |
+| --- | --- |
+| Savoir faire une chose, vite | L’onglet **Guide** : une page par fonctionnalité |
+| Chaque champ, méthode et type | L’onglet **Référence** : `command()`, `event()`, les structures, le CLI |
+| Ce que veut dire un message du terminal | [Dépannage](/fr/run/troubleshooting) |
+| Savoir si une fonctionnalité existe | [Ce qui n’est pas encore là](/fr/not-yet) |
+| Ce que Discord lui-même permet | La [documentation développeur de Discord](https://docs.discord.com/developers), la source de chaque limite ici |
+
+## Des idées pour votre bot
+
+Quelques idées qui tiennent chacune dans un fichier, avec ce que vous avez appris :
+
+- `/poll` avec une option `string` par réponse, qui envoie un sondage (envoyer des messages).
+- Un fichier `messageCreate` qui répond « gg » par une réaction (événements de messages).
+- Une commande `/ticket` qui ouvre un formulaire et crée un fil privé avec `channel.startThread()` (formulaires, salons).
+- Un fichier `memberUpdate` qui note les changements de surnom dans un salon (événements).
+- Une tâche qui publie le nombre de membres chaque dimanche (tâches, traductions).
+
+Chacune est à une page du Guide. Profitez bien de votre bot.
+
+<CardGroup cols={2}>
+  <Card title="Guide" icon="book-open" href="/fr/quickstart">
+    Une page par fonctionnalité.
+  </Card>
+  <Card title="Référence" icon="code" href="/fr/reference">
+    Tout, structure par structure.
+  </Card>
+</CardGroup>

@@ -35,12 +35,6 @@ Asking a question with a message, then waiting for the next message, reaction or
 
 Meanwhile: a button or a menu of `src/components/` that carries what it needs in its `data`. Its file runs when the person clicks, however long after, even after a restart: see [Components](/components).
 
-## Cooldowns
-
-Refusing a command to a person or a server that used it a moment ago. Not available: a command has no setting for it.
-
-Meanwhile: a `Map` of the last uses, kept in a file starting with `_` and imported by the command. It starts empty on every restart, and `chapterjs dev` reloads it on every save.
-
 ## Storing data
 
 Somewhere to keep what your bot learns: scores, settings, warnings. Not available: nothing survives a restart except the `data` of a [component](/components), which lives in the message itself.

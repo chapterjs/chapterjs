@@ -1,0 +1,243 @@
+---
+title: 'Interaction'
+description: 'Quelqu’un a utilisé quelque chose du bot et attend une réponse : répondre, différer, modifier, envoyer une suite'
+---
+
+Une `Interaction` est ce avec quoi vous répondez : l’`interaction` d’une [commande](/fr/commands) est une `CommandInteraction`, celle d’un [bouton ou d’un menu](/fr/components) une `ComponentInteraction`, celle d’un [formulaire](/fr/components/modals) une `ModalInteraction`. Discord veut une première réponse en moins de 3 secondes, et accepte des modifications et d’autres messages pendant 15 minutes.
+
+```ts
+import type { CommandInteraction } from 'chapterjs';
+
+export async function deny(interaction: CommandInteraction, why: string) {
+  // Seule la personne le voit, quoi que dise la commande.
+  await interaction.reply({ content: `Désolé : ${why}`, ephemeral: true });
+}
+```
+
+<Note>
+  Vous ne créez jamais une interaction : votre fonction `run` en reçoit une. Cette page liste tout ce qu’elle a ; comment bien répondre (quand différer, réponses éphémères, ce qui se passe quand `run` lève une erreur) est dans [Répondre](/fr/commands/answering).
+</Note>
+
+## Propriétés
+
+<ResponseField name="id" type="Snowflake">
+  L’identifiant unique que Discord lui a donné.
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date">
+  Quand elle a été créée : un identifiant Discord contient sa date de création.
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  Qui l’a faite.
+</ResponseField>
+
+<ResponseField name="guildId" type="Snowflake | null">
+  L’identifiant du serveur ; `null` dans un message privé.
+</ResponseField>
+
+<ResponseField name="channelId" type="Snowflake">
+  L’identifiant du salon où elle s’est produite.
+</ResponseField>
+
+<ResponseField name="guild" type="Guild | null">
+  Le serveur où elle s’est produite ; `null` dans un message privé.
+</ResponseField>
+
+<ResponseField name="channel" type="TextBasedChannel">
+  Le salon où elle s’est produite : Discord l’envoie avec l’interaction.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  Qui l’a faite, en tant que membre du serveur ; `null` dans un message privé.
+</ResponseField>
+
+<ResponseField name="locale" type="Locale">
+  La langue de la personne : servez-vous-en pour lui répondre dans sa langue.
+</ResponseField>
+
+<ResponseField name="answered" type="boolean">
+  Si une réponse a été envoyée, ou promise avec `defer()`.
+</ResponseField>
+
+<ResponseField name="deferred" type="boolean">
+  Si `defer()` a été appelé et que la réponse est encore à venir. Aussi `true` après `deferUpdate()`, jusqu’à ce qu’`update()` ou `reply()` la complète.
+</ResponseField>
+
+### CommandInteraction
+
+Quelqu’un a utilisé une commande slash. Elle a tout ce qui précède, plus :
+
+<ResponseField name="commandName" type="string">
+  La commande telle que la personne l’a tapée : `/mod ban`.
+</ResponseField>
+
+Et une action de plus, [`showModal()`](#showmodal).
+
+### ComponentInteraction
+
+Quelqu’un a cliqué sur un bouton ou choisi quelque chose dans un menu déroulant d’un message du bot. Elle peut répondre comme une commande, ou modifier le message sur lequel est le composant. Elle a tout ce qu’a `Interaction`, plus :
+
+<ResponseField name="message" type="Message">
+  Le message sur lequel est le composant.
+</ResponseField>
+
+Et trois actions de plus : [`update()`](#update), [`deferUpdate()`](#deferupdate) et [`showModal()`](#showmodal).
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-message-component-data-structure)
+
+### ModalInteraction
+
+Quelqu’un a envoyé un formulaire du bot. Elle peut répondre comme une commande ; quand un bouton ou un menu a ouvert le formulaire, elle peut aussi modifier leur message. Elle a tout ce qu’a `Interaction`, plus :
+
+<ResponseField name="message" type="Message | null">
+  Le message dont le bouton ou le menu a ouvert le formulaire ; `null` quand c’est une commande.
+</ResponseField>
+
+Et deux actions de plus : [`update()`](#update) et [`deferUpdate()`](#deferupdate), qui lèvent une erreur quand `message` est `null` : « This form was opened by a command, not by a button or a menu: there is no message to change. Use interaction.reply(). »
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-modal-submit-data-structure)
+
+### Sur un serveur, en privé
+
+Ce que reçoit une commande est plus précis que `CommandInteraction`, et suit le `where` de la commande. Il en va de même pour les composants, avec les types [`InGuild`, `InPrivate` et `InDm`](/fr/reference/button#inguild-inprivate-indm).
+
+| Type | Pour | Ce qui change |
+| --- | --- | --- |
+| `GuildCommandInteraction` | Une commande slash utilisée sur un serveur : ce que reçoit une commande par défaut (`where: 'guild'`). Discord envoie le serveur, le membre et le salon avec elle. | `guildId` est un `Snowflake`, `guild` un `Guild`, `member` un `GuildMember`, `channel` un `GuildTextBasedChannel` |
+| `DmCommandInteraction` | Une commande slash qui ne s’utilise qu’en messages privés avec le bot (`where: 'dm'`) : rien qui concerne un serveur n’existe dessus. | `guildId`, `guild` et `member` n’existent pas ; `channel` est un `DMChannel` |
+| `PrivateCommandInteraction` | Une commande slash utilisée dans un message privé avec le bot, pour une commande qui fonctionne aux deux endroits (`where: 'both'`) : il n’y a pas de serveur, ce qui permet de la distinguer de `GuildCommandInteraction`. | `guildId`, `guild` et `member` sont `null` ; `channel` est un `DMChannel` |
+
+Avec `where: 'both'`, `run` reçoit `GuildCommandInteraction | PrivateCommandInteraction` : un seul `if (interaction.guild)` restreint tout.
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object-interaction-structure)
+
+## Helpers
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+Les données de l’interaction, sans son token : un token est un secret. `console.log(interaction)` ne le montre jamais non plus.
+
+## Actions
+
+Les réponses sont envoyées l’une après l’autre, dans l’ordre où elles ont été demandées : vous pouvez appeler `reply()` et `followUp()` sans attendre que la première se termine.
+
+### reply()
+
+```ts
+reply(message: InteractionReply): Promise<Message>
+```
+
+Répond. Si `defer()` a été appelé (par vous, ou par le framework parce que la réponse prenait du temps), ceci complète la réponse en attente.
+
+Lève une erreur quand l’interaction a déjà reçu une réponse : « This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer. »
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#create-interaction-response)
+
+### defer()
+
+```ts
+defer(options?: { ephemeral?: boolean }): Promise<void>
+```
+
+Dit à Discord que la réponse arrive : la personne voit « réfléchit… » et `reply()` peut alors prendre jusqu’à 15 minutes. Le framework le fait tout seul quand une réponse prend du temps ; appelez-le vous-même pour choisir quand.
+
+Ne fait rien quand l’interaction a déjà reçu une réponse ou a été différée. Le fait que la réponse soit éphémère se décide ici : sans `ephemeral`, c’est ce que dit la commande.
+
+### update()
+
+```ts
+update(message: string | MessageEditOptions): Promise<Message>
+```
+
+Sur une `ComponentInteraction` et une `ModalInteraction`. Modifie le message sur lequel est le composant, en guise de réponse : son texte, ses embeds, ses composants, ses fichiers. Seul ce que vous passez change ; `components: []` retire les boutons et les menus.
+
+Lève une erreur quand l’interaction a déjà reçu un message en réponse ou a été différée avec `defer()` : « This interaction was already answered: the message can no longer be changed through it. Use interaction.message.edit() to change the message, or interaction.followUp() to send another one. »
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-interaction-callback-type)
+
+### deferUpdate()
+
+```ts
+deferUpdate(): Promise<void>
+```
+
+Sur une `ComponentInteraction` et une `ModalInteraction`. Dit à Discord que le message changera plus tard : la personne ne voit rien entre-temps, et `update()` peut alors prendre jusqu’à 15 minutes. Le framework le fait tout seul quand une réponse à un composant prend du temps.
+
+Après `deferUpdate()`, `reply()` envoie son message comme une suite, ce qui revient au même pour la personne, et `edit()` modifie le message du composant.
+
+### showModal()
+
+```ts
+showModal(form: ModalComponent): Promise<void>
+```
+
+Sur une `CommandInteraction` et une `ComponentInteraction`. Ouvre un formulaire, en guise de réponse : `showModal(report({ userId }))`, avec un formulaire de `src/components/modals/`. Ce doit être la première réponse, et la personne a tout le temps qu’elle veut pour le remplir.
+
+Lève une erreur quand quelque chose a déjà été répondu : « A form can only be the first answer to an interaction: call interaction.showModal() before reply() or defer(), and the framework waits for it. »
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal)
+
+### edit()
+
+```ts
+edit(message: string | MessageEditOptions): Promise<Message>
+```
+
+Modifie la réponse. Elle prend un texte, ou des [MessageEditOptions](/fr/reference/message-options#messageeditoptions).
+
+Lève une erreur quand il n’y a pas encore de réponse : « There is no answer to edit yet: call interaction.reply() first. »
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#edit-original-interaction-response)
+
+### followUp()
+
+```ts
+followUp(message: InteractionReply): Promise<Message>
+```
+
+Envoie un autre message, après la réponse.
+
+Lève une erreur quand il n’y a pas encore de réponse : « A follow-up comes after an answer: call interaction.reply() first. »
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#create-followup-message)
+
+### delete()
+
+```ts
+delete(): Promise<void>
+```
+
+Supprime la réponse.
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/receiving-and-responding#delete-original-interaction-response)
+
+## Types
+
+### InteractionReply
+
+```ts
+InteractionReply = string | InteractionReplyOptions
+```
+
+Une réponse à une interaction : son texte, ou ses options. Ce que prennent `reply()` et `followUp()`.
+
+### InteractionReplyOptions
+
+Les options d’une réponse : tout ce que prend un message, sauf `replyTo` et `stickers`, plus `ephemeral`. Elles sont listées dans [InteractionReplyOptions](/fr/reference/message-options#interactionreplyoptions).
+
+```ts
+import type { CommandInteraction } from 'chapterjs';
+
+export async function report(interaction: CommandInteraction, lines: string[]) {
+  await interaction.reply({
+    embeds: [{ title: 'Rapport', description: lines.join('\n') }],
+    files: [{ name: 'report.txt', data: lines.join('\n') }],
+    ephemeral: true,
+  });
+}
+```

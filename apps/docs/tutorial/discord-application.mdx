@@ -1,0 +1,94 @@
+---
+title: 'Your Discord application'
+description: 'Create the application of your bot in the Developer Portal, copy its token and the ID of your test server, and understand why you want two applications'
+---
+
+Your program needs a bot account to log in as. This page creates it, and gets the two values your project will ask for: the **token** of the bot and the **ID** of your test server. It takes a few minutes, all of it in a browser.
+
+## Why two applications
+
+You are about to create an application. Create **two**, one named after your bot with "dev" in the name (`buddy dev`), one with the final name (`buddy`). Here is why, so that you don't skip it.
+
+Slash commands belong to the bot, not to a server. When the production bot registers `/dice` for everyone, every server it is in sees it, your test server included. If you then change `/dice` on your computer with the same bot, your test server shows the two versions side by side, and you can't tell which one you are using. The presence (what the bot shows under its name), the options of the Developer Portal and the daily limits of Discord are shared the same way: what you try on your computer leaks to everyone.
+
+With two applications, the dev bot is yours to break, and the production bot never sees what you try. The token of the dev one goes on your computer; the token of the other goes on the machine that will host the bot, much later in this tutorial. Until then, you only use the dev one.
+
+## Create the applications
+
+<Steps>
+  <Step title="Open the Developer Portal">
+    Go to [discord.com/developers/applications](https://discord.com/developers/applications) and sign in with your Discord account.
+  </Step>
+  <Step title="New Application">
+    Click **New Application**, give it a name, accept the terms, and click **Create**. The name is what people see in the member list, so choose it with care; it can be changed later.
+
+    Do it twice: once with "dev" in the name, once without.
+
+  </Step>
+  <Step title="The Bot page">
+    In the left menu of the **dev** application, open **Bot**. This page is the bot account of the application: its username, its avatar, its token, and three options we come back to below.
+  </Step>
+</Steps>
+
+## Copy the token
+
+On the **Bot** page of the **dev** application, click **Reset Token**, confirm, and copy what appears. Discord shows a token **once**: when you leave the page, it is hidden for good. If you lose it, click **Reset Token** again; the old one stops working everywhere it was used, which is also what to do if it ever leaks.
+
+Keep it somewhere for a minute: the next page puts it in your project. Then forget where you kept it and delete it from there.
+
+<Warning>
+  The token is the password of your bot. Never put it in your code, never commit
+  it, never paste it in a chat or a screenshot. A project made with `create
+  chapter` keeps it in a `.env` file that git ignores.
+</Warning>
+
+## Copy the ID of your test server
+
+Every server, channel, user and message on Discord has an **ID**: a number of 17 to 20 digits that never changes, even when the name does. Your project needs the ID of your test server, so that `chapterjs dev` knows where to run your bot.
+
+IDs are hidden until you turn on **Developer Mode** in Discord: **User Settings** → **Advanced** → **Developer Mode**. Then right-click your test server in the server list and choose **Copy Server ID**.
+
+<Info>
+  Discord calls a server a *guild* in its API. You will see the word in a few
+  names (`DEV_GUILD_ID`, `guild` in your code): it always means a server.
+</Info>
+
+## Adding the bot to your test server
+
+Nothing to do now. A bot is added to a server through a link that Discord generates from the application. `chapterjs dev` prints that link the first time it runs and the bot is not in the server yet, and waits for you to open it. You will see it on the next page.
+
+## The three privileged intents
+
+Still on the **Bot** page, under **Privileged Gateway Intents**, there are three switches: **Presence Intent**, **Server Members Intent** and **Message Content Intent**. These are the privileged intents of the previous chapter: what a bot has to ask permission for, because it is more personal than the rest.
+
+Leave them off for now. ChapterJS tells you when one of your files needs one, with the name of the file and the link to this page, and waits for you to enable it. Enabling what you don't use is the one thing to avoid: a bot in 100 servers or more has to be verified by Discord to keep its privileged intents, and the fewer it asks for, the easier that is.
+
+| Option                     | Needed when your bot                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Server Members Intent**  | Reacts to members joining, leaving or changing (`src/events/memberJoin/`, `memberLeave/`, `memberUpdate/`) |
+| **Message Content Intent** | Reads the text of the messages people write (`src/events/messageCreate/`, `messageUpdate/`)                |
+| **Presence Intent**        | Nothing in ChapterJS uses it today                                                                         |
+
+## Recap
+
+- Two applications: `my-bot dev` for your computer, `my-bot` for production.
+- The **token** of the dev bot, from **Bot** → **Reset Token**: shown once, a password.
+- The **ID** of your test server, with Developer Mode on: right-click → **Copy Server ID**.
+- The privileged intents stay off until a file of yours needs one.
+
+<CardGroup cols={2}>
+  <Card
+    title="Creating the project"
+    icon="folder-plus"
+    href="/tutorial/create-project"
+  >
+    Put the two values in a project and see the bot come online.
+  </Card>
+  <Card
+    title="Guide: Your Discord application"
+    icon="book-open"
+    href="/setup/discord-application"
+  >
+    The same steps, straight to the point, with every message of the CLI.
+  </Card>
+</CardGroup>

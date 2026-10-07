@@ -27,6 +27,7 @@ import {
   assembleMessages,
   commandsDeclarations,
   languagesConvention,
+  languageTypedFolders,
   messagesDeclarations,
   type LanguageEntry,
 } from '../messages/convention.js';
@@ -83,29 +84,32 @@ export interface ProjectOptions {
 
 /**
  * Writes the types of a project (`.chapterjs/`): one project per typed
- * folder, and what every file gets, like the files of `public/`. With
- * the commands as they loaded, a language file only offers the ones
- * without `description` in their file, and `t` is typed from the default
- * language; without them (`sync`, which runs nothing), every command is
- * offered and the first language file types `t`.
+ * folder (every event, every language file), and what every file gets,
+ * like the files of `public/`. With the commands and the languages as
+ * they loaded, a language file only offers the ones without `description`
+ * in their file, `t` is typed from the default language and `default:
+ * true` is refused in every file when another one says it (`defaults`,
+ * the files that do); without them (`sync`, which runs nothing),
+ * every command is offered and the first language file types `t`.
  * @returns how many files were written
  */
 export async function writeTypes(
   cwd: string,
   commands?: ReadonlyMap<string, CommandEntry>,
-  messages?: LoadedMessages | null
+  messages?: LoadedMessages | null,
+  defaults: readonly string[] = []
 ): Promise<number> {
-  const [files, languages, commandFiles] = await Promise.all([
+  const [files, languageFiles, commandFiles] = await Promise.all([
     listPublic(cwd),
     listFolder(cwd, languagesConvention),
     listFolder(cwd, commandsConvention),
   ]);
   return writeGenerated(
     cwd,
-    eventTypedFolders(),
+    [...eventTypedFolders(), ...languageTypedFolders(languageFiles, defaults)],
     publicDeclarations(files) +
       messagesDeclarations(
-        languages,
+        languageFiles,
         messages ? messages.files.get(messages.default) : undefined
       ),
     // Only language files use it, and they are in the main project.
@@ -157,6 +161,12 @@ export interface Project {
   readonly presence: LoadedPresence | null;
   /** The languages of `src/messages/`, assembled, or `null` without any. */
   readonly messages: LoadedMessages | null;
+  /**
+   * The language files that say `default: true`, as they are now: a file
+   * left out because a second one says it is counted, so that both are
+   * underlined in the editor.
+   */
+  readonly languageDefaults: readonly string[];
   /**
    * Loads every file (again). A file that fails is returned; it keeps its
    * last working version when it had one.
@@ -253,6 +263,7 @@ export function createProject(options: ProjectOptions): Project {
   let messages: LoadedMessages | null = null;
   /** The last version of each language file that loaded. */
   let languages = new Map<string, LanguageEntry>();
+  let languageDefaults: readonly string[] = [];
   /** The bot running the files now, to give it what a reload changes. */
   let running: Bot | null = null;
   /** The presence each bot was given last, to send only what changed. */
@@ -279,6 +290,9 @@ export function createProject(options: ProjectOptions): Project {
     },
     get messages() {
       return messages;
+    },
+    get languageDefaults() {
+      return languageDefaults;
     },
     report,
     async load() {
@@ -370,6 +384,11 @@ export function createProject(options: ProjectOptions): Project {
         const previous = languages.get(file);
         if (previous) nextLanguages.set(file, previous);
       }
+      // What the files say now, before a file is put back to its last good
+      // version: two files saying default: true are both underlined.
+      languageDefaults = [...nextLanguages.values()]
+        .filter(({ language }) => language.isDefault)
+        .map(({ file }) => file);
       const previousLanguages = languages;
       languages = nextLanguages;
       let assembled = assembleMessages([...languages.values()]);

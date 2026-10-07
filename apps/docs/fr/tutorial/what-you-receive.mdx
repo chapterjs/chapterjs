@@ -1,0 +1,149 @@
+---
+title: 'Ce que vous recevez'
+description: 'Les objets que reçoivent vos fonctions : utilisateurs, membres, serveurs, salons et messages, ce qu’ils vous disent sans requête, et ce qu’ils savent faire'
+---
+
+`run` reçoit `interaction`, `user`, `options`... et aussi `member`, `guild` et `channel`. Ce sont les **structures** de ChapterJS : des objets qui enveloppent ce que Discord a envoyé, avec des noms lisibles et des actions. Tout ce que vous faites dans un bot passe par elles, alors cette page en fait une visite guidée. Elle utilise `/whois` et une nouvelle commande, `/warn`.
+
+## L’objet que reçoit run
+
+Dans une commande utilisée sur un serveur :
+
+| Nom | Ce que c’est |
+| --- | --- |
+| `interaction` | L’utilisation de la commande : comment répondre. |
+| `options` | Ce que la personne a rempli. |
+| `user` | Qui a utilisé la commande, en tant qu’**utilisateur** Discord : le compte. |
+| `member` | La même personne en tant que **membre** de ce serveur : surnom, rôles, permissions. |
+| `guild` | Le **serveur** où la commande a été utilisée. |
+| `channel` | Le **salon** où elle a été utilisée. |
+
+Utilisateur et membre sont la même personne vue sous deux angles. Un `User` est le compte : nom d’utilisateur, avatar, date de création. Un `GuildMember` est ce compte dans un serveur : le surnom, les rôles, ce qu’il a le droit de faire ici, quand il est arrivé. Quelqu’un présent dans trois serveurs est un utilisateur et trois membres.
+
+Sur un serveur, `member`, `guild` et `channel` sont **toujours là**. Vous n’écrivez jamais `guild?.name` ni ne vérifiez `null` : le framework les garantit, et l’éditeur le sait. (Une commande peut aussi fonctionner en messages privés, où il n’y a pas de serveur ; c’est un réglage `where` présenté dans le Guide.)
+
+## Lire ne coûte rien
+
+Rouvrez `/whois` et affichez davantage :
+
+```ts src/commands/whois.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Vous parle de quelqu’un',
+  options: {
+    who: { type: 'user', description: 'Qui regarder', required: true },
+  },
+  async run({ interaction, options, guild }) {
+    const user = options.who;
+    const member = await guild.fetchMember(user);
+    const roles = member.roles.map(role => role.name).join(', ') || 'aucun';
+    await interaction.reply(
+      `${member.displayName} a rejoint ${guild.name} le ${member.joinedAt?.toDateString() ?? 'une date inconnue'}. ` +
+        `Rôles : ${roles}. Le plus haut : ${member.highestRole.name}.`
+    );
+  },
+});
+```
+
+Deux sortes de choses se passent ici, et la différence compte :
+
+- **Les propriétés lisent ce que le bot sait déjà.** `guild.name`, `member.roles`, `member.highestRole` : aucune requête à Discord, la réponse est immédiate. Le bot se souvient de ses serveurs, de leurs salons et de leurs rôles, parce que Discord les lui a décrits à la connexion et lui envoie chaque changement.
+- **Les méthodes `fetch…()` demandent à Discord.** `guild.fetchMember(user)` récupère un membre que le bot ne connaît peut-être pas encore, et `await` est nécessaire. Le bot répond depuis sa mémoire quand il peut, et demande à Discord sinon.
+
+La règle à retenir : une propriété n’envoie jamais de requête, et un `fetch…()` en envoie. Tout ce que vous pouvez lire sans `await` est gratuit.
+
+<Info>
+  Pourquoi `fetchMember` pour un membre, alors que `guild.name` est simplement là ? Un serveur peut avoir des millions de membres, donc un bot ne peut pas tous les garder en mémoire : il garde ceux qu’il a vus récemment. Les serveurs, salons et rôles sont peu nombreux, alors il les garde tous. La page [Mémoire et limites](/fr/tutorial/memory-and-limits) dit exactement ce qui est gardé.
+</Info>
+
+`member.joinedAt` est `Date | null` parce que Discord ne l’envoie pas toujours : le `?.` et le `??` sont honnêtes. Dans ChapterJS, une valeur n’est nullable que lorsqu’elle peut vraiment manquer ; ce qui ne peut pas manquer ne l’est jamais.
+
+## Les actions : demander à Discord de faire quelque chose
+
+Chaque structure a des méthodes qui font quelque chose : `channel.send()`, `member.addRole()`, `member.kick()`, `message.react()`. Elles envoient une requête, donc on les `await`, et elles peuvent échouer, puisque Discord peut refuser.
+
+Voici `/warn`, qui exclut temporairement quelqu’un pendant dix minutes et le prévient en privé :
+
+```ts src/commands/warn.ts
+import { command, DiscordApiError } from 'chapterjs';
+
+export default command({
+  description: 'Avertit un membre avec une courte exclusion',
+  permissions: ['ModerateMembers'],
+  options: {
+    who: { type: 'user', description: 'Qui avertir', required: true },
+    reason: { type: 'string', description: 'Pourquoi', required: true, maxLength: 200 },
+  },
+  async run({ interaction, options, guild, member }) {
+    const target = await guild.fetchMember(options.who);
+    if (!member.isHigherThan(target)) {
+      await interaction.reply({ content: 'Vous ne pouvez avertir que les membres en dessous de vous.', ephemeral: true });
+      return;
+    }
+    await target.timeout(10 * 60 * 1000, options.reason);
+    let told = 'et il a été prévenu en privé';
+    try {
+      await target.send(`Vous avez reçu un avertissement sur ${guild.name} : ${options.reason}`);
+    } catch (error) {
+      // 50007 : cette personne n’accepte pas les messages privés.
+      if (!(error instanceof DiscordApiError && error.code === 50007)) throw error;
+      told = 'mais ses messages privés sont fermés';
+    }
+    await interaction.reply(`${target.displayName} a reçu un avertissement de 10 minutes, ${told}.`);
+  },
+});
+```
+
+À voir :
+
+- **`permissions: ['ModerateMembers']`** dit qui peut utiliser la commande. Discord la cache aux autres, et le framework vérifie à nouveau quand elle est utilisée : quelqu’un sans la permission lit « You need the ModerateMembers permission to use this command. » et `run` ne démarre jamais. Les permissions s’écrivent par leur nom, et l’éditeur les complète.
+- **`member.isHigherThan(target)`** compare les rôles : Discord refuse de modérer quelqu’un dont le rôle le plus haut est au-dessus du vôtre, alors vérifier d’abord donne une meilleure réponse que de laisser Discord refuser.
+- **`timeout(duration, reason)`** prend des millisecondes, et une raison qui va dans le journal d’audit du serveur. Les actions qui apparaissent dans le journal d’audit prennent toutes une `reason`.
+- **`try` / `catch` autour de `send()`.** Certaines personnes ferment leurs messages privés ; Discord refuse alors avec le code `50007`. L’erreur est une `DiscordApiError`, et son `code` est ce qu’il faut tester : le texte peut changer, le code jamais. Tout le reste est relancé, pour qu’un vrai problème soit signalé.
+
+## Les structures que vous rencontrerez
+
+| Structure | Ce que c’est | Où vous l’obtenez |
+| --- | --- | --- |
+| `User` | Un compte | `user`, `options.who`, `message.author` |
+| `GuildMember` | Un utilisateur dans un serveur | `member`, `guild.fetchMember()`, `message.member` |
+| `Guild` | Un serveur | `guild`, `member.guild`, `message.guild` |
+| `Role` | Un rôle d’un serveur | `member.roles`, `guild.roles` |
+| `TextChannel`, `VoiceChannel`, `ThreadChannel`... | Un salon | `channel`, `guild.channels`, `message.channel` |
+| `Message` | Un message | Ce que renvoie `send()`, les événements sur les messages |
+
+Quelques propriétés à connaître par cœur : `user.displayName` (le nom à afficher), `user.username` (l’identifiant unique), `member.displayName` (le surnom quand il y en a un), `guild.me` (votre bot en tant que membre de ce serveur, toujours là), `guild.everyoneRole`, `channel.name`.
+
+Les salons sont de plusieurs sortes, et seules certaines peuvent recevoir un message. Quand vous avez un salon sans connaître sa sorte, `channel.isTextBased()` vous dit s’il le peut :
+
+```ts
+import type { Guild } from 'chapterjs';
+
+async function announce(guild: Guild, text: string) {
+  const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+  if (general?.isTextBased()) await general.send(text);
+}
+```
+
+Chaque structure a une page dans la Référence avec toutes ses propriétés et méthodes ; `GuildMember` est une bonne page à parcourir.
+
+## Les mentions dans un texte
+
+Mettez une structure dans un texte et elle devient une mention : `${member}` mentionne le membre, `${channel}` fait un lien vers le salon, `${role}` mentionne le rôle. `/whois` pourrait répondre `${member} a rejoint le...` pour rendre le nom cliquable.
+
+## Récapitulatif
+
+- `user` est le compte, `member` la personne dans ce serveur, `guild` le serveur, `channel` le salon ; sur un serveur, aucun ne manque jamais.
+- Une propriété lit ce que le bot sait, immédiatement ; un `fetch…()` demande à Discord.
+- Les actions sont `await`ées et peuvent échouer ; `DiscordApiError.code` dit pourquoi.
+- `permissions` sur une commande décide qui peut l’utiliser, avant `run`.
+
+<CardGroup cols={2}>
+  <Card title="Envoyer des messages" icon="mail" href="/fr/tutorial/sending-messages">
+    Textes, embeds, fichiers, mentions, sondages, et que faire d’un message une fois envoyé.
+  </Card>
+  <Card title="Référence : GuildMember" icon="code" href="/fr/reference/member">
+    Chaque propriété et action d’un membre.
+  </Card>
+</CardGroup>

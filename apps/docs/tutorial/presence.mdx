@@ -1,0 +1,77 @@
+---
+title: 'Presence'
+description: 'Choose the status of your bot and what it shows under its name, with one file'
+---
+
+In the member list, a bot has a colored dot and sometimes a line under its name: "Playing with ChapterJS", in the template. That is its **presence**. It is one file, `src/presence.ts`, and this page is short because the file is.
+
+## The file
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  status: 'online',
+  activity: { type: 'watching', name: 'over the server' },
+});
+```
+
+Save it with the bot running:
+
+```text
+↻ Presence updated
+```
+
+No reconnection: the bot tells Discord its new presence at once. Without the file, the bot is online and shows nothing. Both fields are optional.
+
+## Status
+
+| Write         | Shown                                |
+| ------------- | ------------------------------------ |
+| `'online'`    | A green dot (the default)            |
+| `'idle'`      | An orange moon                       |
+| `'dnd'`       | A red dot, "do not disturb"          |
+| `'invisible'` | Offline, while the bot keeps running |
+
+`'invisible'` is useful for a bot that works in the background and should not look like someone to talk to.
+
+## Activity
+
+`type` says how Discord words it, `name` is the text after it:
+
+| Type          | Shown                                                                         |
+| ------------- | ----------------------------------------------------------------------------- |
+| `'playing'`   | Playing _name_                                                                |
+| `'listening'` | Listening to _name_                                                           |
+| `'watching'`  | Watching _name_                                                               |
+| `'competing'` | Competing in _name_                                                           |
+| `'custom'`    | _name_, alone                                                                 |
+| `'streaming'` | Streaming _name_, with a link to the stream (needs a Twitch or YouTube `url`) |
+
+A common use is a hint: `{ type: 'playing', name: '/help' }` tells people where to start. That is all a bot may set: Discord lets a person show much more (a song, a game with details), but a bot only has a type, a name, and a URL for a stream.
+
+## Points of attention
+
+- **The presence is the bot's, not the server's.** It is the same in every server the bot is in. That is one more reason for a separate dev application: what you try here is shown everywhere the bot is.
+- **Discord accepts a few changes per minute.** When you save faster than that, only the latest presence is sent, when it may be.
+- **A file that does not load** is reported with what is wrong, and the bot keeps the last presence that worked. Deleting the file puts the bot back to online with nothing shown.
+- **The presence comes from the file only.** There is no way to change it from your code, so a presence that shows live data (a member count, a song) is not possible today. Discord would throttle a bot that changed it every few seconds anyway.
+
+## Recap
+
+- `src/presence.ts` exports `presence({ status, activity })`; saving it applies at once.
+- `status` is the dot; `activity` is the line under the name, with a `type` and a `name`.
+- One presence for the whole bot, in every server.
+
+<CardGroup cols={2}>
+  <Card
+    title="Translated messages"
+    icon="languages"
+    href="/tutorial/translations"
+  >
+    Answer each person in their language.
+  </Card>
+  <Card title="Guide: Presence" icon="book-open" href="/presence">
+    The same, in short.
+  </Card>
+</CardGroup>
