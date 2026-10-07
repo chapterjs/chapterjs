@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { setPublicDir } from '../assets/asset.js';
 import { listPublic, publicDeclarations } from '../assets/public.js';
 import { eventTypedFolders } from '../events/types.js';
+import { MissingForEvent } from '../events/registry.js';
 import { writeGenerated } from '../loader/generated.js';
 import { commandsConvention } from '../commands/convention.js';
 import { CommandRouter } from '../commands/router.js';
@@ -239,10 +240,16 @@ export function createProject(options: ProjectOptions): Project {
   };
   const router = new EventRouter(
     (file, error) => report({ file, error }),
-    (event, error) =>
+    (event, error) => {
+      const missing = error instanceof MissingForEvent ? error : null;
+      const what =
+        missing?.what === 'user'
+          ? 'the user who did it'
+          : 'the channel it happened in';
       log.warn(
-        `A ${event} event was not given to your files: Discord did not let the bot read the channel it happened in (${messageOf(error)}).`
-      )
+        `A ${event} event was not given to your files: Discord did not let the bot read ${what} (${messageOf(missing ? missing.cause : error)}).`
+      );
+    }
   );
   const reporter = {
     onError: (file: string, error: unknown) => report({ file, error }),

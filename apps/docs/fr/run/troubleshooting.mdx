@@ -110,6 +110,9 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
   <Accordion title="⚠ A … event was not given to your files: Discord did not let the bot read the channel it happened in (…).">
     Un événement s’est produit dans un salon que le bot ne connaît pas encore (un fil qu’il n’a jamais vu, par exemple), et Discord a refusé de le décrire : le bot n’a pas la permission de voir ce salon. Vos fichiers n’ont pas tourné pour cet événement. Donnez au bot l’accès au salon s’il doit y réagir.
   </Accordion>
+  <Accordion title="⚠ A … event was not given to your files: Discord did not let the bot read the user who did it (…).">
+    L’événement ne donnait que l’id de la personne (une réaction retirée, un vote, quelqu’un intéressé par un événement programmé), le bot ne connaissait pas cette personne, et Discord a refusé de la décrire : en général un compte supprimé. Vos fichiers n’ont pas tourné pour cet événement. Rien à faire.
+  </Accordion>
   <Accordion title="⚠ An event of Discord (…) could not be read: …">
     Quelque chose dans un événement envoyé par Discord n’a pas pu être appliqué à ce dont le bot se souvient. Vos fichiers ont quand même reçu l’événement. Si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le message.
   </Accordion>

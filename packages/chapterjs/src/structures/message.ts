@@ -17,6 +17,7 @@ import {
 import { reactionEmoji } from '../discord/formatting.js';
 import type { StartThreadFromMessageJSONParams } from '../discord/types/channel.js';
 import type { Snowflake } from '../discord/types/common.js';
+import type { RawPartialEmoji } from '../discord/types/emoji.js';
 import {
   MessageFlags,
   MessageType,
@@ -56,6 +57,12 @@ export type MessageFlagName = keyof typeof MessageFlags;
 export type Attachment = Camelize<RawAttachment>;
 /** The reactions of one emoji on a message. */
 export type Reaction = Camelize<RawReaction>;
+/**
+ * The emoji of a reaction: a standard one has only a `name` (`"👍"`), a
+ * custom one has an `id` too.
+ * @see https://docs.discord.com/developers/resources/emoji#emoji-object
+ */
+export type ReactionEmoji = Camelize<RawPartialEmoji>;
 
 /** An emoji to react with: a standard one (`"👍"`), or a custom one. */
 export type EmojiInput =

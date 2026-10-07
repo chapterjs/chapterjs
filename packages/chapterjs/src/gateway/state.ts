@@ -120,12 +120,19 @@ const handlers: Handlers = {
     const guild = guildOf(ctx, data.guild_id);
     if (!guild) return;
     storesOf(guild).members.delete(data.user.id);
+    storesOf(guild).voiceStates.delete(data.user.id);
     countMembers(guild, -1);
   },
   GUILD_MEMBERS_CHUNK(ctx, data) {
     for (const member of data.members) {
       ctx.entities.member(data.guild_id, member);
     }
+  },
+
+  VOICE_STATE_UPDATE(ctx, data) {
+    if (!data.guild_id) return;
+    if (data.member) ctx.entities.member(data.guild_id, data.member);
+    ctx.entities.voiceState(data.guild_id, data);
   },
 
   GUILD_EMOJIS_UPDATE(ctx, data) {

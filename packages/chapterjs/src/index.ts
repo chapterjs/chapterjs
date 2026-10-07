@@ -164,6 +164,7 @@ export type {
   EventName,
   EventOptions,
   MessageEventOptions,
+  ReactionEventOptions,
 } from './events/registry.js';
 
 // What handlers receive.
@@ -191,6 +192,7 @@ export type {
 export type { GuildEmoji } from './structures/emoji.js';
 export type {
   AuditLog,
+  AuditLogEntry,
   AutoModerationRule,
   Ban,
   ChannelCreateOptions,
@@ -199,6 +201,7 @@ export type {
   RoleCreateOptions,
   ScheduledEvent,
   Sticker,
+  VoiceState,
 } from './structures/guild.js';
 export type { Invite } from './structures/invite.js';
 export type {
@@ -216,6 +219,7 @@ export type {
   PrivateMessage,
   MessageFlagName,
   Reaction,
+  ReactionEmoji,
 } from './structures/message.js';
 // Tasks: what the files of src/tasks/ are written with.
 export { language } from './messages/messages.js';
@@ -270,7 +274,7 @@ export type {
   PollInput,
 } from './structures/payload.js';
 export type { Role, RoleEditOptions } from './structures/role.js';
-export type { User, UserFlagName } from './structures/user.js';
+export type { User, UserFlagName, UserPresence } from './structures/user.js';
 export type { Webhook, WebhookMessageOptions } from './structures/webhook.js';
 
 // Errors handlers can catch.

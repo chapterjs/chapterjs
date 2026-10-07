@@ -1,0 +1,92 @@
+---
+title: 'Réactions et vocal'
+description: 'Réagir aux réactions que les gens ajoutent et à qui rejoint un salon vocal, et comprendre pourquoi certains événements ne donnent qu’un identifiant'
+---
+
+Sur Discord, les gens font plus qu’écrire : ils réagissent aux messages, votent dans des sondages, rejoignent des salons vocaux. Chacune de ces choses est aussi un événement, avec son dossier dans `src/events/`. Cette page en ajoute deux à votre bot, un marque-page qui fonctionne avec une réaction et un bonjour en vocal, et montre ce qui les distingue : certains événements arrivent avec moins qu’un message.
+
+## Un marque-page avec une réaction
+
+Créez `src/events/reactionAdd/bookmark.ts` :
+
+```ts src/events/reactionAdd/bookmark.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ emoji, member, guild, channel, messageId }) => {
+  if (emoji.name !== '🔖') return;
+  const link = `https://discord.com/channels/${guild.id}/${channel.id}/${messageId}`;
+  await member.send(`Vous avez mis un marque-page sur un message de #${channel.name} : ${link}`);
+});
+```
+
+Enregistrez-le, puis réagissez 🔖 à n’importe quel message de votre serveur de test : le bot vous envoie son lien en privé. Pas d’interrupteur à activer cette fois :
+
+```text
+↻ Your files now need more from Discord (GUILD_MESSAGE_REACTIONS): reconnecting...
+```
+
+Les réactions ne sont pas privilégiées : Discord ne les considère pas comme personnelles, contrairement à ce que les gens écrivent.
+
+`emoji` est l’emoji de la réaction. Pour un emoji standard, `emoji.name` est le caractère lui-même (`'🔖'`) ; un emoji personnalisé d’un serveur a un nom et un `id`.
+
+## Sûr par défaut, encore
+
+Les règles de la [page précédente](/fr/tutorial/message-events) valent ici : par défaut, un fichier de réactions tourne **pour les personnes, sur les serveurs**. Les réactions des bots sont laissées de côté, le vôtre compris, donc le fichier ne réagit jamais à ce qu’il fait lui-même ; `{ bots: true }` les laisse entrer. Et comme le fichier écoute sur les serveurs, `guild`, `channel` et `member` sont toujours là, sans `?.` à écrire. `{ where: 'dm' }` ou `{ where: 'both' }` changent cela exactement comme pour les messages.
+
+## Seulement un identifiant pour le message
+
+Regardez ce que reçoit la fonction : `messageId`, pas un message. Quand quelqu’un réagit, Discord envoie qui a réagi et avec quoi, mais pas le message : il peut avoir des années. Et votre bot [ne se souvient d’aucun message](/fr/tutorial/memory-and-limits). L’événement donne donc son identifiant, et `message` vaut `null`.
+
+Souvent, l’identifiant suffit : le lien ci-dessus est construit avec, sans rien demander à Discord. Quand vous avez vraiment besoin du message, demandez-le : `await channel.fetchMessage(messageId)`. Faites-le après les vérifications, jamais pour chaque réaction.
+
+`reactionRemove` va plus loin : Discord n’envoie que l’identifiant de qui a retiré sa réaction. ChapterJS demande à Discord qui c’est la première fois, puis s’en souvient, donc `user` est toujours là ; `member` n’est là que quand le bot se souvient de ce membre.
+
+## Bonjour en vocal
+
+Créez `src/events/voiceJoin/greeter.ts` :
+
+```ts src/events/voiceJoin/greeter.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, channel }) => {
+  await channel.send(`Bienvenue dans ${channel.name}, ${member.displayName} !`);
+});
+```
+
+Rejoignez un salon vocal de votre serveur de test : le bot écrit dans le chat de ce salon. Chaque salon vocal a un chat écrit, et `channel` est un `VoiceChannel` auquel vous pouvez envoyer des messages.
+
+Discord dit seulement à un bot que « l’état vocal de quelqu’un a changé ». ChapterJS se souvient de qui est dans quel salon, compare, et vous donne quatre événements au lieu d’un :
+
+| Dossier | Tourne quand |
+| --- | --- |
+| `voiceJoin` | Quelqu’un rejoint un salon vocal |
+| `voiceLeave` | Quelqu’un part, ou est déconnecté |
+| `voiceMove` | Quelqu’un passe d’un salon à un autre |
+| `voiceUpdate` | Quelqu’un coupe son micro ou son casque, lance un stream ou une caméra |
+
+## Et les autres
+
+Les sondages (`pollVoteAdd`), la saisie (`typingStart`), les bannissements (`banAdd`), le journal d’audit, les invitations, les emojis, les événements programmés, les fils et les présences fonctionnent tous de la même façon : un dossier nommé d’après l’événement, un fichier dedans, et ce que reçoit votre fonction typé pour ce dossier. Le [Guide](/fr/events) a une page pour chaque famille.
+
+## Points d’attention
+
+- **Une réaction donne un identifiant, pas un message.** Construisez ce que vous pouvez avec les identifiants ; ne demandez le message que quand vous en avez besoin.
+- **Les réactions sont fréquentes.** Comme pour les messages, mettez la vérification en premier et légère, et `return` tôt.
+- **Les présences sont privilégiées, et lourdes.** `presenceUpdate` a besoin du Presence Intent et arrive à chaque changement de chaque membre : ne l’ajoutez que si votre bot en a vraiment besoin.
+- **Les bonjours en vocal peuvent être bruyants.** Quelqu’un qui se reconnecte cinq fois est salué cinq fois : gardez le message court, ou ne l’écrivez que dans certains salons.
+
+## Récapitulatif
+
+- `reactionAdd`, `reactionRemove`, `pollVoteAdd`, `typingStart`, les événements vocaux et les autres sont des dossiers de `src/events/`, comme `memberJoin`.
+- Les réactions ignorent par défaut les bots et les messages privés, comme les messages ; `bots` et `where` changent cela.
+- Certains événements ne donnent que des identifiants : `messageId` est toujours là, `message` vaut `null` ; `user` est demandé une fois à Discord quand il le faut.
+- Quatre événements vocaux distinguent une arrivée, un départ, un changement de salon et un changement d’état.
+
+<CardGroup cols={2}>
+  <Card title="Les boutons" icon="mouse-pointer-click" href="/fr/tutorial/buttons">
+    Mettre un bouton sous un message, et lancer du code quand on clique.
+  </Card>
+  <Card title="Guide : Réactions, sondages et saisie" icon="book-open" href="/fr/events/reactions">
+    Les mêmes événements, en bref.
+  </Card>
+</CardGroup>

@@ -1,0 +1,77 @@
+---
+title: 'Vocal'
+description: 'Réagir aux personnes qui rejoignent, quittent ou changent de salon vocal, coupent leur micro ou lancent un stream'
+---
+
+Quand quelqu’un rejoint un salon vocal, les fichiers de `src/events/voiceJoin/` tournent :
+
+```ts src/events/voiceJoin/hello.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, channel }) => {
+  // Un salon vocal a son propre chat écrit : le bot y écrit.
+  await channel.send(`${member.displayName} a rejoint ${channel.name}.`);
+});
+```
+
+C’est tout. `member` est qui a rejoint, `channel` le [`VoiceChannel`](/fr/reference/channels/voice) (un salon de conférence en est un aussi, avec `channel.isStage`), et `voice` son [`VoiceState`](/fr/reference/data#voicestate) : micro coupé, casque coupé, en stream, caméra allumée...
+
+<Note>
+  Les quatre événements vocaux, avec ce qu’ils donnent, sont dans la [référence](/fr/reference/events#voicejoin). Votre bot qui rejoint lui-même un salon vocal, pour jouer ou enregistrer du son, [n’existe pas encore](/fr/not-yet#vocal).
+</Note>
+
+## Quatre événements
+
+Discord envoie une seule sorte de changement pour le vocal ; ChapterJS vous dit ce que c’était, en comparant avec ce que faisait la personne avant :
+
+| Dossier | Tourne quand | Votre fonction reçoit |
+| --- | --- | --- |
+| `voiceJoin` | Quelqu’un rejoint un salon vocal | `member`, `channel`, `voice`, `guild` |
+| `voiceLeave` | Quelqu’un part, ou est déconnecté | `member`, `channel` (celui quitté), `voice` (tel qu’il était), `guild` |
+| `voiceMove` | Quelqu’un va dans un autre salon vocal, ou y est déplacé | `member`, `from`, `to`, `voice`, `guild` |
+| `voiceUpdate` | Quelqu’un dans un salon change : micro, casque, stream, caméra | `member`, `channel`, `voice` (maintenant), `before` (tel qu’il était), `guild` |
+
+Un changement de salon n’est qu’un `voiceMove` : pas un `voiceLeave` suivi d’un `voiceJoin`. Et `voiceUpdate` ne tourne jamais pour une arrivée, un départ ou un changement de salon.
+
+```ts src/events/voiceUpdate/live.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, channel, voice, before }) => {
+  if (voice.selfStream && !before.selfStream) {
+    await channel.send(`${member.displayName} est en direct !`);
+  }
+});
+```
+
+## Le salon que quelqu’un a quitté
+
+`voiceLeave` donne toujours le salon, même quand il a été supprimé avec des personnes dedans : le bot garde le salon de chaque personne tant qu’elle est en vocal.
+
+```ts src/events/voiceLeave/empty.ts
+import { event } from 'chapterjs';
+
+export default event(({ member, channel, guild }) => {
+  console.log(`${member.displayName} a quitté ${channel.name} de ${guild.name}`);
+});
+```
+
+## Ce dont le bot se souvient
+
+Pour distinguer une arrivée d’un changement de salon ou d’un micro coupé, le bot se souvient de qui est dans un salon vocal, et l’oublie quand la personne part. Il ne le fait que quand un fichier écoute l’un de ces événements : sans fichier, Discord n’envoie pas du tout les changements du vocal. C’est peu : une petite entrée par personne en vocal en ce moment.
+
+## Intents
+
+Les quatre événements ont besoin de `GUILD_VOICE_STATES`, qui n’est pas privilégié. Ils ne se produisent que sur les serveurs : il n’y a pas d’option `where`.
+
+```text
+ℹ Intents computed from your files: GUILDS, GUILD_VOICE_STATES
+```
+
+<CardGroup cols={2}>
+  <Card title="Modération et serveur" icon="shield" href="/fr/events/server">
+    Bannissements, journal d’audit, invitations, emojis, événements programmés, fils.
+  </Card>
+  <Card title="Référence des événements" icon="library" href="/fr/reference/events#voicejoin">
+    Chaque champ de chaque événement.
+  </Card>
+</CardGroup>

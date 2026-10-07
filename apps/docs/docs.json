@@ -89,7 +89,8 @@
                 "icon": "zap",
                 "pages": [
                   "tutorial/events",
-                  "tutorial/message-events"
+                  "tutorial/message-events",
+                  "tutorial/reactions-and-voice"
                 ]
               },
               {
@@ -165,7 +166,10 @@
                 "icon": "zap",
                 "pages": [
                   "events/index",
-                  "events/messages"
+                  "events/messages",
+                  "events/reactions",
+                  "events/voice",
+                  "events/server"
                 ]
               },
               {
@@ -361,7 +365,8 @@
                 "icon": "zap",
                 "pages": [
                   "fr/tutorial/events",
-                  "fr/tutorial/message-events"
+                  "fr/tutorial/message-events",
+                  "fr/tutorial/reactions-and-voice"
                 ]
               },
               {
@@ -437,7 +442,10 @@
                 "icon": "zap",
                 "pages": [
                   "fr/events/index",
-                  "fr/events/messages"
+                  "fr/events/messages",
+                  "fr/events/reactions",
+                  "fr/events/voice",
+                  "fr/events/server"
                 ]
               },
               {

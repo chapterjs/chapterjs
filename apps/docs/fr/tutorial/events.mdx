@@ -93,6 +93,7 @@ export default event(({ user, guilds }) => {
 | `roleCreate`, `roleUpdate`, `roleDelete` | Un rôle est créé, modifié, supprimé | `role`, `guild` |
 | `channelCreate`, `channelUpdate`, `channelDelete` | Un salon est créé, modifié, supprimé | `channel`, `guild` |
 | `messageCreate`, `messageUpdate`, `messageDelete` | Un message est envoyé, modifié, supprimé | `message` et plus : la page suivante |
+| `reactionAdd`, `voiceJoin`, `banAdd`... | Une réaction, quelqu’un en vocal, un bannissement, et d’autres | Dans deux pages |
 
 Un dossier avec un autre nom est signalé au chargement, avec le nom d’événement le plus proche quand il y en a un. Le contenu exact de chacun est dans la [Référence](/fr/reference/events).
 

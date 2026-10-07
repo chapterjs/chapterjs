@@ -16,6 +16,7 @@ Everything lives in the memory of the process that runs your bot. Nothing is wri
 | Members | The 100 seen the most recently in each server; 1000 when a file of `src/events/memberLeave/` needs them | A server can have millions of members, and a bot rarely needs the silent ones |
 | Users | Every one it met, across every server | They come with members and messages |
 | Messages | None | They are by far what a bot receives the most, and most bots never read an old one |
+| Who is in a voice channel | Everyone, while they are in it, when a file of a [voice event](/events/voice) needs it | To tell a join from a move or a mute, and give the channel someone left |
 
 "Seen" means Discord just sent that member: they wrote a message, used a command, joined, or changed. A member seen again becomes the most recent; when the limit is reached, the one seen the longest ago makes room.
 

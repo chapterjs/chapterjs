@@ -906,6 +906,52 @@ describe.skipIf(process.platform === 'win32')(
         const cli = runDev(cwd, fake);
         await cli.waitFor('✓ Connected to Dev Server as test-bot');
         await cli.waitFor('test-bot is online in 1 server(s)');
+        if (name === 'default') {
+          // A 👋 is waved back, once: the reaction of the bot is left out.
+          const message = '100000000000000075';
+          const path = `/channels/${GENERAL}/messages/${message}`;
+          fake.discord.on('GET', path, { body: rawMessage(message, 'hi') });
+          fake.discord.on(
+            'PUT',
+            `${path}/reactions/${encodeURIComponent('👋')}/@me`,
+            { status: 204 }
+          );
+          const connection = await connected(fake);
+          const reaction = (userId: string, bot: boolean) => ({
+            user_id: userId,
+            channel_id: GENERAL,
+            message_id: message,
+            guild_id: GUILD,
+            member: {
+              user: { id: userId, username: 'u', discriminator: '0', bot },
+              roles: [],
+              joined_at: null,
+              deaf: false,
+              mute: false,
+              flags: 0,
+            },
+            emoji: { id: null, name: '👋' },
+            burst: false,
+            type: 0,
+          });
+          connection.dispatch('MESSAGE_REACTION_ADD', reaction(ALICE, false));
+          const deadline = Date.now() + 5000;
+          const waved = () =>
+            fake.discord.requests.filter(
+              request =>
+                request.method === 'PUT' &&
+                request.path.startsWith(`${path}/reactions/`)
+            );
+          while (waved().length === 0 && Date.now() < deadline) {
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          expect(
+            waved().map(request => decodeURIComponent(request.path))
+          ).toEqual([`${path}/reactions/👋/@me`]);
+          connection.dispatch('MESSAGE_REACTION_ADD', reaction(BOT, true));
+          await new Promise(resolve => setTimeout(resolve, 100));
+          expect(waved()).toHaveLength(1);
+        }
         cli.signal('SIGINT');
         const { code, output } = await cli.exited;
         expect(code).toBe(0);
@@ -1473,6 +1519,150 @@ export default event(({ guildId }) => guildId.length, { where: 'both' });
       "src/events/messageDelete/only.ts: Property 'guildId' does not exist on type 'DeletedInDm'.",
       "src/events/messageUpdate/dm-member.ts: 'message.member' is possibly 'null'.",
     ]);
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('the other events', () => {
+  it('are typed from their folder and where they listen', async () => {
+    const fake = await world();
+    const ev = (body: string, options = '') =>
+      `import { event } from 'chapterjs';\nexport default event(${body}${options});\n`;
+    const cwd = project({
+      // In a server: the server, the channel and who reacted are there.
+      'src/events/reactionAdd/servers.ts': ev(
+        '({ guild, channel, member, user, emoji, message }) => guild.name + channel.name + member.displayName + user.username + emoji.name + message?.guild.name'
+      ),
+      'src/events/reactionAdd/both.ts': ev(
+        '({ guild, member, channel }) => guild ? member.displayName + channel.name : channel?.recipientId',
+        ", { where: 'both', bots: true }"
+      ),
+      'src/events/reactionAdd/both-bad.ts': ev(
+        '({ member }) => member.displayName',
+        ", { where: 'both' }"
+      ),
+      'src/events/reactionRemove/member.ts': ev(
+        '({ member }) => member.displayName'
+      ),
+      'src/events/reactionRemove/dm.ts': ev(
+        '(context) => context.guild',
+        ", { where: 'dm' }"
+      ),
+      'src/events/reactionClear/ok.ts': ev(
+        '({ emoji, channel }) => (emoji?.name ?? "all") + channel.name'
+      ),
+      'src/events/pollVoteAdd/ok.ts': ev(
+        '({ answerId, user, guild }) => answerId + user.username + guild.name'
+      ),
+      'src/events/typingStart/ok.ts': ev(
+        '({ member, startedAt }) => member.displayName + startedAt.getTime()'
+      ),
+      'src/events/typingStart/bots.ts': ev(
+        '({ user }) => user.id',
+        ', { bots: true }'
+      ),
+      'src/events/voiceJoin/ok.ts': ev(
+        '({ member, channel, voice }) => member.displayName + channel.bitrate + voice.selfMute'
+      ),
+      'src/events/voiceMove/ok.ts': ev('({ from, to }) => from.name + to.name'),
+      'src/events/voiceUpdate/ok.ts': ev(
+        '({ voice, before }) => voice.selfMute !== before.selfMute'
+      ),
+      'src/events/banAdd/ok.ts': ev(
+        '({ user, guild }) => user.username + guild.name'
+      ),
+      'src/events/inviteCreate/ok.ts': ev(
+        '({ invite, channel }) => invite.url + channel.name'
+      ),
+      'src/events/auditLogEntryCreate/ok.ts': ev(
+        '({ entry }) => entry.actionType + (entry.reason ?? "")'
+      ),
+      'src/events/emojiDelete/ok.ts': ev('({ emoji }) => emoji.name'),
+      'src/events/threadMemberJoin/ok.ts': ev(
+        '({ thread, member }) => thread.name + member.displayName'
+      ),
+      'src/events/threadMemberLeave/bad.ts': ev('({ user }) => user.username'),
+      'src/events/presenceUpdate/ok.ts': ev(
+        '({ presence }) => presence.status + presence.activities.length'
+      ),
+      'src/events/scheduledEventUserAdd/ok.ts': ev(
+        '({ scheduledEventId, user }) => scheduledEventId + user.username'
+      ),
+      'src/events/guildUpdate/ok.ts': ev('({ guild }) => guild.name'),
+    });
+    cpSync(
+      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(cwd, 'tsconfig.json')
+    );
+    symlinkSync(
+      join(packageDir, 'node_modules/@types'),
+      join(cwd, 'node_modules/@types'),
+      'dir'
+    );
+    await runDev(cwd, fake, ['sync']).exited;
+    const result = spawnSync(
+      join(packageDir, 'node_modules/.bin/tsc'),
+      ['-b'],
+      { cwd, encoding: 'utf8' }
+    );
+    const errors = result.stdout
+      .split('\n')
+      .filter(line => line.includes('error TS'))
+      .map(line => line.replace(/\(\d+,\d+\): error TS\d+/, ''))
+      .sort();
+    expect(errors).toEqual([
+      "src/events/reactionAdd/both-bad.ts: 'member' is possibly 'null'.",
+      `src/events/reactionRemove/dm.ts: Property 'guild' does not exist on type 'ContextOf<"reactionRemove", { readonly where: "dm"; }>'.`,
+      "src/events/reactionRemove/member.ts: 'member' is possibly 'null'.",
+      "src/events/threadMemberLeave/bad.ts: 'user' is possibly 'null'.",
+      "src/events/typingStart/bots.ts: Object literal may only specify known properties, and 'bots' does not exist in type 'WhereEventOptions & {}'.",
+    ]);
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('who did it', () => {
+  it('is asked to Discord once when unknown, and its refusal is said', async () => {
+    const fake = await world();
+    const BOB = '100000000000000404';
+    const GHOST = '100000000000000405';
+    fake.discord.on('GET', `/users/${BOB}`, {
+      body: { id: BOB, username: 'bob', discriminator: '0' },
+    });
+    fake.discord.on('GET', `/users/${GHOST}`, {
+      status: 404,
+      body: { message: 'Unknown User', code: 10013 },
+    });
+    const cli = runDev(
+      project({
+        'src/events/reactionRemove/log.ts': `import { event } from 'chapterjs';
+export default event(({ user, emoji, channel }) => {
+  console.log(\`unreacted: \${user.username} \${emoji.name} in #\${channel.name}\`);
+});
+`,
+      }),
+      fake
+    );
+    await cli.waitFor(
+      'ℹ Intents computed from your files: GUILDS, GUILD_MESSAGE_REACTIONS'
+    );
+    const connection = await connected(fake);
+    const removed = (userId: string) => ({
+      user_id: userId,
+      channel_id: GENERAL,
+      message_id: '100000000000000406',
+      guild_id: GUILD,
+      emoji: { id: null, name: '👍' },
+      burst: false,
+      type: 0,
+    });
+    connection.dispatch('MESSAGE_REACTION_REMOVE', removed(BOB));
+    connection.dispatch('MESSAGE_REACTION_REMOVE', removed(BOB));
+    await cli.waitFor('unreacted: bob 👍 in #general');
+    connection.dispatch('MESSAGE_REACTION_REMOVE', removed(GHOST));
+    await cli.waitFor(
+      /⚠ A reactionRemove event was not given to your files: Discord did not let the bot read the user who did it \(.*Unknown User.*\)\./
+    );
+    expect(cli.output.match(/unreacted: bob/g)).toHaveLength(2);
+    expect(fake.discord.requestsTo('GET', `/users/${BOB}`)).toHaveLength(1);
   });
 });
 

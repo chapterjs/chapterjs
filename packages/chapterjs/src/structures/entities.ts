@@ -14,6 +14,7 @@ import type { RawInvite } from '../discord/types/invite.js';
 import type { RawMessage } from '../discord/types/message.js';
 import type { RawRole } from '../discord/types/permissions.js';
 import type { RawUser } from '../discord/types/user.js';
+import type { RawVoiceState } from '../discord/types/voice.js';
 import type { RawWebhook } from '../discord/types/webhook.js';
 import type { Rest } from '../rest/rest.js';
 import { patch, type Structure } from './base.js';
@@ -21,12 +22,18 @@ import {
   Channel,
   channelClass,
   messagesOf,
+  VoiceChannel,
   type GuildChannel,
   type ThreadChannel,
 } from './channel.js';
 import type { Context } from './context.js';
 import { GuildEmoji } from './emoji.js';
-import { Guild, storesOf } from './guild.js';
+import {
+  Guild,
+  storesOf,
+  type VoiceEntry,
+  type VoiceStateData,
+} from './guild.js';
 import { Invite } from './invite.js';
 import { remember } from './known.js';
 import { GuildMember } from './member.js';
@@ -79,7 +86,7 @@ export class Entities {
       channels,
       threads,
       members,
-      voice_states: _voiceStates,
+      voice_states: voiceStates,
       presences: _presences,
       stage_instances: _stageInstances,
       guild_scheduled_events: _scheduledEvents,
@@ -107,7 +114,37 @@ export class Entities {
     for (const channel of channels ?? []) this.channel(channel, guild.id);
     for (const thread of threads ?? []) this.channel(thread, guild.id);
     for (const member of members ?? []) this.member(guild.id, member);
+    if (voiceStates) {
+      // Everyone in voice right now: who is not listed has left meanwhile.
+      stores.voiceStates.clear();
+      for (const state of voiceStates) this.voiceState(guild.id, state);
+    }
     return guild;
+  }
+
+  /**
+   * Where someone is in voice: remembered while they are in a voice
+   * channel of a server the bot is in, forgotten when they leave it.
+   * Returns what is remembered now, nothing once they left.
+   */
+  voiceState(
+    guildId: Snowflake,
+    raw: Partial<RawVoiceState>
+  ): VoiceEntry | undefined {
+    const guild = this.#ctx.cache.guilds.get(guildId);
+    const { member: _member, guild_id: _guildId, ...state } = raw;
+    if (!guild || !state.user_id) return undefined;
+    const store = storesOf(guild).voiceStates;
+    const channel = state.channel_id
+      ? this.#ctx.cache.channels.get(state.channel_id)
+      : undefined;
+    if (!(channel instanceof VoiceChannel)) {
+      store.delete(state.user_id);
+      return undefined;
+    }
+    const entry = { state: state as VoiceStateData, channel };
+    store.set(state.user_id, entry);
+    return entry;
   }
 
   role(guildId: Snowflake, raw: RawRole): Role {
