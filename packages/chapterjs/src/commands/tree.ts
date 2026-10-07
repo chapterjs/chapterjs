@@ -10,6 +10,7 @@ import {
 } from '../discord/types/application-command.js';
 import { ApplicationIntegrationType } from '../discord/types/application.js';
 import { InteractionContextType } from '../discord/types/interaction.js';
+import type { LoadedOption } from './convention.js';
 import type { CommandOption } from './command.js';
 import type { Locale } from '../discord/types/common.js';
 import type {
@@ -70,7 +71,7 @@ function withLocales<T extends object>(
 }
 
 function toOption(
-  option: CommandOption & { name: string },
+  option: LoadedOption,
   locales: OptionLocales | undefined
 ): RawApplicationCommandOption {
   const raw: RawApplicationCommandOption = withLocales(

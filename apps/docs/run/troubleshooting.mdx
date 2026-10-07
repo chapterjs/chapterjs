@@ -93,7 +93,7 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     `chapterjs dev` only runs your bot in your test server, so a command or an event of private messages only can't be tried there. It works with [`chapterjs start`](/run/start).
   </Accordion>
   <Accordion title="ℹ /name is not the same here as in production, so … shows it twice">
-    You are changing a command that is already online for everyone. Your test server shows both until production runs your version: see [Commands are shown once](/run/start#commands-are-shown-once).
+    You are changing a command that is already online for everyone. Your test server shows both until production runs your version. A second application for development never shows that: see [A second bot for development](/run/start#a-second-bot-for-development).
   </Accordion>
   <Accordion title="✗ Discord refused the commands of your project: …">
     Discord did not accept what your commands declare (a name, a description, an option…): the rest of the line is Discord's own message, with the field it refused. The bot keeps running with the commands Discord already has. Fix the file and save.
@@ -169,7 +169,22 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     Your `run` function finished without calling `interaction.reply()`. `chapterjs dev` warns you (`⚠ … finished without answering`). Every command must answer: see [Answering](/commands/answering).
   </Accordion>
   <Accordion title="This interaction failed">
-    Someone clicked a button or a select menu, or sent a modal. ChapterJS does not handle those yet, and nothing in your project runs: see [What's not there yet](/not-yet).
+    Someone clicked a button or a select menu, or sent a form, and its `run` finished without answering. `chapterjs dev` warns you (`⚠ … finished without answering`). Answer with `interaction.update()`, `interaction.reply()`, or `interaction.deferUpdate()` to change nothing: see [Buttons](/components#answering-a-click).
+  </Accordion>
+  <Accordion title="This button is not available any more. / This menu… / This form…">
+    The message is older than your project: the file of the component was renamed, removed or moved to another kind of folder since the message was sent. Send the message again, or bring the file back.
+  </Accordion>
+  <Accordion title="This button is out of date.">
+    The `data` of the component changed shape since the message was sent (a value added, removed or of another kind). Old messages carry the old data: send the message again.
+  </Accordion>
+  <Accordion title="⚠ … was still running when its next time came: that run was skipped.">
+    A [task](/tasks) took longer than the time between two of its runs. The next run waits for its turn; make the task faster, or run it less often.
+  </Accordion>
+  <Accordion title="⚠ … was due while the bot was not connected: that run was skipped.">
+    A task was due while the bot was reconnecting to Discord. It runs again at its next time.
+  </Accordion>
+  <Accordion title="Only the person who used the command can use this button.">
+    The component says `who: 'author'`, and someone else clicked. That is what you asked for: see [Who may click](/components#who-may-click).
   </Accordion>
   <Accordion title="Something went wrong while running this command.">
     Your `run` function threw. The person gets this short answer, privately; you get the error with the file and the line in your terminal. When Discord refused an action for a missing permission, the person reads "I don't have the permission to do that here." instead.
@@ -180,8 +195,11 @@ Every message of ChapterJS says what happened, then what to do. This page gather
   <Accordion title="You need the … permission to use this command.">
     The person lacks a permission the command asks for with `permissions`, where they used it. See [Who can use a command](/commands#who-can-use-a-command).
   </Accordion>
+  <Accordion title="These answers are in English">
+    The phrases the bot answers by itself can be translated in the language files of `src/messages/`: see [What the bot answers by itself](/translated-messages#what-the-bot-answers-by-itself).
+  </Accordion>
   <Accordion title="A command is missing, or shown twice">
-    Commands appear at once in your test server with `chapterjs dev`, and everywhere with `chapterjs start`. If one is missing, the terminal said why when it started: a name Discord refused, or two files that are the same command. Shown twice: see [Commands are shown once](/run/start#commands-are-shown-once). A command the person can't see is one whose `permissions` they don't have: see [Who can use a command](/commands#who-can-use-a-command).
+    Commands appear at once in your test server with `chapterjs dev`, and everywhere with `chapterjs start`. If one is missing, the terminal said why when it started: a name Discord refused, or two files that are the same command. Shown twice: see [One bot for dev and production](/run/start#one-bot-for-dev-and-production). A command the person can't see is one whose `permissions` they don't have: see [Who can use a command](/commands#who-can-use-a-command).
   </Accordion>
   <Accordion title="The bot stays online after I stopped it">
     Press `Ctrl+C` once and let it disconnect: you see `✓ Disconnected` and the bot goes offline at once. A second `Ctrl+C` stops the process without waiting, and Discord then keeps the bot online until it notices the connection is gone.

@@ -89,8 +89,10 @@ The reason is how Discord hides commands: it shows or hides a whole command, nev
 `description` is the text Discord shows under the name of the command, 1 to 100 characters. It is the only field a command needs besides `run`:
 
 ```text
-✗ src/commands/ping.ts this command needs a description: a short text that says what it is for, like description: 'Bans a member'.
+✗ src/commands/ping.ts This command has no description: write it in src/messages/en-US.ts (commands: { "ping": { description: '...' } }), or in the file (description: '...').
 ```
+
+A bot in several languages can leave it out of the file and write it, with its translations, in the [language files](/translated-messages#the-names-and-descriptions-of-commands) instead: one place or the other.
 
 ## What run receives
 
@@ -240,17 +242,15 @@ If Discord refuses them, the bot keeps running with the commands Discord already
 ✓ Commands updated for everyone
 ```
 
-### The same bot in dev and in production
+### Dev and production
 
-A bot in production and `chapterjs dev` can share one token. Your test server then has the commands of everyone like any server, and `chapterjs dev` does not give them a second time: it only adds the commands that are new or different in your project. Used in your test server, a command always runs the code on your computer.
+A command for everyone belongs to the bot, not to a server: Discord shows it in every server the bot is in, your test server included, and gives no way to hide it in one of them. So use a **second application** for development from the start, with its own token on your computer: your test server then only shows the commands of your files, never one twice. How to set it up is in [A second bot for development](/run/start#a-second-bot-for-development).
 
-While you are changing a command that production already has, your test server shows it twice (yours, and the one everyone has), and `chapterjs dev` tells you once:
+With one bot for both, `chapterjs dev` does what it can: it only adds to your test server the commands that are new or different in your project, and a command used there always runs the code on your computer. But while you are changing a command that production already has, your test server shows it twice (yours, and the one everyone has), and `chapterjs dev` tells you once:
 
 ```text
 ℹ /poll is not the same here as in production, so My Server shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.
 ```
-
-Discord gives no way to hide one of the two. To never see that, use a second bot for development: see [Your test server stays yours](/run/start#your-test-server-stays-yours).
 
 <CardGroup cols={2}>
   <Card title="Options" icon="list" href="/commands/options">

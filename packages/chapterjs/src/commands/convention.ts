@@ -27,6 +27,12 @@ export interface OptionLocales {
   readonly choices: Readonly<Record<string, Localizations>>;
 }
 
+/** An option, checked, with the description it has so far. */
+export type LoadedOption = CommandOption & {
+  name: string;
+  description: string;
+};
+
 /** A command file, checked: what the rest of the feature works with. */
 export interface LoadedCommand {
   /** The name and description of the command in other languages. */
@@ -36,9 +42,16 @@ export interface LoadedCommand {
   readonly optionLocales: Readonly<Record<string, OptionLocales>>;
   /** `['mod', 'ban']` for `src/commands/mod/ban.ts`: `/mod ban`. */
   readonly path: readonly string[];
+  /**
+   * Whether the file gives its own texts (`description`, `locales`). When
+   * it does not, the language files of `src/messages/` do: `description`
+   * and the descriptions of the options are empty until `project.ts`
+   * fills them in from the default language.
+   */
+  readonly described: boolean;
   readonly description: string;
   /** The options, required ones first as Discord wants them. */
-  readonly options: readonly (CommandOption & { name: string })[];
+  readonly options: readonly LoadedOption[];
   /** The permissions needed, as bits. */
   readonly permissions: bigint;
   /** Where it can be used; in servers when the file does not say. */
@@ -149,8 +162,9 @@ function checkWhere(value: unknown): CommandWhere {
 
 function checkOption(
   name: string,
-  option: unknown
-): CommandOption & { name: string } {
+  option: unknown,
+  described: boolean
+): LoadedOption {
   const what = `the option "${name}"`;
   if (!isName(name)) {
     fail(
@@ -174,7 +188,10 @@ function checkOption(
     'required',
     ...(OPTION_KEYS[type as string] ?? []),
   ]);
-  checkDescription(what, option.description);
+  // Described in the file with the command, or in the default language.
+  if (described || option.description !== undefined) {
+    checkDescription(what, option.description);
+  }
   checkBoolean(`"required" of ${what}`, option.required);
 
   const isText = type === 'string';
@@ -263,15 +280,19 @@ function checkOption(
       );
     }
   }
-  return { ...(option as unknown as CommandOption), name };
+  return {
+    ...(option as unknown as CommandOption),
+    name,
+    description: (option.description as string | undefined) ?? '',
+  };
 }
 
 const LOCALES = Object.values(Locale) as string[];
 
 /** Checks `locales` and returns it as the dictionaries Discord takes. */
-function checkLocales(
+export function checkLocales(
   locales: unknown,
-  options: readonly (CommandOption & { name: string })[]
+  options: readonly LoadedOption[]
 ): {
   names: Localizations;
   descriptions: Localizations;
@@ -493,7 +514,17 @@ export const commandsConvention: Convention<LoadedCommand> = {
       );
     }
     checkKeys('a command', config, COMMAND_KEYS);
-    const description = checkDescription('this command', config.description);
+    // No description: the language files describe the command, options
+    // included, and hold its translations.
+    const described = config.description !== undefined;
+    const description = described
+      ? checkDescription('this command', config.description)
+      : '';
+    if (!described && config.locales !== undefined) {
+      fail(
+        `This command has no "description", so its texts come from the language files of src/messages/: put its "locales" there too (commands: { ... }), or give it a description here.`
+      );
+    }
     if (typeof config.run !== 'function') {
       fail(
         `This command has no "run": the function to run when someone uses it, like async run({ interaction }) { await interaction.reply('Pong!'); }`
@@ -506,7 +537,7 @@ export const commandsConvention: Convention<LoadedCommand> = {
       );
     }
     const options = Object.entries(rawOptions).map(([name, option]) =>
-      checkOption(name, option)
+      checkOption(name, option, described)
     );
     if (options.length > MAX_OPTIONS) {
       fail(
@@ -520,6 +551,7 @@ export const commandsConvention: Convention<LoadedCommand> = {
     return Object.freeze({
       ...checkLocales(config.locales, options),
       path: Object.freeze(parts),
+      described,
       description,
       options: Object.freeze(options),
       permissions: checkPermissions(config.permissions),

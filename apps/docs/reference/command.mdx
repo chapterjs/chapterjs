@@ -23,7 +23,7 @@ export default command({
 ## command()
 
 ```ts
-command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild'>(config: CommandConfig<Options, Where>): CommandFile
+command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild'>(config: CommandConfig<Options, Where>): CommandFile<Options, Where>
 ```
 
 Declares a slash command. Export the result as the default export of a file of `src/commands/`: the path of the file is the name of the command (`src/commands/mod/ban.ts` is `/mod ban`).
@@ -32,9 +32,13 @@ Declares a slash command. Export the result as the default export of a file of `
 
 ### CommandFile
 
-What `command()` returns: the default export of a command file.
+```ts
+interface CommandFile<Options extends CommandOptions = CommandOptions, Where extends CommandWhere = CommandWhere>
+```
 
-<ResponseField name="config" type="unknown">
+What `command()` returns: the default export of a command file. It keeps the options and the place the file declared.
+
+<ResponseField name="config" type="CommandConfig<Options, Where>">
   What the file gave to `command()`, not checked yet.
 </ResponseField>
 
@@ -42,8 +46,8 @@ What `command()` returns: the default export of a command file.
 
 What a command file gives to `command()`: what the command is and does.
 
-<ResponseField name="description" type="string" required>
-  What the command does, shown under its name (1-100 characters).
+<ResponseField name="description" type="string">
+  What the command does, shown under its name (1-100 characters). Here, with `locales` for its translations; or left out, and every text of the command (description, options, their choices, translations) comes from the language files of `src/messages/`. One or the other.
 </ResponseField>
 
 <ResponseField name="run" type="(context: CommandContext<Options, Where>) => unknown" required>
@@ -108,8 +112,8 @@ One option of a command. Every kind has these fields:
   The kind of option: `'string'`, `'integer'`, `'number'`, `'boolean'`, `'user'`, `'role'`, `'channel'`, `'mentionable'` or `'attachment'`.
 </ResponseField>
 
-<ResponseField name="description" type="string" required>
-  What the option is for, shown under its name (1-100 characters).
+<ResponseField name="description" type="string">
+  What the option is for, shown under its name (1-100 characters). Here when the command has its `description` here; otherwise in the default language file of `src/messages/`.
 </ResponseField>
 
 <ResponseField name="required" type="boolean">
@@ -218,6 +222,10 @@ Whatever `where` says, it has:
 
 <ResponseField name="user" type="User" required>
   Who used the command.
+</ResponseField>
+
+<ResponseField name="t" type="Translator">
+  The texts of `src/messages/`, in the right language. Only when the project has a language there: see [`TranslationContext`](/reference/messages#translationcontext).
 </ResponseField>
 
 And the rest follows `where`:

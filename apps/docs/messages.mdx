@@ -127,26 +127,32 @@ The limits are listed in [Embed limits](/reference/message-options#embed-limits)
 
 ## Files
 
-A file is a name with its extension and its content: a text, a `Buffer`, a `Uint8Array`, an `ArrayBuffer` or a `Blob`. Up to 10 per message.
+The pictures and documents your bot sends live in the `public/` folder of your project, next to `src/`. `asset()` picks one: your editor lists every file of the folder as you type, and a path that does not exist is underlined.
 
-```ts
-import { readFile } from 'node:fs/promises';
-import type { TextChannel } from 'chapterjs';
+```ts src/commands/chart.ts
+import { asset, command } from 'chapterjs';
 
-async function sendChart(channel: TextChannel) {
-  await channel.send({
-    files: [
-      {
-        name: 'chart.png',
-        data: await readFile('./chart.png'),
-        description: 'Messages per day this week', // for people who can't see it
-      },
-    ],
-    // An embed can show an attached file.
-    embeds: [{ title: 'This week', image: { url: 'attachment://chart.png' } }],
-  });
-}
+export default command({
+  description: 'Shows the chart of the week',
+  async run({ interaction }) {
+    await interaction.reply({
+      files: [asset('charts/week.png', { description: 'Messages per day this week' })],
+      // An embed can show an attached file, by its name.
+      embeds: [{ title: 'This week', image: { url: 'attachment://week.png' } }],
+    });
+  },
+});
 ```
+
+The file is read when the message is sent, never before. A file sent under another name takes `name`; `spoiler: true` hides it until it is clicked. Two files of one message can't have the same name: Discord tells them apart by it.
+
+In `chapterjs dev`, a file added to `public/` is offered by the editor right away:
+
+```text
+↻ public/ changed: types updated
+```
+
+A file made by your code (a chart drawn on the fly, a text) is given with its content: a text, a `Buffer`, a `Uint8Array`, an `ArrayBuffer` or a `Blob`. Up to 10 files per message, from `public/` or made, together.
 
 A text too long for a message can go in a file instead:
 
@@ -160,8 +166,6 @@ async function sendLog(channel: TextChannel, log: string) {
   });
 }
 ```
-
-`spoiler: true` hides a file until it is clicked.
 
 ## Mentions
 
@@ -318,11 +322,36 @@ async function lastMessagesOf(channel: TextChannel, authorId: string, count: num
   A message you receive in an [event](/events/messages) is already a `Message`: no need to fetch it to reply, react or delete.
 </Tip>
 
-## Components
+## Buttons, menus and layout
 
-<Warning>
-  Your bot can send buttons and select menus in `components`, but it cannot answer them yet: a click does nothing, and your files are not run for it. Components are on the list of [what is not there yet](/not-yet).
-</Warning>
+A message can hold buttons and select menus, which run a file of `src/components/` when they are used, and be built out of texts, sections, galleries and containers instead of a text and embeds:
+
+```ts src/commands/vote.ts
+import { command } from 'chapterjs';
+import yes from '../components/buttons/yes';
+
+export default command({
+  description: 'Starts a vote',
+  async run({ interaction }) {
+    await interaction.reply({ content: 'Pizza tonight?', components: [yes] });
+  },
+});
+```
+
+```ts src/components/buttons/yes.ts
+import { button } from 'chapterjs';
+
+export default button({
+  label: 'Yes!',
+  emoji: '🍕',
+  style: 'success',
+  async run({ interaction, user }) {
+    await interaction.reply({ content: `${user} is in.` });
+  },
+});
+```
+
+`components` only takes what ChapterJS made, never JSON: the ids that tell a click apart are written by the framework. How to write them is in [Buttons](/components), [Select menus](/components/selects), [Forms](/components/modals) and [Embeds and layout](/components/embeds).
 
 <CardGroup cols={2}>
   <Card title="Events about messages" icon="message-square" href="/events/messages">

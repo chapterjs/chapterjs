@@ -1,0 +1,44 @@
+---
+title: 'embed()'
+description: 'The function every file of src/components/embeds/ exports, and what it returns'
+---
+
+`embed()` is what a file of `src/components/embeds/` exports by default. It takes the embed itself, or a function that returns one.
+
+```ts src/components/embeds/welcome.ts
+import { embed, type GuildMember } from 'chapterjs';
+
+export default embed((member: GuildMember) => ({
+  title: `Welcome ${member.displayName}!`,
+  color: 0x57f287,
+}));
+```
+
+<Note>
+  How to write and use an embed file is in the [guide](/components/embeds). What an embed can hold is [Embed](/reference/message-options#embed).
+</Note>
+
+## embed()
+
+```ts
+embed(definition: Embed): EmbedFile<[]>
+embed<Args extends readonly unknown[]>(definition: (...args: Args) => Embed): EmbedFile<Args>
+```
+
+Declares an embed. Export the result as the default export of a file of `src/components/embeds/`. Give it the embed itself when it always looks the same, or a function of what it shows.
+
+A static embed is checked against the limits of Discord when the file loads; the embed a function returns is checked when the message is sent.
+
+### EmbedFile
+
+```ts
+type EmbedFile<Args extends readonly unknown[] = []> = { readonly config: unknown } & ((...args: Args) => Embed)
+```
+
+What `embed()` returns: the default export of an embed file. Import it where you send a message: `embeds: [welcome({ member })]`, or `embeds: [rules]` for an embed that always looks the same.
+
+<ResponseField name="config" type="unknown">
+  What the file gave to `embed()`, not checked yet.
+</ResponseField>
+
+The `embeds` of a message take an `Embed` or an `EmbedFile<[]>`: an embed file that needs arguments must be called.

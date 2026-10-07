@@ -7,6 +7,8 @@ import type {
   GatewayDispatchEvents,
 } from '../discord/types/gateway-events.js';
 import type { Context } from '../structures/context.js';
+import { audienceLocale, translation } from '../messages/translate.js';
+import type { Guild } from '../structures/guild.js';
 import type { EventHandler } from './convention.js';
 import { EVENTS, type EventContexts, type EventName } from './registry.js';
 
@@ -133,7 +135,16 @@ export class EventRouter {
           joined: extra.joined,
           before: extra.before?.[index],
         });
-        if (context) this.emit(source.name, context as never);
+        if (!context) return;
+        // `t` speaks the language of the server the event happened in.
+        const guild = (
+          EVENTS[source.name].guildOf as
+            ((context: object) => Guild | null) | undefined
+        )?.(context);
+        this.emit(source.name, {
+          ...context,
+          ...translation(ctx, audienceLocale({ guild })),
+        } as never);
       };
       const preparing = source.prepare?.(ctx, data as never);
       if (!preparing) return deliver();

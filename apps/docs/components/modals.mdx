@@ -1,0 +1,149 @@
+---
+title: 'Forms'
+description: 'Open a form in Discord from a command or a button, and receive what was filled in, typed field by field'
+---
+
+A form (Discord calls it a modal) is a file of `src/components/modals/`. Declare its fields; `run` receives them under the same names, typed from their kind.
+
+```ts src/components/modals/feedback.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Your feedback',
+  fields: {
+    text: { type: 'text', label: 'What do you think?', style: 'paragraph' },
+    rating: { type: 'radio', label: 'Rating', options: ['Good', 'Okay', 'Bad'] },
+  },
+  async run({ interaction, fields }) {
+    await interaction.reply({ content: `${fields.rating}: ${fields.text}`, ephemeral: true });
+  },
+});
+```
+
+A command or a button opens it with `interaction.showModal()`:
+
+```ts src/commands/feedback.ts
+import { command } from 'chapterjs';
+import feedback from '../components/modals/feedback';
+
+export default command({
+  description: 'Sends your feedback',
+  async run({ interaction }) {
+    await interaction.showModal(feedback);
+  },
+});
+```
+
+That is all: `fields.text` is a `string` and `fields.rating` is `'Good' | 'Okay' | 'Bad'`. A form must be the first answer to an interaction; the person then has as long as they want to fill it in.
+
+<Note>
+  Every kind of field and the types behind them are in the [reference](/reference/modal). The `interaction` of a form is a [ModalInteraction](/reference/interaction#modalinteraction).
+</Note>
+
+## Fields
+
+A form has 1 to 5 fields, each with a `label` (45 characters at most) and an optional `description`. What `run` receives follows the kind:
+
+| `type` | What it is | `fields.name` is |
+| --- | --- | --- |
+| `'text'` | A text, on one line (`style: 'short'`) or several (`'paragraph'`) | `string` |
+| `'select'` | A menu of `options`, written like the [options of a select menu](/components/selects#options) | A list of the values |
+| `'user'`, `'role'`, `'mentionable'`, `'channel'` | A menu filled by Discord | `User[]`, `Role[]`, `(User | Role)[]`, `Channel[]` |
+| `'files'` | Files to upload | [Attachment](/reference/data#attachment)`[]` |
+| `'radio'` | One choice among 2 to 10 `options` | One value |
+| `'checkboxes'` | Several choices among 1 to 10 `options` | A list of the values |
+| `'checkbox'` | Yes or no | `boolean` |
+| `'note'` | A text to read, which nobody fills in | Not there |
+
+Every field is required unless it says `required: false`; a `text` or a `radio` that is not required is then `string | undefined`. `min` and `max` say how many can be picked or uploaded; `minLength` and `maxLength` how long a text can be.
+
+```ts src/components/modals/report.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Report a problem',
+  data: { channelId: 'string' },
+  fields: {
+    intro: { type: 'note', content: 'Tell us what happened. A moderator reads every report.' },
+    reason: { type: 'text', label: 'What happened?', style: 'paragraph', minLength: 20 },
+    who: { type: 'user', label: 'Who was involved?', max: 3, required: false },
+    proof: { type: 'files', label: 'Screenshots', fileTypes: ['image'], max: 5, required: false },
+    urgent: { type: 'checkbox', label: 'Urgent', description: 'Ping the moderators now' },
+  },
+  async run({ interaction, fields, data, guild }) {
+    const logs = guild.channels.get(data.channelId);
+    if (logs?.isText()) {
+      await logs.send({
+        content: `${fields.urgent ? '@here ' : ''}Report from ${interaction.user}: ${fields.reason}`,
+        files: [],
+      });
+    }
+    await interaction.reply({ content: 'Thanks, the moderators were told.', ephemeral: true });
+  },
+});
+```
+
+## Opening a form from a button
+
+A button or a menu can open a form too. The form then knows the message of the button (`message`), and can change it with `update()` instead of sending a new message:
+
+```ts src/components/buttons/rename.ts
+import { button } from 'chapterjs';
+import rename from '../modals/rename';
+
+export default button({
+  label: 'Rename',
+  data: { channelId: 'string' },
+  async run({ interaction, data }) {
+    await interaction.showModal(rename({ channelId: data.channelId }));
+  },
+});
+```
+
+```ts src/components/modals/rename.ts
+import { modal } from 'chapterjs';
+
+export default modal({
+  title: 'Rename the channel',
+  data: { channelId: 'string' },
+  fields: {
+    name: { type: 'text', label: 'New name', maxLength: 100 },
+  },
+  async run({ interaction, fields, data, guild }) {
+    const channel = guild.channels.get(data.channelId);
+    if (channel) await channel.edit({ name: fields.name });
+    await interaction.update({ content: `Renamed to #${fields.name}.`, components: [] });
+  },
+});
+```
+
+`data` works like the data of a button: given when the form is opened, received typed in `run`.
+
+## What a form holds when it opens
+
+Where you open the form, `values` fills some fields in advance: a text, the picked options of a menu, radio or checkboxes, or whether a checkbox is checked.
+
+```ts src/components/buttons/edit.ts
+import { button } from 'chapterjs';
+import feedback from '../modals/feedback';
+
+export default button({
+  label: 'Edit my feedback',
+  async run({ interaction }) {
+    await interaction.showModal(feedback({ values: { text: 'It was great until...', rating: 'Okay' } }));
+  },
+});
+```
+
+## Where a form is sent from
+
+A form has a `where` like a command (`'guild'` by default, `'dm'` or `'both'`), which decides what `run` receives about the place. The answers work like the answers of a command: `reply()`, `defer()`, `edit()`, `followUp()`, `delete()`, plus `update()` and `deferUpdate()` when a button or a menu opened the form. Opening a form from a form is not possible: Discord only opens one in answer to a command or a component.
+
+<CardGroup cols={2}>
+  <Card title="Embeds and layout" icon="layout-template" href="/components/embeds">
+    Reuse an embed, and build messages out of texts, sections and containers.
+  </Card>
+  <Card title="Answering" icon="message-circle-reply" href="/commands/answering">
+    When to defer, private answers, what the person sees when run fails.
+  </Card>
+</CardGroup>

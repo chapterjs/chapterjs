@@ -212,7 +212,8 @@ async function run(
   project: Project,
   connection: Connection,
   stopped: Promise<unknown>,
-  connected: (bot: Bot) => void
+  connected: (bot: Bot) => void,
+  { tasks = true }: { tasks?: boolean } = {}
 ): Promise<'stopped' | 'refused'> {
   let refuse!: () => void;
   const refused = new Promise<'refused'>(
@@ -224,11 +225,14 @@ async function run(
     bot = await project.connect({ ...connection, onFatal: refuse });
     connected(bot);
     project.ready(bot);
+    // A task runs once for the whole bot: in one process only.
+    if (tasks) project.startTasks(() => bot);
     return await Promise.race([
       stopped.then(() => 'stopped' as const),
       refused,
     ]);
   } finally {
+    project.stopTasks();
     memory.stop();
     await bot?.close();
   }
@@ -291,7 +295,9 @@ async function runShare(
         guilds: bot.ctx.cache.guilds.size,
         user: user.username,
       });
-    }
+    },
+    // The first process of the cluster runs the tasks for all of them.
+    { tasks: assignment.index === 0 }
   );
   if (result === 'refused') {
     primary.refused();

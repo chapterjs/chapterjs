@@ -20,6 +20,8 @@ Intents are named as `chapterjs dev` prints them. Two are privileged, to enable 
 | Options | None |
 | Remembers | The default |
 
+Every event also receives `t`, in the language of the server it happened in, when the project has a language in `src/messages/`: see [`TranslationContext`](/reference/messages#translationcontext).
+
 <ResponseField name="user" type="User" required>
   The bot itself.
 </ResponseField>

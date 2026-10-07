@@ -12,10 +12,9 @@ import type { RawApplication } from '../discord/types/application.js';
 import type { RawApplicationCommand } from '../discord/types/application-command.js';
 import { EVENTS } from '../events/registry.js';
 import { limitsFor } from '../events/router.js';
-import { eventTypedFolders } from '../events/types.js';
-import { writeGenerated } from '../loader/generated.js';
 import { enableProjectLoader, nextGeneration } from '../loader/hot.js';
 import { messageOf } from '../loader/locate.js';
+import { watchPublic } from '../assets/public.js';
 import { snapshotFolder, watchFolder } from '../loader/watch.js';
 import { RestClient } from '../rest/rest.js';
 import { readDevEnv } from './env.js';
@@ -27,7 +26,7 @@ import {
   fetchApplication,
   type PreflightOptions,
 } from './preflight.js';
-import { createProject, explain, hasSources } from './project.js';
+import { createProject, explain, hasSources, writeTypes } from './project.js';
 
 export interface DevOptions {
   /** The folder of the project. */
@@ -68,11 +67,14 @@ export async function dev(options: DevOptions): Promise<number> {
       ? {}
       : { deferAfter: options.deferAfter }),
   });
-  await writeGenerated(cwd, eventTypedFolders());
+  await writeTypes(cwd);
   enableProjectLoader(src, { reload: true });
   // Taken before loading: what is saved from now on must be reloaded.
   const loaded = snapshotFolder(src);
   for (const failure of await project.load()) project.report(failure);
+  // Now that the command files ran, a language file only offers the ones
+  // they do not describe.
+  await writeTypes(cwd, project.commands, project.messages);
 
   // 3. What Discord must agree with before connecting.
   const apiUrl = options.env.CHAPTERJS_API_URL;
@@ -91,6 +93,15 @@ export async function dev(options: DevOptions): Promise<number> {
 
   let bot: Bot | null = null;
   let watcher: { close(): void } | null = null;
+  // The files of public/ are listed in the types: a file added or removed
+  // is offered (or not) by the editor at once.
+  const assets = watchPublic(cwd, () => {
+    writeTypes(cwd, project.commands, project.messages)
+      .then(written => {
+        if (written > 0) log.reload('public/ changed: types updated');
+      })
+      .catch(() => {});
+  });
   const memory = project.watchMemory(() => bot);
   // Resolved with the exit code when something ends the command: asked for
   // from the very start, so nothing that happens early is lost.
@@ -179,6 +190,8 @@ export async function dev(options: DevOptions): Promise<number> {
     );
     (project.isEmpty() ? log.info : log.success)(project.summary());
     project.ready(bot);
+    // Tasks follow the bot through reconnections: they read the current one.
+    project.startTasks(() => bot);
 
     // Said once per file: what only happens in private messages can't be
     // tried here. Discord only offers the commands of a server in that
@@ -205,6 +218,11 @@ export async function dev(options: DevOptions): Promise<number> {
           note(file, `this ${event.name} file`);
         }
       }
+      for (const { file, component } of project.components.values()) {
+        if (component.kind !== 'embed' && component.where === 'dm') {
+          note(file, `the ${component.kind} ${component.path}`);
+        }
+      }
     };
     notePrivateOnly();
 
@@ -225,7 +243,13 @@ export async function dev(options: DevOptions): Promise<number> {
             notePrivateOnly();
             if (bot) {
               configure(bot.ctx.cache, limitsFor(project.events.values()));
+              if (project.applyPresence(bot)) log.reload('Presence updated');
             }
+            // A language that appeared or went: `t` is typed from the
+            // folder. A command described in its file, or no longer: the
+            // language files offer it, or not.
+            if ((await writeTypes(cwd, project.commands, project.messages)) > 0)
+              log.reload('Types updated');
             const intents = project.intents(false);
             if ((intents & ~connectedIntents) !== 0 && bot) {
               // Intents are given when connecting: new ones need a new session.
@@ -265,13 +289,17 @@ export async function dev(options: DevOptions): Promise<number> {
     signal.addEventListener('abort', () => fatal(0), { once: true });
     const code = await ended;
     await reloading.catch(() => {});
+    project.stopTasks();
     watcher.close();
+    assets.close();
     memory.stop();
     await bot?.close();
     if (code === 0) log.success('Disconnected');
     return code;
   } catch (error) {
+    project.stopTasks();
     watcher?.close();
+    assets.close();
     memory.stop();
     await bot?.close();
     if (signal.aborted) return 0;

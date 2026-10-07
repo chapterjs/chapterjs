@@ -181,6 +181,15 @@ describe.skipIf(exe === null || process.platform === 'win32')(
         'src/events/messageDelete/options.ts': `import { event } from 'chapterjs';\nexport default event(({ messageId }) => messageId, { });\n`,
         // A folder created after the types were written.
         'src/events/memberJoin/welcome.ts': `export default event(({ member }) => {});\n`,
+        // The files of public/ are offered to asset(), in every folder.
+        'public/logo.png': '',
+        'public/photos/monday.png': '',
+        // The languages of src/messages/ are offered to t.in().
+        'src/messages/en-US.ts': `import { language } from 'chapterjs';\nexport default language({ default: true, texts: { pong: 'Pong!' } });\n`,
+        'src/messages/fr.ts': `import { language } from 'chapterjs';\nexport default language({ texts: { pong: 'Pong !' } });\n`,
+        'src/commands/lang.ts': `import { command } from 'chapterjs';\nexport default command({ description: 'd', run({ t }) { return t.in('`,
+        'src/commands/photo.ts': `import { asset, command } from 'chapterjs';\nexport default command({ description: 'd', async run({ channel }) { await channel.send({ files: [asset('`,
+        'src/events/ready/photo.ts': `import { asset, event } from 'chapterjs';\nexport default event(({ guilds }) => asset('`,
       });
       cpSync(join(template, 'tsconfig.json'), join(cwd, 'tsconfig.json'));
       symlinkSync(
@@ -207,6 +216,36 @@ describe.skipIf(exe === null || process.platform === 'win32')(
       },
       40_000
     );
+
+    it.each(['src/commands/photo.ts', 'src/events/ready/photo.ts'])(
+      'offers the files of public/ inside asset() in %s',
+      async file => {
+        const cwd = await scaffolded();
+        expect(
+          await offered(exe!, cwd, join(cwd, file), "asset('", null, items =>
+            items
+              .map(item => item.label)
+              .filter(label => label.includes('.'))
+              .sort()
+          )
+        ).toEqual(['logo.png', 'photos/monday.png']);
+      },
+      40_000
+    );
+
+    it('offers the languages of src/messages/ inside t.in(), and no other', async () => {
+      const cwd = await scaffolded();
+      expect(
+        await offered(
+          exe!,
+          cwd,
+          join(cwd, 'src/commands/lang.ts'),
+          "t.in('",
+          null,
+          items => items.map(item => item.label).sort()
+        )
+      ).toEqual(['en-US', 'fr']);
+    }, 40_000);
 
     it('offers to import command from chapterjs in a command file', async () => {
       const cwd = await scaffolded();

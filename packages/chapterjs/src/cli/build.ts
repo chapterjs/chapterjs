@@ -20,12 +20,15 @@ import {
 } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { eventTypedFolders } from '../events/types.js';
-import { writeGenerated } from '../loader/generated.js';
 import { enableProjectLoader } from '../loader/hot.js';
 import { listFolder, type BuiltFile } from '../loader/loader.js';
 import type { Log } from './log.js';
-import { CONVENTIONS, createProject, hasSources } from './project.js';
+import {
+  CONVENTIONS,
+  createProject,
+  hasSources,
+  writeTypes,
+} from './project.js';
 
 /** Where the build of a project is, from its folder. */
 export const buildDir = (cwd: string): string =>
@@ -148,22 +151,6 @@ export async function build(options: BuildOptions): Promise<number> {
   const src = join(cwd, 'src');
   const out = buildDir(cwd);
 
-  // 1. Types: what the editor underlines, for the whole project.
-  await writeGenerated(cwd, eventTypedFolders());
-  const types = await checkTypes(cwd);
-  if (types === null) {
-    log.info(
-      'Types were not checked: TypeScript is not installed in this project (or it has no tsconfig.json).'
-    );
-  } else if (!types.ok) {
-    log.error(
-      `Your project has type errors, so it was not built:\n${types.output.trim()}`
-    );
-    return 1;
-  } else {
-    log.success('Types checked');
-  }
-
   // Whatever happens next, the last build is not one to start any more.
   await rm(out, { recursive: true, force: true });
   const stopped = async (
@@ -177,13 +164,31 @@ export async function build(options: BuildOptions): Promise<number> {
     return 1;
   };
 
-  // 2. Every file must run, one by one: each says what is wrong with it.
+  // 1. Every file must run, one by one: each says what is wrong with it.
   enableProjectLoader(src, { reload: false });
   const sources = createProject({ cwd, version: options.version, log });
   const failures = await sources.load();
+  // 2. Types: what the editor underlines, for the whole project. Written
+  // once the files ran, so a language file only offers the commands they
+  // do not describe; written even when a file failed, so the editor
+  // follows.
+  await writeTypes(cwd, sources.commands, sources.messages);
   if (failures.length > 0) {
     for (const failure of failures) sources.report(failure);
     return stopped(failures.length);
+  }
+  const types = await checkTypes(cwd);
+  if (types === null) {
+    log.info(
+      'Types were not checked: TypeScript is not installed in this project (or it has no tsconfig.json).'
+    );
+  } else if (!types.ok) {
+    log.error(
+      `Your project has type errors, so it was not built:\n${types.output.trim()}`
+    );
+    return 1;
+  } else {
+    log.success('Types checked');
   }
 
   // 3. The whole bot in one file: every file of the conventional folders,

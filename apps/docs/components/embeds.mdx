@@ -1,0 +1,130 @@
+---
+title: 'Embeds and layout'
+description: 'Write an embed once and use it everywhere, and build messages out of texts, sections, galleries and containers'
+---
+
+An embed used in several messages is a file of `src/components/embeds/`. It is the embed itself, or a function of what it shows.
+
+```ts src/components/embeds/welcome.ts
+import { embed, type GuildMember } from 'chapterjs';
+
+export default embed((member: GuildMember) => ({
+  title: `Welcome ${member.displayName}!`,
+  description: `You are member number ${member.guild.memberCount ?? '?'}.`,
+  color: 0xc026d3,
+  thumbnail: { url: member.avatarURL() },
+}));
+```
+
+```ts src/events/memberJoin/greet.ts
+import { event } from 'chapterjs';
+import welcome from '../../components/embeds/welcome';
+
+export default event(async ({ member, guild }) => {
+  const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+  if (general?.isText()) await general.send({ embeds: [welcome(member)] });
+});
+```
+
+That is all: `welcome(member)` returns the embed, checked against the limits of Discord when the message is sent. An embed that always looks the same is given directly, and used without calling it:
+
+```ts src/components/embeds/rules.ts
+import { embed } from 'chapterjs';
+
+export default embed({
+  title: 'Rules',
+  description: '1. Be kind.\n2. No spam.\n3. Have fun.',
+  color: 0x5865f2,
+});
+```
+
+```ts src/commands/rules.ts
+import { command } from 'chapterjs';
+import rules from '../components/embeds/rules';
+
+export default command({
+  description: 'Shows the rules',
+  async run({ interaction }) {
+    await interaction.reply({ embeds: [rules] });
+  },
+});
+```
+
+A static embed is checked when the file loads, so a title over 256 characters is an error in `chapterjs dev` before anything is sent. What an embed can hold is in [Embed](/reference/message-options#embed).
+
+<Note>
+  `embed()` and `EmbedFile` are in the [reference](/reference/embed); every layout helper of this page is in [Layout](/reference/layout).
+</Note>
+
+## Messages made of components
+
+Discord can show a message made of components only: texts, sections with a thumbnail or a button beside them, galleries of images, files, separators, and containers with a colored line like an embed. Write them with the helpers of `'chapterjs'`, where the message is:
+
+```ts src/commands/profile.ts
+import { command, container, linkButton, section, separator, text, thumbnail } from 'chapterjs';
+
+export default command({
+  description: 'Shows your profile',
+  async run({ interaction, member }) {
+    await interaction.reply({
+      components: [
+        container(
+          [
+            section(
+              [`## ${member.displayName}`, `Joined ${member.joinedAt?.toDateString() ?? 'a while ago'}`],
+              thumbnail(member.avatarURL())
+            ),
+            separator(),
+            text(`${member.roles.length} roles`),
+            linkButton({ label: 'Open in Discord', url: `https://discord.com/users/${member.id}` }),
+          ],
+          { color: 0xc026d3 }
+        ),
+      ],
+    });
+  },
+});
+```
+
+As soon as a message has one of these, Discord shows components only: it takes no `content` and no `embeds`, and ChapterJS says so before sending if you pass one. Put the text in `text()`, and the look of an embed in a `container()`.
+
+| Helper | What it is |
+| --- | --- |
+| `text(content)` | A text, with Markdown. All the texts of a message add up to 4000 characters. |
+| `section(texts, accessory)` | 1 to 3 texts with a button or a `thumbnail()` beside them |
+| `thumbnail(url)` | A small picture, beside a section |
+| `gallery(items)` | 1 to 10 pictures or videos in a grid |
+| `file(name)` | A file sent with the message (`files`), shown where it is placed |
+| `separator()` | Space between two pieces, with a line by default |
+| `container(children, { color })` | A box around texts, sections, rows, galleries, files and separators |
+| `row(components)` | A row of up to 5 buttons, or one menu, when you want to choose the rows yourself |
+
+A picture of a gallery or a thumbnail is a link, or a file of the message with `attachment://name`. The files of your bot live in `public/`, and [`asset()`](/messages#files) picks one with the help of your editor:
+
+```ts src/commands/photos.ts
+import { asset, command, gallery, text } from 'chapterjs';
+
+export default command({
+  description: 'Shows the photos of the week',
+  async run({ interaction }) {
+    await interaction.reply({
+      files: [asset('photos/monday.png')],
+      components: [
+        text('# This week'),
+        gallery(['attachment://monday.png', { url: 'https://example.com/tuesday.png', description: 'The team on Tuesday' }]),
+      ],
+    });
+  },
+});
+```
+
+A message holds 40 components at most, rows and the pieces inside containers included. Going over a limit throws before anything is sent, with the limit in the message.
+
+<CardGroup cols={2}>
+  <Card title="Sending messages" icon="mail" href="/messages">
+    Everything a message can contain, and where it goes.
+  </Card>
+  <Card title="Buttons" icon="mouse-pointer-click" href="/components">
+    Run code when a button is clicked.
+  </Card>
+</CardGroup>

@@ -6,20 +6,10 @@ description: 'Know what ChapterJS does not do yet, how to recognise it, and what
 ChapterJS is young. This page lists what it does not have yet, so that you do not look for it, and what to do meanwhile when there is something.
 
 <Note>
-  What exists is in the [reference](/reference): slash commands, events, and the structures they give you.
+  What exists is in the [reference](/reference): slash commands, events,
+  components (buttons, select menus, forms, embeds), tasks, the presence,
+  translated messages and the structures they give you.
 </Note>
-
-## Buttons and select menus
-
-A message can contain [components](/reference/message-options#component): `channel.send()` and `interaction.reply()` accept them, and Discord shows them. But **nothing in your project runs when someone clicks one**: ChapterJS only routes slash commands, and a click is not one. The person sees "This interaction failed".
-
-Meanwhile: a slash command with [options](/commands/options) does what a button or a menu would. `choices` on a `string` option is a select menu people pick from.
-
-## Modals
-
-A form that opens when someone uses a command. Not available: there is no way to open one, and a submitted form would not reach your project.
-
-Meanwhile: the [options](/commands/options) of a command, with `required: true` for what must be filled in.
 
 ## Autocomplete
 
@@ -33,19 +23,49 @@ Commands used by right-clicking a user or a message. Not available: a file of `s
 
 Meanwhile: a slash command with a `user` option, or a `string` option that takes the link of a message.
 
-## Scheduled tasks
+## Prefix commands
 
-Something your bot does by itself, at a time or at intervals. There is no folder for it.
+Commands written in a message, like `!ban` or `?help`. Not available: a file of `src/commands/` is always a slash command, registered with Discord.
 
-Meanwhile: in a file of `src/events/ready/`, `setInterval` with what you want to run. Mind the [memory](/memory) of what you keep between runs, and know that `chapterjs dev` restarts the file on every save.
+Meanwhile: a file of `src/events/messageCreate/` that reads `message.content`. It needs the [Message Content Intent](/events/messages#message-content-intent), and the person gets none of what a slash command gives: no list of options, no typing help, no permission check before your function runs.
 
-## Presence and status
+## Waiting for an answer
 
-Showing "Playing..." or "Listening to..." under the name of the bot, or marking it idle. Not available.
+Asking a question with a message, then waiting for the next message, reaction or click of the same person. Not available: a function answers, then ends.
+
+Meanwhile: a button or a menu of `src/components/` that carries what it needs in its `data`. Its file runs when the person clicks, however long after, even after a restart: see [Components](/components).
+
+## Cooldowns
+
+Refusing a command to a person or a server that used it a moment ago. Not available: a command has no setting for it.
+
+Meanwhile: a `Map` of the last uses, kept in a file starting with `_` and imported by the command. It starts empty on every restart, and `chapterjs dev` reloads it on every save.
+
+## Storing data
+
+Somewhere to keep what your bot learns: scores, settings, warnings. Not available: nothing survives a restart except the `data` of a [component](/components), which lives in the message itself.
+
+Meanwhile: a JSON file written with `node:fs`, or any database made for Node.
 
 ## Other events
 
-The [events](/reference/events) your files can react to are the ones listed there: messages, members, servers, channels and roles. Reactions, voice, typing, threads joined and left, bans, invites, scheduled events and the others are not there yet.
+The [events](/reference/events) your files can react to are the ones listed there: messages, members, servers, channels and roles. Reactions, votes on a poll, threads, voice, typing, bans, invites, scheduled events and the others are not there yet. Your bot can react, start a thread or attach a poll to a message: it is not told when someone else does.
+
+## Voice
+
+Joining a voice channel, playing or recording audio. Not available.
+
+## User-installed apps
+
+A bot that a person adds to their own account, to use its commands in every server and in private messages. Not available: a bot is added to a server, and that is where its commands are.
+
+## Premium and entitlements
+
+[`premiumButton()`](/reference/layout#premiumbutton) opens the store of your bot. Knowing who has subscribed, and being told when someone does, is not available.
+
+## Audit log, scheduled events, stickers and auto-moderation
+
+What your bot reads of them is [plain data](/reference/data), with nothing to do on it: no action to create, edit or delete one.
 
 ## A bot spread over several machines
 
@@ -54,6 +74,20 @@ A large bot runs on [several processes of one machine](/run/start#large-bots) by
 ## Choosing what the bot remembers
 
 How many members, users and messages the bot keeps in memory is decided by the files of your project and by the memory available: see [What the bot remembers](/memory). It is not a setting you can change.
+
+## A config file
+
+There is no `chapterjs.config.ts`: what your bot does comes from the files of `src/`, and what it needs to run from [`.env`](/setup/project-structure#env). That is also why a project has one token and one test server.
+
+## Testing your bot
+
+Running your functions in a test, without Discord. Not available: nothing of ChapterJS is made for a test runner.
+
+Meanwhile: keep what can be tested in files starting with `_` (the text of an answer, a calculation), and test those alone. The files of `src/commands/`, `src/events/`, `src/components/` and `src/tasks/` stay thin.
+
+## Sharing files between bots
+
+Publishing your commands or events as a package, to use them in another project. Not available: a file is only loaded from the `src/` of the project.
 
 <CardGroup cols={2}>
   <Card title="Reference" icon="library" href="/reference">
