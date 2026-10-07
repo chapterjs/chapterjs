@@ -242,10 +242,11 @@ export interface LanguageEntry {
 }
 
 /**
- * Puts the languages together: one default, and every language with the
- * texts of the default one, placeholders included. A language that does
- * not match is left out and reported on its file: the others still work.
- * `null` when there is no language at all.
+ * Puts the languages together: one default, which `t` is typed from and
+ * gives a text to the languages that do not have it, and every other
+ * language with texts the default has, the same placeholders included. A
+ * language that does not match is left out and reported on its file: the
+ * others still work. `null` when there is no language at all.
  */
 export function assembleMessages(entries: readonly LanguageEntry[]): {
   messages: LoadedMessages | null;
@@ -289,14 +290,9 @@ export function assembleMessages(entries: readonly LanguageEntry[]): {
   for (const entry of entries) {
     const { file, language } = entry;
     try {
+      // A text a language does not have is taken from the default one;
+      // one the default does not have is dead: `t` offers the default's.
       if (entry !== reference) {
-        for (const key of reference.language.texts.keys()) {
-          if (!language.texts.has(key)) {
-            fail(
-              `The message "${key}" is missing: every language has the messages of ${name}.`
-            );
-          }
-        }
         for (const [key, template] of language.texts) {
           const expected = reference.language.texts.get(key);
           if (!expected) {
@@ -335,12 +331,18 @@ export function assembleMessages(entries: readonly LanguageEntry[]): {
 
 /**
  * The augmentation that types `t` from the files themselves: the editor
- * reads one language of `src/messages/` directly, so the keys and
- * placeholders follow every keystroke; every language has the same ones.
- * Nothing when the folder has no language.
+ * reads the default language of `src/messages/` directly, so the keys
+ * and placeholders follow every keystroke; the other languages take the
+ * texts they do not have from it. Which file is the default is known
+ * once the files ran (`defaultFile`, from the loaded messages): until
+ * then (`sync`), the first file is taken. Nothing when the folder has no
+ * language.
  */
-export function messagesDeclarations(files: readonly FoundFile[]): string {
-  const first = files.find(({ file }) => {
+export function messagesDeclarations(
+  files: readonly FoundFile[],
+  defaultFile?: string
+): string {
+  const named = files.filter(({ file }) => {
     try {
       localeOf(file.slice('src/messages/'.length));
       return true;
@@ -348,6 +350,7 @@ export function messagesDeclarations(files: readonly FoundFile[]): string {
       return false;
     }
   });
+  const first = named.find(({ file }) => file === defaultFile) ?? named[0];
   if (!first) return '';
   const path = first.file.replace(/^src\//, '').replace(/\.[^./]+$/, '');
   return `import type { MessagesOf } from '#chapterjs';

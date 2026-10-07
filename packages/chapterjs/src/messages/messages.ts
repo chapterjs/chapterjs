@@ -180,8 +180,8 @@ export type ParamsArgs<T extends MessageText> = string extends T
 /**
  * `t`, as handlers receive it: gives a text of `src/messages/` in the
  * language of who will read the message, with its placeholders filled in.
- * `M` is the texts of one language file, which types the keys and the
- * params: every language has the same ones.
+ * `M` is the texts of the default language, which types the keys and the
+ * params: a text another language does not have is taken from it.
  */
 export interface Translator<M extends object = ProjectMessages> {
   <K extends keyof M & string>(

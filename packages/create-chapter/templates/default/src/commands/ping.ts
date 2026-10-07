@@ -4,7 +4,6 @@ import again from '../components/buttons/again';
 // The path of the file is the name of the command: this one is /ping.
 // A file in a folder is a subcommand: src/commands/mod/ban.ts is /mod ban.
 export default command({
-  description: 'Replies with Pong!',
   async run({ interaction, t }) {
     // A button of src/components/buttons/, with the data it carries, and a
     // text of src/messages/ in the language of who will read the answer.

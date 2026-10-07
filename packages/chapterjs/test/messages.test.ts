@@ -967,11 +967,27 @@ describe('the languages together', () => {
     );
   });
 
+  it('take from the default language the texts another does not have', () => {
+    const { messages, failed } = assembleMessages([
+      lang(
+        'en-US',
+        { a: 'Hi {name}', c: 'd', n: 'Number {n}' },
+        { default: true }
+      ),
+      lang('fr', { a: 'Salut {name}' }),
+    ]);
+    expect(failed).toEqual([]);
+    const t = translatorFor(messages!, 'fr');
+    expect(t('a', { name: 'x' })).toBe('Salut x');
+    expect(t('c')).toBe('d');
+    // A text of the default language is written its way.
+    expect(t('n', { n: 1234 })).toBe('Number 1,234');
+    expect(() => any(t)('z')).toThrow(
+      'There is no message "z" in src/messages/. It has: a, c, n.'
+    );
+  });
+
   it.each([
-    [
-      { a: 'b' },
-      'The message "c" is missing: every language has the messages of en-US.ts.',
-    ],
     [
       { a: 'Hi {name}', c: 'd', e: 'f' },
       'The message "e" is not in en-US.ts: add it there, or remove it here.',
@@ -1043,16 +1059,21 @@ declare module 'chapterjs' {
 `);
   });
 
-  it('type t from any language file, since they all have the same keys', () => {
+  it('type t from the default language file, or the first one until it is known', () => {
     expect(messagesDeclarations([])).toBe('');
-    expect(
-      messagesDeclarations([
-        { file: 'src/messages/_old.ts', path: '' },
-        { file: 'src/messages/fr.ts', path: '' },
-        { file: 'src/messages/en-US.ts', path: '' },
-      ])
-    ).toContain(
+    const files = [
+      { file: 'src/messages/_old.ts', path: '' },
+      { file: 'src/messages/fr.ts', path: '' },
+      { file: 'src/messages/en-US.ts', path: '' },
+    ];
+    expect(messagesDeclarations(files)).toContain(
       "extends MessagesOf<typeof import('../../src/messages/fr').default> {}"
+    );
+    expect(messagesDeclarations(files, 'src/messages/en-US.ts')).toContain(
+      "extends MessagesOf<typeof import('../../src/messages/en-US').default> {}"
+    );
+    expect(messagesDeclarations(files, 'src/messages/de.ts')).toContain(
+      "import('../../src/messages/fr')"
     );
     expect(
       messagesDeclarations([{ file: 'src/messages/nope.ts', path: '' }])
@@ -1404,13 +1425,24 @@ export default task({ every: '1h', onStart: true, run({ t }) { console.log('task
     await waitUntil(() => again().length === 1, 'the answer');
     expect(again()).toEqual(['Coucou alice, membre n°7 ! [fr]']);
 
+    // A text removed from a language: the default one's is used.
+    writeFileSync(
+      join(cwd, 'src/messages/fr.ts'),
+      FR.replace("    pong: 'Pong !',\n", '').replace('Bienvenue', 'Coucou')
+    );
+    await cli.waitFor('↻ Reloaded in');
+    const fallen = answers(fake, '11');
+    connection.dispatch('INTERACTION_CREATE', use('11', 'count', 'fr'));
+    await waitUntil(() => fallen().length === 1, 'the answer');
+    expect(fallen()).toEqual(['1 membre, 1\u202f234 membres']);
+
     // Broken: said, and the last good texts stay.
     writeFileSync(
       join(cwd, 'src/messages/fr.ts'),
-      FR.replace("    pong: 'Pong !',\n", '')
+      FR.replace('{count} !', '{n} !').replace('Bienvenue', 'Coucou')
     );
     await cli.waitFor(
-      `✗ src/messages/fr.ts The message "pong" is missing: every language has the messages of en-US.ts.`
+      `✗ src/messages/fr.ts The message "welcome" does not have the placeholders of en-US.ts: it has {n}, {name}, en-US.ts has {count}, {name}.`
     );
     await cli.waitFor('⚠ Reloaded with an error');
     const kept = answers(fake, '5');
@@ -1455,13 +1487,21 @@ export default task({ every: '1h', onStart: true, run({ t }) { console.log('task
       'Something went wrong while running this command.',
     ]);
 
-    // Back: the types too.
+    // Back, with French as the default: the types too, from that file.
     mkdirSync(join(cwd, 'src/messages'));
-    writeFileSync(join(cwd, 'src/messages/en-US.ts'), EN);
-    writeFileSync(join(cwd, 'src/messages/fr.ts'), FR);
+    writeFileSync(
+      join(cwd, 'src/messages/en-US.ts'),
+      EN.replace('  default: true,\n', '')
+    );
+    writeFileSync(
+      join(cwd, 'src/messages/fr.ts'),
+      FR.replace('  texts: {', '  default: true,\n  texts: {')
+    );
     await cli.waitFor('↻ Types updated');
     await cli.waitFor('messages in 2 languages loaded');
-    expect(existsSync(join(cwd, '.chapterjs/types/shared.d.ts'))).toBe(true);
+    expect(
+      readFileSync(join(cwd, '.chapterjs/types/shared.d.ts'), 'utf8')
+    ).toContain("import('../../src/messages/fr')");
     cli.signal('SIGTERM');
     await cli.exited;
   });

@@ -85,13 +85,15 @@ export interface ProjectOptions {
  * Writes the types of a project (`.chapterjs/`): one project per typed
  * folder, and what every file gets, like the files of `public/`. With
  * the commands as they loaded, a language file only offers the ones
- * without `description` in their file; without them (`sync`, which runs
- * nothing), every command is offered.
+ * without `description` in their file, and `t` is typed from the default
+ * language; without them (`sync`, which runs nothing), every command is
+ * offered and the first language file types `t`.
  * @returns how many files were written
  */
 export async function writeTypes(
   cwd: string,
-  commands?: ReadonlyMap<string, CommandEntry>
+  commands?: ReadonlyMap<string, CommandEntry>,
+  messages?: LoadedMessages | null
 ): Promise<number> {
   const [files, languages, commandFiles] = await Promise.all([
     listPublic(cwd),
@@ -101,7 +103,11 @@ export async function writeTypes(
   return writeGenerated(
     cwd,
     eventTypedFolders(),
-    publicDeclarations(files) + messagesDeclarations(languages),
+    publicDeclarations(files) +
+      messagesDeclarations(
+        languages,
+        messages ? messages.files.get(messages.default) : undefined
+      ),
     // Only language files use it, and they are in the main project.
     commandsDeclarations(
       commandFiles.map(({ file }) => ({

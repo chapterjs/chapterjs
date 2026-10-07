@@ -6,5 +6,10 @@ import { language } from 'chapterjs';
 export default language({
   // The language used when the one of a person or of a server is not here.
   default: true,
-  texts: { pong: 'Pong!', again: 'Pong! ×{count}' },
+  texts: { pong: 'Pong! in en-US', again: 'Pong in en-US ! ×{count}' },
+  commands: {
+    ping: {
+      description: 'Replies with Pong!',
+    },
+  },
 });

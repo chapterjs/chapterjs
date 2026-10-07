@@ -239,14 +239,18 @@ export function translatorFor(
   if (known) return known;
   const picked = pickLocale(messages, locale);
   const texts = messages.locales.get(picked)!;
+  // A text the language does not have is the default language's.
+  const base = messages.locales.get(messages.default)!;
   const t = ((key: string, params?: Record<string, unknown>) => {
-    const template = texts.get(key);
+    const own = texts.get(key);
+    if (own) return fill(key, own, params, picked);
+    const template = base.get(key);
     if (!template) {
       throw new TypeError(
-        `There is no message "${key}" in src/messages/. It has: ${[...texts.keys()].join(', ')}.`
+        `There is no message "${key}" in src/messages/. It has: ${[...base.keys()].join(', ')}.`
       );
     }
-    return fill(key, template, params, picked);
+    return fill(key, template, params, messages.default);
   }) as Translator<MessageTexts> & { locale: Locale };
   Object.defineProperties(t, {
     locale: { value: picked, enumerable: true },
