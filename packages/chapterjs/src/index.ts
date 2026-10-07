@@ -276,6 +276,9 @@ export type {
 export type { Role, RoleEditOptions } from './structures/role.js';
 export type { User, UserFlagName, UserPresence } from './structures/user.js';
 export type { Webhook, WebhookMessageOptions } from './structures/webhook.js';
+// Voice: what the bot plays in a voice channel.
+export type { JoinOptions, VoiceConnection } from './voice/connection.js';
+export type { AudioSource } from './voice/source.js';
 
 // Errors handlers can catch.
 export {

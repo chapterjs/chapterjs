@@ -14,4 +14,14 @@ export type {
   FakeGatewayConnection,
   FakeGatewayPayload,
 } from './fake-gateway.js';
+export { fakeVoice } from './fake-voice.js';
+export type {
+  FakeVoice,
+  FakeVoiceBehavior,
+  FakeVoiceConnection,
+  FakeVoicePacket,
+  FakeVoicePayload,
+} from './fake-voice.js';
 export { tempDir } from './temp.js';
+export { webSocketServer } from './websocket.js';
+export type { WebSocketPeer } from './websocket.js';

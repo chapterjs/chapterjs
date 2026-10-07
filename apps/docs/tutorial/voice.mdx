@@ -1,0 +1,109 @@
+---
+title: 'Playing in voice'
+description: 'Make your bot join a voice channel and play a sound there, and understand what Opus and end-to-end encryption change'
+---
+
+Until now your bot wrote. In a voice channel, it can also be heard: a fanfare when someone wins, a sound board, music. This page adds `/fanfare`, which joins the voice channel of the person who asks and plays a sound, then `/hush`, which stops it. On the way, it explains why some files play as they are and others need a tool, and what Discord encrypts.
+
+## A sound in public/
+
+Sounds are files, like the images your bot sends: they go in `public/`. Put one there, `public/sounds/fanfare.ogg`. Any short sound will do; the next section says which formats work.
+
+## The command
+
+Create `src/commands/fanfare.ts`:
+
+```ts src/commands/fanfare.ts
+import { asset, command } from 'chapterjs';
+
+export default command({
+  description: 'Plays a fanfare in your voice channel',
+  async run({ interaction, member }) {
+    const channel = member.voiceChannel;
+    if (!channel) {
+      await interaction.reply({ content: 'Join a voice channel first, then ask again.', ephemeral: true });
+      return;
+    }
+    await interaction.reply(`🎺 in ${channel.name}!`);
+    const voice = await channel.join();
+    await voice.play(asset('sounds/fanfare.ogg'));
+    await voice.leave();
+  },
+});
+```
+
+Save it. The terminal reconnects, because your project now needs something new from Discord:
+
+```text
+↻ Your files now need more from Discord (GUILD_VOICE_STATES): reconnecting...
+```
+
+Discord only tells a bot who is in which voice channel when it asks with this intent. ChapterJS saw `join()` in your files and asked for it. Join a voice channel of your test server, type `/fanfare`: the bot comes in, plays the sound, and leaves.
+
+Read the command again, line by line:
+
+- `member.voiceChannel` is the channel the person is in, or `null`. The answer comes first: a command has 3 seconds to answer, and joining takes a moment.
+- `channel.join()` resolves once the bot is in and can play. Joining the channel it is already in changes nothing.
+- `voice.play(...)` resolves when the sound has been played, so `leave()` comes after it.
+
+## Why Opus
+
+Discord only carries one format in voice: **Opus**, made for voices and music over the internet. A file that is already Opus (`.ogg`, `.opus`, and the `.webm` of most videos) is sent as it is, costing nothing. Anything else (`.mp3`, `.wav`, a link to a radio) must be converted while it plays, and that is the job of **ffmpeg**, a free tool you install on the machine of the bot. ChapterJS finds it by itself; when it is missing, the error says so and what to do:
+
+```text
+✗ src/commands/fanfare.ts:13 public/sounds/fanfare.mp3 is not an Opus file (.ogg or .webm), and ffmpeg is not installed to convert it. Install ffmpeg (https://ffmpeg.org/download.html), or convert the file to .ogg Opus.
+```
+
+The simplest is to convert your sounds once, on your computer, and keep the `.ogg`: then nothing is needed where the bot runs.
+
+## Stopping it
+
+`guild.voice` is the bot in voice in a server, or `null`. Create `src/commands/hush.ts`:
+
+```ts src/commands/hush.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Stops what the bot plays',
+  async run({ interaction, guild }) {
+    if (!guild.voice?.playing) {
+      await interaction.reply({ content: 'Nothing is playing.', ephemeral: true });
+      return;
+    }
+    guild.voice.stop();
+    await interaction.reply('Shh.');
+  },
+});
+```
+
+`stop()` ends the sound: the `play()` of `/fanfare` resolves at once, and the bot leaves. `pause()` and `resume()` work the same way.
+
+## What Discord encrypts
+
+What is said in a voice channel is **end-to-end encrypted**: only the people in the channel can hear it, not even Discord's servers. Every app that speaks there must take part, bots included. Your bot does it with libdave, the library Discord's own apps use, which comes with ChapterJS: nothing to install, nothing to write.
+
+One consequence: while your bot is alone in a channel, there is nobody to encrypt for, so what it plays is not sent. As soon as someone is there, they hear it.
+
+## Points of attention
+
+- **Answer first, then join.** A command has 3 seconds to answer; joining and playing take longer.
+- **Permissions.** The bot needs Connect and Speak in the channel. Without them, the error names the one that is missing.
+- **One connection per server.** `join()` on another channel of the same server moves the bot there; a server can't have the bot in two voice channels.
+- **The intent comes from your files.** `GUILD_VOICE_STATES` is asked when a file calls `join()`. It is not privileged: no switch in the Developer Portal.
+
+## Recap
+
+- Sounds go in `public/`; `asset()` names them.
+- `member.voiceChannel` → `channel.join()` → `voice.play()` → `voice.leave()`.
+- Opus files play as they are; anything else needs ffmpeg on the machine of the bot.
+- `guild.voice` is the bot in voice in a server: `stop()`, `pause()`, `resume()`.
+- Voice is end-to-end encrypted, and ChapterJS does it for you.
+
+<CardGroup cols={2}>
+  <Card title="Buttons" icon="mouse-pointer-click" href="/tutorial/buttons">
+    Put a button under a message, and run code when it is clicked.
+  </Card>
+  <Card title="Guide: Playing in voice" icon="book-open" href="/voice">
+    Joining, playing and leaving, in short.
+  </Card>
+</CardGroup>

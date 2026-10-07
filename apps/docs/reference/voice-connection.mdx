@@ -1,0 +1,153 @@
+---
+title: 'VoiceConnection'
+description: 'The bot in a voice channel: what it plays there, pausing, stopping and leaving'
+---
+
+A `VoiceConnection` is the bot in a voice channel of a server: what it plays there, and how it leaves. `channel.join()` gives one; `guild.voice` is the one of a server.
+
+```ts
+import type { VoiceChannel } from 'chapterjs';
+
+async function ring(channel: VoiceChannel) {
+  const voice = await channel.join();
+  await voice.play('https://example.com/bell.mp3');
+  await voice.leave();
+}
+```
+
+<Note>
+  How to join and play is in [Playing in voice](/voice).
+</Note>
+
+## Properties
+
+<ResponseField name="guild" type="Guild">
+  The server of the voice channel.
+</ResponseField>
+
+<ResponseField name="channel" type="VoiceChannel">
+  The voice channel the bot is in.
+</ResponseField>
+
+<ResponseField name="connected" type="boolean">
+  Whether the bot is still in voice in this server.
+</ResponseField>
+
+<ResponseField name="playing" type="boolean">
+  Whether something is playing, paused or not.
+</ResponseField>
+
+<ResponseField name="paused" type="boolean">
+  Whether what is playing is paused.
+</ResponseField>
+
+## Helpers
+
+### toJSON()
+
+```ts
+toJSON(): object
+```
+
+What `console.log` and `JSON.stringify` show: the server, the channel and what plays, never the session or its keys.
+
+## Actions
+
+### play()
+
+```ts
+play(source: AudioSource): Promise<void>
+```
+
+Plays a file of `public/` (`asset('music/intro.ogg')`), a file sent on Discord (the `attachment` option of a command) or a link. Opus (`.ogg`, `.webm`) is sent as is; anything else is converted with ffmpeg, which must then be installed. Stops what was playing. Resolves when it ends, is stopped, or another `play()` replaces it.
+
+[Discord documentation](https://docs.discord.com/developers/topics/voice-connections#transport-encryption-and-sending-voice)
+
+### pause()
+
+```ts
+pause(): void
+```
+
+Pauses what is playing; `resume()` goes on from there.
+
+### resume()
+
+```ts
+resume(): void
+```
+
+Goes on with what was paused.
+
+### stop()
+
+```ts
+stop(): void
+```
+
+Stops what is playing: its `play()` resolves.
+
+### leave()
+
+```ts
+leave(): Promise<void>
+```
+
+Leaves the voice channel.
+
+[Discord documentation](https://docs.discord.com/developers/topics/voice-connections#connecting-to-voice)
+
+## Types
+
+### AudioSource
+
+```ts
+type AudioSource = AssetFile | Attachment | string
+```
+
+What `play()` takes: a file of `public/` (`asset('music/intro.ogg')`), a file sent on Discord (the `attachment` option of a command, or one of `message.attachments`), or a link starting with `https://`. See [Attachment](/reference/data#attachment).
+
+### JoinOptions
+
+What `join()` takes.
+
+<ResponseField name="deaf" type="boolean">
+  Whether the bot is deafened: it hears nothing, which Discord then does not send it. Default: `true`, since the bot only plays.
+</ResponseField>
+<ResponseField name="mute" type="boolean">
+  Whether the bot shows as muted. Default: `false`.
+</ResponseField>
+
+## Errors
+
+`join()` and `play()` throw with what to do; the error is shown with the line of your code, like any other.
+
+<AccordionGroup>
+  <Accordion title="The bot can't join Lounge: it needs the Connect permission there.">
+    Give the bot **Connect** in that channel. `play()` says the same with **Speak**.
+  </Accordion>
+  <Accordion title="The bot can't join Lounge: it is full (5 people), and the bot does not have the Move Members permission that lets it in anyway.">
+    The user limit of the channel is reached. Raise it, or give the bot **Move Members**.
+  </Accordion>
+  <Accordion title="Discord did not let the bot join Lounge within 10 s.">
+    Discord did not answer. Try again; if it keeps happening, check the permissions of the bot in the channel.
+  </Accordion>
+  <Accordion title="public/x.mp3 is not an Opus file (.ogg or .webm), and ffmpeg is not installed to convert it.">
+    Install [ffmpeg](https://ffmpeg.org/download.html) on the machine that runs the bot, or convert the file to `.ogg` Opus.
+  </Accordion>
+  <Accordion title="ffmpeg could not read public/x.wav: …">
+    ffmpeg could not read the file or the link: the end of the message is what ffmpeg said.
+  </Accordion>
+  <Accordion title="… is a web page, not a sound: give the link of an audio file or of a stream, or send the file.">
+    The link leads to a page, like the one of a YouTube video: the sound is not at that address. Give the link of the file itself, or of a radio stream.
+  </Accordion>
+  <Accordion title="… could not be downloaded: the server answered 404.">
+    A link or a file sent on Discord could not be downloaded: it was deleted, or the link is wrong.
+  </Accordion>
+  <Accordion title="play() takes a file of public/, like play(asset('music/intro.ogg')), a file sent on Discord, or a link starting with https://.">
+    `play()` was given something else, like a path written by hand. Use `asset()`.
+  </Accordion>
+  <Accordion title="The bot is no longer in this voice channel: join it again with channel.join().">
+    The connection left, or someone disconnected the bot. Join again for a new connection.
+  </Accordion>
+</AccordionGroup>

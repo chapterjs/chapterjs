@@ -113,6 +113,18 @@ Every message of ChapterJS says what happened, then what to do. This page gather
   <Accordion title="⚠ A … event was not given to your files: Discord did not let the bot read the user who did it (…).">
     The event only gave the id of who did it (a reaction removed, a vote, someone interested in a scheduled event), the bot did not know that person, and Discord refused to describe them: usually an account that was deleted. Your files did not run for that event. Nothing to do.
   </Accordion>
+  <Accordion title="⚠ Voice: the bot asked to speak on the stage …: a moderator must accept, or give it the Mute Members permission so it speaks by itself.">
+    On a stage, the bot is in the audience until it may speak. Accept its request in Discord, or give it **Mute Members** so it becomes a speaker by itself.
+  </Accordion>
+  <Accordion title="⚠ Voice: the voice server refused the bot (…): …">
+    Discord ended the voice connection for the reason given; `voice.connected` is now `false`. Join again; if it keeps happening, [open an issue](https://github.com/chapterjs/chapterjs/issues) with the message.
+  </Accordion>
+  <Accordion title="⚠ Voice: the end-to-end encryption of the call could not be updated (transition …): joining it again.">
+    The bot received an update of the encryption of the call it could not use, and asked Discord to add it again. Nothing to do: it is back in a moment, and what it plays meanwhile is not heard.
+  </Accordion>
+  <Accordion title="⚠ Voice: the bot lost its voice connection: …">
+    The voice server could not be reached again after a change of server. Join again.
+  </Accordion>
   <Accordion title="⚠ An event of Discord (…) could not be read: …">
     Something in an event sent by Discord could not be applied to what the bot remembers. Your files still received the event. If it keeps happening, [open an issue](https://github.com/chapterjs/chapterjs/issues) with the message.
   </Accordion>

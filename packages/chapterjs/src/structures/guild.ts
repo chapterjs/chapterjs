@@ -63,6 +63,7 @@ import { banUser, type BanOptions, type GuildMember } from './member.js';
 import type { Role } from './role.js';
 import type { User } from './user.js';
 import type { Webhook } from './webhook.js';
+import type { VoiceConnection } from '../voice/connection.js';
 
 /** What a server stores itself; its roles, emojis... live in its stores. */
 export type GuildData = Omit<RawGuild, 'roles' | 'emojis' | 'stickers'> &
@@ -290,6 +291,14 @@ export class Guild extends IdStructure<GuildData> {
   /** The custom emojis of the server. */
   get emojis(): ReadonlyMap<Snowflake, GuildEmoji> {
     return this.#stores.emojis;
+  }
+
+  /**
+   * The bot in voice in this server, to play or leave; `null` when it is
+   * in no voice channel here.
+   */
+  get voice(): VoiceConnection | null {
+    return ctxOf(this).voice?.connectionOf(this.id) ?? null;
   }
 
   /** The @everyone role, which every member has. */

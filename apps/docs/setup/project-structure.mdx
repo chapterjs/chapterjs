@@ -8,10 +8,14 @@ A project made with `create chapter` looks like this. Everything your bot does l
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
     <Tree.Folder name=".chapterjs" />
-    <Tree.Folder name="public" />
+    <Tree.Folder name="public" defaultOpen>
+      <Tree.File name="hello.ogg" highlight />
+    </Tree.Folder>
     <Tree.Folder name="src" defaultOpen>
       <Tree.Folder name="commands" defaultOpen>
+        <Tree.File name="hello.ts" highlight />
         <Tree.File name="ping.ts" highlight />
+        <Tree.File name="play.ts" highlight />
       </Tree.Folder>
       <Tree.Folder name="components" defaultOpen>
         <Tree.Folder name="buttons" defaultOpen>
@@ -19,6 +23,9 @@ A project made with `create chapter` looks like this. Everything your bot does l
         </Tree.Folder>
       </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
+        <Tree.Folder name="reactionAdd" defaultOpen>
+          <Tree.File name="wave.ts" highlight />
+        </Tree.Folder>
         <Tree.Folder name="ready" defaultOpen>
           <Tree.File name="online.ts" highlight />
         </Tree.Folder>
@@ -165,7 +172,7 @@ Packages from `node_modules` are imported as usual. The files you import are wat
 
 ## `public/`: the files your bot sends
 
-Pictures, documents, sounds: put them in `public/`, in any folders you like, and send one with `asset('photos/monday.png')` in the `files` of a message. Your editor lists the files of the folder as you type, and `chapterjs dev` keeps that list up to date while you add files. A file is read when the message is sent. See [Files](/messages#files).
+Pictures, documents, sounds: put them in `public/`, in any folders you like, and send one with `asset('photos/monday.png')` in the `files` of a message. Your editor lists the files of the folder as you type, and `chapterjs dev` keeps that list up to date while you add files. A file is read when the message is sent. See [Files](/messages#files). A sound of `public/` is played in a voice channel the same way, with `voice.play(asset('hello.ogg'))`: the `/hello` command of the template does it, see [Playing in voice](/voice).
 
 ## `.chapterjs/`: generated, ignored, safe to delete
 

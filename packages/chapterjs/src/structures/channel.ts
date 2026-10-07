@@ -61,6 +61,7 @@ import { translatorOf } from '../messages/translate.js';
 import { Role } from './role.js';
 import type { User } from './user.js';
 import type { Webhook } from './webhook.js';
+import type { JoinOptions, VoiceConnection } from '../voice/connection.js';
 
 /** The messages remembered for each channel, when the cache keeps some. */
 const messageStores = new WeakMap<Channel, CacheStore<Snowflake, Message>>();
@@ -620,6 +621,22 @@ export class VoiceChannel extends GuildChannel {
   /** Whether it is a stage channel, where a few speak and the others listen. */
   get isStage(): boolean {
     return this.type === ChannelType.GuildStageVoice;
+  }
+
+  /**
+   * Joins the voice channel, or moves the bot there from another voice
+   * channel of the server. Resolves once the bot can play. On a stage, the
+   * bot becomes a speaker when it may, and asks to speak otherwise.
+   * @see https://docs.discord.com/developers/topics/voice-connections#connecting-to-voice
+   */
+  async join(options?: JoinOptions): Promise<VoiceConnection> {
+    const voice = ctxOf(this).voice;
+    if (!voice) {
+      throw new Error(
+        'Joining a voice channel needs a bot run with chapterjs dev or chapterjs start.'
+      );
+    }
+    return voice.join(this, options);
   }
 
   /**

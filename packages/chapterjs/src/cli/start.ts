@@ -92,6 +92,7 @@ export async function start(options: StartOptions): Promise<number> {
     version: options.version,
     log,
     built: files,
+    joinsVoice: built.info.voice === true,
     ...(options.deferAfter === undefined
       ? {}
       : { deferAfter: options.deferAfter }),
