@@ -106,6 +106,39 @@ export default command({
 
 An object gives a label (shown) and a value (received); a plain list (`choices: ['red', 'green']`) uses the same text for both. Between 1 and 25 choices.
 
+## Suggestions while typing
+
+`choices` needs the values in advance. When they come from somewhere else, or change, `autocomplete` lets your bot suggest them **while the person types**: Discord asks your function every few keystrokes, and shows what it returns. Let `/dice` know the dice of a few games:
+
+```ts src/commands/dice-game.ts
+import { command } from 'chapterjs';
+
+const GAMES = ['Catan', 'Monopoly', 'Risk', 'Yahtzee'];
+
+export default command({
+  description: 'Rolls the die of a game',
+  options: {
+    game: { type: 'string', description: 'Which game', required: true },
+  },
+  autocomplete: {
+    // Called while the person types in "game": value is what they typed so far.
+    game: ({ value }) =>
+      GAMES.filter(game => game.toLowerCase().startsWith(value.toLowerCase())),
+  },
+  async run({ interaction, user, options }) {
+    // options.game: string, suggested or not
+    const roll = Math.floor(Math.random() * 6) + 1;
+    await interaction.reply(
+      `${user.displayName} rolled a ${roll} for ${options.game}.`
+    );
+  },
+});
+```
+
+The function is named after its option, and returns the suggestions: a value to show as is, or `{ name, value }` to show one text and receive another. Discord shows 25 at most, and waits 3 seconds for them.
+
+A suggestion is only a help: the person may type something else, and `run` receives what they typed. Check it, when it matters.
+
 ## Points of attention
 
 - **Required options first.** Discord wants them before the optional ones. You can write them in any order: the framework sorts them for you.
@@ -119,6 +152,7 @@ An object gives a label (shown) and a value (received); a plain list (`choices: 
 - Optional by default: handle `undefined`, or say `required: true`.
 - `user`, `role` and `channel` options give you objects, not ids.
 - `choices` makes a list, and types the value as one of the choices.
+- `autocomplete` suggests values while the person types, from your own code.
 
 <CardGroup cols={2}>
   <Card

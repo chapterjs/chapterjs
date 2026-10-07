@@ -114,6 +114,124 @@ export type OptionValuesOf<Options extends CommandOptions> = {
     : ValueOf<Options[Name]> | undefined;
 };
 
+/**
+ * The options as the person has filled them in so far, while they type in
+ * one of them: every option may be missing, a `user`, `role`, `channel`,
+ * `mentionable` or `attachment` option is its id.
+ */
+export type OptionsSoFar<Options extends CommandOptions> = {
+  readonly [Name in keyof Options]?: Options[Name] extends {
+    type: 'user' | 'role' | 'channel' | 'mentionable' | 'attachment';
+  }
+    ? string
+    : ValueOf<Options[Name]>;
+};
+
+/**
+ * One suggestion for an option: a value, shown as is, or `{ name, value }`
+ * to show a text (1-100 characters) and receive another value. The value
+ * is a text (100 characters at most) for a `string` option, a number for
+ * an `integer` or `number` option.
+ */
+export type Suggestion<Value extends string | number = string | number> =
+  | Value
+  | {
+      /** What the person sees in the list (1-100 characters). */
+      readonly name: string;
+      /** What your `run` receives when they pick it. */
+      readonly value: Value;
+    };
+
+/** The place an `autocomplete` function receives, following `where`. */
+type AutocompletePlace<Where extends CommandWhere> = Where extends 'guild'
+  ? Omit<CommandInGuild, 'interaction'>
+  : Where extends 'dm'
+    ? Omit<CommandInDm, 'interaction'>
+    : | Omit<CommandInGuild, 'interaction'>
+      | Omit<CommandInPrivate, 'interaction'>;
+
+/**
+ * What an `autocomplete` function receives, each time the person types in
+ * its option. Nothing of it can be answered: the suggestions are what the
+ * function returns.
+ */
+export type AutocompleteContext<
+  Value extends string | number | undefined = string | number | undefined,
+  Options extends CommandOptions = CommandOptions,
+  Where extends CommandWhere = CommandWhere,
+> = {
+  /**
+   * What the person has typed so far in the option: a text, maybe empty,
+   * for a `string` option; for an `integer` or `number` option, a number,
+   * or `undefined` while what they typed is not one yet.
+   */
+  value: Value;
+  /** What the person has filled in so far, this option included. */
+  options: OptionsSoFar<Options>;
+  /** Who is typing. */
+  user: User;
+  /** The language of the person: suggest in it when you can. */
+  locale: Locale;
+} & TranslationContext &
+  AutocompletePlace<Where>;
+
+/** What the person types in an option, as an `autocomplete` function gets it. */
+type AutocompleteValueOf<Option extends CommandOption> = Option extends {
+  type: 'string';
+}
+  ? string
+  : number | undefined;
+
+/** The names of the options that can have suggestions. */
+type Suggestable<Options extends CommandOptions> = {
+  [Name in keyof Options]: Options[Name] extends {
+    type: 'string' | 'integer' | 'number';
+  }
+    ? Options[Name] extends { choices: unknown }
+      ? never
+      : Name
+    : never;
+}[keyof Options];
+
+/**
+ * The `autocomplete` of a command: one function per option whose
+ * suggestions come from your bot while the person types, by the name of
+ * the option. Only a `string`, `integer` or `number` option without
+ * `choices` can have one. The function returns the suggestions (25 at
+ * most, Discord shows them in that order), or a promise of them: Discord
+ * waits 3 seconds. The person may still type something else.
+ * @see https://docs.discord.com/developers/interactions/application-commands#autocomplete
+ */
+export type CommandAutocomplete<
+  Options extends CommandOptions = CommandOptions,
+  Where extends CommandWhere = CommandWhere,
+> = [Suggestable<Options>] extends [never]
+  ? // No option can have suggestions: no key is accepted, and the editor
+    // says why.
+    {
+      readonly [
+        name: string
+      ]: 'No option of this command can have suggestions: only a string, integer or number option without choices can.';
+    }
+  : {
+      readonly [Name in Suggestable<Options>]?: (
+        context: AutocompleteContext<
+          AutocompleteValueOf<Options[Name]>,
+          Options,
+          Where
+        >
+      ) =>
+        | readonly Suggestion<SuggestionValueOf<Options[Name]>>[]
+        | Promise<readonly Suggestion<SuggestionValueOf<Options[Name]>>[]>;
+    };
+
+/** The value a suggestion carries: a text or a number, like the option. */
+type SuggestionValueOf<Option extends CommandOption> = Option extends {
+  type: 'string';
+}
+  ? string
+  : number;
+
 /** What a choice of an option is called in translations. */
 type ChoiceKeys<Option extends CommandOption> = Option extends {
   choices: readonly (infer Choice extends string | number)[];
@@ -268,6 +386,13 @@ export interface CommandConfig<
    * @see https://docs.discord.com/developers/interactions/application-commands#localization
    */
   locales?: CommandLocales<NoInfer<Options>>;
+  /**
+   * Suggestions that come from your bot while the person types, for the
+   * options named here (a `string`, `integer` or `number` option without
+   * `choices`): each function receives what they typed and returns the
+   * suggestions. The person may still type something else.
+   */
+  autocomplete?: CommandAutocomplete<NoInfer<Options>, NoInfer<Where>>;
   /**
    * The permissions a member needs to use the command. Server admins can
    * change who sees it in the server settings.

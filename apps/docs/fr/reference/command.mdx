@@ -84,6 +84,10 @@ Ce qu’un fichier de commande donne à `command()` : ce qu’est la commande et
   Combien de temps attendre avant que la commande puisse être utilisée à nouveau : `'10s'` pour chaque personne, ou `{ user, channel, guild }` pour chaque endroit. Quelqu’un qui l’utilise trop tôt reçoit une réponse privée qui dit quand il pourra.
 </ResponseField>
 
+<ResponseField name="autocomplete" type="CommandAutocomplete<Options, Where>">
+  Des suggestions qui viennent de votre bot pendant que la personne tape, pour les options nommées ici (une option `string`, `integer` ou `number` sans `choices`) : chaque fonction reçoit ce qu’elle a tapé et renvoie les suggestions. La personne peut quand même taper autre chose.
+</ResponseField>
+
 ### CommandWhere
 
 ```ts
@@ -236,6 +240,82 @@ Les valeurs des options, typées d’après leur déclaration : une option oblig
 
 Avec `choices`, la valeur est l’union des choix : `'red' | 'green'` pour `choices: ['red', 'green']`, `1 | 2` pour `choices: { Small: 1, Large: 2 }`.
 
+## Autocomplétion
+
+### CommandAutocomplete
+
+```ts
+CommandAutocomplete<Options extends CommandOptions, Where extends CommandWhere>
+```
+
+L’`autocomplete` d’une commande : une fonction par option dont les suggestions viennent de votre bot pendant que la personne tape, par le nom de l’option. Seule une option `string`, `integer` ou `number` sans `choices` peut en avoir une. La fonction renvoie les suggestions (25 au plus, Discord les affiche dans cet ordre), ou une promesse de celles-ci : Discord attend 3 secondes. La personne peut quand même taper autre chose.
+
+```ts
+{
+  readonly [Name in <les options qui peuvent avoir des suggestions>]?: (
+    context: AutocompleteContext<Value, Options, Where>
+  ) => readonly Suggestion<Value>[] | Promise<readonly Suggestion<Value>[]>;
+}
+```
+
+`Value` est `string` pour une option `string`, `number | undefined` pour une option `integer` ou `number` dans le contexte, et `string` ou `number` dans les suggestions. Quand aucune option ne peut avoir de suggestions, aucune clé n’est acceptée, et l’éditeur dit pourquoi.
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#autocomplete)
+
+### AutocompleteContext
+
+```ts
+AutocompleteContext<Value, Options extends CommandOptions, Where extends CommandWhere>
+```
+
+Ce que reçoit une fonction d’`autocomplete`, chaque fois que la personne tape dans son option. Rien ne peut y être répondu : les suggestions sont ce que renvoie la fonction.
+
+<ResponseField name="value" type="Value" required>
+  Ce que la personne a tapé jusque-là dans l’option : un texte, peut-être vide, pour une option `string` ; pour une option `integer` ou `number`, un nombre, ou `undefined` tant que ce qu’elle a tapé n’en est pas encore un.
+</ResponseField>
+
+<ResponseField name="options" type="OptionsSoFar<Options>" required>
+  Ce que la personne a rempli jusque-là, cette option comprise.
+</ResponseField>
+
+<ResponseField name="user" type="User" required>
+  Qui tape.
+</ResponseField>
+
+<ResponseField name="locale" type="Locale" required>
+  La langue de la personne : suggérez dans celle-ci quand vous le pouvez.
+</ResponseField>
+
+<ResponseField name="t" type="Translator">
+  Les textes du projet dans la langue de la personne, quand `src/messages/` a une langue. Voir [`Translator`](/fr/reference/messages#translator).
+</ResponseField>
+
+L’endroit suit `where`, comme [`CommandContext`](#commandcontext) sans son `interaction` : sur un serveur `guild`, `member` et `channel` ([`CommandInGuild`](#commandinguild)) ; en messages privés seulement `channel` ([`CommandInDm`](#commandindm)) ; avec `'both'`, `if (guild)` dit lequel c’est ([`CommandInPrivate`](#commandinprivate)).
+
+### OptionsSoFar
+
+```ts
+OptionsSoFar<Options extends CommandOptions>
+```
+
+Les options telles que la personne les a remplies jusque-là, pendant qu’elle tape dans l’une d’elles : chaque option peut manquer, une option `user`, `role`, `channel`, `mentionable` ou `attachment` est son identifiant.
+
+### Suggestion
+
+```ts
+Suggestion<Value extends string | number> = Value | { name: string; value: Value }
+```
+
+Une suggestion pour une option : une valeur, affichée telle quelle, ou `{ name, value }` pour afficher un texte (1 à 100 caractères) et recevoir une autre valeur. La valeur est un texte (100 caractères au plus) pour une option `string`, un nombre pour une option `integer` ou `number`.
+
+<ResponseField name="name" type="string" required>
+  Ce que la personne voit dans la liste (1 à 100 caractères).
+</ResponseField>
+
+<ResponseField name="value" type="Value" required>
+  Ce que reçoit votre `run` quand elle la choisit.
+</ResponseField>
+
 ## Ce que reçoit run
 
 ### CommandContext
@@ -381,5 +461,7 @@ Ce que déclare un fichier est vérifié à son chargement, par rapport aux limi
 | `min`, `max` | `min` pas au-dessus de `max` ; nombres entiers pour une option `'integer'` |
 | Les noms traduits des options | Pas deux options avec le même nom dans une langue |
 | `cooldown` | Une durée d’une seconde au moins ; pas de `guild` pour une commande avec `where: 'dm'` |
+| `autocomplete` | Une fonction par option, pour une option `string`, `integer` ou `number` sans `choices` |
+| Les suggestions (vérifiées à l’envoi) | 25 au plus (les premières sont gardées), chacune affichée en 1 à 100 caractères (coupée au-delà), une valeur texte de 100 caractères au plus, un nombre pour une option nombre, entier pour une option `'integer'` |
 
 [Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-naming)

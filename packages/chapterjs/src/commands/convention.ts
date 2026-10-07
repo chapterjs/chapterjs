@@ -16,10 +16,12 @@ import type { Convention } from '../loader/loader.js';
 import { DURATION_EXAMPLE, parseDuration } from '../util/duration.js';
 import {
   isCommandFile,
+  type AutocompleteContext,
   type CommandConfig,
   type CommandContext,
   type CommandOption,
   type CommandWhere,
+  type Suggestion,
 } from './command.js';
 
 /** A name or a description in other languages, as Discord takes them. */
@@ -38,6 +40,11 @@ export type LoadedOption = CommandOption & {
   name: string;
   description: string;
 };
+
+/** An `autocomplete` function of a file, as the router runs it. */
+export type AutocompleteFunction = (
+  context: AutocompleteContext
+) => readonly Suggestion[] | Promise<readonly Suggestion[]>;
 
 /** A command file, checked: what the rest of the feature works with. */
 export interface LoadedCommand {
@@ -66,6 +73,8 @@ export interface LoadedCommand {
   readonly ephemeral: boolean;
   /** How long each person, channel and server waits between two uses. */
   readonly cooldown: CooldownLimits;
+  /** The functions giving suggestions, by the name of their option. */
+  readonly autocomplete: Readonly<Record<string, AutocompleteFunction>>;
   readonly run: (context: CommandContext) => unknown;
 }
 
@@ -111,8 +120,12 @@ const COMMAND_KEYS = [
   'nsfw',
   'ephemeral',
   'cooldown',
+  'autocomplete',
   'run',
 ];
+
+/** The kinds of options whose suggestions can come from the bot. */
+const SUGGESTABLE_TYPES = ['string', 'integer', 'number'] as const;
 
 const fail = (message: string): never => {
   throw new TypeError(message);
@@ -513,6 +526,55 @@ function choiceLabels(option: CommandOption): string[] {
     : Object.keys(option.choices);
 }
 
+/**
+ * Checks `autocomplete`: one function per option, for an option that can
+ * have suggestions (a text or a number, without choices).
+ * @see https://docs.discord.com/developers/interactions/application-commands#autocomplete
+ */
+function checkAutocomplete(
+  value: unknown,
+  options: readonly LoadedOption[]
+): Readonly<Record<string, AutocompleteFunction>> {
+  if (value === undefined) return Object.freeze({});
+  const example = `autocomplete: { ${options[0]?.name ?? 'name'}: ({ value }) => [...] }`;
+  if (!isRecord(value)) {
+    return fail(
+      `"autocomplete" is an object whose keys are the names of the options to suggest for, each a function returning the suggestions: ${example}`
+    );
+  }
+  const functions: Record<string, AutocompleteFunction> = {};
+  for (const [name, fn] of Object.entries(value)) {
+    const option = options.find(one => one.name === name);
+    const what = `"${name}" of "autocomplete"`;
+    if (!option) {
+      fail(
+        `${what} is not an option of this command.${options.length > 0 ? ` Its options are: ${options.map(one => one.name).join(', ')}.` : ' Declare it in "options" first.'}`
+      );
+    }
+    if (
+      !SUGGESTABLE_TYPES.includes(
+        option!.type as (typeof SUGGESTABLE_TYPES)[number]
+      )
+    ) {
+      fail(
+        `${what} can't have suggestions: the option "${name}" is a ${option!.type}. Only a ${SUGGESTABLE_TYPES.join(', ')} option can.`
+      );
+    }
+    if ('choices' in option! && option!.choices) {
+      fail(
+        `${what} can't have suggestions: the option "${name}" has "choices", and Discord takes one or the other. Remove its choices to suggest them from here, or take it out of "autocomplete".`
+      );
+    }
+    if (typeof fn !== 'function') {
+      fail(
+        `${what} is a function that returns the suggestions, like ${name}: ({ value }) => [...]: got ${JSON.stringify(fn) ?? typeof fn}.`
+      );
+    }
+    functions[name] = fn as AutocompleteFunction;
+  }
+  return Object.freeze(functions);
+}
+
 function checkPermissions(permissions: unknown): bigint {
   if (permissions === undefined) return 0n;
   if (!Array.isArray(permissions)) {
@@ -622,6 +684,7 @@ export const commandsConvention: Convention<LoadedCommand> = {
       nsfw: checkBoolean('"nsfw"', config.nsfw),
       ephemeral: checkBoolean('"ephemeral"', config.ephemeral),
       cooldown: checkCooldown(config.cooldown, where),
+      autocomplete: checkAutocomplete(config.autocomplete, options),
       run: config.run as LoadedCommand['run'],
     });
   },

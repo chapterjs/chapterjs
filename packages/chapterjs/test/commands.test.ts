@@ -802,7 +802,7 @@ export default command({
     [
       'src/commands/bad.ts',
       `import { command } from 'chapterjs';\nexport default command({ description: 'd', name: 'other', run() {} } as never);\n`,
-      /"name" is not something a command has\. It can have: description, options, locales, permissions, where, nsfw, ephemeral, cooldown, run\./,
+      /"name" is not something a command has\. It can have: description, options, locales, permissions, where, nsfw, ephemeral, cooldown, autocomplete, run\./,
     ],
     [
       'src/commands/bad.ts',
@@ -2122,5 +2122,421 @@ export default event(({ member }) => member);
         /^src\/events\/\(logs\)\/typo\.ts\(1,\d+\): error TS2305: Module '"chapterjs"' has no exported member 'event'/
       ),
     ]);
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('autocomplete', () => {
+  /** Someone typing in an option, as Discord sends it (type 4). */
+  const typing = (
+    id: string,
+    name: string,
+    options: Record<string, unknown>[],
+    extra: Record<string, unknown> = {}
+  ) => ({ ...use(id, name, extra, { options }), type: 4 });
+
+  const PLAY = `import { command } from 'chapterjs';
+const SONGS = ['Darkside', 'Dark Horse', 'Daylight'];
+export default command({
+  description: 'Plays a song',
+  options: {
+    song: { type: 'string', description: 'd', required: true },
+    volume: { type: 'integer', description: 'd' },
+    who: { type: 'user', description: 'd' },
+    album: { type: 'string', description: 'd' },
+  },
+  autocomplete: {
+    async song({ value, options, user, locale, guild, member, channel, t }) {
+      console.log(JSON.stringify({
+        value, options, user: user.username, locale,
+        guild: guild.name, member: member.id, channel: channel.id, t: t('hello', { name: value }),
+      }));
+      return SONGS.filter(song => song.toLowerCase().startsWith(value.toLowerCase()))
+        .map(song => ({ name: song, value: song.toLowerCase() }));
+    },
+    volume({ value }) {
+      console.log(JSON.stringify({ volume: value === undefined ? 'nothing yet' : value }));
+      return [1, 2, { name: 'loud', value: 3 }];
+    },
+  },
+  async run({ interaction, options }) {
+    await interaction.reply(options.song);
+  },
+});
+`;
+  const broken = (body: string) => `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  options: { text: { type: 'string', description: 'd' }, count: { type: 'integer', description: 'd' } },
+  autocomplete: { ${body} },
+  run() {},
+});
+`;
+
+  /** Lets the bot answer the autocomplete `id`, and returns what it sent. */
+  const suggested = (fake: FakeWorld, id: string, status?: number) => {
+    const callback = `/interactions/${id}/token-${id}/callback`;
+    fake.discord.on(
+      'POST',
+      callback,
+      status ? { status, body: { code: 10062, message: 'Unknown' } } : {}
+    );
+    return () =>
+      fake.discord
+        .requestsTo('POST', callback)
+        .map(request => request.body as { type: number; data: unknown });
+  };
+
+  it('are registered, and answer what the file suggests while the person types', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/commands/play.ts': PLAY,
+      'src/commands/private.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  where: 'dm',
+  options: { q: { type: 'string', description: 'd' } },
+  autocomplete: { q: () => { console.log('ran outside'); return ['x']; } },
+  run() {},
+});
+`,
+      'src/messages/en-US.ts': `import { language } from 'chapterjs';
+export default language({ default: true, texts: { hello: 'Hello {name}' } });
+`,
+      'src/messages/fr.ts': `import { language } from 'chapterjs';
+export default language({ texts: { hello: 'Bonjour {name}' } });
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 2 commands');
+    const connection = await connected(fake);
+    await waitUntil(() => registered(fake).length === 1, 'the registration');
+    const [play] = registered(fake)[0]!;
+    // Only in private messages: not on the dev server.
+    expect(registered(fake)[0]).toHaveLength(1);
+    expect(
+      (play!.options as { name: string; autocomplete?: boolean }[]).map(
+        option => [option.name, option.autocomplete]
+      )
+    ).toEqual([
+      ['song', true],
+      ['volume', true],
+      ['who', undefined],
+      ['album', undefined],
+    ]);
+
+    // A text: what was typed so far, the other options as they are.
+    const song = suggested(fake, '100000000000000701');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      typing('100000000000000701', 'play', [
+        { name: 'song', type: 3, value: 'dar', focused: true },
+        { name: 'volume', type: 4, value: 2 },
+        { name: 'who', type: 6, value: ALICE },
+      ])
+    );
+    await waitUntil(() => song().length === 1, 'the suggestions');
+    expect(song()[0]).toEqual({
+      type: 8,
+      data: {
+        choices: [
+          { name: 'Darkside', value: 'darkside' },
+          { name: 'Dark Horse', value: 'dark horse' },
+        ],
+      },
+    });
+    const seen = JSON.parse(
+      cli.output.split('\n').find(line => line.startsWith('{"value"'))!
+    );
+    expect(seen).toEqual({
+      value: 'dar',
+      options: { song: 'dar', volume: 2, who: ALICE },
+      user: 'alice',
+      locale: 'fr',
+      guild: 'Dev Server',
+      member: ALICE,
+      channel: GENERAL,
+      t: 'Bonjour dar',
+    });
+    // The token of the interaction authenticates the answer.
+    expect(
+      fake.discord.requestsTo(
+        'POST',
+        '/interactions/100000000000000701/token-100000000000000701/callback'
+      )[0]!.headers.authorization
+    ).toBeUndefined();
+
+    // A number: a value as is, or shown under a name; nothing typed yet
+    // is undefined, not a text.
+    const volume = suggested(fake, '100000000000000702');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      typing('100000000000000702', 'play', [
+        { name: 'song', type: 3, value: 'darkside' },
+        { name: 'volume', type: 4, value: '', focused: true },
+      ])
+    );
+    await waitUntil(() => volume().length === 1, 'the volume suggestions');
+    expect(volume()[0]).toEqual({
+      type: 8,
+      data: {
+        choices: [
+          { name: '1', value: 1 },
+          { name: '2', value: 2 },
+          { name: 'loud', value: 3 },
+        ],
+      },
+    });
+    expect(cli.output).toContain('{"volume":"nothing yet"}');
+
+    // An option with no function (registered by an older file): nothing,
+    // and the developer is told.
+    const album = suggested(fake, '100000000000000703');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      typing('100000000000000703', 'play', [
+        { name: 'song', type: 3, value: 'x' },
+        { name: 'album', type: 3, value: 'a', focused: true },
+      ])
+    );
+    await cli.waitFor(
+      '⚠ src/commands/play.ts Discord asked suggestions for /play album, which has none in "autocomplete": the command was registered with an older version of this file.'
+    );
+    await waitUntil(() => album().length === 1, 'the empty answer');
+    expect(album()[0]).toEqual({ type: 8, data: { choices: [] } });
+
+    // A command whose file is gone: nothing, silently.
+    const gone = suggested(fake, '100000000000000704');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      typing('100000000000000704', 'gone', [
+        { name: 'song', type: 3, value: 'x', focused: true },
+      ])
+    );
+    await waitUntil(() => gone().length === 1, 'the answer for /gone');
+    expect(gone()[0]).toEqual({ type: 8, data: { choices: [] } });
+
+    // Used where the command does not work: nothing.
+    const outside = suggested(fake, '100000000000000705');
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      typing('100000000000000705', 'private', [
+        { name: 'q', type: 3, value: 'x', focused: true },
+      ])
+    );
+    await waitUntil(() => outside().length === 1, 'the answer outside');
+    expect(outside()[0]).toEqual({ type: 8, data: { choices: [] } });
+    expect(cli.output).not.toContain('ran outside');
+
+    // Discord dropped the interaction (the person typed on): nothing said.
+    const dropped = suggested(fake, '100000000000000706', 404);
+    connection.dispatch(
+      'INTERACTION_CREATE',
+      typing('100000000000000706', 'play', [
+        { name: 'song', type: 3, value: 'day', focused: true },
+      ])
+    );
+    await waitUntil(() => dropped().length === 1, 'the dropped answer');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    expect(cli.output).not.toContain('⚠ src/commands/play.ts The suggestions');
+    expect(cli.output).not.toContain('✗ src/commands/play.ts');
+  });
+
+  it('fix what can be fixed and say it once, and refuse what can not', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/commands/many.ts': broken(
+        `text: () => Array.from({ length: 30 }, (_, i) => 'song ' + i)`
+      ),
+      'src/commands/long.ts': broken(
+        `text: ({ value }) => value === 'name' ? [{ name: 'n'.repeat(120), value: 'short' }] : ['v'.repeat(101)]`
+      ),
+      'src/commands/boom.ts': broken(
+        `text: () => { throw new Error('no songs'); }`
+      ),
+      'src/commands/kind.ts': broken(
+        `count: () => ['one'], text: () => [{ name: 'One', value: 1 }]`
+      ),
+      'src/commands/whole.ts': broken(`count: () => [1.5]`),
+      'src/commands/list.ts': broken(`text: () => 'song'`),
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 6 commands');
+    const connection = await connected(fake);
+    let next = 710;
+    const ask = async (name: string, option: string, value: string) => {
+      const id = `1000000000000007${next++}`;
+      const answers = suggested(fake, id);
+      connection.dispatch(
+        'INTERACTION_CREATE',
+        typing(id, name, [
+          {
+            name: option,
+            type: option === 'text' ? 3 : 4,
+            value,
+            focused: true,
+          },
+        ])
+      );
+      await waitUntil(() => answers().length === 1, `the answer of /${name}`);
+      return answers()[0]!.data as {
+        choices: { name: string; value: unknown }[];
+      };
+    };
+
+    // Too many: the first 25, said once although it happens every time.
+    const many = await ask('many', 'text', '');
+    expect(many.choices).toHaveLength(25);
+    expect(many.choices[24]).toEqual({ name: 'song 24', value: 'song 24' });
+    await cli.waitFor(
+      '⚠ src/commands/many.ts /many text: the autocomplete function returned 30 suggestions, Discord shows 25 at most: only the first 25 are sent. Return fewer, the best ones first.'
+    );
+    await ask('many', 'text', 'again');
+    expect(cli.output.split('returned 30 suggestions').length - 1).toBe(1);
+
+    // A name too long is cut; a value too long can't be.
+    const long = await ask('long', 'text', 'name');
+    expect(long.choices).toEqual([
+      { name: `${'n'.repeat(99)}…`, value: 'short' },
+    ]);
+    await cli.waitFor(
+      '⚠ src/commands/long.ts /long text: a suggestion is shown as 120 characters, Discord shows 100 at most: it is cut. Give it a shorter name.'
+    );
+    expect((await ask('long', 'text', 'value')).choices).toEqual([]);
+    await cli.waitFor(
+      '✗ src/commands/long.ts A suggestion of /long text has a value of 101 characters: Discord accepts 100 at most. Suggest a shorter value, like an id, with the text to show as its name.'
+    );
+
+    // The function throws: the error with its line, and nothing suggested.
+    expect((await ask('boom', 'text', 'x')).choices).toEqual([]);
+    await cli.waitFor('✗ src/commands/boom.ts:5 no songs');
+
+    // The wrong kind of value.
+    expect((await ask('kind', 'count', '1')).choices).toEqual([]);
+    await cli.waitFor(
+      '✗ src/commands/kind.ts A suggestion of /kind count has the value "one": the option is a number, so its suggestions must be numbers.'
+    );
+    expect((await ask('kind', 'text', 'x')).choices).toEqual([]);
+    await cli.waitFor(
+      '✗ src/commands/kind.ts A suggestion of /kind text has the value 1: the option is a text, so its suggestions must be texts.'
+    );
+    expect((await ask('whole', 'count', '1')).choices).toEqual([]);
+    await cli.waitFor(
+      '✗ src/commands/whole.ts A suggestion of /whole count has the value 1.5, which is not a whole number: the option is an integer.'
+    );
+    expect((await ask('list', 'text', 'x')).choices).toEqual([]);
+    await cli.waitFor(
+      `✗ src/commands/list.ts The autocomplete function of /list text must return a list of suggestions, like ['a', 'b'] or [{ name: 'Shown', value: 'a' }]: got "song".`
+    );
+  });
+
+  it('is typed from the options: their values, what was typed, and where', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/commands/ok.ts': `import { command, type Guild, type User } from 'chapterjs';
+export default command({
+  description: 'd',
+  options: {
+    song: { type: 'string', description: 'd', required: true },
+    volume: { type: 'integer', description: 'd' },
+    who: { type: 'user', description: 'd' },
+    fixed: { type: 'string', description: 'd', choices: ['a', 'b'] },
+  },
+  autocomplete: {
+    async song({ value, options, user, locale, guild, member, channel }) {
+      const typed: string = value;
+      const volume: number | undefined = options.volume;
+      const who: string | undefined = options.who;
+      const fixed: 'a' | 'b' | undefined = options.fixed;
+      const person: User = user;
+      const where: Guild = guild;
+      void [typed, volume, who, fixed, person, where, member.id, channel.id, locale];
+      return [value, { name: 'Shown', value: 'v' }];
+    },
+    volume: ({ value }) => { const typed: number | undefined = value; return [typed ?? 0, { name: 'loud', value: 3 }]; },
+  },
+  run() {},
+});
+`,
+      'src/commands/dm.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  where: 'both',
+  options: { q: { type: 'string', description: 'd' } },
+  autocomplete: { q: ({ guild, member, channel }) => guild ? [member.displayName] : [channel.recipientId ?? ''] },
+  run() {},
+});
+`,
+      'src/commands/wrong-kind.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  options: { n: { type: 'integer', description: 'd' } },
+  autocomplete: { n: () => ['one'] },
+  run() {},
+});
+`,
+      'src/commands/not-an-option.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  options: { who: { type: 'user', description: 'd' } },
+  autocomplete: { who: () => [] },
+  run() {},
+});
+`,
+      'src/commands/with-choices.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  options: { c: { type: 'string', description: 'd', choices: ['a'] } },
+  autocomplete: { c: () => ['a'] },
+  run() {},
+});
+`,
+      'src/commands/no-options.ts': `import { command } from 'chapterjs';
+export default command({ description: 'd', autocomplete: { x: () => [] }, run() {} });
+`,
+      'src/commands/dm-only.ts': `import { command } from 'chapterjs';
+export default command({
+  description: 'd',
+  where: 'dm',
+  options: { q: { type: 'string', description: 'd' } },
+  autocomplete: { q: ({ guild }) => [String(guild)] },
+  run() {},
+});
+`,
+    });
+    cpSync(
+      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(cwd, 'tsconfig.json')
+    );
+    symlinkSync(
+      join(packageDir, 'node_modules/@types'),
+      join(cwd, 'node_modules/@types'),
+      'dir'
+    );
+    await runDev(cwd, fake, ['sync']).exited;
+    const result = spawnSync(
+      join(packageDir, 'node_modules/.bin/tsc'),
+      ['-b'],
+      { cwd, encoding: 'utf8' }
+    );
+    const errors = result.stdout
+      .split('\n')
+      .filter(line => line.includes('error TS'))
+      .sort();
+    expect(errors.map(error => error.replace(/\(\d+,\d+\).*/, ''))).toEqual([
+      'src/commands/dm-only.ts',
+      'src/commands/no-options.ts',
+      'src/commands/not-an-option.ts',
+      'src/commands/with-choices.ts',
+      'src/commands/wrong-kind.ts',
+    ]);
+    expect(errors[0]).toMatch(/Property 'guild' does not exist on type/);
+    const why =
+      /not assignable to type '"No option of this command can have suggestions: only a string, integer or number option without choices can\."'/;
+    expect(errors[1]).toMatch(why);
+    expect(errors[2]).toMatch(why);
+    expect(errors[3]).toMatch(why);
+    expect(errors[4]).toMatch(
+      /Type '\(\) => string\[\]' is not assignable to type '\(context: AutocompleteContext<number \| undefined/
+    );
   });
 });

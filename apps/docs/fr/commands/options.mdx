@@ -101,6 +101,61 @@ export default command({
 
 Les choix d’une option `string` sont des textes, ceux d’une option `integer` ou `number` sont des nombres ; ce qui est affiché fait de 1 à 100 caractères. Le même choix ne peut pas apparaître deux fois.
 
+## Autocomplétion
+
+Quand les valeurs ne sont pas connues à l’avance, ou changent (une chanson, un joueur, un ticket), `autocomplete` les suggère **pendant que la personne tape** : Discord interroge votre bot toutes les quelques frappes, et affiche ce que renvoie votre fonction sous l’option. La personne peut quand même taper autre chose.
+
+```ts src/commands/play.ts
+import { command } from 'chapterjs';
+
+const SONGS = [
+  { id: '1', title: 'Daylight' },
+  { id: '2', title: 'Dark Horse' },
+  { id: '3', title: 'Darkside' },
+];
+
+export default command({
+  description: 'Joue une chanson',
+  options: {
+    song: { type: 'string', description: 'Quelle chanson', required: true },
+  },
+  autocomplete: {
+    // Appelée pendant que la personne tape dans « song », avec ce qu’elle a tapé jusque-là.
+    song: ({ value }) =>
+      SONGS.filter(song => song.title.toLowerCase().startsWith(value.toLowerCase()))
+        // Affichée comme le titre, reçue comme l’identifiant.
+        .map(song => ({ name: song.title, value: song.id })),
+  },
+  async run({ interaction, options }) {
+    // options.song : string, l’identifiant de la chanson, ou ce qui a été tapé
+    const song = SONGS.find(song => song.id === options.song);
+    await interaction.reply(song ? `Je joue ${song.title}.` : 'Je ne connais pas cette chanson.');
+  },
+});
+```
+
+`autocomplete` a une fonction par option, par son nom, pour une option `string`, `integer` ou `number` sans `choices`. Elle reçoit :
+
+| Champ | Ce que c’est |
+| --- | --- |
+| `value` | Ce que la personne a tapé jusque-là : un texte (peut-être vide) pour une option `string` ; pour une option `integer` ou `number`, un nombre, ou `undefined` tant que ce n’en est pas encore un |
+| `options` | Ce que la personne a rempli jusque-là, chaque option facultative ; une option `user`, `role`, `channel`, `mentionable` ou `attachment` est son identifiant |
+| `user`, `locale` | Qui tape, et sa langue |
+| `guild`, `member`, `channel` | Où, selon `where` comme pour `run` |
+| `t` | Les textes du projet, dans la langue de la personne (voir [messages traduits](/fr/translated-messages)) |
+
+Elle renvoie les suggestions (ou une promesse de celles-ci) : une valeur, affichée telle quelle, ou `{ name, value }` pour afficher un texte et recevoir une autre valeur. Une option `string` suggère des textes, une option `integer` ou `number` des nombres. Discord en affiche 25 au plus, dans l’ordre où vous les renvoyez, et attend 3 secondes : répondez vite, vos meilleures correspondances d’abord.
+
+<Warning>
+  Une suggestion est une aide, pas une limite : Discord envoie à votre `run` ce que la personne a tapé, choisi dans la liste ou non. Vérifiez la valeur, comme dans l’exemple.
+</Warning>
+
+Ce que renvoie la fonction est vérifié à l’envoi. Trop de suggestions sont coupées à 25, et un nom de plus de 100 caractères est raccourci, dit une fois avec `⚠`. Ce qui ne peut pas être corrigé est une erreur, et rien n’est suggéré :
+
+```text
+✗ src/commands/play.ts A suggestion of /play song has the value 1: the option is a text, so its suggestions must be texts.
+```
+
 ## Limiter ce qui est tapé
 
 Un texte peut recevoir une longueur, un nombre un intervalle :
@@ -201,6 +256,19 @@ Tout ce que déclare une option est vérifié au chargement du fichier, par rapp
   <Accordion title="Les sortes de salons">
     ```text
     ✗ src/commands/announce.ts "channelTypes" of the option "channel" is a list of ChannelType values, like [ChannelType.GuildText].
+    ```
+  </Accordion>
+  <Accordion title="L’autocomplétion">
+    ```text
+    ✗ src/commands/play.ts "title" of "autocomplete" is not an option of this command. Its options are: song.
+    ```
+
+    ```text
+    ✗ src/commands/play.ts "who" of "autocomplete" can't have suggestions: the option "who" is a user. Only a string, integer, number option can.
+    ```
+
+    ```text
+    ✗ src/commands/play.ts "song" of "autocomplete" can't have suggestions: the option "song" has "choices", and Discord takes one or the other. Remove its choices to suggest them from here, or take it out of "autocomplete".
     ```
   </Accordion>
 </AccordionGroup>

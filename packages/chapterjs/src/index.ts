@@ -13,7 +13,9 @@
 // Slash commands: what the files of src/commands/ are written with.
 export { command } from './commands/command.js';
 export type {
+  AutocompleteContext,
   ChannelOption,
+  CommandAutocomplete,
   CommandConfig,
   CommandContext,
   CommandInDm,
@@ -28,10 +30,12 @@ export type {
   Cooldown,
   Duration,
   NumberOption,
+  OptionsSoFar,
   OptionTranslation,
   OptionValuesOf,
   SimpleOption,
   StringOption,
+  Suggestion,
 } from './commands/command.js';
 export type {
   CommandInteraction,

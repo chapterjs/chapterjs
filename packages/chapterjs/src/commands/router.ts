@@ -33,6 +33,7 @@ import { audienceLocale, translation } from '../messages/translate.js';
 import { CommandInteraction } from '../structures/interaction.js';
 import { remember } from '../structures/known.js';
 import { toCamelCase } from '../util/case.js';
+import { suggest } from './autocomplete.js';
 import type { CommandContext } from './command.js';
 import { commandName, type CommandEntry } from './tree.js';
 
@@ -56,6 +57,8 @@ export class CommandRouter {
   readonly #options: CommandRouterOptions;
   // Kept by the router, not the entries: a reload keeps the cooldowns.
   readonly #cooldowns: CooldownStore;
+  // What was already said about suggestions, which come on every keystroke.
+  readonly #warnedOnce = new Set<string>();
 
   constructor(options: CommandRouterOptions) {
     this.#options = options;
@@ -71,9 +74,16 @@ export class CommandRouter {
     this.#commands = commands;
   }
 
-  /** Handles an Interaction Create event, if it is a slash command. */
+  /**
+   * Handles an Interaction Create event, if it is a slash command being
+   * used, or someone typing in one of its options with suggestions.
+   */
   dispatch(ctx: Context, raw: RawInteraction): void {
-    if (raw.type !== InteractionType.ApplicationCommand) return;
+    const autocomplete =
+      raw.type === InteractionType.ApplicationCommandAutocomplete;
+    if (raw.type !== InteractionType.ApplicationCommand && !autocomplete) {
+      return;
+    }
     const data = raw.data as RawApplicationCommandData | undefined;
     if (!data || data.type !== ApplicationCommandType.ChatInput) return;
 
@@ -85,6 +95,10 @@ export class CommandRouter {
       given = given[0].options ?? [];
     }
     const entry = this.#commands.get(path.join(' '));
+    if (autocomplete) {
+      suggest(ctx, raw, entry, given, this.#options, this.#warnedOnce);
+      return;
+    }
     const name = commandName(path);
 
     const author = authorOf(raw);
