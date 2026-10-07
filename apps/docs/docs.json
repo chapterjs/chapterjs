@@ -304,6 +304,19 @@
                 ]
               }
             ]
+          },
+          {
+            "tab": "Changelog",
+            "icon": "history",
+            "groups": [
+              {
+                "group": "Changelog",
+                "icon": "history",
+                "pages": [
+                  "changelog"
+                ]
+              }
+            ]
           }
         ]
       },
@@ -560,6 +573,19 @@
                 "icon": "square-terminal",
                 "pages": [
                   "fr/reference/cli"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Changelog",
+            "icon": "history",
+            "groups": [
+              {
+                "group": "Changelog",
+                "icon": "history",
+                "pages": [
+                  "fr/changelog"
                 ]
               }
             ]
