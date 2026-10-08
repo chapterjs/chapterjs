@@ -33,7 +33,11 @@ const ALL = String((1n << 20n) | (1n << 21n) | (1n << 10n));
 const packet = (n: number) => Buffer.from([0xfc, n, n, n]);
 
 async function world(
-  options: { permissions?: string; userLimit?: number } = {}
+  options: {
+    permissions?: string;
+    userLimit?: number;
+    joinTimeout?: number;
+  } = {}
 ) {
   const discord = await fakeDiscord();
   const voice = await fakeVoice();
@@ -121,7 +125,9 @@ async function world(
     {
       warn: message => warnings.push(message),
       secure: false,
-      joinTimeout: 500,
+      // Long enough for a busy machine: only the test of a silent Discord
+      // waits for it to pass.
+      joinTimeout: options.joinTimeout ?? 5000,
       endedGrace: 100,
     }
   );
@@ -233,7 +239,7 @@ describe('joining a voice channel', () => {
   });
 
   it('says when Discord never answers', async () => {
-    const w = await world();
+    const w = await world({ joinTimeout: 500 });
     w.stopAnswering();
     await expect(w.channel(VOICE).join()).rejects.toThrow(
       'Discord did not let the bot join Lounge within 0.5 s.'

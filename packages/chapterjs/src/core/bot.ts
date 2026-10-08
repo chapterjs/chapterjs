@@ -154,9 +154,12 @@ export function createBot(options: BotOptions): Bot {
   const pending = new Map<number, Set<Snowflake>>();
   let guildsReady: (() => void) | null = null;
   let guildsTimer: NodeJS.Timeout | null = null;
+  // Until every shard is ready, a shard whose servers all came is not the
+  // whole bot: the others have not said which servers they have.
+  let shardsReady = false;
 
   const checkGuilds = (): void => {
-    if (!guildsReady) return;
+    if (!guildsReady || !shardsReady) return;
     for (const ids of pending.values()) if (ids.size > 0) return;
     finishGuilds();
   };
@@ -276,6 +279,7 @@ export function createBot(options: BotOptions): Bot {
         guildsReady = null;
         throw error;
       }
+      shardsReady = true;
       guildsTimer = setTimeout(finishGuilds, options.guildsTimeout ?? 15_000);
       checkGuilds();
       await allGuilds;

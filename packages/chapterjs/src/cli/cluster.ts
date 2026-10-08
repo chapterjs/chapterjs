@@ -143,6 +143,17 @@ export interface ClusterOptions {
 }
 
 /**
+ * Sends a message to a process, and says whether it could. A process that
+ * is exiting has a channel that fails: the error goes to the callback
+ * instead of crashing the first process.
+ */
+function tell(child: ChildProcess, message: ToWorker): boolean {
+  if (!child.connected) return false;
+  child.send(message, () => {});
+  return true;
+}
+
+/**
  * Starts the processes of the bot and looks after them until asked to
  * stop. Resolves with the exit code: 0 when stopped, 1 when Discord refused
  * the bot.
@@ -155,6 +166,7 @@ export async function runCluster(options: ClusterOptions): Promise<number> {
   );
   const shares = splitShards(options.shards, options.processes);
   const workers = new Map<number, ChildProcess>();
+  const stopped = new WeakSet<ChildProcess>();
   const ready = new Map<number, { guilds: number; user: string }>();
   let announced = false;
   let refused = false;
@@ -178,6 +190,9 @@ export async function runCluster(options: ClusterOptions): Promise<number> {
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     });
     workers.set(index, child);
+    // A message sent while the process exits fails; it must not stop this
+    // one (see `tell`), and its exit is what matters.
+    child.on('error', () => {});
     // Everything a process prints (the framework and the code of the
     // project alike) is shown with which one said it.
     for (const stream of [child.stdout!, child.stderr!]) {
@@ -188,9 +203,7 @@ export async function runCluster(options: ClusterOptions): Promise<number> {
     child.on('message', (message: FromWorker) => {
       if (message.type === 'identify') {
         void gate.wait(message.shard).then(() => {
-          if (child.connected) {
-            child.send({ type: 'identify', id: message.id } satisfies ToWorker);
-          }
+          tell(child, { type: 'identify', id: message.id });
         });
       } else if (message.type === 'ready') {
         ready.set(index, message);
@@ -235,8 +248,10 @@ export async function runCluster(options: ClusterOptions): Promise<number> {
   };
 
   const stopWorker = (child: ChildProcess): void => {
-    if (child.connected) child.send({ type: 'stop' } satisfies ToWorker);
-    else child.kill('SIGTERM');
+    // Asked once: a process already stopping has nothing more to hear.
+    if (stopped.has(child)) return;
+    stopped.add(child);
+    if (!tell(child, { type: 'stop' })) child.kill('SIGTERM');
     // A process that does not stop is not waited for forever.
     const timer = setTimeout(
       () => child.kill('SIGKILL'),

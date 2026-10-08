@@ -10,7 +10,11 @@ import {
   readAsset,
   setPublicDir,
 } from '../src/assets/asset.js';
-import { listPublic, publicDeclarations } from '../src/assets/public.js';
+import {
+  listPublic,
+  publicDeclarations,
+  watchPublic,
+} from '../src/assets/public.js';
 import { buildMessage } from '../src/structures/payload.js';
 import {
   connected,
@@ -77,6 +81,29 @@ declare module 'chapterjs' {
     expect(publicDeclarations([])).toContain(
       'The folder is empty or missing: put files in it, and they are listed here.'
     );
+  });
+
+  it('sees a file put in the folder as soon as the folder is created', async () => {
+    const dir = tempDir();
+    const seen: string[][] = [];
+    let changes = 0;
+    const watcher = watchPublic(dir, () => {
+      changes++;
+      void listPublic(dir).then(files => seen.push(files));
+      // Written while the folder only begins to be watched: the system
+      // may not tell, the folder as it was found must.
+      if (changes === 1) writeFileSync(join(dir, 'public/logo.png'), 'PNG');
+    });
+    try {
+      mkdirSync(join(dir, 'public'));
+      const deadline = Date.now() + 5000;
+      while (!seen.some(files => files.includes('logo.png'))) {
+        if (Date.now() > deadline) throw new Error(`Never seen: ${seen}`);
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+    } finally {
+      watcher.close();
+    }
   });
 });
 

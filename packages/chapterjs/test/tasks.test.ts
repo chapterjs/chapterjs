@@ -305,6 +305,11 @@ describe('the scheduler', () => {
       onWarning: (file, message) => warnings.push(`${file} ${message}`),
     });
     const runs: string[] = [];
+    const nine = entry('src/tasks/nine.ts', {
+      cron: '0 9 * * *',
+      timezone: 'UTC',
+      run: ({ now }) => runs.push(`nine ${now.toISOString()}`),
+    });
     scheduler.set([
       entry('src/tasks/tick.ts', {
         every: '1s',
@@ -315,11 +320,7 @@ describe('the scheduler', () => {
         onStart: true,
         run: ({ now }) => runs.push(`first ${now.toISOString()}`),
       }),
-      entry('src/tasks/nine.ts', {
-        cron: '0 9 * * *',
-        timezone: 'UTC',
-        run: ({ now }) => runs.push(`nine ${now.toISOString()}`),
-      }),
+      nine,
     ]);
     // Nothing runs before the scheduler starts.
     await vi.advanceTimersByTimeAsync(5000);
@@ -346,7 +347,9 @@ describe('the scheduler', () => {
     ]);
     bot = { user: 'bot', guilds: new Map<string, never>() };
 
-    // The cron runs at 9:00 the next day, and the days after.
+    // The cron runs at 9:00 the next day, and the days after. Only the cron is
+    // kept from here: a task every second would fire 170,000 fake timers.
+    scheduler.set([nine]);
     runs.length = 0;
     await vi.advanceTimersByTimeAsync(23 * 3_600_000);
     expect(runs.filter(run => run.startsWith('nine'))).toEqual([

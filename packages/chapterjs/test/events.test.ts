@@ -242,7 +242,11 @@ describe('reactions', () => {
       burst: false,
       type: 0,
     });
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Discord's refusal takes a request: waited for, however long it takes.
+    const deadline = Date.now() + 5000;
+    while (w.skipped.length === 0 && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
     expect(w.received).toHaveLength(0);
     expect(w.skipped.map(([name]) => name)).toEqual(['reactionRemove']);
     const [[, error]] = w.skipped as [[EventName, MissingForEvent]];
