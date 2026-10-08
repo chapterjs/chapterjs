@@ -4,6 +4,13 @@
   "description": "The Discord framework",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chapterjs/chapterjs.git",
+    "directory": "packages/chapterjs"
+  },
+  "homepage": "https://chapterjs.dev",
+  "bugs": "https://github.com/chapterjs/chapterjs/issues",
   "types": "./dist/index.d.ts",
   "bin": {
     "chapterjs": "./dist/cli/cli.js"
@@ -38,6 +45,6 @@
     "vitest": "catalog:"
   },
   "engines": {
-    "node": ">=22.18"
+    "node": ">=24"
   }
 }

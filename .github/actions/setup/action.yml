@@ -1,0 +1,19 @@
+name: Setup
+description: Node, pnpm (the version of packageManager) and the dependencies of the repository.
+
+inputs:
+  node-version:
+    description: The version of Node to run with.
+    default: '24'
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v5
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

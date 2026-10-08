@@ -711,7 +711,11 @@ describe('a bot', () => {
   it('starts as many shards as Discord recommends, respecting the identify limit', async () => {
     const identified: { shard: number; at: number }[] = [];
     const started = Date.now();
-    const { gateway, bot } = await startBot({}, {}, { shards: 3 });
+    const { gateway, bot } = await startBot(
+      {},
+      { gateway: { backoff: () => 10, identifyInterval: 100 } },
+      { shards: 3 }
+    );
     const original = gateway.behavior.onIdentify;
     gateway.behavior.onIdentify = (connection, data) => {
       identified.push({
@@ -724,9 +728,11 @@ describe('a bot', () => {
     expect(bot.gateway.shardCount).toBe(3);
     expect([...bot.gateway.shards.keys()]).toEqual([0, 1, 2]);
     expect(identified.map(one => one.shard)).toEqual([0, 1, 2]);
-    // max_concurrency 1: one identify per interval (20 ms in this test).
-    expect(identified[1]!.at - identified[0]!.at).toBeGreaterThanOrEqual(15);
-    expect(identified[2]!.at - identified[1]!.at).toBeGreaterThanOrEqual(15);
+    // max_concurrency 1: one identify per interval (100 ms here). It is
+    // measured when the identify arrives, a few ms after the queue let it
+    // go, and that delay is not the same for every connection.
+    expect(identified[1]!.at - identified[0]!.at).toBeGreaterThanOrEqual(60);
+    expect(identified[2]!.at - identified[1]!.at).toBeGreaterThanOrEqual(60);
     expect(bot.gateway.shardFor(GUILD)?.id).toBe(shardIdFor(GUILD, 3));
     await bot.close();
     for (const connection of gateway.connections) {

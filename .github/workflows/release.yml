@@ -1,0 +1,33 @@
+# A pull request from develop into master must come from develop and pass
+# every check. Deploying it is deploy.yml, run by hand.
+name: Release
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: release-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: From develop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only develop is released
+        if: github.head_ref != 'develop' || github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "::error::master only takes pull requests from develop: merge your branch into develop first."
+          exit 1
+
+  checks:
+    name: Checks
+    needs: source
+    uses: ./.github/workflows/checks.yml
+    with:
+      ref: ${{ github.event.pull_request.head.sha }}

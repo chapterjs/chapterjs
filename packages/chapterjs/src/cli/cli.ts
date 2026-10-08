@@ -6,6 +6,7 @@ import { readAssignment } from './cluster.js';
 import { dev } from './dev.js';
 import { writeTypes } from './project.js';
 import { createLog } from './log.js';
+import { nodeTooOld } from './node-version.js';
 import { start } from './start.js';
 
 const { version } = JSON.parse(
@@ -26,6 +27,11 @@ Options of start:
 
 const colors = process.stdout.isTTY === true && !process.env.NO_COLOR;
 const log = createLog(line => console.log(line), colors);
+const tooOld = nodeTooOld();
+if (tooOld) {
+  log.error(tooOld);
+  process.exit(1);
+}
 const [command, ...rest] = process.argv.slice(2);
 
 /**
