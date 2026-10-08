@@ -19,6 +19,7 @@ import type {
   RawReadyEvent,
   RawResume,
 } from '../discord/types/gateway-events.js';
+import { onSocketEnd } from '../util/websocket.js';
 import { GatewayFatalError } from './errors.js';
 import type { IdentifyGate } from './identify-queue.js';
 
@@ -288,14 +289,11 @@ export class Shard {
     ws.addEventListener('message', event => {
       if (ws === this.#ws) this.#onMessage(String(event.data));
     });
-    ws.addEventListener('close', event => {
+    onSocketEnd(ws, closeCode => {
       // 1005 and 1006 mean "no close code was received".
-      const code =
-        event.code === 1005 || event.code === 1006 ? null : event.code;
+      const code = closeCode === 1005 || closeCode === 1006 ? null : closeCode;
       if (ws === this.#ws) this.#onClose(code);
     });
-    // An error is always followed by a close event, handled above.
-    ws.addEventListener('error', () => {});
   }
 
   #write(text: string): void {
