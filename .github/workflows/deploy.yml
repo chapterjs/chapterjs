@@ -72,7 +72,9 @@ jobs:
               echo "ℹ $name@$VERSION is already on npm"
               continue
             fi
-            npm publish "release/$name-$VERSION.tgz" --access public --provenance
+            # "./" makes it a file: "release/x.tgz" alone is read by npm as
+            # the GitHub repository "release/x.tgz".
+            npm publish "./release/$name-$VERSION.tgz" --access public --provenance
             echo "✓ $name@$VERSION is published"
           done
       - name: Tag and GitHub release
