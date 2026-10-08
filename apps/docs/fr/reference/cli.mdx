@@ -54,7 +54,7 @@ Vérifie le projet et le compile dans `.chapterjs/build/`. N’a pas besoin de t
 | --- | --- |
 | Types | `.chapterjs/` est écrit, puis `node_modules/.bin/tsc -b` tourne quand il existe et que le projet a un `tsconfig.json`. Une erreur de type arrête la compilation. Sans TypeScript, la compilation le dit et continue. |
 | Fichiers | La compilation précédente est supprimée. Chaque fichier de `src/commands/` et `src/events/` est chargé depuis `src/`. Un fichier cassé arrête la compilation. |
-| Compilation | Chaque fichier de ces dossiers, avec ce qu’il importe du projet, est regroupé dans `.chapterjs/build/bot.js` (ESM, Node 22, paquets laissés dans `node_modules`, espaces et syntaxe minifiés, noms gardés) avec `bot.js.map` à côté (sans les sources). |
+| Compilation | Chaque fichier de ces dossiers, avec ce qu’il importe du projet, est regroupé dans `.chapterjs/build/bot.js` (ESM, Node 24, paquets laissés dans `node_modules`, espaces et syntaxe minifiés, noms gardés) avec `bot.js.map` à côté (sans les sources). |
 | Vérification | Le fichier compilé est chargé une fois et chaque fichier est vérifié à nouveau. |
 | Enregistrement | `.chapterjs/build/build.json` : la version de `chapterjs`, une empreinte de `src/`, le nombre de commandes et d’événements. |
 

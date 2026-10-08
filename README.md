@@ -72,7 +72,7 @@ export default command({
   - `chapterjs build` checks every file and the types, then compiles the bot into one JavaScript file.
   - `chapterjs start` runs it in production, on several processes when the bot is large.
 
-Nothing to install to run a bot: the framework only uses what Node has (Node 22.18 or later). Discord's rate limits, payload sizes and reconnections are handled for you.
+Nothing to install to run a bot: the framework only uses what Node has (Node 24 or later). Discord's rate limits, payload sizes and reconnections are handled for you.
 
 ## Contributing
 

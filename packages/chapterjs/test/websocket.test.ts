@@ -1,6 +1,6 @@
 // How the end of a WebSocket is told, whatever the version of Node: Node 22
-// fires only `error` when a connection is refused, Node 24 `error` then
-// `close`.
+// fired only `error` when a connection was refused, Node 24 fires `error`
+// then `close`.
 import { describe, expect, it } from 'vitest';
 import { onSocketEnd } from '../src/util/websocket.js';
 
@@ -32,7 +32,7 @@ describe('the end of a WebSocket', () => {
     expect(socket.closes).toBe(0);
   });
 
-  it('is told when an error comes alone (Node 22), and the socket released', async () => {
+  it('is told when an error comes alone, and the socket released', async () => {
     const { socket, ends } = fakeSocket();
     socket.error();
     expect(ends).toEqual([]);

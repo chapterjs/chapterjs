@@ -13,6 +13,7 @@ import {
 import { choose } from './choose.js';
 import { createProject, validateTargetDir } from './project.js';
 import { listTemplates } from './templates.js';
+import { nodeTooOld } from './node-version.js';
 
 /** Stops cleanly when the user presses Ctrl+C or Esc on a prompt. */
 function orExit<T>(value: T): Exclude<T, symbol> {
@@ -29,6 +30,12 @@ const { version } = JSON.parse(
 ) as { version: string };
 
 p.intro(`Create a ChapterJS bot (v${version})`);
+
+const tooOld = nodeTooOld();
+if (tooOld) {
+  p.cancel(tooOld);
+  process.exit(1);
+}
 
 // Started now so it runs while the user answers the first question.
 const versionsCheck = installedVersions();

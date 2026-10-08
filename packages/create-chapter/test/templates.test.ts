@@ -108,7 +108,7 @@ describe('shipped templates', async () => {
     });
 
     it('requires the Node version chapterjs needs', () => {
-      expect(pkg.engines?.node).toBe('>=22.18');
+      expect(pkg.engines?.node).toBe('>=24');
     });
 
     it('ships .gitignore as _gitignore, since npm strips .gitignore', () => {

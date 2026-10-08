@@ -16,15 +16,15 @@ Two things to know:
 
 ## Node.js
 
-Node.js is what runs JavaScript outside of a browser. ChapterJS needs version **22.18 or newer**, because it relies on Node running TypeScript files directly, which older versions can't do.
+Node.js is what runs JavaScript outside of a browser. ChapterJS needs version **24 or newer**: it relies on Node running TypeScript files directly, and it follows the recent versions of Node. With an older one, ChapterJS stops at once and says what to install.
 
-Install it from [nodejs.org](https://nodejs.org) (the LTS version is fine when it is 22.18 or newer), then check in a terminal:
+Install it from [nodejs.org](https://nodejs.org) (the LTS version is fine when it is 24 or newer), then check in a terminal:
 
 ```bash
 node --version
 ```
 
-It prints something like `v22.18.0`. If it prints a lower version, or "command not found", install it again and open a new terminal: a terminal opened before the install does not see it.
+It prints something like `v24.11.1`. If it prints a lower version, or "command not found", install it again and open a new terminal: a terminal opened before the install does not see it.
 
 ## A package manager
 
@@ -69,7 +69,7 @@ You need a Discord account and a server where you have the right to add a bot (a
 
 ## Recap
 
-- `node --version` says 22.18 or newer.
+- `node --version` says 24 or newer.
 - One package manager, checked with `--version`, and kept for the whole project.
 - An editor that understands TypeScript, Visual Studio Code for example.
 - A Discord account and a test server you manage.

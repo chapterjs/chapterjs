@@ -2,9 +2,9 @@
  * Calls `onEnd` once when a WebSocket ends, with its close code.
  *
  * A socket that could not connect fires `error`, then `close` with 1006.
- * Node 22 fires only `error` and leaves the socket connecting forever, so a
+ * Node 22 fired only `error` and left the socket connecting forever: a
  * `close` that has not come by the next turn of the event loop is taken as
- * that 1006.
+ * that 1006, so how a socket ends never depends on the version of Node.
  */
 export function onSocketEnd(
   ws: WebSocket,

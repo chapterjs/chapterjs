@@ -234,7 +234,7 @@ export async function build(options: BuildOptions): Promise<number> {
       bundle: true,
       platform: 'node',
       format: 'esm',
-      target: 'node22',
+      target: 'node24',
       packages: 'external',
       // Compact, but with the names the developer wrote: an error must
       // still read like their code. The map gives back files and lines.

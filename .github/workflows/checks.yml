@@ -38,8 +38,8 @@ jobs:
       - run: pnpm check-types
 
   test:
-    # The framework runs on Node 22.18 and later: both versions are tested,
-    # and macOS for what differs there (watching files).
+    # The framework runs on Node 24 and later, on Linux and on macOS (what
+    # differs there: watching files).
     name: Tests (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -47,8 +47,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            node: '22.18'
           - os: ubuntu-latest
             node: '24'
           - os: macos-latest

@@ -54,7 +54,7 @@ Checks the project and compiles it into `.chapterjs/build/`. Needs no token and 
 | --- | --- |
 | Types | `.chapterjs/` is written, then `node_modules/.bin/tsc -b` runs when it exists and the project has a `tsconfig.json`. A type error stops the build. Without TypeScript, the build says so and goes on. |
 | Files | The previous build is removed. Every file of `src/commands/` and `src/events/` is loaded from `src/`. One broken file stops the build. |
-| Compile | Every file of those folders, with what it imports from the project, is bundled into `.chapterjs/build/bot.js` (ESM, Node 22, packages left in `node_modules`, whitespace and syntax minified, names kept) with `bot.js.map` next to it (no sources inside). |
+| Compile | Every file of those folders, with what it imports from the project, is bundled into `.chapterjs/build/bot.js` (ESM, Node 24, packages left in `node_modules`, whitespace and syntax minified, names kept) with `bot.js.map` next to it (no sources inside). |
 | Check | The compiled file is loaded once and every file is checked again. |
 | Record | `.chapterjs/build/build.json`: the version of `chapterjs`, a fingerprint of `src/`, the number of commands and events. |
 
