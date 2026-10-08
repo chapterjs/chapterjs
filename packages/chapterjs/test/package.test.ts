@@ -85,7 +85,7 @@ describe('the published package', () => {
   });
 
   it('requires the Node version that runs TypeScript natively', () => {
-    expect(pkg.engines.node).toBe('>=22.18');
+    expect(pkg.engines.node).toBe('>=24');
   });
 
   it('is released with the same version as the scaffolders', () => {

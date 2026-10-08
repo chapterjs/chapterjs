@@ -16,15 +16,15 @@ Deux choses à savoir :
 
 ## Node.js
 
-Node.js est ce qui exécute JavaScript en dehors d’un navigateur. ChapterJS a besoin de la version **22.18 ou plus récente**, parce qu’il s’appuie sur la capacité de Node à exécuter directement des fichiers TypeScript, ce que les versions plus anciennes ne savent pas faire.
+Node.js est ce qui exécute JavaScript en dehors d’un navigateur. ChapterJS a besoin de la version **24 ou plus récente** : il s’appuie sur la capacité de Node à exécuter directement des fichiers TypeScript, et il suit les versions récentes de Node. Avec une version plus ancienne, ChapterJS s’arrête tout de suite et dit quoi installer.
 
-Installez-le depuis [nodejs.org](https://nodejs.org) (la version LTS convient si elle est en 22.18 ou plus), puis vérifiez dans un terminal :
+Installez-le depuis [nodejs.org](https://nodejs.org) (la version LTS convient si elle est en 24 ou plus), puis vérifiez dans un terminal :
 
 ```bash
 node --version
 ```
 
-Il affiche quelque chose comme `v22.18.0`. S’il affiche une version plus basse, ou « command not found », réinstallez-le et ouvrez un nouveau terminal : un terminal ouvert avant l’installation ne le voit pas.
+Il affiche quelque chose comme `v24.11.1`. S’il affiche une version plus basse, ou « command not found », réinstallez-le et ouvrez un nouveau terminal : un terminal ouvert avant l’installation ne le voit pas.
 
 ## Un gestionnaire de paquets
 
@@ -66,7 +66,7 @@ Il vous faut un compte Discord et un serveur où vous avez le droit d’ajouter 
 
 ## Récapitulatif
 
-- `node --version` affiche 22.18 ou plus.
+- `node --version` affiche 24 ou plus.
 - Un gestionnaire de paquets, vérifié avec `--version`, et gardé pour tout le projet.
 - Un éditeur qui comprend TypeScript, Visual Studio Code par exemple.
 - Un compte Discord et un serveur de test que vous gérez.

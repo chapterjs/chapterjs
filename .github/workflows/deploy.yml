@@ -1,0 +1,86 @@
+# Run by hand (Actions → Deploy → Run workflow) to release what master has
+# now, with the version written in its package.json: the three packages are
+# built and published, and the commit gets its tag and its GitHub release.
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  # npm provenance, and trusted publishing when npm is set up for it.
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Only master is deployed
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::Deploy runs on master: choose master in \"Use workflow from\"."
+          exit 1
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: Version
+        run: |
+          versions="$(for name in chapterjs create-chapter create-chapterjs; do
+            node -p "require('./packages/$name/package.json').version"
+          done | sort -u)"
+          if [ "$(echo "$versions" | wc -l)" -ne 1 ]; then
+            echo "::error::The three packages must have the same version, they have: $(echo $versions)."
+            exit 1
+          fi
+          missing=""
+          for name in chapterjs create-chapter create-chapterjs; do
+            npm view "$name@$versions" version > /dev/null 2>&1 || missing="$missing $name"
+          done
+          if [ -z "$missing" ]; then
+            echo "::error::$versions is already on npm: change the version of the three package.json to deploy again."
+            exit 1
+          fi
+          echo "VERSION=$versions" >> "$GITHUB_ENV"
+          echo "ℹ Deploying $versions"
+      - run: pnpm build
+      - name: Pack the packages
+        run: |
+          mkdir release
+          for name in chapterjs create-chapter create-chapterjs; do
+            (cd "packages/$name" && pnpm pack --pack-destination ../../release)
+          done
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - name: Publish on npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # In this order, each one only needs the ones before; a package
+          # already on npm is left alone, so a deploy that stopped halfway
+          # can be run again.
+          for name in chapterjs create-chapter create-chapterjs; do
+            if npm view "$name@$VERSION" version > /dev/null 2>&1; then
+              echo "ℹ $name@$VERSION is already on npm"
+              continue
+            fi
+            npm publish "release/$name-$VERSION.tgz" --access public --provenance
+            echo "✓ $name@$VERSION is published"
+          done
+      - name: Tag and GitHub release
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "ℹ v$VERSION already has its release"
+          else
+            gh release create "v$VERSION" release/*.tgz \
+              --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes
+          fi
+          echo "### v$VERSION is on npm" >> "$GITHUB_STEP_SUMMARY"

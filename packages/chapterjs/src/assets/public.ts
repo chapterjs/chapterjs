@@ -107,7 +107,9 @@ export function watchPublic(
       return timer;
     });
   };
-  watchInside();
+  // Whether the folder is there is asked, not inferred from watch()
+  // failing: on Linux, Node 24 watches a missing folder without an error.
+  if (existsSync(root)) watchInside();
   if (!inner) watchForCreation();
   return {
     close() {

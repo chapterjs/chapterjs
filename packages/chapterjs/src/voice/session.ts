@@ -7,6 +7,7 @@
 import { createSocket, type Socket } from 'node:dgram';
 import { VoiceCloseCode, VoiceOpcode } from '../discord/codes.js';
 import type { Snowflake } from '../discord/types/common.js';
+import { onSocketEnd } from '../util/websocket.js';
 import { DaveSession, type loadDave } from './dave.js';
 import {
   pickMode,
@@ -220,12 +221,8 @@ export class VoiceSession {
         );
       }
     });
-    ws.addEventListener('close', event => {
-      if (ws !== this.#ws) return;
-      this.#onClose(event.code);
-    });
-    ws.addEventListener('error', () => {
-      // The close that follows says what to do.
+    onSocketEnd(ws, code => {
+      if (ws === this.#ws) this.#onClose(code);
     });
   }
 
