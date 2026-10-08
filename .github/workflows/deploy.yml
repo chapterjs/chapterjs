@@ -28,7 +28,7 @@ jobs:
         run: |
           echo "::error::Deploy runs on master: choose master in \"Use workflow from\"."
           exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup
       - name: Version
         run: |
@@ -56,7 +56,7 @@ jobs:
           for name in chapterjs create-chapter create-chapterjs; do
             (cd "packages/$name" && pnpm pack --pack-destination ../../release)
           done
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           registry-url: https://registry.npmjs.org
