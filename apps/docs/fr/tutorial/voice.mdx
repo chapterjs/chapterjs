@@ -1,0 +1,109 @@
+---
+title: 'Jouer en vocal'
+description: 'Faire rejoindre un salon vocal à votre bot et y jouer un son, et comprendre ce que changent l’Opus et le chiffrement de bout en bout'
+---
+
+Jusqu’ici votre bot écrivait. Dans un salon vocal, il peut aussi se faire entendre : une fanfare quand quelqu’un gagne, une table de sons, de la musique. Cette page ajoute `/fanfare`, qui rejoint le salon vocal de la personne qui demande et joue un son, puis `/hush`, qui l’arrête. En chemin, elle explique pourquoi certains fichiers se jouent tels quels et d’autres demandent un outil, et ce que Discord chiffre.
+
+## Un son dans public/
+
+Les sons sont des fichiers, comme les images que votre bot envoie : ils vont dans `public/`. Mettez-en un, `public/sounds/fanfare.ogg`. N’importe quel son court convient ; la section suivante dit quels formats marchent.
+
+## La commande
+
+Créez `src/commands/fanfare.ts` :
+
+```ts src/commands/fanfare.ts
+import { asset, command } from 'chapterjs';
+
+export default command({
+  description: 'Joue une fanfare dans votre salon vocal',
+  async run({ interaction, member }) {
+    const channel = member.voiceChannel;
+    if (!channel) {
+      await interaction.reply({ content: 'Rejoignez d’abord un salon vocal, puis redemandez.', ephemeral: true });
+      return;
+    }
+    await interaction.reply(`🎺 dans ${channel.name} !`);
+    const voice = await channel.join();
+    await voice.play(asset('sounds/fanfare.ogg'));
+    await voice.leave();
+  },
+});
+```
+
+Enregistrez-le. Le terminal se reconnecte, parce que votre projet demande maintenant quelque chose de nouveau à Discord :
+
+```text
+↻ Your files now need more from Discord (GUILD_VOICE_STATES): reconnecting...
+```
+
+Discord ne dit à un bot qui est dans quel salon vocal que s’il le demande avec cet intent. ChapterJS a vu `join()` dans vos fichiers et l’a demandé. Rejoignez un salon vocal de votre serveur de test, tapez `/fanfare` : le bot arrive, joue le son, et repart.
+
+Relisez la commande, ligne par ligne :
+
+- `member.voiceChannel` est le salon où se trouve la personne, ou `null`. La réponse vient d’abord : une commande a 3 secondes pour répondre, et rejoindre prend un moment.
+- `channel.join()` se résout quand le bot est entré et peut jouer. Rejoindre le salon où il est déjà ne change rien.
+- `voice.play(...)` se résout quand le son a été joué, donc `leave()` vient après.
+
+## Pourquoi l’Opus
+
+Discord ne transporte qu’un format en vocal : l’**Opus**, fait pour les voix et la musique sur internet. Un fichier déjà en Opus (`.ogg`, `.opus`, et le `.webm` de la plupart des vidéos) est envoyé tel quel, sans rien coûter. Tout le reste (`.mp3`, `.wav`, un lien vers une radio) doit être converti pendant la lecture, et c’est le travail de **ffmpeg**, un outil gratuit que vous installez sur la machine du bot. ChapterJS le trouve tout seul ; quand il manque, l’erreur le dit, et ce qu’il faut faire :
+
+```text
+✗ src/commands/fanfare.ts:13 public/sounds/fanfare.mp3 is not an Opus file (.ogg or .webm), and ffmpeg is not installed to convert it. Install ffmpeg (https://ffmpeg.org/download.html), or convert the file to .ogg Opus.
+```
+
+Le plus simple est de convertir vos sons une fois, sur votre ordinateur, et de garder le `.ogg` : alors rien n’est nécessaire là où tourne le bot.
+
+## L’arrêter
+
+`guild.voice` est le bot en vocal dans un serveur, ou `null`. Créez `src/commands/hush.ts` :
+
+```ts src/commands/hush.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Arrête ce que joue le bot',
+  async run({ interaction, guild }) {
+    if (!guild.voice?.playing) {
+      await interaction.reply({ content: 'Rien ne joue.', ephemeral: true });
+      return;
+    }
+    guild.voice.stop();
+    await interaction.reply('Chut.');
+  },
+});
+```
+
+`stop()` termine le son : le `play()` de `/fanfare` se résout aussitôt, et le bot part. `pause()` et `resume()` fonctionnent de la même façon.
+
+## Ce que Discord chiffre
+
+Ce qui se dit dans un salon vocal est **chiffré de bout en bout** : seules les personnes du salon peuvent l’entendre, pas même les serveurs de Discord. Chaque application qui y parle doit y prendre part, les bots compris. Votre bot le fait avec libdave, la bibliothèque qu’utilisent les applications de Discord, livrée avec ChapterJS : rien à installer, rien à écrire.
+
+Une conséquence : tant que votre bot est seul dans un salon, il n’y a personne pour qui chiffrer, donc ce qu’il joue n’est pas envoyé. Dès que quelqu’un est là, il l’entend.
+
+## Points d’attention
+
+- **Répondre d’abord, puis rejoindre.** Une commande a 3 secondes pour répondre ; rejoindre et jouer prennent plus longtemps.
+- **Les permissions.** Le bot a besoin de Se connecter et Parler dans le salon. Sans elles, l’erreur nomme celle qui manque.
+- **Une connexion par serveur.** `join()` sur un autre salon du même serveur y déplace le bot ; un serveur ne peut pas avoir le bot dans deux salons vocaux.
+- **L’intent vient de vos fichiers.** `GUILD_VOICE_STATES` est demandé quand un fichier appelle `join()`. Il n’est pas privilégié : pas d’interrupteur dans le Developer Portal.
+
+## Récapitulatif
+
+- Les sons vont dans `public/` ; `asset()` les nomme.
+- `member.voiceChannel` → `channel.join()` → `voice.play()` → `voice.leave()`.
+- Les fichiers Opus se jouent tels quels ; le reste demande ffmpeg sur la machine du bot.
+- `guild.voice` est le bot en vocal dans un serveur : `stop()`, `pause()`, `resume()`.
+- Le vocal est chiffré de bout en bout, et ChapterJS s’en charge pour vous.
+
+<CardGroup cols={2}>
+  <Card title="Les boutons" icon="mouse-pointer-click" href="/fr/tutorial/buttons">
+    Mettre un bouton sous un message, et lancer du code quand on clique.
+  </Card>
+  <Card title="Guide : Jouer en vocal" icon="book-open" href="/fr/voice">
+    Rejoindre, jouer et partir, en bref.
+  </Card>
+</CardGroup>

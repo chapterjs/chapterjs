@@ -1,0 +1,168 @@
+---
+title: 'Jouer en vocal'
+description: 'Rejoindre un salon vocal, y jouer un son ou une musique, mettre en pause, arrêter et partir'
+---
+
+Votre bot peut rejoindre un salon vocal et y jouer du son. Mettez un fichier dans `public/`, puis rejoignez le salon de la personne qui demande et jouez-le :
+
+```ts src/commands/intro.ts
+import { asset, command } from 'chapterjs';
+
+export default command({
+  description: 'Joue l’intro dans votre salon vocal',
+  async run({ interaction, member }) {
+    const channel = member.voiceChannel;
+    if (!channel) {
+      await interaction.reply({ content: 'Rejoignez d’abord un salon vocal.', ephemeral: true });
+      return;
+    }
+    await interaction.reply(`Lecture dans ${channel.name}.`);
+    const voice = await channel.join();
+    await voice.play(asset('sounds/intro.ogg'));
+    await voice.leave();
+  },
+});
+```
+
+C’est tout. `join()` se résout quand le bot est dans le salon, `play()` quand le fichier a été joué, et `leave()` fait partir le bot. Tout le reste est fait pour vous : la connexion aux serveurs vocaux de Discord, le chiffrement, l’envoi du son au bon rythme, et le chiffrement de bout en bout que Discord exige pour le vocal.
+
+<Note>
+  Tout ce qu’a une connexion vocale est dans la [référence](/fr/reference/voice-connection) ; `join()` est sur [VoiceChannel](/fr/reference/channels/voice#join).
+</Note>
+
+## Ce qui peut être joué
+
+`play()` prend un fichier de `public/` (`asset('sounds/intro.ogg')`), un fichier envoyé sur Discord, ou un lien qui commence par `https://`.
+
+| Quoi | Il faut |
+| --- | --- |
+| Un fichier en Opus : `.ogg`, `.opus`, `.webm` | Rien : il est envoyé tel quel |
+| Tout le reste : `.mp3`, `.wav`, `.m4a`, une vidéo, un lien vers un flux | [ffmpeg](https://ffmpeg.org/download.html) installé sur la machine qui fait tourner le bot |
+
+Discord ne joue que de l’Opus. Un fichier déjà en Opus ne coûte rien à jouer ; tout le reste est converti pendant la lecture par ffmpeg, que le bot trouve tout seul quand il est installé. Quand il ne l’est pas, `play()` le dit :
+
+```text
+✗ src/commands/intro.ts:13 public/sounds/intro.mp3 is not an Opus file (.ogg or .webm), and ffmpeg is not installed to convert it. Install ffmpeg (https://ffmpeg.org/download.html), or convert the file to .ogg Opus.
+```
+
+L’Opus est reconnu aux premiers octets du fichier, quel que soit son nom, et un lien ou un fichier envoyé sur Discord est téléchargé pendant la lecture. Un lien doit mener au son lui-même (un fichier, le flux d’une radio) : la page d’une vidéo, sur YouTube par exemple, n’en est pas un.
+
+<Tip>
+  Pour jouer sans ffmpeg en production, convertissez vos sons en Opus une fois pour toutes, sur votre ordinateur : `ffmpeg -i intro.mp3 -c:a libopus intro.ogg`.
+</Tip>
+
+## Un fichier envoyé sur Discord
+
+Une option `attachment` permet à la personne d’envoyer la musique avec la commande, et `play()` la prend telle quelle :
+
+```ts src/commands/song.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Joue la musique que vous envoyez',
+  options: {
+    file: { type: 'attachment', description: 'La musique', required: true },
+  },
+  async run({ interaction, member, options }) {
+    const channel = member.voiceChannel;
+    if (!channel || !options.file.contentType?.startsWith('audio/')) {
+      await interaction.reply({ content: 'Rejoignez un salon vocal, et envoyez un fichier audio.', ephemeral: true });
+      return;
+    }
+    await interaction.reply(`Lecture de ${options.file.filename}.`);
+    const voice = await channel.join();
+    await voice.play(options.file);
+  },
+});
+```
+
+La commande `/play` du template fait la même chose, et prend aussi un lien à la place d’un fichier (une option `string` facultative à côté de l’option `attachment`), avec ses textes dans les fichiers de langue.
+
+## Pause, reprise, arrêt
+
+Ce qui joue peut être mis en pause, repris et arrêté de partout : une autre commande, un bouton. `guild.voice` est la connexion du bot dans un serveur, ou `null` quand il n’y est dans aucun salon vocal.
+
+```ts src/commands/pause.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Met en pause ou reprend ce qui joue',
+  async run({ interaction, guild }) {
+    const voice = guild.voice;
+    if (!voice?.playing) {
+      await interaction.reply({ content: 'Rien ne joue.', ephemeral: true });
+      return;
+    }
+    if (voice.paused) voice.resume();
+    else voice.pause();
+    await interaction.reply(voice.paused ? 'En pause.' : 'Ça repart.');
+  },
+});
+```
+
+- `stop()` arrête ce qui joue : son `play()` se résout aussitôt.
+- Un nouveau `play()` remplace ce qui jouait.
+- `leave()` quitte le salon ; une connexion qui est partie ne peut plus jouer, `join()` à nouveau.
+
+## Se déplacer et être déplacé
+
+`join()` sur un autre salon vocal du même serveur y déplace le bot, et redonne la même connexion. Quand quelqu’un déplace le bot ou le déconnecte, la connexion suit : `voice.channel` est là où il est maintenant, et `voice.connected` passe à `false` quand il a été déconnecté.
+
+```ts src/commands/follow.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Amène le bot dans votre salon vocal',
+  async run({ interaction, member, guild }) {
+    const channel = member.voiceChannel;
+    if (!channel || !guild.voice) {
+      await interaction.reply({ content: 'Rejoignez un salon vocal, et jouez d’abord quelque chose.', ephemeral: true });
+      return;
+    }
+    await channel.join();
+    await interaction.reply(`Déplacé dans ${channel.name}.`);
+  },
+});
+```
+
+## Permissions et salons pleins
+
+Le bot a besoin de **Se connecter** (Connect) pour rejoindre et de **Parler** (Speak) pour jouer. Sans elles, `join()` ou `play()` échoue en disant ce qui manque :
+
+```text
+✗ src/commands/intro.ts:12 The bot can't join Lounge: it needs the Connect permission there.
+```
+
+Un salon plein (sa limite d’utilisateurs est atteinte) est refusé aussi, sauf si le bot a **Déplacer des membres** (Move Members). Dans un **salon de conférence**, le bot devient orateur quand il a **Rendre muets des membres** (Mute Members) ; sinon il demande la parole, et un modérateur accepte.
+
+## Options de join()
+
+```ts
+await channel.join({ deaf: false, mute: true });
+```
+
+- `deaf` (`true` par défaut) : le bot n’entend rien, donc Discord ne lui envoie pas ce que disent les gens. Il ne fait que jouer.
+- `mute` (`false` par défaut) : le bot apparaît avec le micro coupé.
+
+## Intents et chiffrement de bout en bout
+
+Rejoindre demande l’intent `GUILD_VOICE_STATES` : ChapterJS le demande quand un fichier de votre projet appelle `join()`, et c’est grâce à lui que `member.voiceChannel` est connu. Il n’est pas privilégié.
+
+```text
+ℹ Intents computed from your files: GUILDS, GUILD_VOICE_STATES
+```
+
+Discord chiffre chaque salon vocal de bout en bout (le protocole DAVE). Votre bot y participe avec [libdave](https://github.com/discord/libdave), la bibliothèque des applications de Discord, que ChapterJS inclut : rien à installer. Tant que le bot est seul dans un salon, il n’y a personne pour qui chiffrer, donc rien n’est envoyé ; dès que quelqu’un arrive, il entend.
+
+<Note>
+  Enregistrer ce que disent les gens [n’existe pas encore](/fr/not-yet#enregistrer-le-vocal).
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Événements vocaux" icon="mic" href="/fr/events/voice">
+    Qui rejoint, quitte ou change de salon vocal.
+  </Card>
+  <Card title="VoiceConnection" icon="library" href="/fr/reference/voice-connection">
+    Tout ce qu’a une connexion vocale.
+  </Card>
+</CardGroup>

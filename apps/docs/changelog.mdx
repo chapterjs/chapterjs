@@ -1,0 +1,42 @@
+---
+title: 'Changelog'
+description: 'What changed in each version of ChapterJS'
+---
+
+Every version of `chapterjs`, `create-chapter` and `create-chapterjs` has the same number. Update all of them at once:
+
+<CodeGroup>
+
+```bash pnpm
+pnpm update chapterjs --latest
+```
+
+```bash npm
+npm install chapterjs@latest
+```
+
+```bash yarn
+yarn add chapterjs@latest
+```
+
+```bash bun
+bun add chapterjs@latest
+```
+
+</CodeGroup>
+
+<Update label="0.1.3" description="The first version of the framework">
+
+A folder of files becomes a Discord bot.
+
+- **[Commands](/commands)**: a file of `src/commands/` is a slash command, with typed options, choices, [autocomplete](/commands/options#autocomplete), permissions, cooldowns and translations.
+- **[Events](/events)**: a file of `src/events/<event>/` runs when it happens. The intents follow from the files you write.
+- **[Components](/components)**: buttons, select menus, forms and embeds in `src/components/`, with typed `data` and no id to write.
+- **[Tasks](/tasks)**: what the bot does by itself, every so often or at set times.
+- **[Presence](/presence)**: what the bot shows under its name, in `src/presence.ts`.
+- **[Translated messages](/translated-messages)**: one file per language in `src/messages/`, and `t` speaks the language of the readers.
+- **[`chapterjs dev`](/run/dev)**: the bot on a test server, every file reloaded when you save it.
+- **[`chapterjs build`](/run/build)** and **[`chapterjs start`](/run/start)**: one compiled file for production, run on several processes when the bot is large.
+- **[`create-chapter`](/quickstart)**: a new project in one command.
+
+</Update>

@@ -1,6 +1,6 @@
 ---
 title: 'Données'
-description: 'Lire les objets simples que vous obtenez pour les pièces jointes, réactions, étiquettes, remplacements de permissions, bannissements, journaux d’audit, événements, règles et stickers'
+description: 'Lire les objets simples que vous obtenez pour les pièces jointes, réactions, étiquettes, remplacements de permissions, bannissements, journaux d’audit, événements, règles, stickers, états vocaux et présences'
 ---
 
 Certaines choses n’ont pas de classe à elles : vous les obtenez sous forme d’objets simples, avec les champs de Discord écrits en camelCase. Elles n’ont pas de méthodes, et rien sur elles n’envoie de requête.
@@ -75,6 +75,16 @@ Les réactions d’un emoji sur un message. Vous les lisez dans `message.reactio
 Pour réagir ou lire qui a réagi, voir [Message](/fr/reference/message) : `react()`, `fetchReactionUsers()`.
 
 [Documentation de Discord](https://docs.discord.com/developers/resources/message#reaction-object-reaction-structure)
+
+## ReactionEmoji
+
+L’emoji d’une réaction : un emoji standard n’a qu’un `name` (`"👍"`), un emoji personnalisé a aussi un `id`. Les [événements de réactions](/fr/reference/events#reactionadd) en donnent un.
+
+<ResponseField name="id" type="Snowflake | null" required>L’identifiant d’un emoji personnalisé ; `null` pour un emoji standard.</ResponseField>
+<ResponseField name="name" type="string | null" required>Le nom d’un emoji personnalisé, ou le caractère d’un emoji standard.</ResponseField>
+<ResponseField name="animated" type="boolean">Si un emoji personnalisé est animé.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/emoji#emoji-object)
 
 ## ForumTag
 
@@ -174,6 +184,12 @@ Ce que les modérateurs et les bots ont fait sur un serveur : ses entrées, de l
 <ResponseField name="guildScheduledEvents" type="ScheduledEvent[]" required>Les événements programmés auxquels font référence les entrées.</ResponseField>
 
 [Documentation de Discord](https://docs.discord.com/developers/resources/audit-log#audit-log-object-audit-log-structure)
+
+## AuditLogEntry
+
+Une chose qu’un modérateur ou un bot a faite sur un serveur : quoi, par qui, sur quoi, et ce qui a changé. `auditLogEntryCreate` en donne une ; ses champs sont ceux d’une entrée de [`AuditLog`](#auditlog) : `id`, `actionType`, `targetId`, `userId`, `reason`, `changes` et `options`.
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/audit-log#audit-log-entry-object-audit-log-entry-structure)
 
 ## ScheduledEvent
 
@@ -278,3 +294,56 @@ Un sticker : celui d’un serveur, ou un sticker standard d’un pack. `guild.fe
 Pour en envoyer un, passez son identifiant dans les `stickers` d’un message : voir [Options des messages](/fr/reference/message-options).
 
 [Documentation de Discord](https://docs.discord.com/developers/resources/sticker#sticker-object-sticker-structure)
+
+## VoiceState
+
+Où se trouve quelqu’un en vocal, et comment : micro coupé, casque coupé, en stream... Les [événements vocaux](/fr/reference/events#voicejoin) en donnent un.
+
+<ResponseField name="channelId" type="Snowflake | null" required>L’identifiant du salon vocal où se trouve la personne.</ResponseField>
+<ResponseField name="userId" type="Snowflake" required>L’identifiant de la personne.</ResponseField>
+<ResponseField name="sessionId" type="string" required>L’identifiant de sa session vocale.</ResponseField>
+<ResponseField name="deaf" type="boolean" required>Si le serveur lui a coupé le son.</ResponseField>
+<ResponseField name="mute" type="boolean" required>Si le serveur lui a coupé le micro.</ResponseField>
+<ResponseField name="selfDeaf" type="boolean" required>Si la personne a coupé son casque.</ResponseField>
+<ResponseField name="selfMute" type="boolean" required>Si la personne a coupé son micro.</ResponseField>
+<ResponseField name="selfStream" type="boolean">Si la personne diffuse avec Go Live.</ResponseField>
+<ResponseField name="selfVideo" type="boolean" required>Si sa caméra est allumée.</ResponseField>
+<ResponseField name="suppress" type="boolean" required>Si la personne ne peut pas parler (dans un salon de conférence, un membre du public).</ResponseField>
+<ResponseField name="requestToSpeakTimestamp" type="string | null" required>Quand la personne a demandé la parole, dans un salon de conférence.</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/resources/voice#voice-state-object)
+
+## UserPresence
+
+Si quelqu’un est en ligne et ce qu’il fait : son statut, ses activités, et sur quels appareils. `presenceUpdate` en donne une.
+
+<ResponseField name="status" type="'online' | 'idle' | 'dnd' | 'offline'" required>Son statut.</ResponseField>
+<ResponseField name="activities" type="object[]" required>
+  Ce que fait la personne, la première étant ce que Discord affiche.
+  <Expandable title="champs d’une activité">
+    <ResponseField name="name" type="string" required>Le nom de l’activité : le jeu, le service de musique...</ResponseField>
+    <ResponseField name="type" type="0 | 1 | 2 | 3 | 4 | 5" required>`0` joue, `1` diffuse, `2` écoute, `3` regarde, `4` un statut personnalisé, `5` participe à une compétition.</ResponseField>
+    <ResponseField name="url" type="string | null">Le lien d’un stream.</ResponseField>
+    <ResponseField name="createdAt" type="number" required>Quand l’activité a commencé, en millisecondes depuis 1970.</ResponseField>
+    <ResponseField name="timestamps" type="object">Quand la partie a commencé ou finit : `start` et `end`, en millisecondes depuis 1970.</ResponseField>
+    <ResponseField name="applicationId" type="Snowflake">L’identifiant de l’application du jeu.</ResponseField>
+    <ResponseField name="details" type="string | null">Ce que la personne y fait.</ResponseField>
+    <ResponseField name="state" type="string | null">L’état de son groupe, ou le texte d’un statut personnalisé.</ResponseField>
+    <ResponseField name="emoji" type="object | null">L’emoji d’un statut personnalisé (données simples).</ResponseField>
+    <ResponseField name="party" type="object">Son groupe : `id`, et `size` sous la forme `[actuel, max]`.</ResponseField>
+    <ResponseField name="assets" type="object">Les images de l’activité et leurs textes (données simples).</ResponseField>
+    <ResponseField name="instance" type="boolean">Si c’est une session de jeu instanciée.</ResponseField>
+    <ResponseField name="flags" type="number">Ce que contient l’activité, en champ de bits.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="clientStatus" type="object" required>
+  Son statut sur chaque sorte d’appareil utilisé ; un appareil non utilisé est absent.
+  <Expandable title="champs">
+    <ResponseField name="desktop" type="string">Sur une application d’ordinateur.</ResponseField>
+    <ResponseField name="mobile" type="string">Sur un téléphone.</ResponseField>
+    <ResponseField name="web" type="string">Dans un navigateur.</ResponseField>
+    <ResponseField name="vr" type="string">En réalité virtuelle.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+[Documentation de Discord](https://docs.discord.com/developers/events/gateway-events#presence-update-presence-update-event-fields)

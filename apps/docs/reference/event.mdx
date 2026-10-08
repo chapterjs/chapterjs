@@ -27,7 +27,7 @@ event(handler: (context: EventContexts[Name]) => unknown): EventFile
 
 Says what to do when `Name` happens. Export the result as the default export of a file of `src/events/Name/`.
 
-In the folder of an event with options (`messageCreate`, `messageUpdate`, `messageDelete`):
+In the folder of an event with options (`messageCreate`, `messageUpdate`, `messageDelete`, `reactionAdd`, `reactionRemove`, `reactionClear`, `pollVoteAdd`, `pollVoteRemove`, `typingStart`):
 
 ```ts
 event<const Options extends EventOptions[Name] = {}>(
@@ -42,7 +42,7 @@ Says what to do when `Name` happens. Export the result as the default export of 
 
 ## Types
 
-Eight types go with `event()`: `EventName`, `EventContexts` and `ContextOf` for what your function receives, `EventFile` for what `event()` returns, `EventOptions`, `MessageEventOptions`, `WhereEventOptions` and `EventWhere` for its options. All are imported with `import type { ... } from 'chapterjs'`.
+Nine types go with `event()`: `EventName`, `EventContexts` and `ContextOf` for what your function receives, `EventFile` for what `event()` returns, `EventOptions`, `MessageEventOptions`, `ReactionEventOptions`, `WhereEventOptions` and `EventWhere` for its options. All are imported with `import type { ... } from 'chapterjs'`.
 
 ### EventName
 
@@ -113,6 +113,12 @@ interface EventOptions {
   messageCreate: MessageEventOptions;
   messageUpdate: MessageEventOptions;
   messageDelete: WhereEventOptions;
+  reactionAdd: ReactionEventOptions;
+  reactionRemove: ReactionEventOptions;
+  reactionClear: WhereEventOptions;
+  pollVoteAdd: WhereEventOptions;
+  pollVoteRemove: WhereEventOptions;
+  typingStart: WhereEventOptions;
 }
 ```
 
@@ -124,6 +130,17 @@ Options of the events about messages.
 
 <ResponseField name="bots" type="boolean">
   Also run for messages written by bots (this one included) and by webhooks. By default they are ignored: a bot that answers bots can end up answering itself, or another bot, forever.
+</ResponseField>
+<ResponseField name="where" type="EventWhere">
+  Where the file listens: `'guild'` (in servers, the default), `'dm'` (in private messages with the bot) or `'both'`. What the function receives follows it: a server that is always there, never there, or to check.
+</ResponseField>
+
+### ReactionEventOptions
+
+Options of the events about reactions added or removed.
+
+<ResponseField name="bots" type="boolean">
+  Also run for the reactions of bots, this one included. By default they are ignored: a bot that reacts to reactions can end up answering its own, forever.
 </ResponseField>
 <ResponseField name="where" type="EventWhere">
   Where the file listens: `'guild'` (in servers, the default), `'dm'` (in private messages with the bot) or `'both'`. What the function receives follows it: a server that is always there, never there, or to check.
@@ -152,12 +169,12 @@ A file that is not what `src/events/` expects is reported with its path when it 
 <AccordionGroup>
   <Accordion title="A file directly in src/events/">
     ```text
-    ✗ src/events/ping.ts This file is directly in src/events/. Put it in a folder named after the event it reacts to, like src/events/messageCreate/ping.ts. Events are: ready, messageCreate, messageUpdate, messageDelete, memberJoin, memberUpdate, memberLeave, guildJoin, guildLeave, channelCreate, channelUpdate, channelDelete, roleCreate, roleUpdate, roleDelete.
+    ✗ src/events/ping.ts This file is directly in src/events/. Put it in a folder named after the event it reacts to, like src/events/messageCreate/ping.ts. Events are: ready, messageCreate, messageUpdate, messageDelete, memberJoin, memberUpdate, memberLeave, guildJoin, guildLeave, channelCreate, channelUpdate, channelDelete, roleCreate, roleUpdate, roleDelete, guildUpdate, banAdd, banRemove, emojiCreate, emojiUpdate, emojiDelete, inviteCreate, inviteDelete, auditLogEntryCreate, reactionAdd, reactionRemove, reactionClear, pollVoteAdd, pollVoteRemove, typingStart, threadMemberJoin, threadMemberLeave, voiceJoin, voiceLeave, voiceMove, voiceUpdate, presenceUpdate, scheduledEventCreate, scheduledEventUpdate, scheduledEventDelete, scheduledEventUserAdd, scheduledEventUserRemove.
     ```
   </Accordion>
   <Accordion title="A folder that is not an event">
     ```text
-    ✗ src/events/memberjoin/welcome.ts The folder src/events/memberjoin is not named after an event. Did you mean "memberJoin"? Events are: ready, messageCreate, messageUpdate, messageDelete, memberJoin, memberUpdate, memberLeave, guildJoin, guildLeave, channelCreate, channelUpdate, channelDelete, roleCreate, roleUpdate, roleDelete.
+    ✗ src/events/memberjoin/welcome.ts The folder src/events/memberjoin is not named after an event. Did you mean "memberJoin"? Events are: ready, messageCreate, messageUpdate, messageDelete, memberJoin, memberUpdate, memberLeave, guildJoin, guildLeave, channelCreate, channelUpdate, channelDelete, roleCreate, roleUpdate, roleDelete, guildUpdate, banAdd, banRemove, emojiCreate, emojiUpdate, emojiDelete, inviteCreate, inviteDelete, auditLogEntryCreate, reactionAdd, reactionRemove, reactionClear, pollVoteAdd, pollVoteRemove, typingStart, threadMemberJoin, threadMemberLeave, voiceJoin, voiceLeave, voiceMove, voiceUpdate, presenceUpdate, scheduledEventCreate, scheduledEventUpdate, scheduledEventDelete, scheduledEventUserAdd, scheduledEventUserRemove.
     ```
 
     The `Did you mean` part is only there when a real event is close to the name.

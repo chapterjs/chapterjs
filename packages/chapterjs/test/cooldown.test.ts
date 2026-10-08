@@ -474,13 +474,15 @@ export default language({
       expect(await run('100000000000000722')).toMatch(
         /^You can use this command again <t:\d+:f>\.$/
       );
+      // One save may be one reload or two: the file says when this version
+      // is the one loaded.
       writeFileSync(
         join(cwd, 'src/commands/daily.ts'),
-        COOLDOWN(`'1h'`).replace("cooldown: '1h',\n", '')
+        COOLDOWN(`'1h'`).replace("cooldown: '1h',\n", '') +
+          "console.log('loaded without cooldown');\n"
       );
-      await cli.waitFor(
-        /↻ Reloaded in \d+ ms, 1 command loaded[\s\S]*↻ Reloaded in \d+ ms, 1 command loaded/
-      );
+      await cli.waitFor('loaded without cooldown');
+      await cli.waitFor(/↻ Reloaded in \d+ ms, 1 command loaded/);
       expect(await run('100000000000000723')).toBe('ok');
     });
 

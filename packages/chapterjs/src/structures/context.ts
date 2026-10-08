@@ -2,6 +2,7 @@ import type { Cache } from '../cache/cache.js';
 import type { Snowflake } from '../discord/types/common.js';
 import type { LoadedMessages } from '../messages/translate.js';
 import type { Rest } from '../rest/rest.js';
+import type { VoiceManager } from '../voice/connection.js';
 import type { Entities } from './entities.js';
 
 /**
@@ -17,6 +18,8 @@ export interface Context {
   self: { userId: Snowflake; applicationId: Snowflake } | null;
   /** The texts of `src/messages/`; `null` without a language. */
   messages: LoadedMessages | null;
+  /** Where the bot is in voice; `null` outside a running bot. */
+  voice: VoiceManager | null;
 }
 
 /** The identity of the bot, for actions that need it. */

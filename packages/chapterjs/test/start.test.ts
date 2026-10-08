@@ -1,8 +1,8 @@
-import { startCli } from '@chapterjs/test-utils';
+import { startCli, tempDir } from '@chapterjs/test-utils';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { planProcesses, splitShards } from '../src/cli/cluster.js';
+import { planProcesses, runCluster, splitShards } from '../src/cli/cluster.js';
 import { GatewayIntent } from '../src/discord/intents.js';
 import {
   ALICE,
@@ -748,3 +748,38 @@ export default event(({ message }) => console.log('said: ' + message.content), {
     }, 30_000);
   }
 );
+
+describe.skipIf(process.platform === 'win32')('a cluster that stops', () => {
+  it('asks each process to stop once, and does not fall when one is already gone', async () => {
+    // The first process stops at once, the second takes a moment: the
+    // first one leaving must not ask the second again.
+    const script = join(tempDir(), 'worker.mjs');
+    writeFileSync(
+      script,
+      `const { index } = JSON.parse(process.env.CHAPTERJS_PROCESS);
+process.on('message', message => {
+  if (message.type !== 'stop') return;
+  console.log('stop');
+  setTimeout(() => process.exit(0), index === 0 ? 0 : 300);
+});
+process.send({ type: 'ready', guilds: 1, user: 'bot' });
+`
+    );
+    const lines: string[] = [];
+    const controller = new AbortController();
+    const running = runCluster({
+      script,
+      args: [],
+      env: { PATH: process.env.PATH },
+      shards: 2,
+      processes: 2,
+      maxConcurrency: 1,
+      signal: controller.signal,
+      write: line => lines.push(line),
+      onReady: () => controller.abort(),
+      onRestart: () => {},
+    });
+    expect(await running).toBe(0);
+    expect(lines.sort()).toEqual(['[1] stop', '[2] stop']);
+  });
+});

@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import { setPublicDir } from '../assets/asset.js';
 import { listPublic, publicDeclarations } from '../assets/public.js';
 import { eventTypedFolders } from '../events/types.js';
+import { MissingForEvent } from '../events/registry.js';
+import { sourcesJoinVoice } from '../voice/usage.js';
 import { writeGenerated } from '../loader/generated.js';
 import { commandsConvention } from '../commands/convention.js';
 import { CommandRouter } from '../commands/router.js';
@@ -78,6 +80,11 @@ export interface ProjectOptions {
    * they are read from the `src` folder.
    */
   built?: readonly BuiltFile[];
+  /**
+   * Whether the files join voice channels, as `chapterjs build` found.
+   * Without it, the files of `src` are read on every load.
+   */
+  joinsVoice?: boolean;
   /** Only tests change this. */
   deferAfter?: number;
 }
@@ -239,10 +246,16 @@ export function createProject(options: ProjectOptions): Project {
   };
   const router = new EventRouter(
     (file, error) => report({ file, error }),
-    (event, error) =>
+    (event, error) => {
+      const missing = error instanceof MissingForEvent ? error : null;
+      const what =
+        missing?.what === 'user'
+          ? 'the user who did it'
+          : 'the channel it happened in';
       log.warn(
-        `A ${event} event was not given to your files: Discord did not let the bot read the channel it happened in (${messageOf(error)}).`
-      )
+        `A ${event} event was not given to your files: Discord did not let the bot read ${what} (${messageOf(missing ? missing.cause : error)}).`
+      );
+    }
   );
   const reporter = {
     onError: (file: string, error: unknown) => report({ file, error }),
@@ -260,6 +273,10 @@ export function createProject(options: ProjectOptions): Project {
   let components = new Map<string, ComponentEntry>();
   let tasks = new Map<string, TaskEntry>();
   let presence: LoadedPresence | null = null;
+  // Joining voice needs the bot's own voice state, sent with an intent.
+  let voice = options.joinsVoice ?? false;
+  const neededIntents = (): number =>
+    intentsFor(events.values()) | (voice ? GatewayIntent.GuildVoiceStates : 0);
   let messages: LoadedMessages | null = null;
   /** The last version of each language file that loaded. */
   let languages = new Map<string, LanguageEntry>();
@@ -297,6 +314,9 @@ export function createProject(options: ProjectOptions): Project {
     report,
     async load() {
       const { built } = options;
+      if (options.joinsVoice === undefined) {
+        voice = await sourcesJoinVoice(cwd);
+      }
       const [
         eventFiles,
         commandFiles,
@@ -499,13 +519,13 @@ export function createProject(options: ProjectOptions): Project {
         .filter(({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0)
         .map(({ file }) => file),
     intents: (privateEvents = true) =>
-      intentsFor(events.values()) & (privateEvents ? ~0 : ~PRIVATE_INTENTS),
+      neededIntents() & (privateEvents ? ~0 : ~PRIVATE_INTENTS),
     async connect(connection) {
       const created = createBot({
         token: connection.token,
         version: options.version,
         intents:
-          intentsFor(events.values()) &
+          neededIntents() &
           (connection.privateEvents === false ? ~PRIVATE_INTENTS : ~0),
         guildFilter: connection.guildFilter,
         privateEvents: connection.privateEvents,
@@ -517,6 +537,8 @@ export function createProject(options: ProjectOptions): Project {
           : { gateway: { identifyInterval: connection.identifyInterval } }),
         // Only what the files of the project use is remembered.
         cache: { limits: limitsFor(events.values()) },
+        // A local fake of Discord (tests) serves voice without TLS too.
+        voice: { secure: !connection.apiUrl?.startsWith('http://') },
         rest: {
           ...(connection.apiUrl ? { baseUrl: connection.apiUrl } : {}),
           ...(connection.globalLimit === undefined
@@ -551,6 +573,8 @@ export function createProject(options: ProjectOptions): Project {
             log.warn(
               `An event of Discord (${event.event}) could not be read: ${messageOf(event.error)}`
             );
+          } else if (event.type === 'voiceWarning') {
+            log.warn(`Voice: ${event.message}`);
           }
         },
       });

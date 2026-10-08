@@ -41,6 +41,16 @@ Il a aussi tout ce qu’a [GuildChannel](/fr/reference/channels#guildchannel) et
 
 ## Actions
 
+### join()
+
+```ts
+join(options?: JoinOptions): Promise<VoiceConnection>
+```
+
+Rejoint le salon vocal, ou y déplace le bot depuis un autre salon vocal du serveur. Se résout quand le bot peut jouer. Dans un salon de conférence, le bot devient orateur quand il le peut, et demande la parole sinon. Voir [VoiceConnection](/fr/reference/voice-connection) et ses [JoinOptions](/fr/reference/voice-connection#joinoptions).
+
+[Documentation de Discord](https://docs.discord.com/developers/topics/voice-connections#connecting-to-voice)
+
 ### setStatus()
 
 ```ts

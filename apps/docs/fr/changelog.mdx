@@ -1,0 +1,42 @@
+---
+title: 'Changelog'
+description: 'Ce qui a changé dans chaque version de ChapterJS'
+---
+
+`chapterjs`, `create-chapter` et `create-chapterjs` ont toujours le même numéro de version. Mettez-les à jour ensemble :
+
+<CodeGroup>
+
+```bash pnpm
+pnpm update chapterjs --latest
+```
+
+```bash npm
+npm install chapterjs@latest
+```
+
+```bash yarn
+yarn add chapterjs@latest
+```
+
+```bash bun
+bun add chapterjs@latest
+```
+
+</CodeGroup>
+
+<Update label="0.1.3" description="La première version du framework">
+
+Un dossier de fichiers devient un bot Discord.
+
+- **[Commandes](/fr/commands)** : un fichier de `src/commands/` est une commande slash, avec ses options typées, ses choix, l'[autocomplétion](/fr/commands/options#autocomplétion), ses permissions, ses délais entre deux utilisations et ses traductions.
+- **[Événements](/fr/events)** : un fichier de `src/events/<event>/` s'exécute quand l'événement arrive. Les intents découlent des fichiers que vous écrivez.
+- **[Composants](/fr/components)** : boutons, menus déroulants, formulaires et embeds dans `src/components/`, avec des `data` typées et aucun identifiant à écrire.
+- **[Tâches](/fr/tasks)** : ce que le bot fait de lui-même, à intervalle régulier ou à heure fixe.
+- **[Présence](/fr/presence)** : ce que le bot affiche sous son nom, dans `src/presence.ts`.
+- **[Messages traduits](/fr/translated-messages)** : un fichier par langue dans `src/messages/`, et `t` parle la langue de ceux qui lisent.
+- **[`chapterjs dev`](/fr/run/dev)** : le bot sur un serveur de test, chaque fichier rechargé dès que vous l'enregistrez.
+- **[`chapterjs build`](/fr/run/build)** et **[`chapterjs start`](/fr/run/start)** : un seul fichier compilé pour la production, réparti sur plusieurs processus quand le bot est grand.
+- **[`create-chapter`](/fr/quickstart)** : un nouveau projet en une commande.
+
+</Update>

@@ -1,6 +1,6 @@
 ---
 title: 'Data'
-description: 'Read the plain objects you get for attachments, reactions, tags, overwrites, bans, audit logs, events, rules and stickers'
+description: 'Read the plain objects you get for attachments, reactions, tags, overwrites, bans, audit logs, events, rules, stickers, voice states and presences'
 ---
 
 Some things have no class of their own: you get them as plain objects, with the fields of Discord written in camelCase. They have no methods, and nothing on them sends a request.
@@ -75,6 +75,16 @@ The reactions of one emoji on a message. You read them in `message.reactions`, o
 To react or read who reacted, see [Message](/reference/message): `react()`, `fetchReactionUsers()`.
 
 [Discord documentation](https://docs.discord.com/developers/resources/message#reaction-object-reaction-structure)
+
+## ReactionEmoji
+
+The emoji of a reaction: a standard one has only a `name` (`"👍"`), a custom one has an `id` too. The [reaction events](/reference/events#reactionadd) give one.
+
+<ResponseField name="id" type="Snowflake | null" required>The id of a custom emoji; `null` for a standard one.</ResponseField>
+<ResponseField name="name" type="string | null" required>The name of a custom emoji, or the character of a standard one.</ResponseField>
+<ResponseField name="animated" type="boolean">Whether a custom emoji is animated.</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/emoji#emoji-object)
 
 ## ForumTag
 
@@ -174,6 +184,12 @@ What moderators and bots did in a server: its entries, newest first, and what th
 <ResponseField name="guildScheduledEvents" type="ScheduledEvent[]" required>The scheduled events the entries refer to.</ResponseField>
 
 [Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-object-audit-log-structure)
+
+## AuditLogEntry
+
+One thing a moderator or a bot did in a server: what, by whom, on what, and what changed. `auditLogEntryCreate` gives one; its fields are the ones of an entry of [`AuditLog`](#auditlog): `id`, `actionType`, `targetId`, `userId`, `reason`, `changes` and `options`.
+
+[Discord documentation](https://docs.discord.com/developers/resources/audit-log#audit-log-entry-object-audit-log-entry-structure)
 
 ## ScheduledEvent
 
@@ -278,3 +294,56 @@ A sticker: one of a server, or a standard one from a pack. `guild.fetchStickers(
 To send one, pass its id in the `stickers` of a message: see [Message options](/reference/message-options).
 
 [Discord documentation](https://docs.discord.com/developers/resources/sticker#sticker-object-sticker-structure)
+
+## VoiceState
+
+Where someone is in voice, and how: muted, deafened, streaming... The [voice events](/reference/events#voicejoin) give one.
+
+<ResponseField name="channelId" type="Snowflake | null" required>The id of the voice channel the person is in.</ResponseField>
+<ResponseField name="userId" type="Snowflake" required>The id of the person.</ResponseField>
+<ResponseField name="sessionId" type="string" required>The id of their voice session.</ResponseField>
+<ResponseField name="deaf" type="boolean" required>Whether the server deafened them.</ResponseField>
+<ResponseField name="mute" type="boolean" required>Whether the server muted them.</ResponseField>
+<ResponseField name="selfDeaf" type="boolean" required>Whether they deafened themselves.</ResponseField>
+<ResponseField name="selfMute" type="boolean" required>Whether they muted themselves.</ResponseField>
+<ResponseField name="selfStream" type="boolean">Whether they are streaming with Go Live.</ResponseField>
+<ResponseField name="selfVideo" type="boolean" required>Whether their camera is on.</ResponseField>
+<ResponseField name="suppress" type="boolean" required>Whether they may not speak (in a stage channel, an audience member).</ResponseField>
+<ResponseField name="requestToSpeakTimestamp" type="string | null" required>When they asked to speak, in a stage channel.</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/resources/voice#voice-state-object)
+
+## UserPresence
+
+Whether someone is online and what they are doing: their status, their activities, and on which devices. `presenceUpdate` gives one.
+
+<ResponseField name="status" type="'online' | 'idle' | 'dnd' | 'offline'" required>Their status.</ResponseField>
+<ResponseField name="activities" type="object[]" required>
+  What they are doing, the first one being what Discord shows.
+  <Expandable title="fields of an activity">
+    <ResponseField name="name" type="string" required>The name of the activity: the game, the music service...</ResponseField>
+    <ResponseField name="type" type="0 | 1 | 2 | 3 | 4 | 5" required>`0` playing, `1` streaming, `2` listening, `3` watching, `4` a custom status, `5` competing.</ResponseField>
+    <ResponseField name="url" type="string | null">The link of a stream.</ResponseField>
+    <ResponseField name="createdAt" type="number" required>When the activity started, in milliseconds since 1970.</ResponseField>
+    <ResponseField name="timestamps" type="object">When the game started or ends: `start` and `end`, in milliseconds since 1970.</ResponseField>
+    <ResponseField name="applicationId" type="Snowflake">The id of the application of the game.</ResponseField>
+    <ResponseField name="details" type="string | null">What they are doing in it.</ResponseField>
+    <ResponseField name="state" type="string | null">The state of their party, or the text of a custom status.</ResponseField>
+    <ResponseField name="emoji" type="object | null">The emoji of a custom status (plain data).</ResponseField>
+    <ResponseField name="party" type="object">Their party: `id`, and `size` as `[current, max]`.</ResponseField>
+    <ResponseField name="assets" type="object">The images of the activity and their texts (plain data).</ResponseField>
+    <ResponseField name="instance" type="boolean">Whether it is an instanced game session.</ResponseField>
+    <ResponseField name="flags" type="number">What the activity includes, as a bit field.</ResponseField>
+  </Expandable>
+</ResponseField>
+<ResponseField name="clientStatus" type="object" required>
+  Their status on each kind of device they use; a device they don't use is left out.
+  <Expandable title="fields">
+    <ResponseField name="desktop" type="string">On a computer application.</ResponseField>
+    <ResponseField name="mobile" type="string">On a phone.</ResponseField>
+    <ResponseField name="web" type="string">In a browser.</ResponseField>
+    <ResponseField name="vr" type="string">In virtual reality.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+[Discord documentation](https://docs.discord.com/developers/events/gateway-events#presence-update-presence-update-event-fields)

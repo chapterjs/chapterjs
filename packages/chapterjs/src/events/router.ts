@@ -59,8 +59,8 @@ type AnySource = {
   build: (
     ctx: Context,
     data: never,
-    extra: { joined: boolean; before: unknown }
-  ) => object | null;
+    extra: { joined: boolean; before: unknown; prepared: unknown }
+  ) => object | readonly object[] | null;
 };
 
 /** For each gateway event, the events it may turn into. */
@@ -130,21 +130,28 @@ export class EventRouter {
     if (!sources) return;
     sources.forEach((source, index) => {
       if (!this.#handlers.has(source.name)) return;
-      const deliver = (): void => {
-        const context = source.build(ctx, data as never, {
+      const deliver = (prepared?: unknown): void => {
+        const built = source.build(ctx, data as never, {
           joined: extra.joined,
           before: extra.before?.[index],
+          prepared,
         });
-        if (!context) return;
-        // `t` speaks the language of the server the event happened in.
-        const guild = (
-          EVENTS[source.name].guildOf as
-            ((context: object) => Guild | null) | undefined
-        )?.(context);
-        this.emit(source.name, {
-          ...context,
-          ...translation(ctx, audienceLocale({ guild })),
-        } as never);
+        if (!built) return;
+        // One gateway event can be several occurrences (messages deleted
+        // together, emojis changed at once): each is delivered.
+        const occurrences: readonly object[] = Array.isArray(built)
+          ? built
+          : [built];
+        const guildOf = EVENTS[source.name].guildOf as
+          ((context: object) => Guild | null) | undefined;
+        for (const context of occurrences) {
+          // `t` speaks the language of the server the event happened in.
+          const guild = guildOf?.(context);
+          this.emit(source.name, {
+            ...context,
+            ...translation(ctx, audienceLocale({ guild })),
+          } as never);
+        }
       };
       const preparing = source.prepare?.(ctx, data as never);
       if (!preparing) return deliver();

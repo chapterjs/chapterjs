@@ -110,6 +110,21 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
   <Accordion title="⚠ A … event was not given to your files: Discord did not let the bot read the channel it happened in (…).">
     Un événement s’est produit dans un salon que le bot ne connaît pas encore (un fil qu’il n’a jamais vu, par exemple), et Discord a refusé de le décrire : le bot n’a pas la permission de voir ce salon. Vos fichiers n’ont pas tourné pour cet événement. Donnez au bot l’accès au salon s’il doit y réagir.
   </Accordion>
+  <Accordion title="⚠ A … event was not given to your files: Discord did not let the bot read the user who did it (…).">
+    L’événement ne donnait que l’id de la personne (une réaction retirée, un vote, quelqu’un intéressé par un événement programmé), le bot ne connaissait pas cette personne, et Discord a refusé de la décrire : en général un compte supprimé. Vos fichiers n’ont pas tourné pour cet événement. Rien à faire.
+  </Accordion>
+  <Accordion title="⚠ Voice: the bot asked to speak on the stage …: a moderator must accept, or give it the Mute Members permission so it speaks by itself.">
+    Dans un salon de conférence, le bot est dans le public tant qu’il ne peut pas parler. Acceptez sa demande dans Discord, ou donnez-lui **Rendre muets des membres** (Mute Members) pour qu’il devienne orateur tout seul.
+  </Accordion>
+  <Accordion title="⚠ Voice: the voice server refused the bot (…): …">
+    Discord a mis fin à la connexion vocale pour la raison donnée ; `voice.connected` vaut maintenant `false`. Rejoignez à nouveau ; si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le message.
+  </Accordion>
+  <Accordion title="⚠ Voice: the end-to-end encryption of the call could not be updated (transition …): joining it again.">
+    Le bot a reçu une mise à jour du chiffrement de l’appel qu’il n’a pas pu utiliser, et a demandé à Discord de l’ajouter à nouveau. Rien à faire : il revient dans un instant, et ce qu’il joue entre-temps n’est pas entendu.
+  </Accordion>
+  <Accordion title="⚠ Voice: the bot lost its voice connection: …">
+    Le serveur vocal n’a pas pu être rejoint après un changement de serveur. Rejoignez à nouveau.
+  </Accordion>
   <Accordion title="⚠ An event of Discord (…) could not be read: …">
     Quelque chose dans un événement envoyé par Discord n’a pas pu être appliqué à ce dont le bot se souvient. Vos fichiers ont quand même reçu l’événement. Si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le message.
   </Accordion>

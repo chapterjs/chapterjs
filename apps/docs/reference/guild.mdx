@@ -104,6 +104,10 @@ async function describe(guild: Guild) {
   The custom emojis of the server.
 </ResponseField>
 
+<ResponseField name="voice" type="VoiceConnection | null">
+  The bot in voice in this server, to play or leave; `null` when it is in no voice channel here. See [VoiceConnection](/reference/voice-connection).
+</ResponseField>
+
 <ResponseField name="everyoneRole" type="Role">
   The @everyone role, which every member has.
 </ResponseField>

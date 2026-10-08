@@ -101,6 +101,7 @@ export default event(({ user, guilds }) => {
 | `roleCreate`, `roleUpdate`, `roleDelete`          | A role is created, changed, deleted                 | `role`, `guild`                            |
 | `channelCreate`, `channelUpdate`, `channelDelete` | A channel is created, changed, deleted              | `channel`, `guild`                         |
 | `messageCreate`, `messageUpdate`, `messageDelete` | A message is sent, edited, deleted                  | `message` and more: the next page          |
+| `reactionAdd`, `voiceJoin`, `banAdd`...           | A reaction, someone in voice, a ban, and more       | Two pages from here                        |
 
 A folder with another name is reported when it loads, with the closest event name when there is one. The exact contents of each are in the [Reference](/reference/events).
 

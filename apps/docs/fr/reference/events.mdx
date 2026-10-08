@@ -9,7 +9,7 @@ description: 'Chaque événement auquel votre bot peut réagir : quand il se pro
 
 Un événement est un dossier de `src/events/`. Chaque section ci-dessous est un dossier : quand ses fichiers tournent, les intents dont Discord a besoin pour lui (déduits de vos fichiers, jamais écrits par vous), ses options, ce dont le bot se souvient pour lui au-delà de [la valeur par défaut](/fr/memory), et ce que reçoit votre fonction.
 
-Les intents sont nommés comme les affiche `chapterjs dev`. Deux sont privilégiés, à activer dans le [Developer Portal](/fr/setup/discord-application) : `GUILD_MEMBERS` est le Server Members Intent, `MESSAGE_CONTENT` le Message Content Intent.
+Les intents sont nommés comme les affiche `chapterjs dev`. Trois sont privilégiés, à activer dans le [Developer Portal](/fr/setup/discord-application) : `GUILD_MEMBERS` est le Server Members Intent, `GUILD_PRESENCES` le Presence Intent, `MESSAGE_CONTENT` le Message Content Intent.
 
 ## ready
 
@@ -226,7 +226,7 @@ Chaque événement reçoit aussi `t`, dans la langue du serveur où il s’est p
 
 | | |
 | --- | --- |
-| Quand | Un message a été supprimé. Par défaut, seulement sur un serveur. |
+| Quand | Un message a été supprimé. Par défaut, seulement sur un serveur. Des messages supprimés ensemble (par un modérateur, ou par `bulkDelete()`) font un `messageDelete` chacun. |
 | Intents | `GUILD_MESSAGES` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGES` pour un fichier qui écoute en messages privés |
 | Options | `where` ([WhereEventOptions](/fr/reference/event#whereeventoptions)) |
 | Mémoire | Par défaut : aucun message, donc `message` est `null` aujourd’hui |
@@ -253,3 +253,629 @@ Ce que reçoit un fichier sans `where` :
 </ResponseField>
 
 Avec `where: 'dm'`, `guildId` et `guild` n’existent pas, `channel` est un `DMChannel | null` (la conversation privée, quand le bot la connaît) et `message` un `DmMessage | null`. Avec `where: 'both'`, un message privé arrive avec `guildId: null`, `guild: null`, `channel: DMChannel | null` et `message: PrivateMessage | null`, donc `guild` distingue les deux.
+
+## reactionAdd
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a ajouté une réaction à un message. Par défaut, seulement une personne, sur un serveur. |
+| Intents | `GUILD_MESSAGE_REACTIONS` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGE_REACTIONS` pour un fichier qui écoute en messages privés |
+| Options | `bots`, `where` ([ReactionEventOptions](/fr/reference/event#reactioneventoptions)) |
+| Mémoire | Par défaut : aucun message, donc `message` est `null` aujourd’hui |
+
+Ce que reçoit un fichier sans `where` :
+
+<ResponseField name="emoji" type="ReactionEmoji" required>
+  L’emoji de la réaction : [`ReactionEmoji`](/fr/reference/data#reactionemoji).
+</ResponseField>
+<ResponseField name="user" type="User" required>
+  Qui a réagi.
+</ResponseField>
+<ResponseField name="member" type="GuildMember" required>
+  Qui a réagi, en tant que membre du serveur.
+</ResponseField>
+<ResponseField name="burst" type="boolean" required>
+  Si c’est une super réaction.
+</ResponseField>
+<ResponseField name="messageId" type="Snowflake" required>
+  L’identifiant du message.
+</ResponseField>
+<ResponseField name="message" type="GuildMessage | null" required>
+  Le message, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="messageAuthorId" type="Snowflake | null" required>
+  L’identifiant de qui a écrit le message, quand Discord le dit.
+</ResponseField>
+<ResponseField name="channelId" type="Snowflake" required>
+  L’identifiant du salon du message.
+</ResponseField>
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon du message.
+</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>
+  L’identifiant du serveur.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur.
+</ResponseField>
+
+Avec `where: 'dm'`, `guildId`, `guild` et `member` n’existent pas, `channel` est un `DMChannel | null` (la conversation privée, quand le bot la connaît) et `message` un `DmMessage | null`. Avec `where: 'both'`, une réaction en privé arrive avec `guildId: null`, `guild: null`, `member: null`, `channel: DMChannel | null` et `message: PrivateMessage | null`, donc `guild` distingue les deux.
+
+## reactionRemove
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a retiré sa réaction d’un message. Par défaut, seulement une personne, sur un serveur. |
+| Intents | `GUILD_MESSAGE_REACTIONS` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGE_REACTIONS` pour un fichier qui écoute en messages privés |
+| Options | `bots`, `where` ([ReactionEventOptions](/fr/reference/event#reactioneventoptions)) |
+| Mémoire | Par défaut |
+
+Ce que reçoit un fichier sans `where` :
+
+<ResponseField name="emoji" type="ReactionEmoji" required>
+  L’emoji de la réaction.
+</ResponseField>
+<ResponseField name="user" type="User" required>
+  Qui avait réagi.
+</ResponseField>
+<ResponseField name="member" type="GuildMember | null" required>
+  Qui avait réagi, en tant que membre du serveur, quand le bot s’en souvient. Discord ne l’envoie pas avec cet événement : `guild.fetchMember(user)` le demande.
+</ResponseField>
+<ResponseField name="burst" type="boolean" required>
+  Si c’était une super réaction.
+</ResponseField>
+<ResponseField name="messageId" type="Snowflake" required>
+  L’identifiant du message.
+</ResponseField>
+<ResponseField name="message" type="GuildMessage | null" required>
+  Le message, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="channelId" type="Snowflake" required>
+  L’identifiant du salon du message.
+</ResponseField>
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon du message.
+</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>
+  L’identifiant du serveur.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur.
+</ResponseField>
+
+`where` change le lieu comme pour `reactionAdd`.
+
+## reactionClear
+
+| | |
+| --- | --- |
+| Quand | Les réactions d’un message ont été retirées : toutes, ou toutes celles d’un emoji. Par défaut, seulement sur un serveur. |
+| Intents | `GUILD_MESSAGE_REACTIONS` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGE_REACTIONS` pour un fichier qui écoute en messages privés |
+| Options | `where` ([WhereEventOptions](/fr/reference/event#whereeventoptions)) |
+| Mémoire | Par défaut |
+
+Ce que reçoit un fichier sans `where` :
+
+<ResponseField name="emoji" type="ReactionEmoji | null" required>
+  L’emoji dont les réactions ont été retirées ; `null` quand toutes l’ont été.
+</ResponseField>
+<ResponseField name="messageId" type="Snowflake" required>
+  L’identifiant du message.
+</ResponseField>
+<ResponseField name="message" type="GuildMessage | null" required>
+  Le message, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="channelId" type="Snowflake" required>
+  L’identifiant du salon du message.
+</ResponseField>
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon du message.
+</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>
+  L’identifiant du serveur.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur.
+</ResponseField>
+
+`where` change le lieu comme pour `reactionAdd` ; il n’y a pas de `member`.
+
+## pollVoteAdd
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a voté dans un sondage. Par défaut, seulement sur un serveur. |
+| Intents | `GUILD_MESSAGE_POLLS` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGE_POLLS` pour un fichier qui écoute en messages privés |
+| Options | `where` ([WhereEventOptions](/fr/reference/event#whereeventoptions)) |
+| Mémoire | Par défaut |
+
+Ce que reçoit un fichier sans `where` :
+
+<ResponseField name="answerId" type="number" required>
+  L’identifiant que Discord a donné à la réponse pour laquelle la personne a voté : aujourd’hui, sa position dans le sondage, `1` pour la première réponse.
+</ResponseField>
+<ResponseField name="user" type="User" required>
+  Qui a voté.
+</ResponseField>
+<ResponseField name="member" type="GuildMember | null" required>
+  Qui a voté, en tant que membre du serveur, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="messageId" type="Snowflake" required>
+  L’identifiant du message du sondage.
+</ResponseField>
+<ResponseField name="message" type="GuildMessage | null" required>
+  Le message du sondage, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="channelId" type="Snowflake" required>
+  L’identifiant du salon du sondage.
+</ResponseField>
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon du sondage.
+</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>
+  L’identifiant du serveur.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur.
+</ResponseField>
+
+`where` change le lieu comme pour `reactionAdd`.
+
+## pollVoteRemove
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a retiré son vote d’un sondage. Par défaut, seulement sur un serveur. |
+| Intents | `GUILD_MESSAGE_POLLS` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGE_POLLS` pour un fichier qui écoute en messages privés |
+| Options | `where` ([WhereEventOptions](/fr/reference/event#whereeventoptions)) |
+| Mémoire | Par défaut |
+
+Reçoit la même chose que `pollVoteAdd`. `answerId` est l’identifiant que Discord a donné à la réponse pour laquelle la personne ne vote plus : aujourd’hui, sa position dans le sondage, `1` pour la première réponse ; `user` et `member` sont qui avait voté.
+
+## typingStart
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a commencé à écrire dans un salon. Par défaut, seulement sur un serveur. |
+| Intents | `GUILD_MESSAGE_TYPING` pour un fichier qui écoute sur les serveurs, `DIRECT_MESSAGE_TYPING` pour un fichier qui écoute en messages privés |
+| Options | `where` ([WhereEventOptions](/fr/reference/event#whereeventoptions)) |
+| Mémoire | Par défaut |
+
+Ce que reçoit un fichier sans `where` :
+
+<ResponseField name="user" type="User" required>
+  Qui écrit.
+</ResponseField>
+<ResponseField name="member" type="GuildMember" required>
+  Qui écrit, en tant que membre du serveur.
+</ResponseField>
+<ResponseField name="startedAt" type="Date" required>
+  Quand la personne a commencé.
+</ResponseField>
+<ResponseField name="channelId" type="Snowflake" required>
+  L’identifiant du salon.
+</ResponseField>
+<ResponseField name="channel" type="GuildTextBasedChannel" required>
+  Le salon.
+</ResponseField>
+<ResponseField name="guildId" type="Snowflake" required>
+  L’identifiant du serveur.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur.
+</ResponseField>
+
+Avec `where: 'dm'`, `guildId`, `guild` et `member` n’existent pas et `channel` est un `DMChannel | null`. Avec `where: 'both'`, une conversation privée arrive avec `guildId: null`, `guild: null`, `member: null` et `channel: DMChannel | null`.
+
+## threadMemberJoin
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a été ajouté à un fil, ou l’a rejoint. |
+| Intents | `GUILD_MEMBERS` (privilégié) : sans lui, Discord ne dit que quand le bot lui-même rejoint un fil |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="thread" type="ThreadChannel" required>
+  Le fil.
+</ResponseField>
+<ResponseField name="member" type="GuildMember" required>
+  Qui a été ajouté, en tant que membre du serveur.
+</ResponseField>
+<ResponseField name="user" type="User" required>
+  Le compte de qui a été ajouté.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du fil.
+</ResponseField>
+
+## threadMemberLeave
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a été retiré d’un fil, ou l’a quitté. |
+| Intents | `GUILD_MEMBERS` (privilégié) |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="thread" type="ThreadChannel" required>
+  Le fil.
+</ResponseField>
+<ResponseField name="userId" type="Snowflake" required>
+  L’identifiant de qui a été retiré.
+</ResponseField>
+<ResponseField name="user" type="User | null" required>
+  Le compte de qui a été retiré, quand le bot le connaît.
+</ResponseField>
+<ResponseField name="member" type="GuildMember | null" required>
+  Qui a été retiré, en tant que membre du serveur, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du fil.
+</ResponseField>
+
+## voiceJoin
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a rejoint un salon vocal. |
+| Intents | `GUILD_VOICE_STATES` |
+| Options | Aucune |
+| Mémoire | Qui est dans un salon vocal, tant que la personne y est |
+
+<ResponseField name="member" type="GuildMember" required>
+  Qui a rejoint.
+</ResponseField>
+<ResponseField name="channel" type="VoiceChannel" required>
+  Le salon rejoint.
+</ResponseField>
+<ResponseField name="voice" type="VoiceState" required>
+  Son état vocal : micro coupé, casque coupé, en stream... Voir [`VoiceState`](/fr/reference/data#voicestate).
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du salon.
+</ResponseField>
+
+## voiceLeave
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a quitté un salon vocal, ou a été déconnecté. |
+| Intents | `GUILD_VOICE_STATES` |
+| Options | Aucune |
+| Mémoire | Qui est dans un salon vocal, tant que la personne y est |
+
+<ResponseField name="member" type="GuildMember" required>
+  Qui est parti.
+</ResponseField>
+<ResponseField name="channel" type="VoiceChannel" required>
+  Le salon quitté. Toujours là quand le salon a été supprimé entre-temps.
+</ResponseField>
+<ResponseField name="voice" type="VoiceState" required>
+  Son état vocal tel qu’il était, dans ce salon.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du salon.
+</ResponseField>
+
+## voiceMove
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un est passé d’un salon vocal à un autre, ou a été déplacé. |
+| Intents | `GUILD_VOICE_STATES` |
+| Options | Aucune |
+| Mémoire | Qui est dans un salon vocal, tant que la personne y est |
+
+<ResponseField name="member" type="GuildMember" required>
+  Qui a changé de salon.
+</ResponseField>
+<ResponseField name="from" type="VoiceChannel" required>
+  Le salon quitté.
+</ResponseField>
+<ResponseField name="to" type="VoiceChannel" required>
+  Le salon où la personne est maintenant.
+</ResponseField>
+<ResponseField name="voice" type="VoiceState" required>
+  Son état vocal, tel qu’il est maintenant.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur des salons.
+</ResponseField>
+
+## voiceUpdate
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un dans un salon vocal a changé : micro ou casque coupé, un stream ou une caméra lancés... Pas quand la personne rejoint, quitte ou change de salon. |
+| Intents | `GUILD_VOICE_STATES` |
+| Options | Aucune |
+| Mémoire | Qui est dans un salon vocal, tant que la personne y est |
+
+<ResponseField name="member" type="GuildMember" required>
+  Qui a changé.
+</ResponseField>
+<ResponseField name="channel" type="VoiceChannel" required>
+  Le salon où se trouve la personne.
+</ResponseField>
+<ResponseField name="voice" type="VoiceState" required>
+  Son état vocal, tel qu’il est maintenant.
+</ResponseField>
+<ResponseField name="before" type="VoiceState" required>
+  Son état vocal tel qu’il était.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du salon.
+</ResponseField>
+
+## presenceUpdate
+
+| | |
+| --- | --- |
+| Quand | Le statut ou l’activité de quelqu’un a changé : en ligne, absent, en train de jouer... Envoyé pour chaque serveur que le bot partage avec la personne. |
+| Intents | `GUILD_PRESENCES` (privilégié) |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="userId" type="Snowflake" required>
+  L’identifiant de la personne dont la présence a changé.
+</ResponseField>
+<ResponseField name="user" type="User | null" required>
+  Le compte de la personne dont la présence a changé, quand le bot le connaît.
+</ResponseField>
+<ResponseField name="member" type="GuildMember | null" required>
+  La personne dont la présence a changé, en tant que membre du serveur, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="presence" type="UserPresence" required>
+  Son statut, ses activités et ses appareils, tels qu’ils sont maintenant. Voir [`UserPresence`](/fr/reference/data#userpresence).
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur d’où le changement est vu.
+</ResponseField>
+
+## guildUpdate
+
+| | |
+| --- | --- |
+| Quand | Le serveur a changé : nom, icône, paramètres... |
+| Intents | `GUILDS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="guild" type="Guild" required>
+  Le serveur, tel qu’il est maintenant.
+</ResponseField>
+
+## banAdd
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un a été banni d’un serveur. La personne le quitte aussi : `memberLeave` tourne aussi. |
+| Intents | `GUILD_MODERATION` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="user" type="User" required>
+  Le compte banni.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur dont la personne a été bannie.
+</ResponseField>
+
+## banRemove
+
+| | |
+| --- | --- |
+| Quand | Un bannissement a été levé : la personne peut de nouveau rejoindre le serveur. |
+| Intents | `GUILD_MODERATION` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="user" type="User" required>
+  Le compte qui n’est plus banni.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du bannissement.
+</ResponseField>
+
+## auditLogEntryCreate
+
+| | |
+| --- | --- |
+| Quand | Quelque chose a été ajouté au journal d’audit d’un serveur. Seulement pour un bot qui y a la permission `ViewAuditLog`. |
+| Intents | `GUILD_MODERATION` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="entry" type="AuditLogEntry" required>
+  Ce qui a été fait, par qui, sur quoi. Voir [`AuditLogEntry`](/fr/reference/data#auditlogentry).
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du journal d’audit.
+</ResponseField>
+
+## emojiCreate
+
+| | |
+| --- | --- |
+| Quand | Un emoji a été ajouté à un serveur. |
+| Intents | `GUILD_EXPRESSIONS` |
+| Options | Aucune |
+| Mémoire | Par défaut : le bot connaît chaque emoji de ses serveurs |
+
+<ResponseField name="emoji" type="GuildEmoji" required>
+  Le nouvel emoji.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur de l’emoji.
+</ResponseField>
+
+## emojiUpdate
+
+| | |
+| --- | --- |
+| Quand | Un emoji d’un serveur a changé : son nom, ou qui peut l’utiliser. |
+| Intents | `GUILD_EXPRESSIONS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="emoji" type="GuildEmoji" required>
+  L’emoji, tel qu’il est maintenant.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur de l’emoji.
+</ResponseField>
+
+## emojiDelete
+
+| | |
+| --- | --- |
+| Quand | Un emoji a été retiré d’un serveur. |
+| Intents | `GUILD_EXPRESSIONS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="emoji" type="GuildEmoji" required>
+  L’emoji tel qu’il était.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où était l’emoji.
+</ResponseField>
+
+## inviteCreate
+
+| | |
+| --- | --- |
+| Quand | Une invitation vers un serveur a été créée. Seulement pour un bot qui a la permission `ManageChannels` sur son salon. |
+| Intents | `GUILD_INVITES` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="invite" type="Invite" required>
+  La nouvelle invitation : voir [Invite](/fr/reference/invite).
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où mène l’invitation.
+</ResponseField>
+<ResponseField name="channel" type="GuildChannel" required>
+  Le salon où mène l’invitation.
+</ResponseField>
+
+## inviteDelete
+
+| | |
+| --- | --- |
+| Quand | Une invitation a été supprimée, ou a expiré. Seulement pour un bot qui a la permission `ManageChannels` sur son salon. |
+| Intents | `GUILD_INVITES` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="code" type="string" required>
+  Le code de l’invitation (`discord.gg/code`).
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où menait l’invitation.
+</ResponseField>
+<ResponseField name="channel" type="GuildChannel" required>
+  Le salon où menait l’invitation.
+</ResponseField>
+
+## scheduledEventCreate
+
+| | |
+| --- | --- |
+| Quand | Un événement a été programmé sur un serveur. |
+| Intents | `GUILD_SCHEDULED_EVENTS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="scheduledEvent" type="ScheduledEvent" required>
+  Le nouvel événement programmé : voir [`ScheduledEvent`](/fr/reference/data#scheduledevent).
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur de l’événement programmé.
+</ResponseField>
+
+## scheduledEventUpdate
+
+| | |
+| --- | --- |
+| Quand | Un événement programmé a changé : son heure, son lieu, ou il a commencé ou s’est terminé. |
+| Intents | `GUILD_SCHEDULED_EVENTS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="scheduledEvent" type="ScheduledEvent" required>
+  L’événement programmé, tel qu’il est maintenant.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur de l’événement programmé.
+</ResponseField>
+
+## scheduledEventDelete
+
+| | |
+| --- | --- |
+| Quand | Un événement programmé a été supprimé. |
+| Intents | `GUILD_SCHEDULED_EVENTS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="scheduledEvent" type="ScheduledEvent" required>
+  L’événement programmé tel qu’il était.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur où était l’événement programmé.
+</ResponseField>
+
+## scheduledEventUserAdd
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un s’est dit intéressé par un événement programmé. |
+| Intents | `GUILD_SCHEDULED_EVENTS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="scheduledEventId" type="Snowflake" required>
+  L’identifiant de l’événement programmé.
+</ResponseField>
+<ResponseField name="user" type="User" required>
+  Qui est intéressé.
+</ResponseField>
+<ResponseField name="member" type="GuildMember | null" required>
+  Qui est intéressé, en tant que membre du serveur, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur de l’événement programmé.
+</ResponseField>
+
+## scheduledEventUserRemove
+
+| | |
+| --- | --- |
+| Quand | Quelqu’un n’est plus intéressé par un événement programmé. |
+| Intents | `GUILD_SCHEDULED_EVENTS` |
+| Options | Aucune |
+| Mémoire | Par défaut |
+
+<ResponseField name="scheduledEventId" type="Snowflake" required>
+  L’identifiant de l’événement programmé.
+</ResponseField>
+<ResponseField name="user" type="User" required>
+  Qui n’est plus intéressé.
+</ResponseField>
+<ResponseField name="member" type="GuildMember | null" required>
+  Qui n’est plus intéressé, en tant que membre du serveur, quand le bot s’en souvient.
+</ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  Le serveur de l’événement programmé.
+</ResponseField>
+
+## Quand Discord ne donne qu’un identifiant
+
+Certains événements n’arrivent qu’avec l’identifiant de la personne : retirer une réaction, voter, écrire en privé, s’intéresser à un événement programmé. Quand le bot ne connaît pas encore cette personne, il la demande une fois à Discord avant de lancer vos fichiers, puis s’en souvient : `user` est toujours là. Comme pour [un salon que le bot ne connaît pas](/fr/events/messages#un-salon-que-le-bot-ne-connaît-pas), quand Discord refuse, l’événement n’est pas livré et on vous le dit :
+
+```text
+⚠ A reactionRemove event was not given to your files: Discord did not let the bot read the user who did it (Discord refused GET /users/{user.id}: Unknown User (10013)).
+```

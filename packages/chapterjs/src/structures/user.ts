@@ -2,13 +2,24 @@ import { cdn, type ImageOptions } from '../discord/cdn.js';
 import { CreateDm, GetUser } from '../discord/endpoints.js';
 import { userMention } from '../discord/formatting.js';
 import type { Locale } from '../discord/types/common.js';
+import type { RawPresenceUpdateEvent } from '../discord/types/gateway-events.js';
 import { UserFlags, type RawUser } from '../discord/types/user.js';
+import type { Camelize } from '../util/case.js';
 import { ctxOf, dataOf, IdStructure } from './base.js';
 import type { DMChannel } from './channel.js';
 import type { Message } from './message.js';
 import type { MessageInput } from './payload.js';
 
 export type UserFlagName = keyof typeof UserFlags;
+
+/**
+ * Whether someone is online and what they are doing: their status, their
+ * activities, and on which devices.
+ * @see https://docs.discord.com/developers/events/gateway-events#presence-update-presence-update-event-fields
+ */
+export type UserPresence = Camelize<
+  Omit<RawPresenceUpdateEvent, 'user' | 'guild_id'>
+>;
 
 /**
  * A Discord account, the same in every server.
