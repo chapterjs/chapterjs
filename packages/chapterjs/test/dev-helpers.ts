@@ -31,11 +31,11 @@ export const ALL_PRIVILEGED = (1 << 13) | (1 << 15) | (1 << 19);
  * `.env`, and the given files (path from the project → content).
  */
 export function project(
-  files: Record<string, string>,
+  files: Record<string, string | Buffer>,
   env: string | null = `BOT_TOKEN=test-token\nDEV_GUILD_ID=${GUILD}\n`
 ): string {
   const dir = tempDir();
-  const write = (path: string, content: string) => {
+  const write = (path: string, content: string | Buffer) => {
     mkdirSync(dirname(join(dir, path)), { recursive: true });
     writeFileSync(join(dir, path), content);
   };
@@ -125,6 +125,8 @@ export async function world(
     maxConcurrency?: number;
     /** The servers the bot is in, besides its dev server. */
     guilds?: { id: string; name: string }[];
+    /** What the dev server has besides what `rawGuild` gives. */
+    devGuild?: Record<string, unknown>;
   } = {}
 ): Promise<FakeWorld> {
   const discord = await fakeDiscord();
@@ -180,7 +182,10 @@ export async function world(
       application: { id: BOT, flags: 0 },
     });
     for (const guild of mine) {
-      connection.dispatch('GUILD_CREATE', rawGuild(guild.id, guild.name));
+      connection.dispatch('GUILD_CREATE', {
+        ...rawGuild(guild.id, guild.name),
+        ...(guild.id === GUILD ? options.devGuild : {}),
+      });
     }
   };
   return { discord, gateway, env: { CHAPTERJS_API_URL: discord.url } };

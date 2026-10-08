@@ -22,6 +22,7 @@ import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { enableProjectLoader } from '../loader/hot.js';
 import { listFolder, type BuiltFile } from '../loader/loader.js';
+import { sourcesJoinVoice } from '../voice/usage.js';
 import type { Log } from './log.js';
 import {
   CONVENTIONS,
@@ -45,6 +46,8 @@ export interface BuildInfo {
   sources: string;
   commands: number;
   events: number;
+  /** Whether the files join voice channels (an intent to ask for). */
+  voice: boolean;
 }
 
 /** One value for everything in a folder: it changes when a file does. */
@@ -272,6 +275,7 @@ export async function build(options: BuildOptions): Promise<number> {
     sources: await fingerprint(src),
     commands: built.commands.size,
     events: built.events.size,
+    voice: await sourcesJoinVoice(cwd),
   };
   await writeFile(join(out, 'build.json'), JSON.stringify(info, null, 2));
   if (built.isEmpty()) log.info(built.summary());

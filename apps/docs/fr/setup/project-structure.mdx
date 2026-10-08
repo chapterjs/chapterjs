@@ -8,10 +8,14 @@ Un projet créé avec `create chapter` ressemble à ceci. Tout ce que fait votre
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
     <Tree.Folder name=".chapterjs" />
-    <Tree.Folder name="public" />
+    <Tree.Folder name="public" defaultOpen>
+      <Tree.File name="hello.ogg" highlight />
+    </Tree.Folder>
     <Tree.Folder name="src" defaultOpen>
       <Tree.Folder name="commands" defaultOpen>
+        <Tree.File name="hello.ts" highlight />
         <Tree.File name="ping.ts" highlight />
+        <Tree.File name="play.ts" highlight />
       </Tree.Folder>
       <Tree.Folder name="components" defaultOpen>
         <Tree.Folder name="buttons" defaultOpen>
@@ -19,6 +23,9 @@ Un projet créé avec `create chapter` ressemble à ceci. Tout ce que fait votre
         </Tree.Folder>
       </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
+        <Tree.Folder name="reactionAdd" defaultOpen>
+          <Tree.File name="wave.ts" highlight />
+        </Tree.Folder>
         <Tree.Folder name="ready" defaultOpen>
           <Tree.File name="online.ts" highlight />
         </Tree.Folder>
@@ -165,7 +172,7 @@ Les paquets de `node_modules` s’importent comme d’habitude. Les fichiers que
 
 ## `public/` : les fichiers qu’envoie votre bot
 
-Images, documents, sons : mettez-les dans `public/`, dans les dossiers que vous voulez, et envoyez-en un avec `asset('photos/monday.png')` dans les `files` d’un message. Votre éditeur liste les fichiers du dossier pendant que vous tapez, et `chapterjs dev` tient cette liste à jour pendant que vous ajoutez des fichiers. Un fichier est lu quand le message est envoyé. Voir [Fichiers](/fr/messages#fichiers).
+Images, documents, sons : mettez-les dans `public/`, dans les dossiers que vous voulez, et envoyez-en un avec `asset('photos/monday.png')` dans les `files` d’un message. Votre éditeur liste les fichiers du dossier pendant que vous tapez, et `chapterjs dev` tient cette liste à jour pendant que vous ajoutez des fichiers. Un fichier est lu quand le message est envoyé. Voir [Fichiers](/fr/messages#fichiers). Un son de `public/` se joue dans un salon vocal de la même façon, avec `voice.play(asset('hello.ogg'))` : la commande `/hello` du template le fait, voir [Jouer en vocal](/fr/voice).
 
 ## `.chapterjs/` : généré, ignoré, supprimable
 

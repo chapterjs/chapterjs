@@ -2,7 +2,7 @@
 // documents...). Its content is listed to type `asset()`, so that the
 // editor offers every file and underlines one that does not exist.
 
-import { watch } from 'node:fs';
+import { existsSync, watch } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { watchFolder } from '../loader/watch.js';
@@ -68,30 +68,50 @@ export function watchPublic(
   const root = join(projectDir, PUBLIC_FOLDER);
   let inner: { close(): void } | null = null;
   let outer: ReturnType<typeof watch> | null = null;
-  const watchInside = (): void => {
+  const watchInside = (loaded?: Promise<string>): void => {
     try {
-      inner = watchFolder(root, onChange);
+      inner = watchFolder(root, onChange, loaded ? { loaded } : {});
     } catch {
       inner = null;
     }
+  };
+  let catchUps: NodeJS.Timeout[] = [];
+  const appeared = (): void => {
+    if (inner) return;
+    // The folder was not there: what it has by the time it is watched
+    // (files copied with it, or written right after) is all new.
+    watchInside(Promise.resolve(''));
+    if (!inner) return;
+    outer?.close();
+    outer = null;
+    for (const catchUp of catchUps) clearTimeout(catchUp);
+    onChange();
   };
   // Until the folder exists, only its parent is watched, for its creation.
   const watchForCreation = (): void => {
     try {
       outer = watch(projectDir, (_event, name) => {
-        if (name !== PUBLIC_FOLDER || inner) return;
-        watchInside();
-        if (inner) onChange();
+        if (name === PUBLIC_FOLDER) appeared();
       });
       outer.unref();
     } catch {
       outer = null;
     }
+    // The system takes a moment to really start watching: a folder created
+    // meanwhile is looked for a little later.
+    catchUps = [300, 1500].map(wait => {
+      const timer = setTimeout(() => {
+        if (existsSync(root)) appeared();
+      }, wait);
+      timer.unref();
+      return timer;
+    });
   };
   watchInside();
   if (!inner) watchForCreation();
   return {
     close() {
+      for (const catchUp of catchUps) clearTimeout(catchUp);
       inner?.close();
       outer?.close();
     },

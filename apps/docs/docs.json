@@ -89,7 +89,15 @@
                 "icon": "zap",
                 "pages": [
                   "tutorial/events",
-                  "tutorial/message-events"
+                  "tutorial/message-events",
+                  "tutorial/reactions-and-voice"
+                ]
+              },
+              {
+                "group": "Voice",
+                "icon": "volume-2",
+                "pages": [
+                  "tutorial/voice"
                 ]
               },
               {
@@ -165,7 +173,17 @@
                 "icon": "zap",
                 "pages": [
                   "events/index",
-                  "events/messages"
+                  "events/messages",
+                  "events/reactions",
+                  "events/voice",
+                  "events/server"
+                ]
+              },
+              {
+                "group": "Voice",
+                "icon": "volume-2",
+                "pages": [
+                  "voice"
                 ]
               },
               {
@@ -280,7 +298,8 @@
                   "reference/interaction",
                   "reference/emoji",
                   "reference/invite",
-                  "reference/webhook"
+                  "reference/webhook",
+                  "reference/voice-connection"
                 ]
               },
               {
@@ -301,6 +320,19 @@
                 "icon": "square-terminal",
                 "pages": [
                   "reference/cli"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Changelog",
+            "icon": "history",
+            "groups": [
+              {
+                "group": "Changelog",
+                "icon": "history",
+                "pages": [
+                  "changelog"
                 ]
               }
             ]
@@ -348,7 +380,15 @@
                 "icon": "zap",
                 "pages": [
                   "fr/tutorial/events",
-                  "fr/tutorial/message-events"
+                  "fr/tutorial/message-events",
+                  "fr/tutorial/reactions-and-voice"
+                ]
+              },
+              {
+                "group": "Vocal",
+                "icon": "volume-2",
+                "pages": [
+                  "fr/tutorial/voice"
                 ]
               },
               {
@@ -424,7 +464,17 @@
                 "icon": "zap",
                 "pages": [
                   "fr/events/index",
-                  "fr/events/messages"
+                  "fr/events/messages",
+                  "fr/events/reactions",
+                  "fr/events/voice",
+                  "fr/events/server"
+                ]
+              },
+              {
+                "group": "Vocal",
+                "icon": "volume-2",
+                "pages": [
+                  "fr/voice"
                 ]
               },
               {
@@ -539,7 +589,8 @@
                   "fr/reference/interaction",
                   "fr/reference/emoji",
                   "fr/reference/invite",
-                  "fr/reference/webhook"
+                  "fr/reference/webhook",
+                  "fr/reference/voice-connection"
                 ]
               },
               {
@@ -560,6 +611,19 @@
                 "icon": "square-terminal",
                 "pages": [
                   "fr/reference/cli"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Changelog",
+            "icon": "history",
+            "groups": [
+              {
+                "group": "Changelog",
+                "icon": "history",
+                "pages": [
+                  "fr/changelog"
                 ]
               }
             ]

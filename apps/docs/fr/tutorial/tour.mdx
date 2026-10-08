@@ -9,10 +9,14 @@ Votre projet tourne. Avant de le modifier, faites-en le tour : un projet Chapter
   <Tree.Folder name="buddy" defaultOpen>
     <Tree.Folder name=".chapterjs" />
     <Tree.Folder name="node_modules" />
-    <Tree.Folder name="public" />
+    <Tree.Folder name="public" defaultOpen>
+      <Tree.File name="hello.ogg" />
+    </Tree.Folder>
     <Tree.Folder name="src" defaultOpen>
       <Tree.Folder name="commands" defaultOpen>
+        <Tree.File name="hello.ts" />
         <Tree.File name="ping.ts" />
+        <Tree.File name="play.ts" />
       </Tree.Folder>
       <Tree.Folder name="components" defaultOpen>
         <Tree.Folder name="buttons" defaultOpen>
@@ -20,6 +24,9 @@ Votre projet tourne. Avant de le modifier, faites-en le tour : un projet Chapter
         </Tree.Folder>
       </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
+        <Tree.Folder name="reactionAdd" defaultOpen>
+          <Tree.File name="wave.ts" />
+        </Tree.Folder>
         <Tree.Folder name="ready" defaultOpen>
           <Tree.File name="online.ts" />
         </Tree.Folder>

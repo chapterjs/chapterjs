@@ -15,7 +15,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "vendor"
   ],
   "scripts": {
     "build": "tsc",
@@ -23,7 +24,8 @@
     "check-types": "tsc --noEmit && tsc -p test",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "build:dave": "./scripts/build-dave.sh"
   },
   "dependencies": {
     "esbuild": "^0.28.2"

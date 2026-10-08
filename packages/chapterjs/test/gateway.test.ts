@@ -615,6 +615,32 @@ describe('a bot', () => {
     expect(await connection.waitForClose()).toBe(1000);
   });
 
+  it('waits for the servers of every shard, even when one shard is done first', async () => {
+    const OTHER = '100000000000000100';
+    const { gateway, bot } = await startBot({}, {}, { shards: 2 });
+    const original = gateway.behavior.onIdentify;
+    gateway.behavior.onIdentify = (connection, data) => {
+      const shard = (data as { shard: number[] }).shard[0];
+      gateway.behavior.ready = {
+        guilds: [{ id: shard === 0 ? GUILD : OTHER, unavailable: true }],
+      };
+      original(connection, data);
+      // The first shard has all its servers before the second one is ready.
+      if (shard === 0) connection.dispatch('GUILD_CREATE', rawGuild());
+    };
+    let connected = false;
+    const connecting = bot.connect().then(() => (connected = true));
+    const second = await gateway.connection(1);
+    await second.waitFor(GatewayOpcode.Identify);
+    await tick(40);
+    expect(connected).toBe(false);
+
+    second.dispatch('GUILD_CREATE', rawGuild(OTHER));
+    await connecting;
+    expect([...bot.ctx.cache.guilds.keys()].sort()).toEqual([GUILD, OTHER]);
+    await bot.close();
+  });
+
   it('tells a server it just joined from one it was already in', async () => {
     const OTHER = '100000000000000100';
     const { gateway, bot, dispatched } = await startBot({

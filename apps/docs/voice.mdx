@@ -1,0 +1,168 @@
+---
+title: 'Playing in voice'
+description: 'Join a voice channel, play a sound or a song there, pause, stop and leave'
+---
+
+Your bot can join a voice channel and play sound there. Put a file in `public/`, then join the channel of the person who asks and play it:
+
+```ts src/commands/intro.ts
+import { asset, command } from 'chapterjs';
+
+export default command({
+  description: 'Plays the intro in your voice channel',
+  async run({ interaction, member }) {
+    const channel = member.voiceChannel;
+    if (!channel) {
+      await interaction.reply({ content: 'Join a voice channel first.', ephemeral: true });
+      return;
+    }
+    await interaction.reply(`Playing in ${channel.name}.`);
+    const voice = await channel.join();
+    await voice.play(asset('sounds/intro.ogg'));
+    await voice.leave();
+  },
+});
+```
+
+That is all. `join()` resolves once the bot is in the channel, `play()` once the file has been played, and `leave()` makes the bot leave. Everything else is done for you: the connection to Discord's voice servers, the encryption, sending the sound in time, and the end-to-end encryption Discord requires for voice.
+
+<Note>
+  Everything a voice connection has is in the [reference](/reference/voice-connection); `join()` is on [VoiceChannel](/reference/channels/voice#join).
+</Note>
+
+## What can be played
+
+`play()` takes a file of `public/` (`asset('sounds/intro.ogg')`), a file sent on Discord, or a link starting with `https://`.
+
+| What | Needs |
+| --- | --- |
+| A file in Opus: `.ogg`, `.opus`, `.webm` | Nothing: it is sent as it is |
+| Anything else: `.mp3`, `.wav`, `.m4a`, a video, a link to a stream | [ffmpeg](https://ffmpeg.org/download.html) installed on the machine that runs the bot |
+
+Discord only plays Opus. A file that already is Opus costs nothing to play; anything else is converted while it plays by ffmpeg, which the bot finds by itself when it is installed. When it is not, `play()` says so:
+
+```text
+✗ src/commands/intro.ts:13 public/sounds/intro.mp3 is not an Opus file (.ogg or .webm), and ffmpeg is not installed to convert it. Install ffmpeg (https://ffmpeg.org/download.html), or convert the file to .ogg Opus.
+```
+
+Opus is told from the first bytes of the file, whatever its name, and a link or a file sent on Discord is downloaded as it plays. A link must lead to the sound itself (a file, a radio stream): the page of a video, on YouTube for example, is not one.
+
+<Tip>
+  To play without ffmpeg in production, convert your sounds to Opus once, on your computer: `ffmpeg -i intro.mp3 -c:a libopus intro.ogg`.
+</Tip>
+
+## A file sent on Discord
+
+An `attachment` option lets the person send the song with the command, and `play()` takes it as is:
+
+```ts src/commands/song.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Plays the song you send',
+  options: {
+    file: { type: 'attachment', description: 'The song', required: true },
+  },
+  async run({ interaction, member, options }) {
+    const channel = member.voiceChannel;
+    if (!channel || !options.file.contentType?.startsWith('audio/')) {
+      await interaction.reply({ content: 'Join a voice channel, and send an audio file.', ephemeral: true });
+      return;
+    }
+    await interaction.reply(`Playing ${options.file.filename}.`);
+    const voice = await channel.join();
+    await voice.play(options.file);
+  },
+});
+```
+
+The `/play` command of the template does the same, and also takes a link instead of a file (an optional `string` option next to the `attachment` one), with its texts in the language files.
+
+## Pause, resume, stop
+
+What is playing can be paused, resumed and stopped from anywhere: another command, a button. `guild.voice` is the connection of the bot in a server, or `null` when it is in no voice channel there.
+
+```ts src/commands/pause.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Pauses or resumes what plays',
+  async run({ interaction, guild }) {
+    const voice = guild.voice;
+    if (!voice?.playing) {
+      await interaction.reply({ content: 'Nothing is playing.', ephemeral: true });
+      return;
+    }
+    if (voice.paused) voice.resume();
+    else voice.pause();
+    await interaction.reply(voice.paused ? 'Paused.' : 'Playing again.');
+  },
+});
+```
+
+- `stop()` stops what plays: its `play()` resolves at once.
+- A new `play()` replaces what was playing.
+- `leave()` leaves the channel; a connection that left can't play any more, `join()` again.
+
+## Moving and being moved
+
+`join()` on another voice channel of the same server moves the bot there, and gives back the same connection. When someone moves the bot or disconnects it, the connection follows: `voice.channel` is where it is now, and `voice.connected` becomes `false` when it was disconnected.
+
+```ts src/commands/follow.ts
+import { command } from 'chapterjs';
+
+export default command({
+  description: 'Brings the bot to your voice channel',
+  async run({ interaction, member, guild }) {
+    const channel = member.voiceChannel;
+    if (!channel || !guild.voice) {
+      await interaction.reply({ content: 'Join a voice channel, and play something first.', ephemeral: true });
+      return;
+    }
+    await channel.join();
+    await interaction.reply(`Moved to ${channel.name}.`);
+  },
+});
+```
+
+## Permissions and full channels
+
+The bot needs **Connect** to join and **Speak** to play. Without them, `join()` or `play()` fails with what is missing:
+
+```text
+✗ src/commands/intro.ts:12 The bot can't join Lounge: it needs the Connect permission there.
+```
+
+A channel that is full (its user limit is reached) is refused too, unless the bot has **Move Members**. On a **stage**, the bot becomes a speaker when it has **Mute Members**; otherwise it asks to speak, and a moderator accepts.
+
+## Options of join()
+
+```ts
+await channel.join({ deaf: false, mute: true });
+```
+
+- `deaf` (default `true`): the bot hears nothing, so Discord does not send it what people say. It only plays.
+- `mute` (default `false`): the bot shows as muted.
+
+## Intents and end-to-end encryption
+
+Joining needs the `GUILD_VOICE_STATES` intent: ChapterJS asks for it when a file of your project calls `join()`, and `member.voiceChannel` is known thanks to it. It is not privileged.
+
+```text
+ℹ Intents computed from your files: GUILDS, GUILD_VOICE_STATES
+```
+
+Discord encrypts every voice channel end to end (the DAVE protocol). Your bot takes part in it with [libdave](https://github.com/discord/libdave), the library of Discord's own apps, which ChapterJS includes: nothing to install. While the bot is alone in a channel there is no one to encrypt for, so nothing is sent; as soon as someone joins, they hear it.
+
+<Note>
+  Recording what people say is [not there yet](/not-yet#recording-voice).
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Voice events" icon="mic" href="/events/voice">
+    Who joins, leaves or moves between voice channels.
+  </Card>
+  <Card title="VoiceConnection" icon="library" href="/reference/voice-connection">
+    Everything a voice connection has.
+  </Card>
+</CardGroup>

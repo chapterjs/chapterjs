@@ -37,6 +37,7 @@ import { Message } from '../src/structures/message.js';
 import { Role } from '../src/structures/role.js';
 import { User } from '../src/structures/user.js';
 import { Webhook } from '../src/structures/webhook.js';
+import { VoiceConnection } from '../src/voice/connection.js';
 
 const docsDir = join(packageDir, '../../apps/docs');
 
@@ -138,7 +139,9 @@ describe('the documentation site', () => {
     const english = [...site.keys()].filter(page => !page.startsWith('fr/'));
     const french = [...site.keys()].filter(page => page.startsWith('fr/'));
     for (const page of english) {
-      expect(site.has(`fr/${page}`), `fr/${page} translates ${page}`).toBe(true);
+      expect(site.has(`fr/${page}`), `fr/${page} translates ${page}`).toBe(
+        true
+      );
     }
     for (const page of french) {
       expect(site.has(page.slice(3)), `${page} translates a page`).toBe(true);
@@ -187,6 +190,7 @@ const structures: {
   { type: GuildEmoji, pages: ['reference/emoji.mdx'] },
   { type: Invite, pages: ['reference/invite.mdx'] },
   { type: Webhook, pages: ['reference/webhook.mdx'] },
+  { type: VoiceConnection, pages: ['reference/voice-connection.mdx'] },
   { type: Message, pages: ['reference/message.mdx'] },
   { type: Interaction, pages: ['reference/interaction.mdx'] },
   { type: CommandInteraction, pages: ['reference/interaction.mdx'] },
@@ -220,55 +224,50 @@ describe.each(
         ] as const
     )
   )
-)(
-  'the reference of %s',
-  (name, { type, pages: pagesOf }) => {
-    const content = pagesOf.map(page => site.get(page) ?? '').join('\n');
-    const headings = [...content.matchAll(/^#{3,4} ([\w]+)\(\)/gm)].map(
-      match => match[1]!
-    );
-    const fields = [...content.matchAll(/<ResponseField name="([\w]+)"/g)].map(
-      match => match[1]!
-    );
-    const { methods, properties } = membersOf(type);
+)('the reference of %s', (name, { type, pages: pagesOf }) => {
+  const content = pagesOf.map(page => site.get(page) ?? '').join('\n');
+  const headings = [...content.matchAll(/^#{3,4} ([\w]+)\(\)/gm)].map(
+    match => match[1]!
+  );
+  const fields = [...content.matchAll(/<ResponseField name="([\w]+)"/g)].map(
+    match => match[1]!
+  );
+  const { methods, properties } = membersOf(type);
 
-    it('exists', () => {
-      expect(site.has(pagesOf[0]!), `${pagesOf[0]} exists`).toBe(true);
-    });
+  it('exists', () => {
+    expect(site.has(pagesOf[0]!), `${pagesOf[0]} exists`).toBe(true);
+  });
 
-    it.each(methods)('has a section for %s()', method => {
-      expect(headings, `### ${method}() in ${pagesOf.join(' or ')}`).toContain(
-        method
-      );
-    });
-
-    it.each(properties)('lists the property %s', property => {
-      expect(
-        fields,
-        `<ResponseField name="${property}"> in ${pagesOf.join(' or ')}`
-      ).toContain(property);
-    });
-
-    // A page shared by several classes (the index of the channels, the
-    // interactions) may have a heading for a method of any of them.
-    const own = [
-      ...(site.get(pagesOf[0]!) ?? '').matchAll(/^#{3,4} ([\w]+)\(\)/gm),
-    ].map(match => match[1]!);
-    const known = new Set(
-      structures
-        .filter(entry =>
-          entry.pages.includes(pagesOf[0]!.replace(/^fr\//, ''))
-        )
-        .flatMap(entry => membersOf(entry.type).methods)
+  it.each(methods)('has a section for %s()', method => {
+    expect(headings, `### ${method}() in ${pagesOf.join(' or ')}`).toContain(
+      method
     );
-    it.each(own.length > 0 ? own : ['toJSON'])(
-      'describes no method %s() that does not exist',
-      method => {
-        expect([...known], `${name}.${method}() exists`).toContain(method);
-      }
-    );
-  }
-);
+  });
+
+  it.each(properties)('lists the property %s', property => {
+    expect(
+      fields,
+      `<ResponseField name="${property}"> in ${pagesOf.join(' or ')}`
+    ).toContain(property);
+  });
+
+  // A page shared by several classes (the index of the channels, the
+  // interactions) may have a heading for a method of any of them.
+  const own = [
+    ...(site.get(pagesOf[0]!) ?? '').matchAll(/^#{3,4} ([\w]+)\(\)/gm),
+  ].map(match => match[1]!);
+  const known = new Set(
+    structures
+      .filter(entry => entry.pages.includes(pagesOf[0]!.replace(/^fr\//, '')))
+      .flatMap(entry => membersOf(entry.type).methods)
+  );
+  it.each(own.length > 0 ? own : ['toJSON'])(
+    'describes no method %s() that does not exist',
+    method => {
+      expect([...known], `${name}.${method}() exists`).toContain(method);
+    }
+  );
+});
 
 /**
  * A `ts` block that is a program: a user file (its title is its path in the

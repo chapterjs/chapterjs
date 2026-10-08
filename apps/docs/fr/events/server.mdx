@@ -1,0 +1,120 @@
+---
+title: 'Modération et serveur'
+description: 'Réagir aux bannissements, aux entrées du journal d’audit, aux invitations, aux emojis, aux événements programmés, aux fils, aux présences et aux changements du serveur'
+---
+
+Quand quelqu’un est banni, les fichiers de `src/events/banAdd/` tournent :
+
+```ts src/events/banAdd/log.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ user, guild }) => {
+  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+  if (!channel?.isTextBased()) return;
+  await channel.send(`${user.username} a été banni de ${guild.name}.`);
+});
+```
+
+C’est tout. Les événements de cette page se produisent tous sur les serveurs : `guild` est toujours là, et aucun n’a d’options.
+
+<Note>
+  Chaque événement de cette page, avec ce qu’il donne, est dans la [référence](/fr/reference/events#guildupdate).
+</Note>
+
+## Modération
+
+`banAdd` tourne quand quelqu’un est banni, `banRemove` quand un bannissement est levé ; les deux donnent `user` et `guild`. Un membre banni quitte aussi le serveur, donc un fichier de `memberLeave` tourne aussi.
+
+Pour savoir **qui** a banni, expulsé ou changé quelque chose, écoutez le journal d’audit : `auditLogEntryCreate` tourne pour chaque entrée que Discord y ajoute, et la donne sous forme d’[`AuditLogEntry`](/fr/reference/data#auditlogentry). Discord ne l’envoie qu’à un bot qui a la permission `ViewAuditLog`.
+
+```ts src/events/auditLogEntryCreate/kicks.ts
+import { AuditLogEvent, event } from 'chapterjs';
+
+export default event(({ entry, guild }) => {
+  if (entry.actionType !== AuditLogEvent.MemberKick) return;
+  console.log(`${entry.userId} a expulsé ${entry.targetId} de ${guild.name} : ${entry.reason ?? 'sans raison'}`);
+});
+```
+
+Les valeurs de `actionType` sont celles de [`AuditLogEvent`](/fr/reference/enums#auditlogevent).
+
+## Le serveur, ses emojis et ses invitations
+
+- `guildUpdate` tourne quand le serveur change (nom, icône, paramètres), avec `guild` tel qu’il est maintenant.
+- `emojiCreate`, `emojiUpdate` et `emojiDelete` tournent pour chaque emoji ajouté, modifié ou retiré. `emojiDelete` donne l’emoji tel qu’il était.
+- `inviteCreate` donne la nouvelle [`Invite`](/fr/reference/invite) et le salon où elle mène ; `inviteDelete` le code d’une invitation supprimée ou expirée. Discord ne les envoie qu’à un bot qui a la permission `ManageChannels` sur ce salon.
+
+```ts src/events/inviteCreate/log.ts
+import { event } from 'chapterjs';
+
+export default event(({ invite, channel }) => {
+  console.log(`${invite.inviter?.username ?? 'Quelqu’un'} a créé ${invite.url} pour #${channel.name}`);
+});
+```
+
+## Événements programmés
+
+`scheduledEventCreate`, `scheduledEventUpdate` et `scheduledEventDelete` donnent le [`ScheduledEvent`](/fr/reference/data#scheduledevent). `scheduledEventUserAdd` et `scheduledEventUserRemove` tournent quand quelqu’un se dit intéressé, ou ne l’est plus.
+
+```ts src/events/scheduledEventCreate/announce.ts
+import { event, timestamp } from 'chapterjs';
+
+export default event(async ({ scheduledEvent, guild }) => {
+  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+  if (!channel?.isTextBased()) return;
+  const start = timestamp(new Date(scheduledEvent.scheduledStartTime));
+  await channel.send(`Nouvel événement : **${scheduledEvent.name}**, ${start}.`);
+});
+```
+
+## Fils
+
+Un fil créé, modifié ou supprimé est un salon : [`channelCreate`, `channelUpdate` et `channelDelete`](/fr/reference/events#channelcreate) tournent pour lui. Qui est dans un fil a deux événements à lui : `threadMemberJoin` (avec `thread` et `member`) et `threadMemberLeave` (avec `thread` et `userId` ; `user` et `member` quand le bot les connaît).
+
+```ts src/events/threadMemberJoin/hello.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ thread, member }) => {
+  await thread.send(`Bienvenue dans le fil, ${member.displayName} !`);
+});
+```
+
+Ils ont besoin du **Server Members Intent** : sans lui, Discord ne dit que quand votre bot lui-même rejoint un fil.
+
+## Présences
+
+`presenceUpdate` tourne quand le statut ou l’activité de quelqu’un change : en ligne, absent, en train de jouer. `presence` est une [`UserPresence`](/fr/reference/data#userpresence).
+
+```ts src/events/presenceUpdate/games.ts
+import { event } from 'chapterjs';
+
+export default event(({ userId, user, presence }) => {
+  const game = presence.activities.find(activity => activity.type === 0);
+  if (game) console.log(`${user?.username ?? userId} joue à ${game.name}`);
+});
+```
+
+Il a besoin du **Presence Intent**, privilégié, et Discord l’envoie souvent : une fois pour chaque serveur que votre bot partage avec cette personne, à chaque changement. N’ajoutez un tel fichier que quand votre bot en a vraiment besoin.
+
+## Intents
+
+Chaque groupe d’événements a son intent, et ChapterJS ne demande que ceux dont vos fichiers ont besoin :
+
+| Dossiers | Intent | Privilégié |
+| --- | --- | --- |
+| `banAdd`, `banRemove`, `auditLogEntryCreate` | `GUILD_MODERATION` | Non |
+| `emojiCreate`, `emojiUpdate`, `emojiDelete` | `GUILD_EXPRESSIONS` | Non |
+| `inviteCreate`, `inviteDelete` | `GUILD_INVITES` | Non |
+| `scheduledEvent…` | `GUILD_SCHEDULED_EVENTS` | Non |
+| `guildUpdate` | `GUILDS` | Non |
+| `threadMemberJoin`, `threadMemberLeave` | `GUILD_MEMBERS` | Server Members Intent |
+| `presenceUpdate` | `GUILD_PRESENCES` | Presence Intent |
+
+<CardGroup cols={2}>
+  <Card title="Référence des événements" icon="library" href="/fr/reference/events#guildupdate">
+    Chaque champ de chaque événement.
+  </Card>
+  <Card title="Guild" icon="server" href="/fr/reference/guild">
+    Tout ce qu’a un serveur, et ce que votre bot peut en faire.
+  </Card>
+</CardGroup>

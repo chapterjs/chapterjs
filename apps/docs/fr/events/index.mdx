@@ -120,7 +120,7 @@ export default event(
 );
 ```
 
-Une option vaut `true` ou `false`, ou un mot d’une liste. Votre éditeur ne propose que les options de l’événement du dossier, et une option qui n’existe pas, ou une mauvaise valeur, est signalée au chargement du fichier, avant que le bot ne le lance. Aujourd’hui, seuls les [événements sur les messages](/fr/events/messages) ont des options.
+Une option vaut `true` ou `false`, ou un mot d’une liste. Votre éditeur ne propose que les options de l’événement du dossier, et une option qui n’existe pas, ou une mauvaise valeur, est signalée au chargement du fichier, avant que le bot ne le lance. Les événements qui ont des options sont les [événements sur les messages](/fr/events/messages) et les [réactions, sondages et saisie](/fr/events/reactions).
 
 ## Intents : rien à lister
 
@@ -136,12 +136,13 @@ Quand vous enregistrez un fichier qui en demande davantage, `chapterjs dev` se r
 ↻ Your files now need more from Discord (GUILD_MESSAGES, MESSAGE_CONTENT): reconnecting...
 ```
 
-Deux des intents dont vos fichiers peuvent avoir besoin sont **privilégiés** : Discord vous demande de les activer vous-même, dans le [Developer Portal](/fr/setup/discord-application).
+Trois des intents dont vos fichiers peuvent avoir besoin sont **privilégiés** : Discord vous demande de les activer vous-même, dans le [Developer Portal](/fr/setup/discord-application).
 
 | Dossiers | Option à activer |
 | --- | --- |
-| `memberJoin`, `memberUpdate`, `memberLeave` | **Server Members Intent** |
+| `memberJoin`, `memberUpdate`, `memberLeave`, `threadMemberJoin`, `threadMemberLeave` | **Server Members Intent** |
 | `messageCreate`, `messageUpdate` | **Message Content Intent** : sans lui, les messages des autres arrivent sans leur texte |
+| `presenceUpdate` | **Presence Intent** |
 
 Quand l’un manque, `chapterjs dev` nomme les fichiers qui en ont besoin et vous donne le lien, puis attend :
 
@@ -175,6 +176,15 @@ Pour gérer un échec vous-même, utilisez `try` / `catch` : voir [Erreurs](/fr/
 <Note>
   Chaque événement, avec ce que reçoit votre fonction, est dans la [référence](/fr/reference/events). Les types de `event()` sont dans [event()](/fr/reference/event).
 </Note>
+
+## Toutes les sortes d’événements
+
+Au-delà des membres, des rôles, des salons et des serveurs eux-mêmes, vos fichiers peuvent réagir :
+
+- **Aux messages** : envoyés, modifiés, supprimés. Voir [Messages](/fr/events/messages).
+- **Aux réactions, aux sondages et à la saisie** : une réaction ajoutée ou retirée, un vote, quelqu’un qui écrit. Voir [Réactions, sondages et saisie](/fr/events/reactions).
+- **Au vocal** : quelqu’un qui rejoint, quitte, change de salon, coupe son micro ou lance un stream. Voir [Vocal](/fr/events/voice).
+- **À la modération et au serveur** : bannissements, journal d’audit, invitations, emojis, événements programmés, qui est dans un fil, présences. Voir [Modération et serveur](/fr/events/server).
 
 <CardGroup cols={2}>
   <Card title="Messages" icon="message-square" href="/fr/events/messages">

@@ -1,0 +1,134 @@
+---
+title: 'Reactions, polls and typing'
+description: 'React to reactions added and removed, to votes in polls, and to people typing'
+---
+
+When someone adds a reaction to a message, the files of `src/events/reactionAdd/` run. Here, a reaction gives a role:
+
+```ts src/lib/reaction-roles.ts
+// The message people react to (right-click it → Copy Message ID), and the
+// role each emoji gives.
+export const ROLES_MESSAGE = '123456789012345678';
+export const ROLES: Record<string, string> = { '🎮': 'Gamers', '🎨': 'Artists' };
+```
+
+```ts src/events/reactionAdd/roles.ts
+import { event } from 'chapterjs';
+import { ROLES, ROLES_MESSAGE } from '../../lib/reaction-roles';
+
+export default event(async ({ messageId, emoji, member, guild }) => {
+  if (messageId !== ROLES_MESSAGE || !emoji.name) return;
+  const name = ROLES[emoji.name];
+  const role = [...guild.roles.values()].find(role => role.name === name);
+  if (role) await member.addRole(role, 'Reaction role');
+});
+```
+
+That is all. Like the [events about messages](/events/messages), a reaction file only runs **for people, in servers** by default: reactions of bots, yours included, are left out, so `guild`, `channel` and `member` are always there.
+
+`emoji` is a [`ReactionEmoji`](/reference/data#reactionemoji): `name` is the character of a standard emoji (`'👍'`) or the name of a custom one, which also has an `id`.
+
+<Note>
+  The events of this page, with everything they give, are in the [reference](/reference/events#reactionadd).
+</Note>
+
+## The message itself
+
+A reaction comes with the id of its message, not with the message: your bot [remembers no message](/memory), so `message` is `null`. To read or change the message, ask for it with `fetchMessage()`:
+
+```ts src/events/reactionAdd/star.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ emoji, channel, messageId }) => {
+  if (emoji.name !== '⭐') return;
+  const message = await channel.fetchMessage(messageId);
+  console.log(`Starred: ${message.content}`);
+});
+```
+
+Only ask when you need it, after checking the emoji: a request per reaction adds up fast.
+
+## Removed reactions
+
+`reactionRemove` runs when someone takes their reaction back. Discord does not send the member with it, so `member` is only there when the bot remembers that person: ask for it with `fetchMember()`.
+
+```ts src/events/reactionRemove/roles.ts
+import { event } from 'chapterjs';
+import { ROLES, ROLES_MESSAGE } from '../../lib/reaction-roles';
+
+export default event(async ({ messageId, emoji, user, guild }) => {
+  if (messageId !== ROLES_MESSAGE || !emoji.name) return;
+  const name = ROLES[emoji.name];
+  const role = [...guild.roles.values()].find(role => role.name === name);
+  if (!role) return;
+  const member = await guild.fetchMember(user);
+  await member.removeRole(role, 'Reaction role');
+});
+```
+
+`user` is always there: when Discord only gives the id of someone the bot does not know, it asks for them once before your file runs.
+
+`reactionClear` runs when every reaction of a message is removed at once (`emoji` is `null`), or every reaction of one emoji (`emoji` is that emoji).
+
+## Options
+
+The two options of the [events about messages](/events/messages#where-a-file-listens) work the same here:
+
+- `where: 'dm'` or `'both'` to listen in private messages too. With `'both'`, `guild` is `null` for a private reaction, and one `if (guild)` narrows everything.
+- `bots: true` (for `reactionAdd` and `reactionRemove`) to receive the reactions of bots too, yours included: a file that reacts to reactions could otherwise answer its own forever.
+
+```ts src/events/reactionAdd/anywhere.ts
+import { event } from 'chapterjs';
+
+export default event(
+  ({ user, emoji, guild }) => {
+    console.log(`${user.username} reacted ${emoji.name} ${guild ? `in ${guild.name}` : 'in private'}`);
+  },
+  { where: 'both' }
+);
+```
+
+## Polls
+
+`pollVoteAdd` and `pollVoteRemove` run when someone votes in a poll, or takes their vote back. `answerId` tells which answer: Discord numbers them in the order of the poll, `1` for the first one.
+
+```ts src/events/pollVoteAdd/log.ts
+import { event } from 'chapterjs';
+
+export default event(({ user, answerId, channel }) => {
+  console.log(`${user.username} voted for answer ${answerId} in #${channel.name}`);
+});
+```
+
+They take `where` too. A poll is sent with a message: see [Sending messages](/messages).
+
+## Typing
+
+`typingStart` runs when someone starts writing in a channel. `startedAt` says when.
+
+```ts src/events/typingStart/log.ts
+import { event } from 'chapterjs';
+
+export default event(({ member, channel, startedAt }) => {
+  console.log(`${member.displayName} started typing in #${channel.name} at ${startedAt.toLocaleTimeString()}`);
+});
+```
+
+It takes `where`. Discord sends it a lot: keep what the file does short.
+
+## Intents
+
+Each of these events has its own intent, for servers and for private messages, and ChapterJS only asks for the ones your files need: a reaction file without `where` asks for the reactions of servers, nothing else. None of them is privileged.
+
+```text
+ℹ Intents computed from your files: GUILDS, GUILD_MESSAGE_REACTIONS
+```
+
+<CardGroup cols={2}>
+  <Card title="Voice" icon="mic" href="/events/voice">
+    Who joins, leaves or moves between voice channels.
+  </Card>
+  <Card title="Events reference" icon="library" href="/reference/events#reactionadd">
+    Every field of every event.
+  </Card>
+</CardGroup>

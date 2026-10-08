@@ -108,8 +108,8 @@ export function asset(path: string, options: AssetOptions = {}): AssetFile {
   return Object.freeze(file) as unknown as AssetFile;
 }
 
-/** Reads the file of an asset, when the message is sent. */
-export async function readAsset(file: AssetFile): Promise<Uint8Array> {
+/** Where the file of an asset is on disk, checked to be inside `public/`. */
+export function assetPath(file: AssetFile): string {
   if (!publicDir) {
     throw new Error(
       `asset('${file.path}') can only be sent by a bot run with chapterjs dev or chapterjs start.`
@@ -121,14 +121,24 @@ export async function readAsset(file: AssetFile): Promise<Uint8Array> {
       `asset() only reads inside ${PUBLIC_FOLDER}/: ${JSON.stringify(file.path)} leaves it.`
     );
   }
+  return target;
+}
+
+/** The error to give for an asset whose file could not be opened. */
+export function missingAsset(file: AssetFile, error: unknown): unknown {
+  return (error as NodeJS.ErrnoException).code === 'ENOENT'
+    ? new Error(
+        `There is no file ${PUBLIC_FOLDER}/${file.path} in your project: put it there, or pick one of the files the editor lists in asset().`
+      )
+    : error;
+}
+
+/** Reads the file of an asset, when the message is sent. */
+export async function readAsset(file: AssetFile): Promise<Uint8Array> {
+  const target = assetPath(file);
   try {
     return await readFile(target);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(
-        `There is no file ${PUBLIC_FOLDER}/${file.path} in your project: put it there, or pick one of the files the editor lists in asset().`
-      );
-    }
-    throw error;
+    throw missingAsset(file, error);
   }
 }

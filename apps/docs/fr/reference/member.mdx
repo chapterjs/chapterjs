@@ -58,6 +58,10 @@ async function mute(member: GuildMember, moderator: GuildMember) {
   Le rôle le plus haut du membre dans la hiérarchie ; @everyone au moins.
 </ResponseField>
 
+<ResponseField name="voiceChannel" type="VoiceChannel | null">
+  Le salon vocal où se trouve le membre ; `null` quand il n’est dans aucun. Le bot le sait quand Discord lui envoie les états vocaux : dans un projet avec un fichier qui rejoint un salon vocal ou écoute un événement vocal.
+</ResponseField>
+
 <ResponseField name="joinedAt" type="Date | null">
   Quand le membre a rejoint le serveur.
 </ResponseField>

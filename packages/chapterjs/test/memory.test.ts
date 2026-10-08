@@ -241,6 +241,7 @@ describe('freeing memory', () => {
       const built = EVENTS[name].sources[0]!.build(ctx, data as never, {
         joined: false,
         before: undefined,
+        prepared: undefined,
       }) as { member: { displayName: string; guild: unknown }; guild: unknown };
       expect(built.member.displayName).toBe('Seven');
       expect(built.member.guild).toBe(guild);

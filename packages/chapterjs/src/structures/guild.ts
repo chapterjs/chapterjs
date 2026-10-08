@@ -32,6 +32,7 @@ import { Permissions } from '../discord/permissions.js';
 import type {
   GetGuildAuditLogQuery,
   RawAuditLog,
+  RawAuditLogEntry,
 } from '../discord/types/audit-log.js';
 import type { RawAutoModerationRule } from '../discord/types/auto-moderation.js';
 import type { Locale, Snowflake } from '../discord/types/common.js';
@@ -50,9 +51,10 @@ import type {
   VerificationLevel,
 } from '../discord/types/guild.js';
 import type { RawSticker } from '../discord/types/sticker.js';
+import type { RawVoiceState } from '../discord/types/voice.js';
 import { toCamelCase, toSnakeCase, type Camelize } from '../util/case.js';
 import { ctxOf, dataOf, idOf, IdStructure } from './base.js';
-import type { GuildChannel, ThreadChannel } from './channel.js';
+import type { GuildChannel, ThreadChannel, VoiceChannel } from './channel.js';
 import type { Context } from './context.js';
 import { knownMember } from './known.js';
 import type { GuildEmoji } from './emoji.js';
@@ -61,6 +63,7 @@ import { banUser, type BanOptions, type GuildMember } from './member.js';
 import type { Role } from './role.js';
 import type { User } from './user.js';
 import type { Webhook } from './webhook.js';
+import type { VoiceConnection } from '../voice/connection.js';
 
 /** What a server stores itself; its roles, emojis... live in its stores. */
 export type GuildData = Omit<RawGuild, 'roles' | 'emojis' | 'stickers'> &
@@ -74,7 +77,29 @@ export interface GuildStores {
   members: CacheStore<Snowflake, GuildMember>;
   channels: CacheStore<Snowflake, GuildChannel | ThreadChannel>;
   emojis: CacheStore<Snowflake, GuildEmoji>;
+  /**
+   * Who is in a voice channel, by user id: what the voice events compare
+   * with. Only filled when Discord sends voice states, which is when a
+   * file listens to them.
+   */
+  voiceStates: CacheStore<Snowflake, VoiceEntry>;
 }
+
+/** What the voice state of one person holds, without its member. */
+export type VoiceStateData = Omit<RawVoiceState, 'member' | 'guild_id'>;
+
+/** Someone in a voice channel: their state, and the channel they are in. */
+export interface VoiceEntry {
+  state: VoiceStateData;
+  /** Kept with the state, so a channel deleted meanwhile is still known. */
+  channel: VoiceChannel;
+}
+
+/**
+ * Where someone is in voice, and how: muted, deafened, streaming...
+ * @see https://docs.discord.com/developers/resources/voice#voice-state-object
+ */
+export type VoiceState = Camelize<VoiceStateData>;
 
 /** Only the framework writes to the stores of a server. */
 export let storesOf: (guild: Guild) => GuildStores;
@@ -117,6 +142,12 @@ export interface Ban {
  */
 export type AuditLog = Camelize<RawAuditLog>;
 /**
+ * One thing a moderator or a bot did in a server: what, by whom, on what,
+ * and what changed.
+ * @see https://docs.discord.com/developers/resources/audit-log#audit-log-entry-object-audit-log-entry-structure
+ */
+export type AuditLogEntry = Camelize<RawAuditLogEntry>;
+/**
  * An event scheduled in a server: when it happens, where, and how often.
  * @see https://docs.discord.com/developers/resources/guild-scheduled-event#guild-scheduled-event-object-guild-scheduled-event-structure
  */
@@ -152,6 +183,7 @@ export class Guild extends IdStructure<GuildData> {
       members: createStore({ limit: limits.members }),
       channels: createStore(),
       emojis: createStore(),
+      voiceStates: createStore(),
     };
   }
 
@@ -259,6 +291,14 @@ export class Guild extends IdStructure<GuildData> {
   /** The custom emojis of the server. */
   get emojis(): ReadonlyMap<Snowflake, GuildEmoji> {
     return this.#stores.emojis;
+  }
+
+  /**
+   * The bot in voice in this server, to play or leave; `null` when it is
+   * in no voice channel here.
+   */
+  get voice(): VoiceConnection | null {
+    return ctxOf(this).voice?.connectionOf(this.id) ?? null;
   }
 
   /** The @everyone role, which every member has. */

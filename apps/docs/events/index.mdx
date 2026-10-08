@@ -120,7 +120,7 @@ export default event(
 );
 ```
 
-An option is `true` or `false`, or one word of a list. Your editor only offers the options of the event of the folder, and an option that does not exist, or a wrong value, is reported when the file loads, before the bot runs it. Today only the [events about messages](/events/messages) have options.
+An option is `true` or `false`, or one word of a list. Your editor only offers the options of the event of the folder, and an option that does not exist, or a wrong value, is reported when the file loads, before the bot runs it. The events that have options are the [events about messages](/events/messages) and the [reactions, polls and typing](/events/reactions).
 
 ## Intents: nothing to list
 
@@ -136,12 +136,13 @@ When you save a file that needs more, `chapterjs dev` reconnects by itself:
 ↻ Your files now need more from Discord (GUILD_MESSAGES, MESSAGE_CONTENT): reconnecting...
 ```
 
-Two of the intents your files can need are **privileged**: Discord asks you to enable them yourself, in the [Developer Portal](/setup/discord-application).
+Three of the intents your files can need are **privileged**: Discord asks you to enable them yourself, in the [Developer Portal](/setup/discord-application).
 
 | Folders | Option to enable |
 | --- | --- |
-| `memberJoin`, `memberUpdate`, `memberLeave` | **Server Members Intent** |
+| `memberJoin`, `memberUpdate`, `memberLeave`, `threadMemberJoin`, `threadMemberLeave` | **Server Members Intent** |
 | `messageCreate`, `messageUpdate` | **Message Content Intent**: without it, the messages of other people come without their text |
+| `presenceUpdate` | **Presence Intent** |
 
 When one is missing, `chapterjs dev` names the files that need it and gives you the link, then waits:
 
@@ -175,6 +176,15 @@ To handle a failure yourself, use `try` / `catch`: see [Errors](/reference/error
 <Note>
   Every event, with what your function receives, is in the [reference](/reference/events). The types of `event()` are in [event()](/reference/event).
 </Note>
+
+## Every kind of event
+
+Beyond members, roles, channels and the servers themselves, your files can react to:
+
+- **Messages**: sent, edited, deleted. See [Messages](/events/messages).
+- **Reactions, polls and typing**: a reaction added or removed, a vote, someone writing. See [Reactions, polls and typing](/events/reactions).
+- **Voice**: someone joining, leaving, moving, muting or streaming. See [Voice](/events/voice).
+- **Moderation and the server**: bans, the audit log, invites, emojis, scheduled events, who is in a thread, presences. See [Moderation and the server](/events/server).
 
 <CardGroup cols={2}>
   <Card title="Messages" icon="message-square" href="/events/messages">

@@ -16,10 +16,10 @@ import {
 import type { Snowflake } from '../discord/types/common.js';
 import type { RawGuildMember } from '../discord/types/guild.js';
 import { ctxOf, dataOf, idOf, Structure, toDate } from './base.js';
-import type { GuildChannel } from './channel.js';
+import type { GuildChannel, VoiceChannel } from './channel.js';
 import type { Context } from './context.js';
 import { guildOf } from './known.js';
-import type { Guild } from './guild.js';
+import { storesOf, type Guild } from './guild.js';
 import type { Message } from './message.js';
 import type { MessageInput } from './payload.js';
 import type { Role } from './role.js';
@@ -108,6 +108,15 @@ export class GuildMember extends Structure<MemberData> {
   /** The highest role of the member in the hierarchy; @everyone at least. */
   get highestRole(): Role {
     return this.roles[0] ?? this.guild.everyoneRole;
+  }
+
+  /**
+   * The voice channel the member is in; `null` when they are in none. The
+   * bot knows it when Discord sends it voice states: in a project with a
+   * file that joins a voice channel or listens to a voice event.
+   */
+  get voiceChannel(): VoiceChannel | null {
+    return storesOf(this.guild).voiceStates.get(this.id)?.channel ?? null;
   }
 
   /** When the member joined the server. */

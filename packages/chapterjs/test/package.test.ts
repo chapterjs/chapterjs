@@ -49,6 +49,41 @@ describe('the published package', () => {
     expect(build).not.toMatch(/^import .* from 'esbuild'/m);
   });
 
+  it('ships the end-to-end encryption of voice compiled, with its licenses, loaded only by voice', () => {
+    expect(pkg.files).toEqual(['dist', 'vendor']);
+    const vendor = fileURLToPath(new URL('../vendor/dave', import.meta.url));
+    expect(readdirSync(vendor).sort()).toEqual([
+      'LICENSE',
+      'libdave.d.mts',
+      'libdave.mjs',
+      'libdave.wasm',
+    ]);
+    const license = readFileSync(join(vendor, 'LICENSE'), 'utf8');
+    for (const part of [
+      '=== libdave ===',
+      '=== mlspp ===',
+      '=== openssl ===',
+    ]) {
+      expect(license).toContain(part);
+    }
+    // Loaded the first time a bot joins voice, by this file only.
+    const src = fileURLToPath(new URL('../src', import.meta.url));
+    const loading: string[] = [];
+    for (const entry of readdirSync(src, {
+      recursive: true,
+      withFileTypes: true,
+    })) {
+      if (!entry.isFile() || !entry.name.endsWith('.ts')) continue;
+      const code = readFileSync(join(entry.parentPath, entry.name), 'utf8');
+      if (code.includes('vendor/dave')) {
+        loading.push(
+          relative(src, join(entry.parentPath, entry.name)).split(sep).join('/')
+        );
+      }
+    }
+    expect(loading).toEqual(['voice/dave.ts']);
+  });
+
   it('requires the Node version that runs TypeScript natively', () => {
     expect(pkg.engines.node).toBe('>=22.18');
   });

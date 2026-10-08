@@ -16,6 +16,7 @@ Tout vit dans la mémoire du processus qui fait tourner votre bot. Rien n’est 
 | Membres | Les 100 vus le plus récemment dans chaque serveur ; 1000 quand un fichier de `src/events/memberLeave/` en a besoin | Un serveur peut avoir des millions de membres, et un bot a rarement besoin des silencieux |
 | Utilisateurs | Chacun de ceux qu’il a rencontrés, dans tous les serveurs | Ils viennent avec les membres et les messages |
 | Messages | Aucun | C’est de loin ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message |
+| Qui est dans un salon vocal | Tout le monde, tant que la personne y est, quand un fichier d’un [événement vocal](/fr/events/voice) en a besoin | Pour distinguer une arrivée d’un changement de salon ou d’un micro coupé, et donner le salon que quelqu’un a quitté |
 
 « Vu » veut dire que Discord vient d’envoyer ce membre : il a écrit un message, utilisé une commande, est arrivé ou a changé. Un membre vu à nouveau devient le plus récent ; quand la limite est atteinte, celui vu il y a le plus longtemps laisse sa place.
 

@@ -9,12 +9,19 @@ import type {
   GatewayDispatchEvents,
   RawGatewayPresenceUpdate,
 } from '../discord/types/gateway-events.js';
-import { Gateway, type GatewayOptions } from '../gateway/gateway.js';
+import {
+  Gateway,
+  shardIdFor,
+  type GatewayOptions,
+} from '../gateway/gateway.js';
 import type { ShardEvent } from '../gateway/shard.js';
 import { applyDispatch } from '../gateway/state.js';
 import { RestClient, type RestOptions } from '../rest/rest.js';
 import type { Context } from '../structures/context.js';
 import { createContext } from '../structures/entities.js';
+import { GatewayOpcode } from '../discord/codes.js';
+import { GatewayIntent } from '../discord/intents.js';
+import { VoiceManager } from '../voice/connection.js';
 
 /** What a dispatched event is, besides its data. */
 export interface DispatchInfo {
@@ -34,7 +41,9 @@ export type BotEvent =
   /** Every server the bot is in has sent its data (or took too long). */
   | { type: 'guildsReady' }
   /** Applying an event to the cache failed: the event is still delivered. */
-  | { type: 'stateError'; event: GatewayDispatchEventName; error: unknown };
+  | { type: 'stateError'; event: GatewayDispatchEventName; error: unknown }
+  /** Something went wrong with a voice connection, which goes on or ends. */
+  | { type: 'voiceWarning'; message: string };
 
 export interface BotOptions {
   token: string;
@@ -84,6 +93,7 @@ export interface BotOptions {
   /** Only tests change these. */
   rest?: Partial<RestOptions>;
   gateway?: Pick<GatewayOptions, 'backoff' | 'identifyInterval'>;
+  voice?: { secure?: boolean };
 }
 
 export interface Bot {
@@ -144,9 +154,12 @@ export function createBot(options: BotOptions): Bot {
   const pending = new Map<number, Set<Snowflake>>();
   let guildsReady: (() => void) | null = null;
   let guildsTimer: NodeJS.Timeout | null = null;
+  // Until every shard is ready, a shard whose servers all came is not the
+  // whole bot: the others have not said which servers they have.
+  let shardsReady = false;
 
   const checkGuilds = (): void => {
-    if (!guildsReady) return;
+    if (!guildsReady || !shardsReady) return;
     for (const ids of pending.values()) if (ids.size > 0) return;
     finishGuilds();
   };
@@ -219,10 +232,41 @@ export function createBot(options: BotOptions): Bot {
       } catch (error) {
         options.onEvent?.({ type: 'stateError', event, error });
       }
+      // The bot's own voice: where it is, and the server to send audio to.
+      if (event === 'VOICE_STATE_UPDATE') {
+        const state = data as GatewayDispatchEvents['VOICE_STATE_UPDATE'];
+        if (state.user_id === ctx.self?.userId) voice.onVoiceState(state);
+      } else if (event === 'VOICE_SERVER_UPDATE') {
+        voice.onVoiceServer(
+          data as GatewayDispatchEvents['VOICE_SERVER_UPDATE']
+        );
+      }
       options.onDispatch?.(event, data, { shardId, joined, before });
       if (awaited) checkGuilds();
     },
   });
+
+  // Joining, moving and leaving voice go through the shard of the server.
+  const voice = new VoiceManager(
+    ctx,
+    {
+      updateVoiceState: data =>
+        gateway.send(
+          shardIdFor(data.guild_id, gateway.shardCount),
+          GatewayOpcode.VoiceStateUpdate,
+          data
+        ),
+      hasVoiceStates: () =>
+        (options.intents & GatewayIntent.GuildVoiceStates) !== 0,
+    },
+    {
+      warn: message => options.onEvent?.({ type: 'voiceWarning', message }),
+      ...(options.voice?.secure === undefined
+        ? {}
+        : { secure: options.voice.secure }),
+    }
+  );
+  ctx.voice = voice;
 
   return {
     ctx,
@@ -235,6 +279,7 @@ export function createBot(options: BotOptions): Bot {
         guildsReady = null;
         throw error;
       }
+      shardsReady = true;
       guildsTimer = setTimeout(finishGuilds, options.guildsTimeout ?? 15_000);
       checkGuilds();
       await allGuilds;
@@ -242,6 +287,7 @@ export function createBot(options: BotOptions): Bot {
     async close() {
       if (guildsTimer) clearTimeout(guildsTimer);
       guildsTimer = null;
+      voice.closeAll();
       await gateway.close();
     },
     setPresence: presence => gateway.setPresence(presence),

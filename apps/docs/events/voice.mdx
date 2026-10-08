@@ -1,0 +1,77 @@
+---
+title: 'Voice'
+description: 'React to people joining, leaving and moving between voice channels, muting or starting a stream'
+---
+
+When someone joins a voice channel, the files of `src/events/voiceJoin/` run:
+
+```ts src/events/voiceJoin/hello.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, channel }) => {
+  // A voice channel has its own text chat: the bot writes there.
+  await channel.send(`${member.displayName} joined ${channel.name}.`);
+});
+```
+
+That is all. `member` is who joined, `channel` the [`VoiceChannel`](/reference/channels/voice) (a stage channel is one too, with `channel.isStage`), and `voice` their [`VoiceState`](/reference/data#voicestate): muted, deafened, streaming, camera on...
+
+<Note>
+  The four voice events, with what they give, are in the [reference](/reference/events#voicejoin). Your bot joining a voice channel itself, to play sound there, is in [Playing in voice](/voice).
+</Note>
+
+## Four events
+
+Discord sends one kind of change for voice; ChapterJS tells you what it was, by comparing with what the person was doing before:
+
+| Folder | Runs when | Your function receives |
+| --- | --- | --- |
+| `voiceJoin` | Someone joins a voice channel | `member`, `channel`, `voice`, `guild` |
+| `voiceLeave` | Someone leaves, or is disconnected | `member`, `channel` (the one they left), `voice` (as it was), `guild` |
+| `voiceMove` | Someone goes to another voice channel, or is moved | `member`, `from`, `to`, `voice`, `guild` |
+| `voiceUpdate` | Someone in a channel changes: mute, deafen, stream, camera | `member`, `channel`, `voice` (now), `before` (as it was), `guild` |
+
+A move is only a `voiceMove`: not a `voiceLeave` followed by a `voiceJoin`. And `voiceUpdate` never runs for a join, a leave or a move.
+
+```ts src/events/voiceUpdate/live.ts
+import { event } from 'chapterjs';
+
+export default event(async ({ member, channel, voice, before }) => {
+  if (voice.selfStream && !before.selfStream) {
+    await channel.send(`${member.displayName} is live!`);
+  }
+});
+```
+
+## The channel someone left
+
+`voiceLeave` always gives the channel, even when it was deleted with people in it: the bot keeps the channel of each person while they are in voice.
+
+```ts src/events/voiceLeave/empty.ts
+import { event } from 'chapterjs';
+
+export default event(({ member, channel, guild }) => {
+  console.log(`${member.displayName} left ${channel.name} of ${guild.name}`);
+});
+```
+
+## What the bot remembers
+
+To tell a join from a move or a mute, the bot remembers who is in a voice channel, and forgets them when they leave. It only does when a file listens to one of these events: without one, Discord does not send voice changes at all. It is little: one small entry per person in voice right now.
+
+## Intents
+
+The four events need `GUILD_VOICE_STATES`, which is not privileged. They only happen in servers: there is no `where` option.
+
+```text
+ℹ Intents computed from your files: GUILDS, GUILD_VOICE_STATES
+```
+
+<CardGroup cols={2}>
+  <Card title="Moderation and the server" icon="shield" href="/events/server">
+    Bans, the audit log, invites, emojis, scheduled events, threads.
+  </Card>
+  <Card title="Events reference" icon="library" href="/reference/events#voicejoin">
+    Every field of every event.
+  </Card>
+</CardGroup>
