@@ -1,6 +1,6 @@
 {
   "name": "chapterjs",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "The Discord framework",
   "type": "module",
   "license": "MIT",
