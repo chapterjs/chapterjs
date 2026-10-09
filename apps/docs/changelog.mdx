@@ -25,6 +25,12 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
+<Update label="0.2.1" description="chapterjs dev tells you when a new version is out">
+
+Once the bot is online, `chapterjs dev` says when a newer version of `chapterjs` is published, with the command that installs it, written for the package manager of your project. npm is asked at most once a day, and never holds the bot. See [A new version of ChapterJS](/run/dev#a-new-version-of-chapterjs).
+
+</Update>
+
 <Update label="0.2.0" description="Your files, your order: the framework reads what they export">
 
 Nothing is tied to a folder any more. Every file of `src/` is loaded, and what it exports made with `command()`, `event()`, `button()`, `select()`, `modal()`, `embed()`, `task()`, `presence()` or `language()` is what the bot runs: a file may declare several things, and sit wherever you like. See [Project structure](/setup/project-structure).
@@ -34,8 +40,6 @@ Nothing is tied to a folder any more. Every file of `src/` is loaded, and what i
 - **[Components](/components)** and **[tasks](/tasks)** are named by their export: `export const again = button(...)` is the button `again`. Moving a file changes nothing; renaming the export does, as renaming the file did.
 - **[Languages](/translated-messages)** say their `locale`: `language({ locale: 'fr', ... })`, and a second `default: true` is underlined in both files. A language may be declared in several places: the texts of a feature live next to it, and `t` offers them all. A text the default language does not have is taken from the language that has it, so a module written in other languages than yours still works.
 - `.chapterjs/` is one TypeScript project for the whole of `src/`, and holds only what the project adds: the files of `public/`, the languages and the commands. The folders in parentheses and the `_` files are not needed any more: a folder is only a folder, and a file that declares nothing is yours.
-
-`chapterjs dev` now tells you, once the bot is online, when a newer version of `chapterjs` is out, with the command that installs it. See [A new version of ChapterJS](/run/dev#a-new-version-of-chapterjs).
 
 The types `EventFile`, `CommandFile`, `ButtonFile`, `SelectFile`, `ModalFile`, `EmbedFile`, `TaskFile`, `PresenceFile` and `LanguageFile` are now `EventDeclaration`, `CommandDeclaration`, `ButtonDeclaration`, `SelectDeclaration`, `ModalDeclaration`, `EmbedDeclaration`, `TaskDeclaration`, `PresenceDeclaration` and `LanguageDeclaration`.
 

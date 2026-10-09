@@ -25,6 +25,12 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
+<Update label="0.2.1" description="chapterjs dev vous prévient quand une nouvelle version est sortie">
+
+Une fois le bot en ligne, `chapterjs dev` dit quand une version plus récente de `chapterjs` est publiée, avec la commande qui l’installe, écrite pour le gestionnaire de paquets de votre projet. npm est interrogé au plus une fois par jour, et ne retient jamais le bot. Voir [Une nouvelle version de ChapterJS](/fr/run/dev#une-nouvelle-version-de-chapterjs).
+
+</Update>
+
 <Update label="0.2.0" description="Vos fichiers, votre ordre : le framework lit ce qu’ils exportent">
 
 Plus rien n’est lié à un dossier. Chaque fichier de `src/` est chargé, et ce qu’il exporte de fabriqué avec `command()`, `event()`, `button()`, `select()`, `modal()`, `embed()`, `task()`, `presence()` ou `language()` est ce que le bot fait tourner : un fichier peut déclarer plusieurs choses, et se trouver où vous voulez. Voir [Structure du projet](/fr/setup/project-structure).
@@ -34,8 +40,6 @@ Plus rien n’est lié à un dossier. Chaque fichier de `src/` est chargé, et c
 - **[Les composants](/fr/components)** et **[les tâches](/fr/tasks)** sont nommés par leur export : `export const again = button(...)` est le bouton `again`. Déplacer un fichier ne change rien ; renommer l’export, si, comme renommer le fichier le faisait.
 - **[Les langues](/fr/translated-messages)** disent leur `locale` : `language({ locale: 'fr', ... })`, et un deuxième `default: true` est souligné dans les deux fichiers. Une langue peut être déclarée à plusieurs endroits : les textes d’une fonctionnalité vivent à côté d’elle, et `t` les propose tous. Un texte que la langue par défaut n’a pas est pris dans la langue qui l’a, donc un module écrit dans d’autres langues que les vôtres fonctionne quand même.
 - `.chapterjs/` est un seul projet TypeScript pour tout `src/`, et ne contient que ce que le projet ajoute : les fichiers de `public/`, les langues et les commandes. Les dossiers entre parenthèses et les fichiers `_` ne servent plus : un dossier n’est qu’un dossier, et un fichier qui ne déclare rien est à vous.
-
-`chapterjs dev` vous prévient maintenant, une fois le bot en ligne, quand une version plus récente de `chapterjs` est sortie, avec la commande qui l’installe. Voir [Une nouvelle version de ChapterJS](/fr/run/dev#une-nouvelle-version-de-chapterjs).
 
 Les types `EventFile`, `CommandFile`, `ButtonFile`, `SelectFile`, `ModalFile`, `EmbedFile`, `TaskFile`, `PresenceFile` et `LanguageFile` s’appellent maintenant `EventDeclaration`, `CommandDeclaration`, `ButtonDeclaration`, `SelectDeclaration`, `ModalDeclaration`, `EmbedDeclaration`, `TaskDeclaration`, `PresenceDeclaration` et `LanguageDeclaration`.
 
