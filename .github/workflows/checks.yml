@@ -58,7 +58,10 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           node-version: ${{ matrix.node }}
-      - run: pnpm test
+      # One package at a time: the suites start hundreds of processes, and
+      # on a small runner three of them at once could make a spawn fail
+      # (a CLI that exited before printing anything).
+      - run: pnpm test --concurrency 1
 
   package:
     # What would be published: every package packs.
