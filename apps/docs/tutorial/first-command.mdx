@@ -13,6 +13,7 @@ Create `src/commands/dice.ts`:
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'dice',
   description: 'Rolls a six-sided die',
   async run({ interaction, user }) {
     const roll = Math.floor(Math.random() * 6) + 1;
@@ -34,7 +35,7 @@ Type `/dice` in your test server. It is there, with its description under its na
 
 **`import { command } from 'chapterjs'`.** The function that makes a command. It takes an object describing the command and returns something the framework recognises as one.
 
-**`export default`.** The file hands its command to the framework through its default export. A file of `src/commands/` must export exactly that; one that exports something else is refused with a message that says what to write.
+**`export default`.** The file hands its command to the framework by exporting it. The framework loads every file of `src/` and keeps what they export made with `command()`, `event()`, `button()`...: a default export, or a named one (`export const dice = command(...)`), it does not matter. What is exported and is none of these is simply yours.
 
 **`description`.** The text Discord shows under the name in the `/` menu, 1 to 100 characters. Besides `run`, it is the only thing a command needs. (The `/ping` of the template has none in its file because the language files give it; that is a later chapter.)
 
@@ -61,7 +62,7 @@ Discord has rules for commands: a name is lowercase, with letters, digits, `-` a
 Rename the file to `Dice.ts` and save:
 
 ```text
-✗ src/commands/Dice.ts "Dice" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most. The path of the file is the name of the command.
+✗ src/commands/dice.ts "Dice" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most.
 ```
 
 Rename it back. Now remove `description` and save:
@@ -85,7 +86,7 @@ You will still read messages in a later chapter, for things that are not command
 
 ## Recap
 
-- A command is a file of `src/commands/` with `export default command({ description, run })`.
+- A command is `command({ name, description, run })`, exported from any file of `src/`.
 - `run` receives one object; take `interaction`, `user` and the rest out of it.
 - `await interaction.reply(...)` answers; a command that does not answer is a warning with the file.
 - Every rule of Discord is checked when the file loads, with a message saying what to write.

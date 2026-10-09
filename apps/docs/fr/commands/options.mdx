@@ -9,6 +9,7 @@ Les options sont ce que les gens remplissent après le nom d’une commande. Dé
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'mod ban',
   description: 'Bannit un membre',
   permissions: ['BanMembers'],
   options: {
@@ -61,6 +62,7 @@ Une option est **facultative** sauf si elle dit `required: true`. Dans `run`, un
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'greet',
   description: 'Salue quelqu’un',
   options: {
     who: { type: 'user', description: 'Qui saluer', required: true },
@@ -84,6 +86,7 @@ Avec `choices`, la personne choisit dans une liste au lieu de taper, et la valeu
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'color',
   description: 'Choisit une couleur',
   options: {
     // Une liste : ce que voit la personne est ce que reçoit votre code.
@@ -115,6 +118,7 @@ const SONGS = [
 ];
 
 export default command({
+  name: 'play',
   description: 'Joue une chanson',
   options: {
     song: { type: 'string', description: 'Quelle chanson', required: true },
@@ -177,6 +181,7 @@ Discord refuse ce qui est en dehors avant même que la commande n’atteigne vot
 import { command, ChannelType } from 'chapterjs';
 
 export default command({
+  name: 'announce',
   description: 'Annonce quelque chose dans un salon',
   permissions: ['ManageGuild'],
   options: {

@@ -7,7 +7,7 @@ description: 'Chaque événement auquel votre bot peut réagir : quand il se pro
   Comment écrire un fichier d’événement est dans [Événements](/fr/events) ; les événements sur les messages et leurs options dans [Messages](/fr/events/messages) ; `event()` et ses types dans [event()](/fr/reference/event).
 </Note>
 
-Un événement est un dossier de `src/events/`. Chaque section ci-dessous est un dossier : quand ses fichiers tournent, les intents dont Discord a besoin pour lui (déduits de vos fichiers, jamais écrits par vous), ses options, ce dont le bot se souvient pour lui au-delà de [la valeur par défaut](/fr/memory), et ce que reçoit votre fonction.
+Un événement est le `name` d’une déclaration `event()`. Chaque section ci-dessous est un événement : quand ses déclarations tournent, les intents dont Discord a besoin pour lui (déduits de vos fichiers, jamais écrits par vous), ses options, ce dont le bot se souvient pour lui au-delà de [la valeur par défaut](/fr/memory), et ce que reçoit votre fonction.
 
 Les intents sont nommés comme les affiche `chapterjs dev`. Trois sont privilégiés, à activer dans le [Developer Portal](/fr/setup/discord-application) : `GUILD_MEMBERS` est le Server Members Intent, `GUILD_PRESENCES` le Presence Intent, `MESSAGE_CONTENT` le Message Content Intent.
 
@@ -20,7 +20,7 @@ Les intents sont nommés comme les affiche `chapterjs dev`. Trois sont privilég
 | Options | Aucune |
 | Mémoire | Par défaut |
 
-Chaque événement reçoit aussi `t`, dans la langue du serveur où il s’est produit, quand le projet a une langue dans `src/messages/` : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
+Chaque événement reçoit aussi `t`, dans la langue du serveur où il s’est produit, quand le projet a une langue : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
 
 <ResponseField name="user" type="User" required>
   Le bot lui-même.

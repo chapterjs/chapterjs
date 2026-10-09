@@ -35,7 +35,7 @@ Fait tourner le bot du dossier courant sur le serveur de test de `DEV_GUILD_ID`,
 | --- | --- |
 | `.env` | `BOT_TOKEN` et `DEV_GUILD_ID` sont lus et vérifiés. Chaque problème est affiché, puis la commande s’arrête. |
 | Types | `.chapterjs/` est écrit, comme avec `chapterjs sync`. |
-| Fichiers | Chaque fichier de `src/commands/` et `src/events/` est chargé. Un fichier cassé est signalé et mis de côté. |
+| Fichiers | Chaque fichier de `src/` est chargé, et ce qu’ils exportent avec `command()`, `event()`, `button()`... est lu. Un fichier ou une déclaration cassés sont signalés et mis de côté. |
 | Token | Vérifié auprès de Discord. |
 | Serveur de test | Le bot doit y être : sinon un lien d’invitation est affiché et, dans un terminal, la commande attend. |
 | Intents privilégiés | Ceux dont les fichiers ont besoin doivent être activés : sinon les fichiers et le lien sont affichés et, dans un terminal, la commande attend. |
@@ -53,8 +53,8 @@ Vérifie le projet et le compile dans `.chapterjs/build/`. N’a pas besoin de t
 | Étape | Ce qui se passe |
 | --- | --- |
 | Types | `.chapterjs/` est écrit, puis `node_modules/.bin/tsc -b` tourne quand il existe et que le projet a un `tsconfig.json`. Une erreur de type arrête la compilation. Sans TypeScript, la compilation le dit et continue. |
-| Fichiers | La compilation précédente est supprimée. Chaque fichier de `src/commands/` et `src/events/` est chargé depuis `src/`. Un fichier cassé arrête la compilation. |
-| Compilation | Chaque fichier de ces dossiers, avec ce qu’il importe du projet, est regroupé dans `.chapterjs/build/bot.js` (ESM, Node 24, paquets laissés dans `node_modules`, espaces et syntaxe minifiés, noms gardés) avec `bot.js.map` à côté (sans les sources). |
+| Fichiers | La compilation précédente est supprimée. Chaque fichier de `src/` est chargé, et ce qu’il déclare est lu. Un fichier ou une déclaration cassés arrêtent la compilation. |
+| Compilation | Chaque fichier de `src/`, avec ce qu’il importe, est regroupé dans `.chapterjs/build/bot.js` (ESM, Node 24, paquets laissés dans `node_modules`, espaces et syntaxe minifiés, noms gardés) avec `bot.js.map` à côté (sans les sources). |
 | Vérification | Le fichier compilé est chargé une fois et chaque fichier est vérifié à nouveau. |
 | Enregistrement | `.chapterjs/build/build.json` : la version de `chapterjs`, une empreinte de `src/`, le nombre de commandes et d’événements. |
 
@@ -86,7 +86,7 @@ chapterjs start [--processes <n>]
 
 ### `chapterjs sync`
 
-Écrit le dossier `.chapterjs/` du projet : les types qui donnent son sens à `event` dans chaque dossier de `src/events/`, un projet TypeScript par dossier et le `tsconfig.json` qui les référence. Affiche `✓ Types written to .chapterjs/`. N’a pas besoin de token. `dev` et `build` le font aussi au démarrage ; les modèles le lancent en `postinstall`.
+Écrit le dossier `.chapterjs/` du projet : ce que le projet ajoute aux types de `chapterjs` (les fichiers de `public/`, ses langues et ses commandes, trouvés en lisant les fichiers sans les exécuter) et le `tsconfig.json` du seul projet TypeScript qui couvre `src/`. Affiche `✓ Types written to .chapterjs/`. N’a pas besoin de token. `dev` et `build` le font aussi au démarrage ; les modèles le lancent en `postinstall`.
 
 Seuls les fichiers dont le contenu a changé sont écrits ; ce qu’écrivait une ancienne version est retiré. `.chapterjs/cache/` et `.chapterjs/build/` sont laissés tranquilles.
 
@@ -156,7 +156,7 @@ Ce que le CLI garde dans le projet, ignoré par git :
 
 | Chemin | Écrit par | Ce que c’est |
 | --- | --- | --- |
-| `types/`, `projects/`, `tsconfig.json` | `sync`, `dev`, `build` | Les types du projet, un projet TypeScript par dossier de `src/events/`, plus un pour le reste de `src/`. |
+| `types/project.d.ts`, `tsconfig.json` | `sync`, `dev`, `build` | Ce que le projet ajoute aux types de `chapterjs`, et le seul projet TypeScript qui couvre `src/`. |
 | `cache/commands.json`, `cache/commands.global.json` | `dev`, `start` | Une empreinte des dernières commandes enregistrées sur le serveur de test et pour tout le monde, pour que rien ne soit envoyé quand elles n’ont pas changé. |
 | `build/bot.js`, `build/bot.js.map`, `build/build.json` | `build` | Le bot compilé, sa correspondance vers `src/`, et ce dont la compilation était faite. |
 

@@ -72,8 +72,8 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
   <Accordion title="✗ Discord closed the connection for good (close code …).">
     Discord a mis fin à la connexion pour une raison qu’une reconnexion ne peut pas corriger, avec un code que le framework ne sait pas expliquer. Relancez ; si cela continue, [ouvrez une issue](https://github.com/chapterjs/chapterjs/issues) avec le code.
   </Accordion>
-  <Accordion title="ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/">
-    Votre `src/` n’a ni commande ni événement. Le bot se connecte quand même. Ajoutez un fichier : voir [Structure du projet](/fr/setup/project-structure).
+  <Accordion title="ℹ Nothing to run yet: export a command or an event from a file of src/, like export default command({ name: 'ping', ... })">
+    Votre `src/` ne déclare ni commande ni événement. Le bot se connecte quand même. Déclarez-en un : voir [Structure du projet](/fr/setup/project-structure).
   </Accordion>
 </AccordionGroup>
 
@@ -214,7 +214,7 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
     La commande a un `cooldown`, et la personne l’a utilisée trop tôt. C’est ce que vous avez demandé : voir [Délais entre deux utilisations](/fr/commands#délais-entre-deux-utilisations). La réponse se supprime toute seule quand le délai se termine ; au-delà de 15 minutes, elle affiche la date et l’heure à la place.
   </Accordion>
   <Accordion title="Ces réponses sont en anglais">
-    Les phrases que le bot répond de lui-même peuvent être traduites dans les fichiers de langue de `src/messages/` : voir [Ce que le bot répond de lui-même](/fr/translated-messages#ce-que-le-bot-répond-de-lui-même).
+    Les phrases que le bot répond de lui-même peuvent être traduites dans les fichiers de langue du projet : voir [Ce que le bot répond de lui-même](/fr/translated-messages#ce-que-le-bot-répond-de-lui-même).
   </Accordion>
   <Accordion title="Une commande manque, ou apparaît en double">
     Les commandes apparaissent immédiatement sur votre serveur de test avec `chapterjs dev`, et partout avec `chapterjs start`. Si l’une manque, le terminal a dit pourquoi au démarrage : un nom que Discord a refusé, ou deux fichiers qui sont la même commande. En double : voir [Un seul bot pour le dev et la production](/fr/run/start#un-seul-bot-pour-le-dev-et-la-production). Une commande que la personne ne voit pas est une commande dont elle n’a pas les `permissions` : voir [Qui peut utiliser une commande](/fr/commands#qui-peut-utiliser-une-commande).

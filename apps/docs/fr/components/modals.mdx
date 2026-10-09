@@ -3,9 +3,9 @@ title: 'Formulaires'
 description: 'Ouvrir un formulaire dans Discord depuis une commande ou un bouton, et recevoir ce qui a été rempli, typé champ par champ'
 ---
 
-Un formulaire (Discord l’appelle un modal) est un fichier de `src/components/modals/`. Déclarez ses champs ; `run` les reçoit sous les mêmes noms, typés d’après leur sorte.
+Un formulaire (Discord l’appelle un modal) se déclare avec `modal()`, dans n’importe quel fichier de `src/`, et s’exporte. Déclarez ses champs ; `run` les reçoit sous les mêmes noms, typés d’après leur sorte.
 
-```ts src/components/modals/feedback.ts
+```ts src/components/feedback.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -24,9 +24,10 @@ Une commande ou un bouton l’ouvre avec `interaction.showModal()` :
 
 ```ts src/commands/feedback.ts
 import { command } from 'chapterjs';
-import feedback from '../components/modals/feedback';
+import feedback from '../components/feedback';
 
 export default command({
+  name: 'feedback',
   description: 'Envoie votre avis',
   async run({ interaction }) {
     await interaction.showModal(feedback);
@@ -57,7 +58,7 @@ Un formulaire a de 1 à 5 champs, chacun avec un `label` (45 caractères au plus
 
 Chaque champ est obligatoire sauf s’il dit `required: false` ; un `text` ou un `radio` qui n’est pas obligatoire est alors `string | undefined`. `min` et `max` disent combien peuvent être choisis ou téléversés ; `minLength` et `maxLength` quelle longueur peut avoir un texte.
 
-```ts src/components/modals/report.ts
+```ts src/components/report.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -87,9 +88,9 @@ export default modal({
 
 Un bouton ou un menu peut aussi ouvrir un formulaire. Le formulaire connaît alors le message du bouton (`message`), et peut le modifier avec `update()` au lieu d’envoyer un nouveau message :
 
-```ts src/components/buttons/rename.ts
+```ts src/components/rename-button.ts
 import { button } from 'chapterjs';
-import rename from '../modals/rename';
+import rename from './rename';
 
 export default button({
   label: 'Renommer',
@@ -100,7 +101,7 @@ export default button({
 });
 ```
 
-```ts src/components/modals/rename.ts
+```ts src/components/rename.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -123,9 +124,9 @@ export default modal({
 
 Là où vous ouvrez le formulaire, `values` remplit certains champs à l’avance : un texte, les options choisies d’un menu, d’un radio ou de cases à cocher, ou si une case est cochée.
 
-```ts src/components/buttons/edit.ts
+```ts src/components/edit.ts
 import { button } from 'chapterjs';
-import feedback from '../modals/feedback';
+import feedback from './feedback';
 
 export default button({
   label: 'Modifier mon avis',

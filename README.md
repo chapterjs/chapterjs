@@ -10,35 +10,44 @@ pnpm create chapter my-bot
 
 📖 Documentation, in English and in French: **[chapterjs.dev](https://chapterjs.dev)**
 
-## A folder of files becomes a bot
+## Your files become a bot
 
 ```
 src/
+├── (moderation)/            → a folder is only a folder: everything about moderation, together
+│   ├── ban.ts               → command({ name: 'ban' }), and the button it shows
+│   ├── kick.ts              → command({ name: 'kick' })
+│   ├── warn.ts              → command({ name: 'warn add' }), command({ name: 'warn list' }), event({ name: 'banAdd' })
+│   ├── messages.ts          → language({ locale: 'en-US' }), language({ locale: 'fr' }): the texts of moderation
+│   └── checks.ts            → shared code, declares nothing
 ├── commands/
-│   ├── ping.ts              → /ping
-│   └── mod/ban.ts           → /mod ban
+│   ├── ping.ts              → command({ name: 'ping' }), and the button it shows
+│   ├── hello.ts             → command({ name: 'hello' })
+│   └── play.ts              → command({ name: 'play' })
 ├── events/
-│   └── reactionAdd/wave.ts  → runs on every reaction
-├── components/
-│   └── buttons/again.ts     → a button, its id is its path
+│   ├── ready.ts             → event({ name: 'ready' })
+│   └── wave.ts              → event({ name: 'reactionAdd' })
 ├── tasks/
-│   └── report.ts            → every 10 minutes, or at set times
+│   └── report.ts            → export const report = task(...)
 ├── messages/
-│   ├── en-US.ts             → the texts of the bot, one file per language
-│   └── fr.ts
+│   ├── en-US.ts             → language({ locale: 'en-US' })
+│   └── fr.ts                → language({ locale: 'fr' })
 └── presence.ts              → what the bot shows under its name
 ```
 
-Where a file is says what it is: it never repeats its own name, and what your function receives is inferred.
+What a file exports says what it is: the framework loads every file of `src/` and runs what they declare, wherever they are. A command and an event have a name; a button is named by its export; what your function receives is inferred.
 
 ```ts
-// src/events/reactionAdd/wave.ts
+// src/events/wave.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ emoji, channel, messageId }) => {
-  if (emoji.name !== '👋') return;
-  const message = await channel.fetchMessage(messageId);
-  await message.react('👋');
+export default event({
+  name: 'reactionAdd',
+  async run({ emoji, channel, messageId }) {
+    if (emoji.name !== '👋') return;
+    const message = await channel.fetchMessage(messageId);
+    await message.react('👋');
+  },
 });
 ```
 
@@ -47,6 +56,7 @@ export default event(async ({ emoji, channel, messageId }) => {
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'hello',
   description: 'Says hello to someone',
   cooldown: '10s',
   options: {

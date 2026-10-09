@@ -35,7 +35,7 @@ Runs the bot of the current folder on the test server of `DEV_GUILD_ID`, and rel
 | --- | --- |
 | `.env` | `BOT_TOKEN` and `DEV_GUILD_ID` are read and checked. Every problem is printed, then the command stops. |
 | Types | `.chapterjs/` is written, like `chapterjs sync`. |
-| Files | Every file of `src/commands/` and `src/events/` is loaded. A broken file is reported and left out. |
+| Files | Every file of `src/` is loaded, and what they export with `command()`, `event()`, `button()`... is read. A broken file or declaration is reported and left out. |
 | Token | Checked with Discord. |
 | Test server | The bot must be in it: otherwise an invite link is printed and, in a terminal, the command waits. |
 | Privileged intents | Those the files need must be enabled: otherwise the files and the link are printed and, in a terminal, the command waits. |
@@ -53,8 +53,8 @@ Checks the project and compiles it into `.chapterjs/build/`. Needs no token and 
 | Step | What happens |
 | --- | --- |
 | Types | `.chapterjs/` is written, then `node_modules/.bin/tsc -b` runs when it exists and the project has a `tsconfig.json`. A type error stops the build. Without TypeScript, the build says so and goes on. |
-| Files | The previous build is removed. Every file of `src/commands/` and `src/events/` is loaded from `src/`. One broken file stops the build. |
-| Compile | Every file of those folders, with what it imports from the project, is bundled into `.chapterjs/build/bot.js` (ESM, Node 24, packages left in `node_modules`, whitespace and syntax minified, names kept) with `bot.js.map` next to it (no sources inside). |
+| Files | The previous build is removed. Every file of `src/` is loaded, and what it declares is read. One broken file or declaration stops the build. |
+| Compile | Every file of `src/`, with what it imports, is bundled into `.chapterjs/build/bot.js` (ESM, Node 24, packages left in `node_modules`, whitespace and syntax minified, names kept) with `bot.js.map` next to it (no sources inside). |
 | Check | The compiled file is loaded once and every file is checked again. |
 | Record | `.chapterjs/build/build.json`: the version of `chapterjs`, a fingerprint of `src/`, the number of commands and events. |
 
@@ -86,7 +86,7 @@ chapterjs start [--processes <n>]
 
 ### `chapterjs sync`
 
-Writes the `.chapterjs/` folder of the project: the types that give `event` its meaning in each folder of `src/events/`, one TypeScript project per folder and the `tsconfig.json` that references them. Prints `✓ Types written to .chapterjs/`. Needs no token. `dev` and `build` do it too when they start; templates run it as `postinstall`.
+Writes the `.chapterjs/` folder of the project: what the project adds to the types of `chapterjs` (the files of `public/`, its languages and its commands, found by reading the files without running them) and the `tsconfig.json` of the one TypeScript project that covers `src/`. Prints `✓ Types written to .chapterjs/`. Needs no token. `dev` and `build` do it too when they start; templates run it as `postinstall`.
 
 Only files whose content changed are written; what an older version wrote is removed. `.chapterjs/cache/` and `.chapterjs/build/` are left alone.
 
@@ -156,7 +156,7 @@ What the CLI keeps in the project, ignored by git:
 
 | Path | Written by | What it is |
 | --- | --- | --- |
-| `types/`, `projects/`, `tsconfig.json` | `sync`, `dev`, `build` | The types of the project, one TypeScript project per folder of `src/events/`, plus one for the rest of `src/`. |
+| `types/project.d.ts`, `tsconfig.json` | `sync`, `dev`, `build` | What the project adds to the types of `chapterjs`, and the one TypeScript project that covers `src/`. |
 | `cache/commands.json`, `cache/commands.global.json` | `dev`, `start` | A fingerprint of the commands last registered on the test server and for everyone, so that nothing is sent when they did not change. |
 | `build/bot.js`, `build/bot.js.map`, `build/build.json` | `build` | The compiled bot, its map back to `src/`, and what the build was made of. |
 

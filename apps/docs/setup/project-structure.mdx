@@ -1,6 +1,6 @@
 ---
 title: 'Project structure'
-description: 'What each folder and file of your project is for, and the two naming rules that let you organise them your way'
+description: 'What each folder and file of your project is for, and how the framework finds what your files declare'
 ---
 
 A project made with `create chapter` looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
@@ -12,25 +12,22 @@ A project made with `create chapter` looks like this. Everything your bot does l
       <Tree.File name="hello.ogg" highlight />
     </Tree.Folder>
     <Tree.Folder name="src" defaultOpen>
+      <Tree.Folder name="(moderation)" defaultOpen>
+        <Tree.File name="ban.ts" highlight />
+        <Tree.File name="checks.ts" />
+        <Tree.File name="kick.ts" highlight />
+        <Tree.File name="messages.ts" highlight />
+        <Tree.File name="warn.ts" highlight />
+      </Tree.Folder>
       <Tree.Folder name="commands" defaultOpen>
         <Tree.File name="hello.ts" highlight />
         <Tree.File name="ping.ts" highlight />
         <Tree.File name="play.ts" highlight />
       </Tree.Folder>
-      <Tree.Folder name="components" defaultOpen>
-        <Tree.Folder name="buttons" defaultOpen>
-          <Tree.File name="again.ts" highlight />
-        </Tree.Folder>
-      </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
-        <Tree.Folder name="reactionAdd" defaultOpen>
-          <Tree.File name="wave.ts" highlight />
-        </Tree.Folder>
-        <Tree.Folder name="ready" defaultOpen>
-          <Tree.File name="online.ts" highlight />
-        </Tree.Folder>
+        <Tree.File name="ready.ts" highlight />
+        <Tree.File name="wave.ts" highlight />
       </Tree.Folder>
-      <Tree.Folder name="tasks" />
       <Tree.Folder name="messages" defaultOpen>
         <Tree.File name="en-US.ts" highlight />
         <Tree.File name="fr.ts" highlight />
@@ -45,94 +42,73 @@ A project made with `create chapter` looks like this. Everything your bot does l
   </Tree.Folder>
 </Tree>
 
-## `src/`: where a file is says what it is
+## `src/`: what a file exports says what it is
 
-ChapterJS never asks you to register anything. A file is a command or a reaction to an event because of **where it is**, like a route in a web framework:
+ChapterJS never asks you to register anything. It loads every file of `src/`, wherever it is and whatever it is called, and runs what the files **export**, made with one of its functions:
 
-| Folder                                                      | A file in it is                                                                                                                             | What it exports                                                          |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `src/commands/`                                             | A slash command, named after its path: `ping.ts` is `/ping`, `mod/ban.ts` is `/mod ban`                                                     | `command({ ... })`                                                       |
-| `src/events/<event>/`                                       | One reaction to the event named by its folder: `memberJoin/welcome.ts` runs when someone joins                                              | `event(({ ... }) => { ... })`                                            |
-| `src/components/buttons/`, `selects/`, `modals/`, `embeds/` | A button, a select menu, a form or an embed, told apart by its path: `buttons/again.ts` is the button Discord sends back as `buttons/again` | `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed({ ... })` |
-| `src/tasks/`                                                | Something the bot does by itself, every so often or at given times: `report.ts` is the task `report`                                        | `task({ ... })`                                                          |
-| `src/presence.ts`                                           | The one file that says what the bot shows under its name: its status and what it is doing                                                   | `presence({ ... })`                                                      |
-| `src/messages/`                                             | One language of the bot per file, named after it: `fr.ts` is the French; every function then receives `t`                                   | `language({ ... })`                                                      |
+| Declared with                                     | What it is                                                                                                                                         |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `command({ name, ... })`                          | A slash command: `name` is what people type after the `/`. `'ping'` is `/ping`, `'mod ban'` is `/mod ban`                                          |
+| `event({ name, ... })`                            | One reaction to an event: `name` is the event, `'memberJoin'` runs when someone joins                                                              |
+| `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed({ ... })` | A button, a select menu, a form or an embed, told apart by **the name of its export**: `export const again = button(...)` is the button `again` |
+| `task({ ... })`                                   | Something the bot does by itself, every so often or at given times, named after its export                                                         |
+| `presence({ ... })`                               | What the bot shows under its name: its status and what it is doing, declared once                                                                  |
+| `language({ locale, ... })`                       | One language of the bot: `locale` says which one; every function then receives `t`                                                                 |
 
-All are imported from the same place, in every file:
+All are imported from the same place, and a file may declare as many as you like. The template does both: a folder per kind (`src/commands/`, `src/events/`), and `src/(moderation)/`, where everything about moderation lives together, commands, button, event, texts and shared code. `ban.ts` is the shape of it:
 
-```ts src/commands/ping.ts
-import { command } from 'chapterjs';
+```ts src/(moderation)/ban.ts
+import { button, command, event } from 'chapterjs';
 
 export default command({
-  description: 'Replies with Pong!',
-  async run({ interaction }) {
-    await interaction.reply('Pong!');
+  name: 'ban',
+  description: 'Bans a member',
+  options: {
+    target: { type: 'user', description: 'Who to ban', required: true },
   },
-});
-```
-
-```ts src/events/memberJoin/welcome.ts
-import { event } from 'chapterjs';
-
-export default event(async ({ member, guild }) => {
-  await member.send(`Welcome to ${guild.name}!`);
-});
-```
-
-```ts src/components/buttons/again.ts
-import { button } from 'chapterjs';
-
-const again = button({
-  label: 'Again',
-  data: { count: 'number' },
-  async run({ interaction, data }) {
-    const count = data.count + 1;
-    await interaction.update({
-      content: `Pong! ×${count}`,
-      components: [again({ count })],
+  async run({ interaction, options }) {
+    await interaction.reply({
+      content: `Ban ${options.target.displayName}?`,
+      components: [confirmBan({ userId: options.target.id })],
     });
   },
 });
 
-export default again;
+export const confirmBan = button({
+  label: 'Ban',
+  style: 'danger',
+  data: { userId: 'string' },
+  async run({ interaction, data, guild }) {
+    await guild.ban(data.userId, { reason: 'Banned with /ban' });
+    await interaction.update({ content: 'Banned.', components: [] });
+  },
+});
+
+export const logged = event({
+  name: 'banAdd',
+  run({ user, guild }) {
+    console.log(`${user.username} was banned from ${guild.name}`);
+  },
+});
 ```
 
-Any other folder of `src/` is yours: `src/lib/`, `src/db/`, whatever you like. ChapterJS only reads the folders above, and your files import the rest as usual.
+Any file that exports none of these is yours: `src/lib/greet.ts`, `src/db/index.ts`, whatever you like. It is loaded with the others, and your files import it as usual.
 
 <Note>
-  How to write each kind of file is in [Commands](/commands), [Events](/events),
-  [Buttons](/components) and [Tasks](/tasks).
+  How to write each kind of declaration is in [Commands](/commands),
+  [Events](/events), [Buttons](/components) and [Tasks](/tasks).
 </Note>
 
-## Two naming rules
+## Names
 
-Inside `src/commands/`, `src/events/`, `src/components/` and `src/tasks/`, two kinds of names are never part of a command, an event, a component or a task, so you can sort your files the way you like:
+Two things name themselves, because Discord shows them or because they are the thing itself: a command (`name: 'ping'`) and an event (`name: 'memberJoin'`). Everything else is named by its export: `export const again = button(...)` is the button `again`, `export const report = task(...)` the task `report`. A default export takes the name of its file: `export default button(...)` in `src/again.ts` is `again` too.
 
-<Tree>
-  <Tree.Folder name="src/commands" defaultOpen>
-    <Tree.File name="_embeds.ts" />
-    <Tree.Folder name="(fun)" defaultOpen>
-      <Tree.File name="ping.ts" />
-    </Tree.Folder>
-    <Tree.Folder name="(moderation)" defaultOpen>
-      <Tree.File name="_checks.ts" />
-      <Tree.File name="ban.ts" />
-      <Tree.File name="kick.ts" />
-      <Tree.Folder name="mod" defaultOpen>
-        <Tree.File name="warn.ts" />
-      </Tree.Folder>
-    </Tree.Folder>
-  </Tree.Folder>
-</Tree>
-
-- **A folder in parentheses only groups files.** `(fun)/ping.ts` is still `/ping`, and `(moderation)/mod/warn.ts` is `/mod warn`. Put as many as you want inside each other; Discord never sees them.
-- **A name starting with `_` is private.** `_embeds.ts` and `_checks.ts` are never read as a command or an event. Use them for the code several files share, and import them like any file: `import { canPunish } from './_checks'`.
-
-The same two rules apply in `src/events/`, where `(logs)/messageDelete/log.ts` reacts to `messageDelete`, and in `src/components/`, where `(mod)/buttons/ban.ts` is the button `buttons/ban`.
+Discord sends the name of a button back with every click, so renaming the export of a button breaks the buttons already on Discord (they answer "This button is not available any more."); moving the file changes nothing.
 
 <Warning>
-  Two files can't be the same thing. `(fun)/ping.ts` and `(tools)/ping.ts` are
-  both `/ping`: the second one is reported and left out.
+  Two things can't have the same name: two commands named `ping`, or two
+  buttons exported as `confirm`. The second one is reported with both files
+  and left out.
 </Warning>
 
 ## Imports
@@ -146,6 +122,7 @@ import { greet } from '../lib/greet'; // src/lib/greet.ts
 import { db } from '../db'; // src/db/index.ts
 
 export default command({
+  name: 'hello',
   description: 'Says hello',
   async run({ interaction, user }) {
     db.visits += 1;
@@ -168,7 +145,7 @@ export const db = { visits: 0 };
 
 Writing the extension works as well: `'../lib/greet.ts'`.
 
-Packages from `node_modules` are imported as usual. The files you import are watched like the others: in [`chapterjs dev`](/run/dev), saving `src/lib/greet.ts` reloads every file that uses it.
+Packages from `node_modules` are imported as usual. Every file of `src/` is watched: in [`chapterjs dev`](/run/dev), saving `src/lib/greet.ts` reloads every file that uses it. A test next to your code (`greet.test.ts`, `greet.spec.ts`) is left to your test runner, and never loaded by the bot.
 
 ## `public/`: the files your bot sends
 
@@ -178,13 +155,13 @@ Pictures, documents, sounds: put them in `public/`, in any folders you like, and
 
 This folder is written by ChapterJS, and git ignores it. It holds:
 
-|                       | What it is                                                                                                                                                        |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `types/`, `projects/` | The types of your project: how `event` knows, in each folder, what its function receives, and how `asset()` knows the files of `public/`. Your editor reads them. |
-| `cache/`              | What was last registered on Discord, so starting your bot again costs no request.                                                                                 |
-| `build/`              | Your compiled bot, written by [`chapterjs build`](/run/build).                                                                                                    |
+|          | What it is                                                                                                                                                                 |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `types/` | What your project adds to the types of `chapterjs`: the files of `public/` that `asset()` offers, your languages, which type `t`, and your commands. Your editor reads it. |
+| `cache/` | What was last registered on Discord, so starting your bot again costs no request.                                                                                          |
+| `build/` | Your compiled bot, written by [`chapterjs build`](/run/build).                                                                                                             |
 
-It is written when you install your project (`postinstall` runs `chapterjs sync`) and every time `chapterjs dev` or `chapterjs build` starts. If your editor says that `event` does not exist, run `chapterjs sync`: see the [CLI reference](/reference/cli#chapterjs-sync).
+It is written when you install your project (`postinstall` runs `chapterjs sync`) and every time `chapterjs dev` or `chapterjs build` starts. If your editor does not know the files of `public/` or your texts, run `chapterjs sync`: see the [CLI reference](/reference/cli#chapterjs-sync).
 
 ## `.env`
 
@@ -218,7 +195,7 @@ The scripts of your project run the [CLI](/reference/cli):
 
 ## `tsconfig.json`
 
-It only holds compiler options and one reference to `./.chapterjs`, which is where the real projects are: one per conventional folder, so that `event` can be typed differently in each. Keep it that way.
+It only holds compiler options and one reference to `./.chapterjs`, which is where the real project is: every file of `src/`, plus what the framework writes about your project. Keep it that way.
 
 <Warning>
   A plain `tsc` checks nothing in a ChapterJS project. Use the `typecheck`
@@ -238,9 +215,9 @@ ignoredBuiltDependencies:
 
 <CardGroup cols={2}>
   <Card title="Commands" icon="terminal" href="/commands">
-    One file per slash command, options typed for you.
+    A slash command, options typed for you.
   </Card>
   <Card title="Events" icon="zap" href="/events">
-    A folder per event, as many files as you want.
+    A reaction to anything that happens on Discord.
   </Card>
 </CardGroup>

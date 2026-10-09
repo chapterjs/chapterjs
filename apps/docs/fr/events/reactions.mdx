@@ -3,7 +3,7 @@ title: 'Réactions, sondages et saisie'
 description: 'Réagir aux réactions ajoutées et retirées, aux votes dans les sondages, et aux personnes qui écrivent'
 ---
 
-Quand quelqu’un ajoute une réaction à un message, les fichiers de `src/events/reactionAdd/` tournent. Ici, une réaction donne un rôle :
+Quand quelqu’un ajoute une réaction à un message, les événements `reactionAdd` tournent. Ici, une réaction donne un rôle :
 
 ```ts src/lib/reaction-roles.ts
 // Le message auquel on réagit (clic droit dessus → Copier l’identifiant du
@@ -12,15 +12,18 @@ export const ROLES_MESSAGE = '123456789012345678';
 export const ROLES: Record<string, string> = { '🎮': 'Gamers', '🎨': 'Artists' };
 ```
 
-```ts src/events/reactionAdd/roles.ts
+```ts src/events/roles.ts
 import { event } from 'chapterjs';
-import { ROLES, ROLES_MESSAGE } from '../../lib/reaction-roles';
+import { ROLES, ROLES_MESSAGE } from '../lib/reaction-roles';
 
-export default event(async ({ messageId, emoji, member, guild }) => {
-  if (messageId !== ROLES_MESSAGE || !emoji.name) return;
-  const name = ROLES[emoji.name];
-  const role = [...guild.roles.values()].find(role => role.name === name);
-  if (role) await member.addRole(role, 'Rôle par réaction');
+export default event({
+  name: 'reactionAdd',
+  async run({ messageId, emoji, member, guild }) {
+    if (messageId !== ROLES_MESSAGE || !emoji.name) return;
+    const name = ROLES[emoji.name];
+    const role = [...guild.roles.values()].find(role => role.name === name);
+    if (role) await member.addRole(role, 'Rôle par réaction');
+  },
 });
 ```
 
@@ -36,13 +39,16 @@ C’est tout. Comme les [événements sur les messages](/fr/events/messages), un
 
 Une réaction arrive avec l’identifiant de son message, pas avec le message : votre bot [ne se souvient d’aucun message](/fr/memory), donc `message` est `null`. Pour lire ou modifier le message, demandez-le avec `fetchMessage()` :
 
-```ts src/events/reactionAdd/star.ts
+```ts src/events/star.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ emoji, channel, messageId }) => {
-  if (emoji.name !== '⭐') return;
-  const message = await channel.fetchMessage(messageId);
-  console.log(`En favori : ${message.content}`);
+export default event({
+  name: 'reactionAdd',
+  async run({ emoji, channel, messageId }) {
+    if (emoji.name !== '⭐') return;
+    const message = await channel.fetchMessage(messageId);
+    console.log(`En favori : ${message.content}`);
+  },
 });
 ```
 
@@ -52,17 +58,20 @@ Ne le demandez que quand vous en avez besoin, après avoir vérifié l’emoji :
 
 `reactionRemove` tourne quand quelqu’un retire sa réaction. Discord n’envoie pas le membre avec, donc `member` n’est là que quand le bot se souvient de cette personne : demandez-le avec `fetchMember()`.
 
-```ts src/events/reactionRemove/roles.ts
+```ts src/events/roles.ts
 import { event } from 'chapterjs';
-import { ROLES, ROLES_MESSAGE } from '../../lib/reaction-roles';
+import { ROLES, ROLES_MESSAGE } from '../lib/reaction-roles';
 
-export default event(async ({ messageId, emoji, user, guild }) => {
-  if (messageId !== ROLES_MESSAGE || !emoji.name) return;
-  const name = ROLES[emoji.name];
-  const role = [...guild.roles.values()].find(role => role.name === name);
-  if (!role) return;
-  const member = await guild.fetchMember(user);
-  await member.removeRole(role, 'Rôle par réaction');
+export default event({
+  name: 'reactionRemove',
+  async run({ messageId, emoji, user, guild }) {
+    if (messageId !== ROLES_MESSAGE || !emoji.name) return;
+    const name = ROLES[emoji.name];
+    const role = [...guild.roles.values()].find(role => role.name === name);
+    if (!role) return;
+    const member = await guild.fetchMember(user);
+    await member.removeRole(role, 'Rôle par réaction');
+  },
 });
 ```
 
@@ -77,26 +86,30 @@ Les deux options des [événements sur les messages](/fr/events/messages#où-un-
 - `where: 'dm'` ou `'both'` pour écouter aussi en messages privés. Avec `'both'`, `guild` vaut `null` pour une réaction en privé, et un seul `if (guild)` restreint tout.
 - `bots: true` (pour `reactionAdd` et `reactionRemove`) pour recevoir aussi les réactions des bots, le vôtre compris : un fichier qui réagit aux réactions pourrait sinon répondre aux siennes indéfiniment.
 
-```ts src/events/reactionAdd/anywhere.ts
+```ts src/events/anywhere.ts
 import { event } from 'chapterjs';
 
-export default event(
-  ({ user, emoji, guild }) => {
-    console.log(`${user.username} a réagi ${emoji.name} ${guild ? `sur ${guild.name}` : 'en privé'}`);
-  },
-  { where: 'both' }
-);
+export default event({
+  name: 'reactionAdd',
+  where: 'both',
+  run({ user, emoji, guild }) {
+      console.log(`${user.username} a réagi ${emoji.name} ${guild ? `sur ${guild.name}` : 'en privé'}`);
+    },
+});
 ```
 
 ## Sondages
 
 `pollVoteAdd` et `pollVoteRemove` tournent quand quelqu’un vote dans un sondage, ou retire son vote. `answerId` dit pour quelle réponse : Discord les numérote dans l’ordre du sondage, `1` pour la première.
 
-```ts src/events/pollVoteAdd/log.ts
+```ts src/events/log.ts
 import { event } from 'chapterjs';
 
-export default event(({ user, answerId, channel }) => {
-  console.log(`${user.username} a voté pour la réponse ${answerId} dans #${channel.name}`);
+export default event({
+  name: 'pollVoteAdd',
+  run({ user, answerId, channel }) {
+    console.log(`${user.username} a voté pour la réponse ${answerId} dans #${channel.name}`);
+  },
 });
 ```
 
@@ -106,11 +119,14 @@ Ils prennent `where` aussi. Un sondage s’envoie avec un message : voir [Envoye
 
 `typingStart` tourne quand quelqu’un commence à écrire dans un salon. `startedAt` dit quand.
 
-```ts src/events/typingStart/log.ts
+```ts src/events/log.ts
 import { event } from 'chapterjs';
 
-export default event(({ member, channel, startedAt }) => {
-  console.log(`${member.displayName} a commencé à écrire dans #${channel.name} à ${startedAt.toLocaleTimeString()}`);
+export default event({
+  name: 'typingStart',
+  run({ member, channel, startedAt }) {
+    console.log(`${member.displayName} a commencé à écrire dans #${channel.name} à ${startedAt.toLocaleTimeString()}`);
+  },
 });
 ```
 

@@ -21,7 +21,7 @@ Meanwhile: a slash command with a `user` option, or a `string` option that takes
 
 Commands written in a message, like `!ban` or `?help`. Not available: a file of `src/commands/` is always a slash command, registered with Discord.
 
-Meanwhile: a file of `src/events/messageCreate/` that reads `message.content`. It needs the [Message Content Intent](/events/messages#message-content-intent), and the person gets none of what a slash command gives: no list of options, no typing help, no permission check before your function runs.
+Meanwhile: a `messageCreate` event that reads `message.content`. It needs the [Message Content Intent](/events/messages#message-content-intent), and the person gets none of what a slash command gives: no list of options, no typing help, no permission check before your function runs.
 
 ## Waiting for an answer
 
@@ -71,7 +71,7 @@ There is no `chapterjs.config.ts`: what your bot does comes from the files of `s
 
 Running your functions in a test, without Discord. Not available: nothing of ChapterJS is made for a test runner.
 
-Meanwhile: keep what can be tested in files starting with `_` (the text of an answer, a calculation), and test those alone. The files of `src/commands/`, `src/events/`, `src/components/` and `src/tasks/` stay thin.
+Meanwhile: keep what can be tested in plain files (the text of an answer, a calculation), and test those alone. A file next to your code named `*.test.ts` or `*.spec.ts` is left to your test runner, never loaded by the bot. The declarations of commands, events, components and tasks stay thin.
 
 ## Sharing files between bots
 

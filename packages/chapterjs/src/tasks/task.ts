@@ -1,5 +1,5 @@
-// `task()`, as the files of `src/tasks/` import it from 'chapterjs': what
-// the bot does by itself, at intervals or at given times.
+// `task()`, as user files import it from 'chapterjs': what the bot does by
+// itself, at intervals or at given times.
 
 import type { Snowflake } from '../discord/types/common.js';
 import type { Guild } from '../structures/guild.js';
@@ -55,11 +55,11 @@ export interface CronTaskConfig extends TaskConfigBase {
   every?: never;
 }
 
-/** What a task file gives to `task()`: when it runs, and what it does. */
+/** What a file gives to `task()`: when it runs, and what it does. */
 export type TaskConfig = EveryTaskConfig | CronTaskConfig;
 
-/** What `task()` returns: the default export of a task file. */
-export interface TaskFile {
+/** What `task()` returns: a declaration the framework finds in the exports of a file. */
+export interface TaskDeclaration {
   /** What the file gave to `task()`, not checked yet. */
   readonly config: unknown;
 }
@@ -67,14 +67,13 @@ export interface TaskFile {
 const BRAND = Symbol.for('chapterjs.task');
 
 /**
- * Declares a task: something the bot does by itself. Export the result as
- * the default export of a file of `src/tasks/`: the name of the file is
- * the name of the task.
+ * Declares a task: something the bot does by itself. Export the result
+ * from any file of `src/`: the name of the export is the name of the task.
  *
  * ```ts
  * import { task } from 'chapterjs';
  *
- * export default task({
+ * export const watch = task({
  *   every: '10m',
  *   async run({ guilds }) {
  *     console.log(`Watching ${guilds.size} servers`);
@@ -82,12 +81,12 @@ const BRAND = Symbol.for('chapterjs.task');
  * });
  * ```
  */
-export function task(config: TaskConfig): TaskFile {
+export function task(config: TaskConfig): TaskDeclaration {
   return Object.freeze({ [BRAND]: true, config });
 }
 
 /** Whether a value was made by `task()`. */
-export function isTaskFile(value: unknown): value is TaskFile {
+export function isTaskDeclaration(value: unknown): value is TaskDeclaration {
   return (
     typeof value === 'object' &&
     value !== null &&

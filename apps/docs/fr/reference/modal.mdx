@@ -3,9 +3,9 @@ title: 'modal()'
 description: 'Tout ce que déclare un fichier de formulaire, chaque sorte de champ, et ce que reçoit la fonction run pour chacun'
 ---
 
-`modal()` est ce qu’un fichier de `src/components/modals/` exporte par défaut. Elle prend un objet, `ModalConfig`, et type `fields` dans `run` d’après lui.
+`modal()` déclare un formulaire, depuis n’importe quel fichier de `src/` ; le nom de son export est son identifiant. Elle prend un objet, `ModalConfig`, et type `fields` dans `run` d’après lui.
 
-```ts src/components/modals/feedback.ts
+```ts src/components/feedback.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -26,17 +26,17 @@ export default modal({
 ## modal()
 
 ```ts
-modal<Fields extends ModalFields, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ModalConfig<Fields, Data, Where>): ModalFile<Fields, Data>
+modal<Fields extends ModalFields, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ModalConfig<Fields, Data, Where>): ModalDeclaration<Fields, Data>
 ```
 
-Déclare un formulaire. Exportez le résultat comme export par défaut d’un fichier de `src/components/modals/` : le chemin du fichier est ce qui distingue le formulaire, donc vous n’écrivez jamais d’identifiant.
+Déclare un formulaire. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est ce qui distingue le formulaire, donc vous n’écrivez jamais d’identifiant.
 
-### ModalFile
+### ModalDeclaration
 
-Ce que renvoie `modal()` : l’export par défaut d’un fichier de formulaire. Importez-le là où quelqu’un utilise une commande ou un composant, et ouvrez-le : `interaction.showModal(report({ userId }))`, ou `interaction.showModal(feedback)` pour un formulaire sans données.
+Ce que renvoie `modal()` : une déclaration que le framework trouve dans les exports d’un fichier. Importez-le là où quelqu’un utilise une commande ou un composant, et ouvrez-le : `interaction.showModal(report({ userId }))`, ou `interaction.showModal(feedback)` pour un formulaire sans données.
 
 ```ts
-type ModalFile<Fields extends ModalFields = ModalFields, Data extends DataShape = {}> = { readonly config: unknown } &
+type ModalDeclaration<Fields extends ModalFields = ModalFields, Data extends DataShape = {}> = { readonly config: unknown } &
   ({} extends Data
     ? ((options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
     : {} extends DataInputOf<Data>

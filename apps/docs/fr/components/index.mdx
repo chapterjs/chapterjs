@@ -3,9 +3,9 @@ title: 'Boutons'
 description: 'Ajouter des boutons à vos messages, lancer du code quand on clique, et modifier le message sur lequel ils sont'
 ---
 
-Un bouton est un fichier de `src/components/buttons/`. Il dit à quoi ressemble le bouton et quoi faire quand quelqu’un clique dessus ; vous n’écrivez jamais d’identifiant.
+Un bouton se déclare avec `button()`, dans n’importe quel fichier de `src/`, et s’exporte. Il dit à quoi ressemble le bouton et quoi faire quand quelqu’un clique dessus ; vous n’écrivez jamais d’identifiant.
 
-```ts src/components/buttons/again.ts
+```ts src/components/again.ts
 import { button } from 'chapterjs';
 
 const again = button({
@@ -27,9 +27,10 @@ Importez-le là où vous envoyez un message, et donnez-lui ses données :
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
-import again from '../components/buttons/again';
+import again from '../components/again';
 
 export default command({
+  name: 'ping',
   description: 'Répond Pong !',
   async run({ interaction }) {
     await interaction.reply({
@@ -40,7 +41,7 @@ export default command({
 });
 ```
 
-C’est tout : le chemin du fichier (`buttons/again`) est ce que Discord renvoie quand on clique sur le bouton, avec les données que transporte le bouton. ChapterJS trouve le fichier, vérifie que les données correspondent toujours, et lance votre fonction avec `data.count` sous forme de nombre. Les boutons qui se suivent sont mis en rangées pour vous, 5 par rangée.
+C’est tout : le nom de l’export (`again` ; pour un export par défaut, le nom du fichier) est ce que Discord renvoie quand on clique sur le bouton, avec les données que transporte le bouton. ChapterJS trouve le bouton, vérifie que les données correspondent toujours, et lance votre fonction avec `data.count` sous forme de nombre. Les boutons qui se suivent sont mis en rangées pour vous, 5 par rangée.
 
 <Note>
   Tout ce que déclare un fichier de bouton, et les types derrière, sont dans la
@@ -54,7 +55,7 @@ C’est tout : le chemin du fichier (`buttons/again`) est ce que Discord renvoie
 
 Une valeur peut avoir une valeur par défaut, ce qui la rend facultative là où le bouton est mis dans un message : `data: { page: { type: 'number', default: 1 } }`. Alors `next()`, `next({})` et `next` seul transportent `page: 1`, `next({ page: 7 })` transporte 7, et `run` reçoit toujours un nombre. Une mauvaise valeur par défaut (`default: 'one'` sur un `'number'`) est soulignée, et refusée au chargement du fichier.
 
-```ts src/components/buttons/ban.ts
+```ts src/components/ban.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -70,9 +71,10 @@ export default button({
 
 ```ts src/commands/mod/ban.ts
 import { command } from 'chapterjs';
-import ban from '../../components/buttons/ban';
+import ban from '../../components/ban';
 
 export default command({
+  name: 'mod ban',
   description: 'Bannit un membre, après confirmation',
   options: {
     who: { type: 'user', description: 'Qui bannir', required: true },
@@ -89,16 +91,16 @@ export default command({
 Discord donne 100 caractères à l’identifiant d’un bouton et à ses données ensemble. En transporter trop est une erreur à l’endroit où le bouton est fabriqué, avec la place qu’il reste :
 
 ```text
-The data of buttons/ban is 95 characters long once encoded, and Discord leaves 88 for it (its id is buttons/ban, 11 characters, out of 100). Carry less: an id instead of a name, or a shorter file name.
+The data of ban is 97 characters long once encoded, and Discord leaves 96 for it (its id is ban, 3 characters, out of 100). Carry less: an id instead of a name, or a shorter export name.
 ```
 
 Un bouton sans `data` s’utilise tel quel, sans l’appeler : `components: [confirm]`.
 
 ## Son apparence
 
-`label`, `emoji`, `style` (`'primary'`, `'secondary'`, `'success'` ou `'danger'`) et `disabled` sont l’apparence du bouton. Le fichier donne l’apparence par défaut ; là où vous mettez le bouton dans un message, un second argument la change pour ce message seulement :
+`label`, `emoji`, `style` (`'primary'`, `'secondary'`, `'success'` ou `'danger'`) et `disabled` sont l’apparence du bouton. La déclaration donne l’apparence par défaut ; là où vous mettez le bouton dans un message, un second argument la change pour ce message seulement :
 
-```ts src/components/buttons/next.ts
+```ts src/components/next.ts
 import { button } from 'chapterjs';
 
 const next = button({
@@ -121,12 +123,13 @@ const next = button({
 export default next;
 ```
 
-Un bouton qui ouvre un lien n’a pas de fichier : rien ne tourne dans votre bot quand on clique dessus. Écrivez-le là où est le message, avec `linkButton()` :
+Un bouton qui ouvre un lien ne se déclare pas : rien ne tourne dans votre bot quand on clique dessus. Écrivez-le là où est le message, avec `linkButton()` :
 
 ```ts src/commands/docs.ts
 import { command, linkButton } from 'chapterjs';
 
 export default command({
+  name: 'docs',
   description: 'Renvoie vers la documentation',
   async run({ interaction }) {
     await interaction.reply({
@@ -154,14 +157,14 @@ L’`interaction` d’un bouton a tout ce qu’a l’interaction d’une command
 Discord veut une réponse en moins de 3 secondes. Après 2 secondes sans réponse, ChapterJS répond que rien ne change pour l’instant, la personne ne voit rien, et votre `update()` ou `reply()` la complète plus tard. Un bouton qui se termine sans répondre déclenche un avertissement dans votre terminal, puisque la personne lit « Échec de l’interaction » :
 
 ```text
-⚠ src/components/buttons/silent.ts buttons/silent finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run, or interaction.deferUpdate() to change nothing.
+⚠ src/components/silent.ts silent finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run, or interaction.deferUpdate() to change nothing.
 ```
 
 ## Qui peut cliquer
 
 Par défaut, tous ceux qui voient le message peuvent cliquer. `who: 'author'` réserve un bouton à la personne qui a utilisé la commande à laquelle le message répond ; n’importe qui d’autre lit « Only the person who used the command can use this button. », en privé.
 
-```ts src/components/buttons/cancel.ts
+```ts src/components/cancel.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -176,9 +179,9 @@ export default button({
 
 Comme une commande, un bouton a un `where` (`'guild'` par défaut, `'dm'` ou `'both'`), qui décide de ce que reçoit `run` à propos de l’endroit : voir [Serveurs et messages privés](/fr/commands#serveurs-et-messages-privés), cela fonctionne de la même façon.
 
-## Quand le fichier change
+## Quand le bouton change
 
-Un bouton reste dans les messages où il a été envoyé. Quand son fichier est renommé ou supprimé, un clic sur un vieux message répond « This button is not available any more. » ; quand ses `data` ont changé de forme, « This button is out of date. ». Votre bot ne plante jamais pour un bouton qu’il ne connaît plus.
+Un bouton reste dans les messages où il a été envoyé. Quand son export est renommé ou supprimé, un clic sur un vieux message répond « This button is not available any more. » ; quand ses `data` ont changé de forme, « This button is out of date. ». Votre bot ne plante jamais pour un bouton qu’il ne connaît plus. Déplacer le fichier ne change rien : le nom de l’export est ce qui compte.
 
 <CardGroup cols={2}>
   <Card title="Menus déroulants" icon="list" href="/fr/components/selects">

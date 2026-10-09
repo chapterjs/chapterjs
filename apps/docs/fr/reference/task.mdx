@@ -3,7 +3,7 @@ title: 'task()'
 description: 'Tout ce que déclare un fichier de tâche : son horaire, son fuseau horaire, et ce que reçoit la fonction run'
 ---
 
-`task()` est ce qu’un fichier de `src/tasks/` exporte par défaut. Elle prend un objet, `TaskConfig`.
+`task()` déclare une tâche, depuis n’importe quel fichier de `src/`, et le nom de son export est le nom de la tâche. Elle prend un objet, `TaskConfig`.
 
 ```ts src/tasks/cleanup.ts
 import { task } from 'chapterjs';
@@ -23,14 +23,14 @@ export default task({
 ## task()
 
 ```ts
-task(config: TaskConfig): TaskFile
+task(config: TaskConfig): TaskDeclaration
 ```
 
-Déclare une tâche : quelque chose que le bot fait tout seul. Exportez le résultat comme export par défaut d’un fichier de `src/tasks/` : le nom du fichier est le nom de la tâche.
+Déclare une tâche : quelque chose que le bot fait tout seul. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est le nom de la tâche.
 
-### TaskFile
+### TaskDeclaration
 
-Ce que renvoie `task()` : l’export par défaut d’un fichier de tâche.
+Ce que renvoie `task()` : une déclaration que le framework trouve dans les exports d’un fichier.
 
 <ResponseField name="config" type="unknown">
   Ce que le fichier a donné à `task()`, pas encore vérifié.
@@ -86,4 +86,4 @@ Ce que reçoit `run` : le bot, tel que le donne l’événement `ready`, et l’
   Le moment où ce passage était prévu.
 </ResponseField>
 
-Une tâche reçoit aussi `t`, dans la langue par défaut, quand le projet a une langue dans `src/messages/` : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
+Une tâche reçoit aussi `t`, dans la langue par défaut, quand le projet a une langue : voir [`TranslationContext`](/fr/reference/messages#translationcontext).

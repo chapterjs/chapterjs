@@ -45,8 +45,11 @@ import {
 
 const PING = `import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  if (message.content === '!ping') await message.reply('pong');
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content === '!ping') await message.reply('pong');
+  },
 });
 `;
 
@@ -78,8 +81,11 @@ describe.skipIf(process.platform === 'win32')('chapterjs dev', () => {
     const cwd = project({
       'src/events/messageCreate/ping.ts': PING,
       'src/events/ready/hello.ts': `import { event } from 'chapterjs';
-export default event(({ user, guilds }) => {
-  console.log(\`hello from \${user.username} in \${[...guilds.values()].map(guild => guild.name).join('+')}\`);
+export default event({
+  name: 'ready',
+  run({ user, guilds }) {
+    console.log(\`hello from \${user.username} in \${[...guilds.values()].map(guild => guild.name).join('+')}\`);
+  },
 });
 `,
     });
@@ -172,8 +178,11 @@ export default event(({ user, guilds }) => {
       'src/lib/answer.ts': `export const answer: string = 'pong';\n`,
       'src/events/messageCreate/ping.ts': `import { event } from 'chapterjs';
 import { answer } from '../../lib/answer';
-export default event(async ({ message }) => {
-  if (message.content === '!ping') await message.reply(answer);
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content === '!ping') await message.reply(answer);
+  },
 });
 `,
     });
@@ -202,8 +211,11 @@ export default event(async ({ message }) => {
     writeFileSync(
       join(cwd, 'src/events/messageCreate/echo.ts'),
       `import { event } from 'chapterjs';
-export default event(async ({ message }) => {
-  if (message.content.startsWith('!echo ')) await message.reply(message.content.slice(6));
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content.startsWith('!echo ')) await message.reply(message.content.slice(6));
+  },
 });
 `
     );
@@ -269,15 +281,21 @@ export default event(async ({ message }) => {
       'src/events/messageCreate/ping.ts': PING,
       'src/events/messageCreate/crash.ts': `import { event } from 'chapterjs';
 
-export default event(({ message }) => {
-  if (message.content === '!crash') {
-    throw new Error('this handler is broken');
-  }
+export default event({
+  name: 'messageCreate',
+  run({ message }) {
+    if (message.content === '!crash') {
+      throw new Error('this handler is broken');
+    }
+  },
 });
 `,
       'src/events/messageCreate/refused.ts': `import { event } from 'chapterjs';
-export default event(async ({ message }) => {
-  if (message.content === '!pin') await message.pin();
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content === '!pin') await message.pin();
+  },
 });
 `,
     });
@@ -289,7 +307,7 @@ export default event(async ({ message }) => {
       rawMessage('100000000000000070', '!crash')
     );
     await cli.waitFor(
-      '✗ src/events/messageCreate/crash.ts:5 this handler is broken'
+      '✗ src/events/messageCreate/crash.ts:7 this handler is broken'
     );
     // Discord refusing an action is reported the same way.
     fake.discord.on(
@@ -305,7 +323,7 @@ export default event(async ({ message }) => {
       rawMessage('100000000000000071', '!pin')
     );
     await cli.waitFor(
-      /✗ src\/events\/messageCreate\/refused\.ts:3 Discord refused PUT .+ Missing Permissions \(50013\)/
+      /✗ src\/events\/messageCreate\/refused\.ts:5 Discord refused PUT .+ Missing Permissions \(50013\)/
     );
     connection.dispatch(
       'MESSAGE_CREATE',
@@ -316,40 +334,34 @@ export default event(async ({ message }) => {
 
   it.each([
     [
-      'a file that exports nothing',
-      'src/events/messageCreate/bad.ts',
-      `export const nope = 1;\n`,
-      /✗ src\/events\/messageCreate\/bad\.ts This file has no default export\. It should look like: import \{ event \} from 'chapterjs'; export default event\(/,
+      'an event without a name',
+      'src/events/bad.ts',
+      `import { event } from 'chapterjs';\nexport default event({ run() {} } as never);\n`,
+      /✗ src\/events\/bad\.ts This event has no "name": the event to react to, like event\(\{ name: 'messageCreate', run\(\{ message \}\) \{ \.\.\. \} \}\)\. Events are: ready, messageCreate/,
     ],
     [
-      'a file whose default export is not a function',
-      'src/events/ready/bad.ts',
-      `export default { run() {} };\n`,
-      /✗ src\/events\/ready\/bad\.ts The default export of this file must be what event\(\) returns: import \{ event \}/,
+      'a name that is not an event',
+      'src/events/memberjoin/bad.ts',
+      `import { event } from 'chapterjs';\nexport default event({ name: 'memberjoin', run() {} } as never);\n`,
+      /✗ src\/events\/memberjoin\/bad\.ts "memberjoin" is not an event\. Did you mean "memberJoin"\? Events are: ready, messageCreate/,
     ],
     [
-      'a file that exports its function without event()',
-      'src/events/ready/bad.ts',
-      `export default () => {};\n`,
-      /✗ src\/events\/ready\/bad\.ts The default export of this file must be what event\(\) returns/,
+      'a name that is nothing like an event',
+      'src/events/bad.ts',
+      `import { event } from 'chapterjs';\nexport const weird = event({ name: 42, run() {} } as never);\n`,
+      /✗ src\/events\/bad\.ts \(weird\) 42 is not an event\. Events are: ready, messageCreate/,
     ],
     [
-      'a file that gives event() something that is not a function',
+      'event() without an object',
       'src/events/ready/bad.ts',
       `import { event } from 'chapterjs';\n\nexport default event('nope' as never);\n`,
-      /✗ src\/events\/ready\/bad\.ts:3 event\(\) needs the function to run when the event happens/,
+      /✗ src\/events\/ready\/bad\.ts event\(\) needs an object: event\(\{ name: 'messageCreate', run\(\{ message \}\) \{ \.\.\. \} \}\)/,
     ],
     [
-      'a folder that is not an event',
-      'src/events/memberjoin/bad.ts',
-      `console.log('this file ran');\nexport default () => {};\n`,
-      /✗ src\/events\/memberjoin\/bad\.ts The folder src\/events\/memberjoin is not named after an event\. Did you mean "memberJoin"\? Events are: ready, messageCreate/,
-    ],
-    [
-      'a file that is not in an event folder',
-      'src/events/bad.ts',
-      `console.log('this file ran');\nexport default () => {};\n`,
-      /✗ src\/events\/bad\.ts This file is directly in src\/events\/\. Put it in a folder named after the event it reacts to, like src\/events\/messageCreate\/bad\.ts/,
+      'an event without run',
+      'src/events/ready/bad.ts',
+      `import { event } from 'chapterjs';\nexport default event({ name: 'ready' } as never);\n`,
+      /✗ src\/events\/ready\/bad\.ts This ready event has no "run": the function to run when it happens, like event\(\{ name: 'messageCreate', run\(\{ message \}\) \{ \.\.\. \} \}\)/,
     ],
     [
       'a file that crashes while loading',
@@ -367,17 +379,31 @@ export default event(async ({ message }) => {
       );
       await cli.waitFor(message);
       await cli.waitFor('✓ 1 event loaded');
-      // A misplaced file is never run.
-      expect(cli.output).not.toContain('this file ran');
     }
   );
+
+  it('ignores what a file exports that the framework did not make', async () => {
+    const fake = await world();
+    const cli = runDev(
+      project({
+        'src/events/messageCreate/ping.ts': PING,
+        // Plain code, a function, an object that looks like a declaration:
+        // all left to the project, with nothing to say.
+        'src/lib/stuff.ts': `console.log('this file ran');\nexport const nope = 1;\nexport default () => {};\nexport const config = { name: 'ready', run() {} };\n`,
+      }),
+      fake
+    );
+    await cli.waitFor('✓ 1 event loaded');
+    expect(cli.output).toContain('this file ran');
+    expect(cli.output).not.toMatch(/[✗⚠]/);
+  });
 
   it('starts with no event at all, only asking Discord for the minimum', async () => {
     const fake = await world({ flags: 0 });
     const cli = runDev(project({ 'src/commands/.gitkeep': '' }), fake);
     await cli.waitFor('ℹ Intents computed from your files: GUILDS');
     await cli.waitFor(
-      'ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/'
+      "ℹ Nothing to run yet: export a command or an event from a file of src/, like export default command({ name: 'ping', ... })"
     );
     const connection = await connected(fake);
     expect(
@@ -400,8 +426,11 @@ export default event(async ({ message }) => {
     writeFileSync(
       join(cwd, 'src/events/memberJoin/welcome.ts'),
       `import { event } from 'chapterjs';
-export default event(({ member, guild }) => {
-  console.log(\`welcome \${member.displayName} to \${guild.name}\`);
+export default event({
+  name: 'memberJoin',
+  run({ member, guild }) {
+    console.log(\`welcome \${member.displayName} to \${guild.name}\`);
+  },
 });
 `
     );
@@ -439,23 +468,35 @@ export default event(({ member, guild }) => {
     const fake = await world();
     const cwd = project({
       'src/events/memberLeave/left.ts': `import { event } from 'chapterjs';
-export default event(({ user, member, guild }) => {
-  console.log(\`left: \${user.username} nick=\${member?.nick} count=\${guild.memberCount}\`);
+export default event({
+  name: 'memberLeave',
+  run({ user, member, guild }) {
+    console.log(\`left: \${user.username} nick=\${member?.nick} count=\${guild.memberCount}\`);
+  },
 });
 `,
       'src/events/roleDelete/role.ts': `import { event } from 'chapterjs';
-export default event(({ role, roleId }) => {
-  console.log(\`role deleted: \${role.name} \${roleId} of \${role.guild.name}\`);
+export default event({
+  name: 'roleDelete',
+  run({ role, roleId }) {
+    console.log(\`role deleted: \${role.name} \${roleId} of \${role.guild.name}\`);
+  },
 });
 `,
       'src/events/guildJoin/guild.ts': `import { event } from 'chapterjs';
-export default event(({ guild }) => {
-  console.log(\`joined: \${guild.name}\`);
+export default event({
+  name: 'guildJoin',
+  run({ guild }) {
+    console.log(\`joined: \${guild.name}\`);
+  },
 });
 `,
       'src/events/roleCreate/frozen.ts': `import { event } from 'chapterjs';
-export default event((context) => {
-  (context as { role: unknown }).role = null;
+export default event({
+  name: 'roleCreate',
+  run(context) {
+    (context as { role: unknown }).role = null;
+  },
 });
 `,
     });
@@ -488,7 +529,7 @@ export default event((context) => {
     });
     // What a handler receives can't be changed for the others.
     await cli.waitFor(
-      /✗ src\/events\/roleCreate\/frozen\.ts:3 Cannot assign to read only property 'role'/
+      /✗ src\/events\/roleCreate\/frozen\.ts:5 Cannot assign to read only property 'role'/
     );
     connection.dispatch('GUILD_ROLE_DELETE', {
       guild_id: GUILD,
@@ -657,8 +698,8 @@ describe.skipIf(process.platform === 'win32')(
       const output = await failing(
         project({
           ...files,
-          'src/events/memberJoin/welcome.ts': `import { event } from 'chapterjs';\nexport default event(() => {});\n`,
-          'src/events/memberLeave/bye.ts': `import { event } from 'chapterjs';\nexport default event(() => {});\n`,
+          'src/events/memberJoin/welcome.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'memberJoin', run() {} });\n`,
+          'src/events/memberLeave/bye.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'memberLeave', run() {} });\n`,
         }),
         fake
       );
@@ -1226,51 +1267,33 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
   const read = (cwd: string, path: string) =>
     readFileSync(join(cwd, '.chapterjs', path), 'utf8');
 
-  it('is written by sync: one project per event, and it ignores itself in git', async () => {
+  it('is written by sync: one project for src/, and it ignores itself in git', async () => {
     const fake = await world();
     const cwd = project({});
     const { code, output } = await runDev(cwd, fake, ['sync']).exited;
     expect(code).toBe(0);
     expect(output).toBe('✓ Types written to .chapterjs/\n');
 
-    expect(read(cwd, 'types/events.memberJoin.d.ts')).toBe(
-      "// Written by ChapterJS: do not edit, it is overwritten.\nexport * from '../../node_modules/chapterjs/dist/index.js';\nimport type { ContextOf, EventFile } from '../../node_modules/chapterjs/dist/index.js';\n\n/**\n * Says what to do when `memberJoin` happens. Export the result as the default\n * export of a file of src/events/memberJoin/.\n */\nexport declare function event(\n  handler: (context: ContextOf<'memberJoin'>) => unknown\n): EventFile;\n"
-    );
-    expect(JSON.parse(read(cwd, 'projects/events.memberJoin.json'))).toEqual({
-      extends: '../../tsconfig.json',
-      compilerOptions: {
-        paths: { chapterjs: ['../types/events.memberJoin.d.ts'] },
-      },
-      include: [
-        '../../src/events/**/memberJoin',
-        '../types/events.memberJoin.d.ts',
-        '../types/shared.d.ts',
-      ],
-    });
-    const main = JSON.parse(read(cwd, 'projects/main.json'));
-    expect(main.include).toEqual(['../../src', '../types/shared.d.ts']);
-    expect(main.exclude.sort()).toEqual(
-      EVENT_NAMES.map(name => `../../src/events/**/${name}`).sort()
-    );
     expect(JSON.parse(read(cwd, 'tsconfig.json'))).toEqual({
-      files: [],
-      references: [
-        { path: './projects/main.json' },
-        ...EVENT_NAMES.map(name => ({
-          path: `./projects/events.${name}.json`,
-        })),
-      ],
+      extends: '../tsconfig.json',
+      include: ['../src', './types/project.d.ts'],
     });
-    expect(readdirSync(join(cwd, '.chapterjs/types')).sort()).toEqual(
-      [...EVENT_NAMES.map(name => `events.${name}.d.ts`), 'shared.d.ts'].sort()
+    expect(readdirSync(join(cwd, '.chapterjs')).sort()).toEqual([
+      '.gitignore',
+      'tsconfig.json',
+      'types',
+    ]);
+    expect(readdirSync(join(cwd, '.chapterjs/types'))).toEqual([
+      'project.d.ts',
+    ]);
+    // What the project adds to 'chapterjs': here, a public/ folder with
+    // nothing in it, and no language.
+    const types = read(cwd, 'types/project.d.ts');
+    expect(types).toContain(
+      "// Written by ChapterJS: do not edit, it is overwritten.\nimport type { AssetFile, AssetOptions } from '../../node_modules/chapterjs/dist/index.js';\n\ndeclare module 'chapterjs' {"
     );
-    // What every file gets: here, a public/ folder with nothing in it.
-    expect(read(cwd, 'types/shared.d.ts')).toContain(
-      "declare module 'chapterjs' {"
-    );
-    expect(read(cwd, 'types/shared.d.ts')).toContain(
-      'export type PublicFile = never;'
-    );
+    expect(types).toContain('export type PublicFile = never;');
+    expect(types).not.toContain('ProjectMessages');
     expect(read(cwd, '.gitignore')).toBe('*\n');
     // Nothing was asked to Discord, and no .env is needed.
     expect(fake.discord.requests).toHaveLength(0);
@@ -1281,7 +1304,7 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
     const cwd = project({ 'src/events/messageCreate/ping.ts': PING });
     const first = runDev(cwd, fake);
     await first.waitFor('✓ Connected');
-    const file = join(cwd, '.chapterjs/types/events.ready.d.ts');
+    const file = join(cwd, '.chapterjs/types/project.d.ts');
     const before = statSync(file).mtimeMs;
     first.signal('SIGTERM');
     await first.exited;
@@ -1292,14 +1315,17 @@ describe.skipIf(process.platform === 'win32')('the generated folder', () => {
     // A file someone changed by hand is put back, what an older version
     // wrote is removed, and what TypeScript keeps there is left alone.
     writeFileSync(file, 'export {};\n');
-    const stale = join(cwd, '.chapterjs/types/src/events/ready/$types.d.ts');
-    mkdirSync(join(stale, '..'), { recursive: true });
+    const stale = join(cwd, '.chapterjs/types/events.ready.d.ts');
     writeFileSync(stale, 'export type Event = never;\n');
-    const buildInfo = join(cwd, '.chapterjs/projects/main.tsbuildinfo');
+    const older = join(cwd, '.chapterjs/projects/main.json');
+    mkdirSync(join(older, '..'), { recursive: true });
+    writeFileSync(older, '{}');
+    const buildInfo = join(cwd, '.chapterjs/tsconfig.tsbuildinfo');
     writeFileSync(buildInfo, '{}');
     await runDev(cwd, fake, ['sync']).exited;
-    expect(readFileSync(file, 'utf8')).toContain("ContextOf<'ready'>");
+    expect(readFileSync(file, 'utf8')).toContain('PublicFile');
     expect(existsSync(stale)).toBe(false);
+    expect(existsSync(older)).toBe(false);
     expect(existsSync(buildInfo)).toBe(true);
   });
 
@@ -1311,22 +1337,25 @@ export const nameOf = (member: GuildMember): string => member.displayName;
 `,
       'src/events/memberJoin/ok.ts': `import { event } from 'chapterjs';
 import { nameOf } from '../../lib/names';
-export default event(async ({ member, guild }) => {
-  await member.send(\`Welcome to \${guild.name}, \${nameOf(member)}\`);
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild }) {
+    await member.send(\`Welcome to \${guild.name}, \${nameOf(member)}\`);
+  },
 });
 `,
       'src/events/memberJoin/deep/ok.ts': `import { event, type Guild } from 'chapterjs';
-export default event(({ guild }) => { const same: Guild = guild; return same; });
+export default event({ name: 'memberJoin', run({ guild }) { const same: Guild = guild; return same; } });
 `,
       'src/events/messageCreate/wrong.ts': `import { event } from 'chapterjs';
-export default event(({ member }) => member);
+export default event({ name: 'messageCreate', run: ({ member }) => member });
 `,
       'src/events/memberLeave/wrong.ts': `import { event } from 'chapterjs';
-export default event(({ member }) => member.id);
+export default event({ name: 'memberLeave', run: ({ member }) => member.id });
 `,
       // What can't be missing in a server is not nullable.
       'src/events/roleDelete/ok.ts': `import { event } from 'chapterjs';
-export default event(({ role, guild }) => role.name + role.guild.name + guild.everyoneRole.id + guild.me.displayName);
+export default event({ name: 'roleDelete', run: ({ role, guild }) => role.name + role.guild.name + guild.everyoneRole.id + guild.me.displayName });
 `,
       'src/lib/wrong.ts': `export const count: number = 'three';\n`,
     });
@@ -1366,19 +1395,26 @@ describe.skipIf(process.platform === 'win32')('private messages', () => {
   const PRIVATE = '100000000000000090';
   const log = (
     label: string,
-    options = ''
+    options = '',
+    name = 'messageCreate'
   ) => `import { event } from 'chapterjs';
-export default event(({ message }) => {
-  console.log(\`${label}: \${message.content} in \${message.guild?.name ?? 'private'} by \${message.member?.displayName ?? 'no member'}\`);
-}${options});
+export default event({
+  name: '${name}',${options.replace(/^, \{(.*)\}$/, '$1,')}
+  run({ message }) {
+    console.log(\`${label}: \${message.content} in \${message.guild?.name ?? 'private'} by \${message.member?.displayName ?? 'no member'}\`);
+  },
+});
 `;
   const gone = (
     label: string,
     options = ''
   ) => `import { event } from 'chapterjs';
-export default event(({ messageId, guildId }) => {
-  console.log(\`${label}: \${messageId} of \${guildId}\`);
-}${options});
+export default event({
+  name: 'messageDelete',${options.replace(/^, \{(.*)\}$/, '$1,')}
+  run({ messageId, guildId }) {
+    console.log(\`${label}: \${messageId} of \${guildId}\`);
+  },
+});
 `;
   /** A message as Discord sends it in a private conversation. */
   const privateMessage = (id: string, content: string, extra = {}) => {
@@ -1412,10 +1448,11 @@ export default event(({ messageId, guildId }) => {
           'any',
           ", { where: 'both', bots: true }"
         ),
-        'src/events/messageUpdate/servers.ts': log('edit'),
+        'src/events/messageUpdate/servers.ts': log('edit', '', 'messageUpdate'),
         'src/events/messageUpdate/all.ts': log(
           'any edit',
-          ", { where: 'both' }"
+          ", { where: 'both' }",
+          'messageUpdate'
         ),
         'src/events/messageDelete/servers.ts': gone('deleted'),
         'src/events/messageDelete/all.ts': gone(
@@ -1597,11 +1634,14 @@ export default event(({ messageId, guildId }) => {
     [
       'ready',
       `import { event } from 'chapterjs';
-export default event(async ({ guilds }) => {
-  for (const guild of guilds.values()) {
-    const channel = [...guild.channels.values()].find(channel => channel.isVoice());
-    if (channel?.isVoice()) await channel.join();
-  }
+export default event({
+  name: 'ready',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const channel = [...guild.channels.values()].find(channel => channel.isVoice());
+      if (channel?.isVoice()) await channel.join();
+    }
+  },
 });
 `,
       'GUILDS, GUILD_VOICE_STATES',
@@ -1641,8 +1681,8 @@ export default event(async ({ guilds }) => {
     expect(identify.intents & GatewayIntent.DirectMessages).toBe(0);
     // Said once for each file that can only be tried in production.
     for (const [file, what] of [
-      ['src/events/messageCreate/only.ts', 'this messageCreate file'],
-      ['src/events/messageDelete/only.ts', 'this messageDelete file'],
+      ['src/events/messageCreate/only.ts', 'this messageCreate event'],
+      ['src/events/messageDelete/only.ts', 'this messageDelete event'],
     ]) {
       expect(cli.output).toContain(
         `ℹ ${file} ${what} only works in private messages, and chapterjs dev only runs your bot in Dev Server. Try it with chapterjs start.`
@@ -1680,7 +1720,7 @@ export default event(async ({ guilds }) => {
   it('are typed: the server and the member are there unless an option says otherwise', async () => {
     const fake = await world();
     const file = (body: string, options = '') =>
-      `import { event } from 'chapterjs';\nexport default event(({ message }) => ${body}${options});\n`;
+      `import { event } from 'chapterjs';\nexport default event({ name: 'messageCreate',${options.replace(/^, \{(.*)\}$/, '$1,')} run: ({ message }) => ${body} });\n`;
     const cwd = project({
       'src/events/messageCreate/servers.ts': file(
         'message.guild.name + message.guildId.length + message.member.displayName + message.channel.name + message.member.guild.name + message.member.highestRole.name'
@@ -1716,27 +1756,35 @@ export default event(async ({ guilds }) => {
       // Not known to be off: it may be on.
       'src/events/messageCreate/maybe.ts': `import { event } from 'chapterjs';
 const where: 'guild' | 'both' = process.env.DM === 'yes' ? 'both' : 'guild';
-export default event(({ message }) => message.guild.name, { where });
+export default event({ name: 'messageCreate', where, run: ({ message }) => message.guild.name });
 `,
       'src/events/messageCreate/typo.ts': file(
         'message.id',
         ", { where: 'both', wher: true }"
       ),
       'src/events/messageDelete/servers.ts': `import { event } from 'chapterjs';
-export default event(({ guildId, message, channel }) => guildId.length + (message?.guild.name ?? '') + channel.name);
+export default event({ name: 'messageDelete', run: ({ guildId, message, channel }) => guildId.length + (message?.guild.name ?? '') + channel.name });
 `,
       // One check tells the place, for everything at once.
       'src/events/messageCreate/both-ok.ts': `import { event } from 'chapterjs';
-export default event(({ message }) => {
-  if (message.guild) return message.member.displayName + message.channel.name;
-  return message.channel?.recipientId;
-}, { where: 'both' });
+export default event({
+  name: 'messageCreate',
+  where: 'both',
+  run({ message }) {
+    if (message.guild) return message.member.displayName + message.channel.name;
+    return message.channel?.recipientId;
+  },
+});
 `,
       'src/events/messageDelete/both-ok.ts': `import { event } from 'chapterjs';
-export default event(({ guild, channel }) => {
-  if (guild) return guild.name + channel.name;
-  return channel?.recipientId;
-}, { where: 'both' });
+export default event({
+  name: 'messageDelete',
+  where: 'both',
+  run({ guild, channel }) {
+    if (guild) return guild.name + channel.name;
+    return channel?.recipientId;
+  },
+});
 `,
       // Only private messages: nothing about a server exists.
       'src/events/messageCreate/only-ok.ts': file(
@@ -1748,14 +1796,14 @@ export default event(({ guild, channel }) => {
         ", { where: 'dm' }"
       ),
       'src/events/messageDelete/only.ts': `import { event } from 'chapterjs';
-export default event(context => context.guildId, { where: 'dm' });
+export default event({ name: 'messageDelete', where: 'dm', run: context => context.guildId });
 `,
       'src/events/messageCreate/place.ts': file(
         'message.id',
         ", { where: 'server' }"
       ),
       'src/events/messageDelete/dm.ts': `import { event } from 'chapterjs';
-export default event(({ guildId }) => guildId.length, { where: 'both' });
+export default event({ name: 'messageDelete', where: 'both', run: ({ guildId }) => guildId.length });
 `,
     });
     cpSync(
@@ -1799,69 +1847,98 @@ export default event(({ guildId }) => guildId.length, { where: 'both' });
 describe.skipIf(process.platform === 'win32')('the other events', () => {
   it('are typed from their folder and where they listen', async () => {
     const fake = await world();
-    const ev = (body: string, options = '') =>
-      `import { event } from 'chapterjs';\nexport default event(${body}${options});\n`;
+    const ev = (name: string, body: string, options = '') =>
+      `import { event } from 'chapterjs';\nexport default event({ name: '${name}',${options.replace(/^, \{(.*)\}$/, '$1,')} run: ${body} });\n`;
     const cwd = project({
       // In a server: the server, the channel and who reacted are there.
       'src/events/reactionAdd/servers.ts': ev(
+        'reactionAdd',
         '({ guild, channel, member, user, emoji, message }) => guild.name + channel.name + member.displayName + user.username + emoji.name + message?.guild.name'
       ),
       'src/events/reactionAdd/both.ts': ev(
+        'reactionAdd',
         '({ guild, member, channel }) => guild ? member.displayName + channel.name : channel?.recipientId',
         ", { where: 'both', bots: true }"
       ),
       'src/events/reactionAdd/both-bad.ts': ev(
+        'reactionAdd',
         '({ member }) => member.displayName',
         ", { where: 'both' }"
       ),
       'src/events/reactionRemove/member.ts': ev(
+        'reactionRemove',
         '({ member }) => member.displayName'
       ),
       'src/events/reactionRemove/dm.ts': ev(
+        'reactionRemove',
         '(context) => context.guild',
         ", { where: 'dm' }"
       ),
       'src/events/reactionClear/ok.ts': ev(
+        'reactionClear',
         '({ emoji, channel }) => (emoji?.name ?? "all") + channel.name'
       ),
       'src/events/pollVoteAdd/ok.ts': ev(
+        'pollVoteAdd',
         '({ answerId, user, guild }) => answerId + user.username + guild.name'
       ),
       'src/events/typingStart/ok.ts': ev(
+        'typingStart',
         '({ member, startedAt }) => member.displayName + startedAt.getTime()'
       ),
       'src/events/typingStart/bots.ts': ev(
+        'typingStart',
         '({ user }) => user.id',
         ', { bots: true }'
       ),
       'src/events/voiceJoin/ok.ts': ev(
+        'voiceJoin',
         '({ member, channel, voice }) => member.displayName + channel.bitrate + voice.selfMute'
       ),
-      'src/events/voiceMove/ok.ts': ev('({ from, to }) => from.name + to.name'),
+      'src/events/voiceMove/ok.ts': ev(
+        'voiceMove',
+        '({ from, to }) => from.name + to.name'
+      ),
       'src/events/voiceUpdate/ok.ts': ev(
+        'voiceUpdate',
         '({ voice, before }) => voice.selfMute !== before.selfMute'
       ),
       'src/events/banAdd/ok.ts': ev(
+        'banAdd',
         '({ user, guild }) => user.username + guild.name'
       ),
       'src/events/inviteCreate/ok.ts': ev(
+        'inviteCreate',
         '({ invite, channel }) => invite.url + channel.name'
       ),
       'src/events/auditLogEntryCreate/ok.ts': ev(
+        'auditLogEntryCreate',
         '({ entry }) => entry.actionType + (entry.reason ?? "")'
       ),
-      'src/events/emojiDelete/ok.ts': ev('({ emoji }) => emoji.name'),
+      'src/events/emojiDelete/ok.ts': ev(
+        'emojiDelete',
+        '({ emoji }) => emoji.name'
+      ),
       'src/events/threadMemberJoin/ok.ts': ev(
+        'threadMemberJoin',
         '({ thread, member }) => thread.name + member.displayName'
       ),
-      'src/events/threadMemberLeave/bad.ts': ev('({ user }) => user.username'),
+      'src/events/threadMemberLeave/bad.ts': ev(
+        'threadMemberLeave',
+        '({ user }) => user.username'
+      ),
       'src/events/presenceUpdate/ok.ts': ev(
+        'presenceUpdate',
         '({ presence }) => presence.status + presence.activities.length'
       ),
       'src/events/scheduledEventUserAdd/ok.ts': ev(
+        'scheduledEventUserAdd',
         '({ scheduledEventId, user }) => scheduledEventId + user.username'
       ),
-      'src/events/guildUpdate/ok.ts': ev('({ guild }) => guild.name'),
+      'src/events/guildUpdate/ok.ts': ev(
+        'guildUpdate',
+        '({ guild }) => guild.name'
+      ),
     });
     cpSync(
       join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
@@ -1885,10 +1962,10 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       .sort();
     expect(errors).toEqual([
       "src/events/reactionAdd/both-bad.ts: 'member' is possibly 'null'.",
-      `src/events/reactionRemove/dm.ts: Property 'guild' does not exist on type 'ContextOf<"reactionRemove", { readonly where: "dm"; }>'.`,
+      `src/events/reactionRemove/dm.ts: Property 'guild' does not exist on type 'ContextOf<"reactionRemove", OptionsWritten<{ readonly name: "reactionRemove"; readonly where: "dm"; readonly run: unknown; }>>'.`,
       "src/events/reactionRemove/member.ts: 'member' is possibly 'null'.",
       "src/events/threadMemberLeave/bad.ts: 'user' is possibly 'null'.",
-      "src/events/typingStart/bots.ts: Object literal may only specify known properties, and 'bots' does not exist in type 'WhereEventOptions & {}'.",
+      "src/events/typingStart/bots.ts: Type 'true' is not assignable to type 'never'.",
     ]);
   });
 });
@@ -1914,16 +1991,19 @@ describe.skipIf(process.platform === 'win32')('voice', () => {
     const packets = [1, 2, 3, 4, 5].map(n => Buffer.from([0xfc, n]));
     const cwd = project({
       'src/events/ready/music.ts': `import { asset, event } from 'chapterjs';
-export default event(async ({ guilds }) => {
-  for (const guild of guilds.values()) {
-    const channel = guild.channels.get('${VOICE}');
-    if (!channel?.isVoice()) continue;
-    const connection = await channel.join();
-    await connection.play(asset('beep.ogg'));
-    console.log(\`played in \${connection.channel.name}, voice=\${guild.voice === connection}\`);
-    await connection.leave();
-    console.log(\`left, voice=\${guild.voice}\`);
-  }
+export default event({
+  name: 'ready',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const channel = guild.channels.get('${VOICE}');
+      if (!channel?.isVoice()) continue;
+      const connection = await channel.join();
+      await connection.play(asset('beep.ogg'));
+      console.log(\`played in \${connection.channel.name}, voice=\${guild.voice === connection}\`);
+      await connection.leave();
+      console.log(\`left, voice=\${guild.voice}\`);
+    }
+  },
 });
 `,
       'public/beep.ogg': ogg(packets),
@@ -1982,7 +2062,7 @@ export default event(async ({ guilds }) => {
     const cli = runDev(
       project({
         'src/events/ready/names.ts': `import { event } from 'chapterjs';
-export default event(({ guilds }) => console.log([...guilds.keys()].join(', ')));
+export default event({ name: 'ready', run: ({ guilds }) => console.log([...guilds.keys()].join(', ')) });
 `,
       }),
       fake
@@ -2006,8 +2086,11 @@ describe.skipIf(process.platform === 'win32')('who did it', () => {
     const cli = runDev(
       project({
         'src/events/reactionRemove/log.ts': `import { event } from 'chapterjs';
-export default event(({ user, emoji, channel }) => {
-  console.log(\`unreacted: \${user.username} \${emoji.name} in #\${channel.name}\`);
+export default event({
+  name: 'reactionRemove',
+  run({ user, emoji, channel }) {
+    console.log(\`unreacted: \${user.username} \${emoji.name} in #\${channel.name}\`);
+  },
 });
 `,
       }),
@@ -2046,18 +2129,28 @@ describe.skipIf(process.platform === 'win32')(
     const PRIVATE = '100000000000000302';
     const files = {
       'src/events/messageCreate/log.ts': `import { event } from 'chapterjs';
-export default event(({ message }) => {
-  console.log(\`said: \${message.content} in #\${message.channel.name} of \${message.channel.guild.name}\`);
+export default event({
+  name: 'messageCreate',
+  run({ message }) {
+    console.log(\`said: \${message.content} in #\${message.channel.name} of \${message.channel.guild.name}\`);
+  },
 });
 `,
       'src/events/messageCreate/any.ts': `import { event } from 'chapterjs';
-export default event(({ message }) => {
-  console.log(\`any: \${message.content} in \${message.channel?.id ?? 'no channel'}\`);
-}, { where: 'both' });
+export default event({
+  name: 'messageCreate',
+  where: 'both',
+  run({ message }) {
+    console.log(\`any: \${message.content} in \${message.channel?.id ?? 'no channel'}\`);
+  },
+});
 `,
       'src/events/messageDelete/log.ts': `import { event } from 'chapterjs';
-export default event(({ messageId, channel }) => {
-  console.log(\`deleted: \${messageId} in #\${channel.name}\`);
+export default event({
+  name: 'messageDelete',
+  run({ messageId, channel }) {
+    console.log(\`deleted: \${messageId} in #\${channel.name}\`);
+  },
 });
 `,
     };
@@ -2214,11 +2307,15 @@ describe.skipIf(process.platform === 'win32')(
   () => {
     const log = (
       label: string,
-      options = ''
+      options = '',
+      name = 'messageCreate'
     ) => `import { event } from 'chapterjs';
-export default event(({ message }) => {
-  console.log(\`${label}: \${message.content}\`);
-}${options});
+export default event({
+  name: '${name}',${options.replace(/^, \{(.*)\}$/, '$1,')}
+  run({ message }) {
+    console.log(\`${label}: \${message.content}\`);
+  },
+});
 `;
 
     it('only reach the files that asked for them', async () => {
@@ -2234,10 +2331,11 @@ export default event(({ message }) => {
             'explicit',
             ', { bots: false }'
           ),
-          'src/events/messageUpdate/edits.ts': log('edit'),
+          'src/events/messageUpdate/edits.ts': log('edit', '', 'messageUpdate'),
           'src/events/messageUpdate/all-edits.ts': log(
             'any edit',
-            ', { bots: true }'
+            ', { bots: true }',
+            'messageUpdate'
           ),
         }),
         fake
@@ -2305,62 +2403,47 @@ export default event(({ message }) => {
     it.each([
       [
         'messageCreate',
-        '{ bot: true }',
+        'bot: true',
         /✗ src\/events\/messageCreate\/bad\.ts "bot" is not an option of messageCreate\. Options of messageCreate are: bots, where\./,
       ],
       [
         'messageCreate',
-        "{ bots: 'yes' }",
+        "bots: 'yes'",
         /✗ src\/events\/messageCreate\/bad\.ts The option bots of messageCreate is true or false, got "yes"\./,
       ],
       [
-        'messageUpdate',
-        "'bots'",
-        /✗ src\/events\/messageUpdate\/bad\.ts The second argument of event\(\) is its options, like \{ bots: true \}\. Options of messageUpdate are: bots, where\./,
-      ],
-      [
-        'messageCreate',
-        'null',
-        /The second argument of event\(\) is its options/,
-      ],
-      [
         'messageDelete',
-        '{ bots: true }',
+        'bots: true',
         /✗ src\/events\/messageDelete\/bad\.ts "bots" is not an option of messageDelete\. Options of messageDelete are: where\./,
       ],
       [
         'messageDelete',
-        "{ where: 'server' }",
+        "where: 'server'",
         /✗ src\/events\/messageDelete\/bad\.ts The option where of messageDelete is 'guild', 'dm' or 'both', got "server"\./,
       ],
       [
         'messageCreate',
-        '{ where: true }',
+        'where: true',
         /✗ src\/events\/messageCreate\/bad\.ts The option where of messageCreate is 'guild', 'dm' or 'both', got true\./,
       ],
       [
-        'messageDelete',
-        "'both'",
-        /✗ src\/events\/messageDelete\/bad\.ts The second argument of event\(\) is its options, like \{ where: 'both' \}\. Options of messageDelete are: where\./,
-      ],
-      [
         'messageCreate',
-        '{ dm: true }',
+        'dm: true',
         /✗ src\/events\/messageCreate\/bad\.ts "dm" is not an option of messageCreate\./,
       ],
       [
         'ready',
-        '{ bots: true }',
-        /✗ src\/events\/ready\/bad\.ts "bots" is not an option of ready\. ready has no options: remove the second argument of event\(\)\./,
+        'bots: true',
+        /✗ src\/events\/ready\/bad\.ts "bots" is not an option of ready\. ready has no options: an event has a name, a run function, and nothing else\./,
       ],
-      ['memberJoin', '{}', null],
+      ['memberJoin', '', null],
     ])(
-      'checks the options of %s given as %s',
+      'checks the options of %s written as %s',
       async (folder, options, message) => {
         const fake = await world();
         const cli = runDev(
           project({
-            [`src/events/${folder}/bad.ts`]: `import { event } from 'chapterjs';\nexport default event(() => {}, ${options} as never);\n`,
+            [`src/events/${folder}/bad.ts`]: `import { event } from 'chapterjs';\nexport default event({ name: '${folder}', ${options ? `${options}, ` : ''}run() {} } as never);\n`,
           }),
           fake
         );
@@ -2368,7 +2451,7 @@ export default event(({ message }) => {
           await cli.waitFor(message);
           await cli.waitFor('ℹ Nothing to run yet');
         } else {
-          // An empty object asks for nothing: accepted everywhere.
+          // Nothing written asks for nothing: accepted everywhere.
           await cli.waitFor('✓ 1 event loaded');
         }
       }
@@ -2378,13 +2461,13 @@ export default event(({ message }) => {
       const fake = await world();
       const cwd = project({
         'src/events/messageCreate/ok.ts': `import { event } from 'chapterjs';
-export default event(({ message }) => message.id, { bots: true });
+export default event({ name: 'messageCreate', bots: true, run: ({ message }) => message.id });
 `,
         'src/events/messageUpdate/typo.ts': `import { event } from 'chapterjs';
-export default event(({ message }) => message.id, { bot: true });
+export default event({ name: 'messageUpdate', bot: true, run: ({ message }) => message.id });
 `,
         'src/events/memberJoin/none.ts': `import { event } from 'chapterjs';
-export default event(({ member }) => member.id, { bots: true });
+export default event({ name: 'memberJoin', bots: true, run: ({ member }) => member.id });
 `,
       });
       cpSync(
@@ -2397,16 +2480,6 @@ export default event(({ member }) => member.id, { bots: true });
         'dir'
       );
       await runDev(cwd, fake, ['sync']).exited;
-      const types = readFileSync(
-        join(cwd, '.chapterjs/types/events.messageCreate.d.ts'),
-        'utf8'
-      );
-      expect(types).toContain(
-        "const Options extends EventOptions['messageCreate'] = {},"
-      );
-      expect(types).toContain(
-        "handler: (context: ContextOf<'messageCreate', Options>) => unknown,"
-      );
       const result = spawnSync(
         join(packageDir, 'node_modules/.bin/tsc'),
         ['-b'],
@@ -2417,11 +2490,13 @@ export default event(({ member }) => member.id, { bots: true });
         .filter(line => line.includes('error TS'))
         .sort();
       expect(errors).toHaveLength(2);
+      // An option the event does not have is refused as `never`, so the
+      // error sits on the option itself.
       expect(errors[0]).toMatch(
-        /src\/events\/memberJoin\/none\.ts\(2,\d+\): error TS2554: Expected 1 arguments, but got 2/
+        /src\/events\/memberJoin\/none\.ts\(2,\d+\): error TS2322: Type 'true' is not assignable to type 'never'/
       );
       expect(errors[1]).toMatch(
-        /src\/events\/messageUpdate\/typo\.ts\(2,\d+\): error TS\d+: .*'bot'/
+        /src\/events\/messageUpdate\/typo\.ts\(2,\d+\): error TS2322: Type 'true' is not assignable to type 'never'/
       );
     });
   }
@@ -2441,12 +2516,15 @@ import { explicit } from '../../lib/explicit.ts';
 import { deep } from '../../lib/tools';
 import { basename } from 'node:path';
 
-export default event(() => {
-  console.log(['imports', plain, explicit, deep, basename('/a/ok')].join(' '));
+export default event({
+  name: 'ready',
+  run() {
+    console.log(['imports', plain, explicit, deep, basename('/a/ok')].join(' '));
+  },
 });
 `,
       'src/events/ready/nested/with-extension.ts': `import { event } from 'chapterjs';
-export default event(() => console.log('nested ran'));
+export default event({ name: 'ready', run: () => console.log('nested ran') });
 `,
     });
     const cli = runDev(cwd, fake);
@@ -2477,7 +2555,7 @@ export default event(() => console.log('nested ran'));
     const fake = await world();
     const cli = runDev(
       project({
-        'src/events/ready/broken.ts': `import { event } from 'chapterjs';\nimport { nope } from '../../lib/nope';\nexport default event(() => nope);\n`,
+        'src/events/ready/broken.ts': `import { event } from 'chapterjs';\nimport { nope } from '../../lib/nope';\nexport default event({ name: 'ready', run: () => nope });\n`,
       }),
       fake
     );

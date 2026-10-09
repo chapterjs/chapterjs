@@ -14,6 +14,19 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const packageDir = fileURLToPath(new URL('..', import.meta.url));
+
+/** Where a declaration is, for the `read` of a declaration kind: the export `name` of `file`. */
+export const site = (file: string, name = 'default') => ({
+  file,
+  export: name,
+  name:
+    name === 'default'
+      ? file
+          .split('/')
+          .pop()!
+          .replace(/\.[^.]+$/, '')
+      : name,
+});
 export const bin = join(packageDir, 'dist/cli/cli.js');
 
 export const BOT = '100000000000000002';

@@ -3,6 +3,7 @@ import { command } from 'chapterjs';
 // /play plays a song in your voice channel: a file you send with the
 // command, or a link to an audio file or a stream. play() takes both.
 export default command({
+  name: 'play',
   options: {
     file: { type: 'attachment' },
     url: { type: 'string' },

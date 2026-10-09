@@ -1,6 +1,5 @@
-// `button()`, as the files of `src/components/buttons/` import it from
-// 'chapterjs': what the button looks like, what it carries, and what to do
-// when it is clicked.
+// `button()`, as user files import it from 'chapterjs': what the button
+// looks like, what it carries, and what to do when it is clicked.
 // https://docs.discord.com/developers/components/reference#button
 
 import { Limits } from '../discord/api.js';
@@ -26,7 +25,7 @@ import {
   type DataInputOf,
   type DataValuesOf,
 } from './custom-id.js';
-import { createFile } from './file.js';
+import { createComponent } from './declared.js';
 import { emojiOf, type ButtonComponent, type Rendered } from './instance.js';
 
 /**
@@ -66,7 +65,7 @@ export type ButtonContext<
   TranslationContext &
   PlaceOf<Where, ComponentInteraction>;
 
-/** What a button file gives to `button()`. */
+/** What a file gives to `button()`. */
 export interface ButtonConfig<
   Data extends DataShape = {},
   Where extends ComponentWhere = 'guild',
@@ -77,12 +76,12 @@ export interface ButtonConfig<
 }
 
 /**
- * What `button()` returns: the default export of a button file. Import it
- * where you send a message, and call it with the data the button carries
- * (`ban({ userId })`); a button without data is used as is (`confirm`), or
- * called with a look (`confirm({ disabled: true })`).
+ * What `button()` returns: a declaration the framework finds in the exports
+ * of a file. Import it where you send a message, and call it with the data
+ * the button carries (`ban({ userId })`); a button without data is used as
+ * is (`confirm`), or called with a look (`confirm({ disabled: true })`).
  */
-export type ButtonFile<Data extends DataShape = {}> = {
+export type ButtonDeclaration<Data extends DataShape = {}> = {
   /** What the file gave to `button()`, not checked yet. */
   readonly config: unknown;
 } & ({} extends Data
@@ -93,14 +92,13 @@ export type ButtonFile<Data extends DataShape = {}> = {
     : (data: DataInputOf<Data>, look?: ButtonLook) => ButtonComponent);
 
 /**
- * Declares a button. Export the result as the default export of a file of
- * `src/components/buttons/`: the path of the file is what tells the
- * button apart, so you never write an id.
+ * Declares a button. Export the result from any file of `src/`: the name
+ * of the export is what tells the button apart, so you never write an id.
  *
  * ```ts
  * import { button } from 'chapterjs';
  *
- * export default button({
+ * export const confirm = button({
  *   label: 'Confirm',
  *   style: 'success',
  *   async run({ interaction }) {
@@ -112,17 +110,18 @@ export type ButtonFile<Data extends DataShape = {}> = {
 export function button<
   const Data extends DataShape = {},
   const Where extends ComponentWhere = 'guild',
->(config: ButtonConfig<Data, Where>): ButtonFile<Data> {
-  return createFile('button', config, {
+>(config: ButtonConfig<Data, Where>): ButtonDeclaration<Data> {
+  return createComponent('button', config, {
     asPiece: true,
     pieceKind: 'button',
-  }) as unknown as ButtonFile<Data>;
+  }) as unknown as ButtonDeclaration<Data>;
 }
 
-/** A button file, checked. */
+/** A button, checked. */
 export interface LoadedButton {
   readonly kind: 'button';
-  readonly path: string;
+  /** The name of the export that declares it: its id for Discord. */
+  readonly name: string;
   readonly look: Required<Pick<ButtonLook, 'style' | 'disabled'>> &
     Pick<ButtonLook, 'label' | 'emoji'>;
   readonly data: DataShape;
@@ -182,7 +181,7 @@ export function renderButton(
   args: readonly unknown[]
 ): Rendered<'button'> {
   const hasData = Object.keys(loaded.data).length > 0;
-  const name = loaded.path.split('/').pop()!;
+  const { name } = loaded;
   if (args.length > (hasData ? 2 : 1)) {
     fail(
       `${name} takes ${hasData ? 'its data, then a look' : 'a look'} at most: ${hasData ? `${name}({ ... }, { disabled: true })` : `${name}({ disabled: true })`}.`
@@ -196,7 +195,7 @@ export function renderButton(
   const base: RawButton = {
     type: ComponentType.Button,
     style: BUTTON_STYLES[look.style],
-    custom_id: encodeCustomId(loaded.path, loaded.data, values),
+    custom_id: encodeCustomId(loaded.name, loaded.data, values),
   };
   if (look.emoji !== undefined) base.emoji = emojiOf(look.emoji, name);
   if (look.disabled) base.disabled = true;

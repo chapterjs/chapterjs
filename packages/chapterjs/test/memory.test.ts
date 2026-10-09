@@ -67,6 +67,7 @@ describe('how many members a server remembers', () => {
     expect(new Cache().limits).toEqual(DEFAULT_CACHE_LIMITS);
     const file = (name: string) => ({
       file: `src/events/${name}/x.ts`,
+      export: 'default',
       event: { name, handler: () => {}, options: {} } as never,
     });
     expect(limitsFor([])).toEqual(DEFAULT_CACHE_LIMITS);

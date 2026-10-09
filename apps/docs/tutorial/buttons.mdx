@@ -7,9 +7,9 @@ A message can carry buttons. When someone clicks one, Discord sends your bot an 
 
 ## A button is a file
 
-A button is a file of `src/components/buttons/`. It says what the button looks like and what to do when it is clicked. Create `src/components/buttons/reroll.ts`:
+A button is declared with `button()` and exported. It says what the button looks like and what to do when it is clicked. Create `src/components/reroll.ts` (any file of `src/` would do):
 
-```ts src/components/buttons/reroll.ts
+```ts src/components/reroll.ts
 import { button } from 'chapterjs';
 
 const reroll = button({
@@ -32,9 +32,10 @@ Then put it in the answer of `/dice`:
 
 ```ts src/commands/dice.ts
 import { command } from 'chapterjs';
-import reroll from '../components/buttons/reroll';
+import reroll from '../components/reroll';
 
 export default command({
+  name: 'dice',
   description: 'Rolls a die',
   options: {
     sides: { type: 'integer', description: 'How many sides', min: 2, max: 100 },
@@ -56,7 +57,7 @@ Use `/dice sides:20`: the answer has a button. Click it: the message changes to 
 
 When Discord shows a button, it has to remember which one it is, so that a click can be sent back to the right bot with the right meaning. Discord does that with a short text attached to the button, which the bot chooses, and gets back on click.
 
-In ChapterJS, **that text is the path of the file**: `buttons/reroll`. You never write it, you never see it, and it can't collide with another button, since two files can't have the same path. When the click comes back, the framework reads the path, finds the file, and runs its `run`. This is the same rule as for commands: where the file is says what it is.
+In ChapterJS, **that text is the name of the export**: `reroll` (a default export takes the name of its file). You never write it, you never see it, and it can't collide with another button: two buttons with the same name are reported, and the second one is left out. When the click comes back, the framework reads the path, finds the file, and runs its `run`. This is the same rule as for commands: where the file is says what it is.
 
 ## Data: what a button carries
 
@@ -88,7 +89,7 @@ Like a command, a click must be answered within 3 seconds, and the framework def
 
 By default, everyone who sees the message can click. For a button that belongs to the person who used the command, `who: 'author'`: anyone else reads "Only the person who used the command can use this button." in private, and `run` never starts. Here is a "Close" button that removes the message:
 
-```ts src/components/buttons/close.ts
+```ts src/components/close.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -101,7 +102,7 @@ export default button({
 });
 ```
 
-`style` is `'primary'` (blue), `'secondary'` (grey), `'success'` (green) or `'danger'` (red). The file gives the default look; where you put the button in a message, a second argument changes it for that message: `reroll({ sides }, { disabled: true })`.
+`style` is `'primary'` (blue), `'secondary'` (grey), `'success'` (green) or `'danger'` (red). The declaration gives the default look; where you put the button in a message, a second argument changes it for that message: `reroll({ sides }, { disabled: true })`.
 
 A button that only opens a link runs nothing in your bot, so it has no file: `linkButton({ label: 'Docs', url: 'https://...' })`, written where the message is.
 
@@ -128,7 +129,7 @@ A button lives on in the messages it was sent in, long after you changed your co
 
 ## Recap
 
-- A button is a file of `src/components/buttons/`; its path is what a click sends back.
+- A button is `button({ ... })`, exported; the name of its export is what a click sends back.
 - `data` is what the button carries in the message, typed, surviving restarts.
 - `update()` changes the message the button is on; `who: 'author'` keeps it for the person.
 - Old messages are answered plainly when the file changed.

@@ -158,7 +158,7 @@ export class Interaction extends IdStructure<InteractionData> {
       const rendered = renderedOf(form, 'The form given to showModal()');
       if (rendered.kind !== 'modal') {
         throw new TypeError(
-          `showModal() opens a form of src/components/modals/, got a ${rendered.kind}.`
+          `showModal() opens a form declared with modal(), got a ${rendered.kind}.`
         );
       }
       return interaction.#run(async () => {
@@ -473,7 +473,7 @@ export class CommandInteraction extends Interaction {
 
   /**
    * Opens a form, as the answer: `showModal(report({ userId }))`, with a
-   * form of `src/components/modals/`. It must be the first answer, and the
+   * form declared with `modal()`. It must be the first answer, and the
    * person has as long as they want to fill it in.
    * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal
    */
@@ -523,7 +523,7 @@ export class ComponentInteraction extends Interaction {
 
   /**
    * Opens a form, as the answer: `showModal(report({ userId }))`, with a
-   * form of `src/components/modals/`. It must be the first answer.
+   * form declared with `modal()`. It must be the first answer.
    * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-response-object-modal
    */
   showModal(form: ModalComponent): Promise<void> {

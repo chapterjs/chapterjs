@@ -39,12 +39,12 @@ What a message can contain, and how it is sent. A message needs at least a conte
   The text of the message (up to 2000 characters).
 </ResponseField>
 
-<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
-  Up to 10 embeds: written here, or files of `src/components/embeds/`. See [Embed](#embed) and [embed()](/reference/embed).
+<ResponseField name="embeds" type="(Embed | EmbedDeclaration<[]>)[]">
+  Up to 10 embeds: written here, or declared with `embed()`. See [Embed](#embed) and [embed()](/reference/embed).
 </ResponseField>
 
 <ResponseField name="components" type="MessageComponent[]">
-  Buttons, select menus and layout components, made by ChapterJS: the files of `src/components/` and `row()`, `text()`, `container()`... See [Components](#components).
+  Buttons, select menus and layout components, made by ChapterJS: components declared with `button()`, `select()`... and `row()`, `text()`, `container()`... See [Components](#components).
 </ResponseField>
 
 <ResponseField name="files" type="(FileInput | AssetFile)[]">
@@ -89,12 +89,12 @@ What can be changed in a message that was already sent: `message.edit()` takes a
   The text of the message (up to 2000 characters).
 </ResponseField>
 
-<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
-  Up to 10 embeds: written here, or files of `src/components/embeds/`.
+<ResponseField name="embeds" type="(Embed | EmbedDeclaration<[]>)[]">
+  Up to 10 embeds: written here, or declared with `embed()`.
 </ResponseField>
 
 <ResponseField name="components" type="MessageComponent[]">
-  Buttons, select menus and layout components, made by ChapterJS: the files of `src/components/` and `row()`, `text()`, `container()`...
+  Buttons, select menus and layout components, made by ChapterJS: components declared with `button()`, `select()`... and `row()`, `text()`, `container()`...
 </ResponseField>
 
 <ResponseField name="files" type="(FileInput | AssetFile)[]">
@@ -445,7 +445,7 @@ A poll to attach to a message.
 
 ## Components
 
-`components` only takes what ChapterJS made: the buttons, menus and forms of `src/components/`, and the layout helpers (`row()`, `linkButton()`, `text()`, `section()`, `container()`...). A plain object is refused before anything is sent, so no id is ever written by hand. Buttons that follow each other are put in rows of 5; a menu gets a row of its own.
+`components` only takes what ChapterJS made: the buttons, menus and forms declared with `button()`, `select()` and `modal()`, and the layout helpers (`row()`, `linkButton()`, `text()`, `section()`, `container()`...). A plain object is refused before anything is sent, so no id is ever written by hand. Buttons that follow each other are put in rows of 5; a menu gets a row of its own.
 
 A message with a text, a section, a gallery, a file, a separator or a container is built with components only: Discord shows no `content` and no `embeds`, and the message says so before leaving if you pass one. The pieces and their types are listed in [Layout](/reference/layout); how to use them is in [Buttons](/components) and [Embeds and layout](/components/embeds).
 

@@ -72,8 +72,8 @@ Every message of ChapterJS says what happened, then what to do. This page gather
   <Accordion title="✗ Discord closed the connection for good (close code …).">
     Discord ended the connection for a reason reconnecting can't fix, and gave a code the framework has no words for. Start again; if it keeps happening, [open an issue](https://github.com/chapterjs/chapterjs/issues) with the code.
   </Accordion>
-  <Accordion title="ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/">
-    Your `src/` has no command and no event. The bot still connects. Add a file: see [Project structure](/setup/project-structure).
+  <Accordion title="ℹ Nothing to run yet: export a command or an event from a file of src/, like export default command({ name: 'ping', ... })">
+    Your `src/` declares no command and no event. The bot still connects. Declare one: see [Project structure](/setup/project-structure).
   </Accordion>
 </AccordionGroup>
 
@@ -214,7 +214,7 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     The command has a `cooldown`, and the person used it too soon. That is what you asked for: see [Cooldowns](/commands#cooldowns). The answer deletes itself when the cooldown ends; past 15 minutes it shows the date and time instead.
   </Accordion>
   <Accordion title="These answers are in English">
-    The phrases the bot answers by itself can be translated in the language files of `src/messages/`: see [What the bot answers by itself](/translated-messages#what-the-bot-answers-by-itself).
+    The phrases the bot answers by itself can be translated in the language files of the project: see [What the bot answers by itself](/translated-messages#what-the-bot-answers-by-itself).
   </Accordion>
   <Accordion title="A command is missing, or shown twice">
     Commands appear at once in your test server with `chapterjs dev`, and everywhere with `chapterjs start`. If one is missing, the terminal said why when it started: a name Discord refused, or two files that are the same command. Shown twice: see [One bot for dev and production](/run/start#one-bot-for-dev-and-production). A command the person can't see is one whose `permissions` they don't have: see [Who can use a command](/commands#who-can-use-a-command).

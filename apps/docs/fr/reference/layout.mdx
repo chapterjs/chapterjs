@@ -3,7 +3,7 @@ title: 'Mise en page'
 description: 'Les pièces d’un message écrites là où est le message : rangées, boutons de lien, textes, sections, galeries, fichiers, séparateurs et conteneurs'
 ---
 
-Les `components` d’un message prennent des pièces fabriquées par ChapterJS : les fichiers de `src/components/`, et les helpers de cette page, importés de `'chapterjs'`. Chacune est vérifiée par rapport aux limites de Discord à sa fabrication.
+Les `components` d’un message prennent des pièces fabriquées par ChapterJS : vos boutons, menus et formulaires, et les helpers de cette page, importés de `'chapterjs'`. Chacune est vérifiée par rapport aux limites de Discord à sa fabrication.
 
 ```ts
 import { container, separator, text, type GuildMember, type TextChannel } from 'chapterjs';
@@ -211,9 +211,9 @@ Une pièce d’un message fabriquée par ChapterJS : un bouton, un menu, une mis
 
 | Type | Fabriqué par |
 | --- | --- |
-| `ButtonComponent` | Un fichier de `src/components/buttons/`, `linkButton()`, `premiumButton()` |
-| `SelectComponent` | Un fichier de `src/components/selects/` |
-| `ModalComponent` | Un fichier de `src/components/modals/`, pour `interaction.showModal()` |
+| `ButtonComponent` | Un bouton déclaré avec `button()`, `linkButton()`, `premiumButton()` |
+| `SelectComponent` | Un menu déroulant déclaré avec `select()` |
+| `ModalComponent` | Un formulaire déclaré avec `modal()`, pour `interaction.showModal()` |
 | `ActionRowComponent` | `row()` |
 | `TextComponent` | `text()` |
 | `SectionComponent` | `section()` |

@@ -3,7 +3,10 @@
 // webhooks, and later interactions.
 
 import { isAssetFile, readAsset, type AssetFile } from '../assets/asset.js';
-import { isEmbedFile, type EmbedFile } from '../components/embed.js';
+import {
+  isEmbedDeclaration,
+  type EmbedDeclaration,
+} from '../components/embed.js';
 import type { MessageComponent } from '../components/instance.js';
 import { renderComponents } from '../components/render.js';
 import { Limits } from '../discord/api.js';
@@ -54,11 +57,11 @@ export interface FileInput {
 export interface MessageOptions {
   /** The text of the message (up to 2000 characters). */
   content?: string;
-  /** Up to 10 embeds: written here, or files of `src/components/embeds/`. */
-  embeds?: (Embed | EmbedFile<[]>)[];
+  /** Up to 10 embeds: written here, or declared with `embed()`. */
+  embeds?: (Embed | EmbedDeclaration<[]>)[];
   /**
    * Buttons, select menus and layout components, made by ChapterJS: the
-   * files of `src/components/` and `row()`, `text()`, `container()`...
+   * components declared with `button()`, `select()`... and `row()`, `text()`, `container()`...
    */
   components?: MessageComponent[];
   /** Up to 10 files to attach: their content, or `asset()` for a file of `public/`. */
@@ -139,18 +142,20 @@ export function checkEmbed(embed: Embed, name: string): number {
   return total;
 }
 
-/** The embeds of a message, with the files of `src/components/embeds/` called. */
-function resolveEmbeds(embeds: readonly (Embed | EmbedFile<[]>)[]): Embed[] {
+/** The embeds of a message, with the ones declared with `embed()` called. */
+function resolveEmbeds(
+  embeds: readonly (Embed | EmbedDeclaration<[]>)[]
+): Embed[] {
   if (!Array.isArray(embeds)) {
     throw new TypeError(
       `The embeds of a message are a list, got ${typeof embeds}.`
     );
   }
   return embeds.map((embed, index) => {
-    if (isEmbedFile(embed)) return embed();
+    if (isEmbedDeclaration(embed)) return embed();
     if (typeof embed === 'function') {
       throw new TypeError(
-        `Embed ${index + 1} of the message is a function: an embed is an object like { title: '...' }, or a file of src/components/embeds/.`
+        `Embed ${index + 1} of the message is a function: an embed is an object like { title: '...' }, or one declared with embed().`
       );
     }
     return embed;

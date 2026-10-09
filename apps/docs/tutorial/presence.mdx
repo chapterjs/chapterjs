@@ -59,7 +59,7 @@ A common use is a hint: `{ type: 'playing', name: '/help' }` tells people where 
 
 ## Recap
 
-- `src/presence.ts` exports `presence({ status, activity })`; saving it applies at once.
+- `presence({ status, activity })` is declared once, in `src/presence.ts` in the template; saving it applies at once.
 - `status` is the dot; `activity` is the line under the name, with a `type` and a `name`.
 - One presence for the whole bot, in every server.
 

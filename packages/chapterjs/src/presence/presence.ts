@@ -1,5 +1,5 @@
-// `presence()`, as `src/presence.ts` imports it from 'chapterjs': what the
-// bot shows under its name, its status and what it is doing.
+// `presence()`, as user files import it from 'chapterjs': what the bot
+// shows under its name, its status and what it is doing.
 // https://docs.discord.com/developers/events/gateway-events#update-presence
 
 /**
@@ -36,7 +36,7 @@ export interface StreamingActivity {
 /** What the bot is doing. */
 export type Activity = PlainActivity | StreamingActivity;
 
-/** What `src/presence.ts` gives to `presence()`. */
+/** What a file gives to `presence()`. */
 export interface PresenceConfig {
   /** The status of the bot. `'online'` by default. */
   status?: PresenceStatusName;
@@ -44,8 +44,8 @@ export interface PresenceConfig {
   activity?: Activity;
 }
 
-/** What `presence()` returns: the default export of `src/presence.ts`. */
-export interface PresenceFile {
+/** What `presence()` returns: a declaration the framework finds in the exports of a file. */
+export interface PresenceDeclaration {
   /** What the file gave to `presence()`, not checked yet. */
   readonly config: unknown;
 }
@@ -54,8 +54,8 @@ const BRAND = Symbol.for('chapterjs.presence');
 
 /**
  * Declares the presence of the bot: its status and what it is doing, shown
- * under its name. Export the result as the default export of
- * `src/presence.ts`; the bot has it as soon as it is connected.
+ * under its name. Export the result from any file of `src/`, once; the bot
+ * has it as soon as it is connected.
  *
  * ```ts
  * import { presence } from 'chapterjs';
@@ -66,12 +66,14 @@ const BRAND = Symbol.for('chapterjs.presence');
  * });
  * ```
  */
-export function presence(config: PresenceConfig): PresenceFile {
+export function presence(config: PresenceConfig): PresenceDeclaration {
   return Object.freeze({ [BRAND]: true, config });
 }
 
 /** Whether a value was made by `presence()`. */
-export function isPresenceFile(value: unknown): value is PresenceFile {
+export function isPresenceDeclaration(
+  value: unknown
+): value is PresenceDeclaration {
   return (
     typeof value === 'object' &&
     value !== null &&

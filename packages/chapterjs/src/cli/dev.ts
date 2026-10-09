@@ -13,6 +13,7 @@ import type { RawApplicationCommand } from '../discord/types/application-command
 import { EVENTS } from '../events/registry.js';
 import { limitsFor } from '../events/router.js';
 import { enableProjectLoader, nextGeneration } from '../loader/hot.js';
+import { siteName } from '../loader/loader.js';
 import { messageOf } from '../loader/locate.js';
 import { watchPublic } from '../assets/public.js';
 import { snapshotFolder, watchFolder } from '../loader/watch.js';
@@ -72,14 +73,9 @@ export async function dev(options: DevOptions): Promise<number> {
   // Taken before loading: what is saved from now on must be reloaded.
   const loaded = snapshotFolder(src);
   for (const failure of await project.load()) project.report(failure);
-  // Now that the command files ran, a language file only offers the ones
-  // they do not describe.
-  await writeTypes(
-    cwd,
-    project.commands,
-    project.messages,
-    project.languageDefaults
-  );
+  // Now that the files ran, a language only offers the commands they do
+  // not describe, and `t` is typed from the default language.
+  await writeTypes(cwd, project.typesInfo());
 
   // 3. What Discord must agree with before connecting.
   const apiUrl = options.env.CHAPTERJS_API_URL;
@@ -101,12 +97,7 @@ export async function dev(options: DevOptions): Promise<number> {
   // The files of public/ are listed in the types: a file added or removed
   // is offered (or not) by the editor at once.
   const assets = watchPublic(cwd, () => {
-    writeTypes(
-      cwd,
-      project.commands,
-      project.messages,
-      project.languageDefaults
-    )
+    writeTypes(cwd, project.typesInfo())
       .then(written => {
         if (written > 0) log.reload('public/ changed: types updated');
       })
@@ -215,22 +206,22 @@ export async function dev(options: DevOptions): Promise<number> {
           `${file} ${what} only works in private messages, and chapterjs dev only runs your bot in ${guild.name}. Try it with chapterjs start.`
         );
       };
-      for (const { file, command } of privateOnly([
-        ...project.commands.values(),
-      ])) {
-        note(file, commandName(command.path));
+      for (const entry of privateOnly([...project.commands.values()])) {
+        note(siteName(entry), commandName(entry.command.path));
       }
-      for (const { file, event } of project.events.values()) {
+      for (const entry of project.events.values()) {
+        const { event } = entry;
         if (
           EVENTS[event.name].options &&
           (event.options as { where?: string }).where === 'dm'
         ) {
-          note(file, `this ${event.name} file`);
+          note(siteName(entry), `this ${event.name} event`);
         }
       }
-      for (const { file, component } of project.components.values()) {
+      for (const entry of project.components.values()) {
+        const { component } = entry;
         if (component.kind !== 'embed' && component.where === 'dm') {
-          note(file, `the ${component.kind} ${component.path}`);
+          note(siteName(entry), `the ${component.kind} ${component.name}`);
         }
       }
     };
@@ -255,17 +246,10 @@ export async function dev(options: DevOptions): Promise<number> {
               configure(bot.ctx.cache, limitsFor(project.events.values()));
               if (project.applyPresence(bot)) log.reload('Presence updated');
             }
-            // A language that appeared or went: `t` is typed from the
-            // folder. A command described in its file, or no longer: the
-            // language files offer it, or not.
-            if (
-              (await writeTypes(
-                cwd,
-                project.commands,
-                project.messages,
-                project.languageDefaults
-              )) > 0
-            )
+            // A language that appeared or went: `t` is typed from it. A
+            // command described in its file, or no longer: the languages
+            // offer it, or not.
+            if ((await writeTypes(cwd, project.typesInfo())) > 0)
               log.reload('Types updated');
             const intents = project.intents(false);
             if ((intents & ~connectedIntents) !== 0 && bot) {

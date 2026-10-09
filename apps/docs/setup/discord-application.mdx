@@ -65,15 +65,15 @@ Discord only sends a bot what it asked for, and three things have to be enabled 
 
 | Option to enable | Needed by the files of |
 | --- | --- |
-| **Message Content Intent** | `src/events/messageCreate/`, `src/events/messageUpdate/` |
-| **Server Members Intent** | `src/events/memberJoin/`, `src/events/memberLeave/`, `src/events/memberUpdate/` |
+| **Message Content Intent** | `messageCreate`, `messageUpdate` |
+| **Server Members Intent** | `memberJoin`, `memberLeave`, `memberUpdate` |
 | **Presence Intent** | Nothing yet: no event of ChapterJS uses it |
 
 When a file needs an option that is not enabled, `chapterjs dev` says which files and gives the link to the page, then waits:
 
 ```text
 ⚠ Your files need an option that is not enabled for your bot:
-  - Message Content Intent, needed by src/events/messageCreate/ping.ts
+  - Message Content Intent, needed by src/events/ping.ts
   Enable it under "Privileged Gateway Intents", then save:
   https://discord.com/developers/applications/123456789012345678/bot
   Waiting for you to enable it...
@@ -89,8 +89,8 @@ With several options missing, the message lists them all, and the files that nee
 
 ```text
 ⚠ Your files need options that are not enabled for your bot:
-  - Server Members Intent, needed by src/events/memberJoin/welcome.ts
-  - Message Content Intent, needed by src/events/messageCreate/ping.ts, src/events/messageUpdate/edits.ts
+  - Server Members Intent, needed by src/events/welcome.ts
+  - Message Content Intent, needed by src/events/ping.ts, src/events/edits.ts
   Enable them under "Privileged Gateway Intents", then save:
   https://discord.com/developers/applications/123456789012345678/bot
   Waiting for you to enable them...

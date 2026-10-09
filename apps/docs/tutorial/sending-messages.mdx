@@ -22,6 +22,7 @@ Here is `/say`, which posts in the channel of the command without showing who as
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'say',
   description: 'Makes the bot say something here',
   permissions: ['ManageMessages'],
   options: {
@@ -67,6 +68,7 @@ An embed is the box with a colored line on the side that bots use for rich conte
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'serverinfo',
   description: 'Shows information about this server',
   async run({ interaction, guild }) {
     const icon = guild.iconURL();
@@ -108,6 +110,7 @@ The pictures and documents your bot sends live in the `public/` folder of your p
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'banner',
   description: 'Shows the banner of the server',
   async run({ interaction }) {
     await interaction.reply({
@@ -138,6 +141,7 @@ By default, a message **notifies** everyone it mentions, @everyone and roles inc
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'quote',
   description: 'Repeats a text without pinging anyone',
   options: {
     text: {
@@ -166,6 +170,7 @@ A poll is a question with up to 10 answers; people vote in Discord and it closes
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'pizza',
   description: 'Asks about tonight',
   async run({ interaction }) {
     await interaction.reply({

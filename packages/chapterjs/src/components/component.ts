@@ -1,4 +1,4 @@
-// What every interactive component of `src/components/` shares: where it
+// What every interactive component (button, menu, form) shares: where it
 // works, who may use it, what it carries, and what its `run` receives
 // about the place it was used in.
 
@@ -20,7 +20,7 @@ import type { Translator } from '../messages/messages.js';
  * component carries.
  */
 export interface TextContext<Data extends DataShape = DataShape> {
-  /** The texts of `src/messages/`, in the language of who will read the message. */
+  /** The texts of the language files, in the language of who will read the message. */
   t: Translator;
   /** What the component carries, as declared in `data`. */
   data: [DataShape] extends [Data]

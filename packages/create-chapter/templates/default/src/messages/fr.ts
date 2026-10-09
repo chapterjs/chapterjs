@@ -3,6 +3,7 @@ import { language } from 'chapterjs';
 // Every language has the texts of the default one, with the same
 // {placeholders}: a missing one is reported when the file loads.
 export default language({
+  locale: 'fr',
   texts: {
     pong: 'Pong! en fr',
     again: 'Pong en fr ! ×{count}',

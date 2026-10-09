@@ -7,9 +7,9 @@ Embeds were written inline in [Sending messages](/tutorial/sending-messages). Wh
 
 ## An embed file
 
-An embed used in several places is a file of `src/components/embeds/`. It is a function of what it shows, or the embed itself when it never changes. Create `src/components/embeds/card.ts`:
+An embed used in several places is declared with `embed()` and exported. It is a function of what it shows, or the embed itself when it never changes. Create `src/components/card.ts`:
 
-```ts src/components/embeds/card.ts
+```ts src/components/card.ts
 import { embed, type GuildMember } from 'chapterjs';
 
 export default embed((member: GuildMember) => ({
@@ -32,9 +32,10 @@ Then use it from a command:
 
 ```ts src/commands/card.ts
 import { command } from 'chapterjs';
-import card from '../components/embeds/card';
+import card from '../components/card';
 
 export default command({
+  name: 'card',
   description: 'Shows your member card',
   async run({ interaction, member }) {
     await interaction.reply({ embeds: [card(member)] });
@@ -44,7 +45,7 @@ export default command({
 
 And from the welcome event, in the same way: `channel.send({ embeds: [card(member)] })`. `card(member)` returns the embed, checked against the limits of Discord when the message is sent. An embed file is a function like any other, with the one difference that it is checked and typed as an embed: a title over 256 characters, a color that is not a number, are errors with the limit in the message.
 
-Unlike buttons and forms, an embed is never clicked, so it has no `run` and no path to send back: the folder is only there so that embeds live with the other reusable pieces.
+Unlike buttons and forms, an embed is never clicked, so it has no `run` and no name to send back: declaring it only makes it a piece to import where a message needs it.
 
 <Info>
   `member.avatarURL()` is the picture of the member, and
@@ -69,6 +70,7 @@ import {
 } from 'chapterjs';
 
 export default command({
+  name: 'profile-card',
   description: 'Shows your profile',
   async run({ interaction, member }) {
     await interaction.reply({
@@ -108,7 +110,7 @@ As soon as a message holds one of these, Discord shows components only: `content
 | `container(children, { color })` | A box around texts, sections, rows, galleries, files and separators              |
 | `row(components)`                | A row of up to 5 buttons, or one menu, when you want to choose the rows yourself |
 
-Buttons and menus of `src/components/` go in there too, in a `row()` or on their own in a section's accessory. A message holds 40 components at most, nested ones included.
+Your buttons and menus go in there too, in a `row()` or on their own in a section's accessory. A message holds 40 components at most, nested ones included.
 
 ## Which one to use
 
@@ -116,7 +118,7 @@ Embeds are simpler and enough for most things: a title, some fields, a picture. 
 
 ## Recap
 
-- An embed used several times is a file of `src/components/embeds/`: a function of what it shows, or the embed itself.
+- An embed used several times is `embed(...)`, exported: a function of what it shows, or the embed itself.
 - `text()`, `section()`, `container()` and the others build a message out of components, with no `content` nor `embeds`.
 - Both are checked against the limits of Discord before anything is sent.
 

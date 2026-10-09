@@ -9,6 +9,7 @@ Discord shows each person the commands in their language, when the command has a
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'greet',
   description: 'Greets someone',
   options: {
     who: { type: 'user', description: 'Who to greet', required: true },
@@ -121,6 +122,7 @@ Translations change what Discord **shows**. To **answer** in the language of the
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'hello',
   description: 'Says hello in your language',
   locales: {
     fr: { name: 'bonjour', description: 'Dit bonjour dans votre langue' },

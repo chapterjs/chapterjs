@@ -1,11 +1,11 @@
 ---
 title: 'Les messages traduits'
-description: 'Répondre à chaque personne dans sa langue avec un fichier par langue, comprendre quelle langue parle un message, et traduire ce que le bot dit de lui-même'
+description: 'Répondre à chaque personne dans sa langue avec une déclaration par langue, comprendre quelle langue parle un message, et traduire ce que le bot dit de lui-même'
 ---
 
 Le modèle a deux fichiers dans `src/messages/`, `en-US.ts` et `fr.ts`, et `/ping` répond avec `t('pong')` au lieu d’un texte. Cette page explique ce mécanisme, qui permet à un bot de parler plusieurs langues sans un `if` sur la langue dans chaque fichier.
 
-## Un fichier par langue
+## Une déclaration par langue
 
 Un fichier de langue porte le nom de la langue, et contient les textes du bot par clé :
 
@@ -13,6 +13,7 @@ Un fichier de langue porte le nom de la langue, et contient les textes du bot pa
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'en-US',
   default: true,
   texts: {
     pong: 'Pong!',
@@ -27,6 +28,7 @@ export default language({
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'fr',
   texts: {
     pong: 'Pong !',
     welcome: 'Bienvenue {name}, tu es le membre n°{count} !',
@@ -36,7 +38,7 @@ export default language({
 });
 ```
 
-- **Le nom du fichier est la langue**, comme l’écrit Discord : `en-US`, `en-GB`, `fr`, `de`, `es-ES`, `pt-BR`, `ja`... Un nom que Discord ne connaît pas est refusé avant que le fichier ne tourne, avec la liste.
+- **`locale` est la langue**, comme l’écrit Discord : `'en-US'`, `'en-GB'`, `'fr'`, `'de'`, `'es-ES'`, `'pt-BR'`, `'ja'`... Un mot que Discord ne connaît pas est souligné, et refusé quand le fichier se charge, avec la liste.
 - **`default: true`** marque la langue utilisée quand celle demandée n’est pas là. Exactement un fichier le dit : avec `chapterjs dev` lancé, deux fichiers qui le disent sont soulignés tous les deux dans l’éditeur.
 - **Un paramètre** est un nom entre accolades : `{name}`, `{count}`. Il prend un texte ou un nombre, et un nombre est écrit comme la langue écrit les nombres (`1,234` en anglais, `1 234` en français).
 - **Un pluriel** a une forme par quantité (`one`, `other`, et `zero`, `two`, `few`, `many` pour les langues qui en ont besoin). `count` choisit la forme selon les règles de la langue.
@@ -47,17 +49,20 @@ La langue par défaut a tous les textes, et les autres langues peuvent n’en av
 
 Chaque fonction de votre projet (commandes, événements, boutons, formulaires, tâches) reçoit `t`. Changez l’accueil du chapitre sur les événements pour l’utiliser :
 
-```ts src/events/memberJoin/hello.ts
+```ts src/events/hello.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, guild, t }) => {
-  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
-  if (!channel?.isTextBased()) return;
-  await channel.send(t('welcome', { name: member.displayName, count: guild.memberCount ?? 1 }));
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild, t }) {
+    const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+    if (!channel?.isTextBased()) return;
+    await channel.send(t('welcome', { name: member.displayName, count: guild.memberCount ?? 1 }));
+  },
 });
 ```
 
-Tapez `t('` dans votre éditeur : il propose `pong`, `welcome`, `next`, `members`, les clés du fichier par défaut. Choisissez `welcome`, et le second argument demande `name` et `count` : les paramètres du texte, lus dans le fichier. Oubliez `count`, et la ligne est soulignée. Les types viennent du fichier de langue lui-même, à chaque frappe, sans rien générer à partir de son contenu.
+Tapez `t('` dans votre éditeur : il propose `pong`, `welcome`, `next`, `members`, les clés de la langue par défaut. Choisissez `welcome`, et le second argument demande `name` et `count` : les paramètres du texte, lus dans le fichier. Oubliez `count`, et la ligne est soulignée. Les types viennent du fichier de langue lui-même, à chaque frappe, sans rien générer à partir de son contenu.
 
 Un pluriel prend son `count` de la même façon :
 
@@ -65,6 +70,7 @@ Un pluriel prend son `count` de la même façon :
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'members',
   description: 'Compte les membres de ce serveur',
   async run({ interaction, guild, t }) {
     await interaction.reply(t('members', { count: guild.memberCount ?? 0 }));
@@ -95,7 +101,7 @@ Discord ne connaît la langue que d’un serveur **Communauté** (un réglage du
 
 Une étiquette s’écrit dans le fichier du composant, où il n’y a pas encore de `t` : le message n’est pas envoyé. Pour la traduire, faites-en une fonction de `t` et des données ; elle tourne au moment de l’envoi du message, pour qui le lira :
 
-```ts src/components/buttons/next-page.ts
+```ts src/components/next-page.ts
 import { button } from 'chapterjs';
 
 const nextPage = button({
@@ -119,6 +125,7 @@ Quand le bot ne peut pas lancer ce qui a été demandé (une commande utilisée 
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'fr',
   texts: {
     pong: 'Pong !',
     welcome: 'Bienvenue {name}, tu es le membre n°{count} !',
@@ -144,6 +151,7 @@ Ce que Discord affiche d’une commande avant qu’elle ne soit utilisée (son n
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'en-US',
   default: true,
   texts: {
     pong: 'Pong!',
@@ -167,11 +175,11 @@ La langue par défaut donne la description que tout le monde voit ; les autres l
 - **Les clés sont typées d’après le fichier par défaut.** Ajoutez un texte là d’abord, puis dans les autres ; l’éditeur et le chargeur le vérifient tous les deux.
 - **Les accolades écrites telles quelles sont doublées** : `'{{name}}'` affiche `{name}`.
 - **La langue d’un serveur est `en-US` sauf si c’est un serveur Communauté.** Ne soyez pas surpris qu’un message public sur un serveur français sorte dans la langue par défaut.
-- **Sans fichier dans `src/messages/`, il n’y a pas de `t`** : il n’existe ni dans les types ni à l’exécution. Supprimez les deux fichiers du modèle si votre bot parle une seule langue et que vous préférez des textes simples.
+- **Sans langue, il n’y a pas de `t`** : il n’existe ni dans les types ni à l’exécution. Supprimez les deux fichiers de langue du modèle si votre bot parle une seule langue et que vous préférez des textes simples.
 
 ## Récapitulatif
 
-- `src/messages/<langue>.ts` contient les textes par clé ; un fichier est `default: true`.
+- `language({ locale, texts })` contient les textes d’une langue par clé ; l’une d’elles est `default: true`.
 - `t('clé', { paramètres })` donne le texte dans la langue de qui le lira ; l’éditeur vérifie les clés et les paramètres.
 - L’étiquette d’un composant est une fonction de `t` ; les phrases du bot vont dans `framework` ; les descriptions des commandes dans `commands`.
 

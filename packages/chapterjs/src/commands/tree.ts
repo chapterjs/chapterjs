@@ -1,4 +1,4 @@
-// Turns the command files of a project into what Discord registers: one
+// Turns the commands of a project into what Discord registers: one
 // application command per top-level name, with its subcommands and groups.
 // https://docs.discord.com/developers/interactions/application-commands#subcommands-and-subcommand-groups
 
@@ -10,24 +10,28 @@ import {
 } from '../discord/types/application-command.js';
 import { ApplicationIntegrationType } from '../discord/types/application.js';
 import { InteractionContextType } from '../discord/types/interaction.js';
-import type { LoadedOption } from './convention.js';
+import { siteName } from '../loader/loader.js';
+import type { LoadedOption } from './declaration.js';
 import type { CommandOption } from './command.js';
 import type { Locale } from '../discord/types/common.js';
 import type {
   LoadedCommand,
   Localizations,
   OptionLocales,
-} from './convention.js';
+} from './declaration.js';
 
 /** A command with the file it comes from. */
 export interface CommandEntry {
   file: string;
+  /** The export it is: `'default'`, or its name. */
+  export: string;
   command: LoadedCommand;
 }
 
-/** Two files that can't both be commands. */
+/** Two declarations that can't both be commands. */
 export interface CommandConflict {
   file: string;
+  export: string;
   message: string;
 }
 
@@ -118,8 +122,9 @@ export const commandName = (path: readonly string[]): string =>
   `/${path.join(' ')}`;
 
 /**
- * Finds the files that can't be commands together, and leaves them out:
- * - two files with the same name (in different `(group)` folders);
+ * Finds the declarations that can't be commands together, and leaves them
+ * out:
+ * - two commands with the same name;
  * - a command that also has subcommands: Discord only lets people use the
  *   subcommands.
  */
@@ -130,7 +135,15 @@ export function findConflicts(entries: readonly CommandEntry[]): {
   const conflicts: CommandConflict[] = [];
   const seen = new Map<string, CommandEntry>();
   const unique = [...entries]
-    .sort((a, b) => (a.file < b.file ? -1 : 1))
+    .sort((a, b) =>
+      a.file === b.file
+        ? a.export < b.export
+          ? -1
+          : 1
+        : a.file < b.file
+          ? -1
+          : 1
+    )
     .filter(entry => {
       const key = entry.command.path.join(' ');
       const first = seen.get(key);
@@ -140,7 +153,8 @@ export function findConflicts(entries: readonly CommandEntry[]): {
       }
       conflicts.push({
         file: entry.file,
-        message: `${commandName(entry.command.path)} is already ${first.file}: two files can't be the same command. A folder in parentheses only groups files, it is not part of the name.`,
+        export: entry.export,
+        message: `${commandName(entry.command.path)} is already declared in ${siteName(first)}: two commands can't have the same name.`,
       });
       return false;
     });
@@ -155,7 +169,8 @@ export function findConflicts(entries: readonly CommandEntry[]): {
     if (!child) return true;
     conflicts.push({
       file: entry.file,
-      message: `${commandName(path)} can't be a command and have subcommands (${child.file} is ${commandName(child.command.path)}): Discord only lets people use the subcommands. Move this file into the folder, for example as ${[...path, 'run'].join('/')}.ts.`,
+      export: entry.export,
+      message: `${commandName(path)} can't be a command and have subcommands (${siteName(child)} is ${commandName(child.command.path)}): Discord only lets people use the subcommands. Make this one a subcommand too, for example name: '${[...path, 'run'].join(' ')}'.`,
     });
     return false;
   });

@@ -3,15 +3,18 @@ title: 'Modération et serveur'
 description: 'Réagir aux bannissements, aux entrées du journal d’audit, aux invitations, aux emojis, aux événements programmés, aux fils, aux présences et aux changements du serveur'
 ---
 
-Quand quelqu’un est banni, les fichiers de `src/events/banAdd/` tournent :
+Quand quelqu’un est banni, les événements `banAdd` tournent :
 
-```ts src/events/banAdd/log.ts
+```ts src/events/log.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ user, guild }) => {
-  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
-  if (!channel?.isTextBased()) return;
-  await channel.send(`${user.username} a été banni de ${guild.name}.`);
+export default event({
+  name: 'banAdd',
+  async run({ user, guild }) {
+    const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+    if (!channel?.isTextBased()) return;
+    await channel.send(`${user.username} a été banni de ${guild.name}.`);
+  },
 });
 ```
 
@@ -27,12 +30,15 @@ C’est tout. Les événements de cette page se produisent tous sur les serveurs
 
 Pour savoir **qui** a banni, expulsé ou changé quelque chose, écoutez le journal d’audit : `auditLogEntryCreate` tourne pour chaque entrée que Discord y ajoute, et la donne sous forme d’[`AuditLogEntry`](/fr/reference/data#auditlogentry). Discord ne l’envoie qu’à un bot qui a la permission `ViewAuditLog`.
 
-```ts src/events/auditLogEntryCreate/kicks.ts
+```ts src/events/kicks.ts
 import { AuditLogEvent, event } from 'chapterjs';
 
-export default event(({ entry, guild }) => {
-  if (entry.actionType !== AuditLogEvent.MemberKick) return;
-  console.log(`${entry.userId} a expulsé ${entry.targetId} de ${guild.name} : ${entry.reason ?? 'sans raison'}`);
+export default event({
+  name: 'auditLogEntryCreate',
+  run({ entry, guild }) {
+    if (entry.actionType !== AuditLogEvent.MemberKick) return;
+    console.log(`${entry.userId} a expulsé ${entry.targetId} de ${guild.name} : ${entry.reason ?? 'sans raison'}`);
+  },
 });
 ```
 
@@ -44,11 +50,14 @@ Les valeurs de `actionType` sont celles de [`AuditLogEvent`](/fr/reference/enums
 - `emojiCreate`, `emojiUpdate` et `emojiDelete` tournent pour chaque emoji ajouté, modifié ou retiré. `emojiDelete` donne l’emoji tel qu’il était.
 - `inviteCreate` donne la nouvelle [`Invite`](/fr/reference/invite) et le salon où elle mène ; `inviteDelete` le code d’une invitation supprimée ou expirée. Discord ne les envoie qu’à un bot qui a la permission `ManageChannels` sur ce salon.
 
-```ts src/events/inviteCreate/log.ts
+```ts src/events/log.ts
 import { event } from 'chapterjs';
 
-export default event(({ invite, channel }) => {
-  console.log(`${invite.inviter?.username ?? 'Quelqu’un'} a créé ${invite.url} pour #${channel.name}`);
+export default event({
+  name: 'inviteCreate',
+  run({ invite, channel }) {
+    console.log(`${invite.inviter?.username ?? 'Quelqu’un'} a créé ${invite.url} pour #${channel.name}`);
+  },
 });
 ```
 
@@ -56,14 +65,17 @@ export default event(({ invite, channel }) => {
 
 `scheduledEventCreate`, `scheduledEventUpdate` et `scheduledEventDelete` donnent le [`ScheduledEvent`](/fr/reference/data#scheduledevent). `scheduledEventUserAdd` et `scheduledEventUserRemove` tournent quand quelqu’un se dit intéressé, ou ne l’est plus.
 
-```ts src/events/scheduledEventCreate/announce.ts
+```ts src/events/announce.ts
 import { event, timestamp } from 'chapterjs';
 
-export default event(async ({ scheduledEvent, guild }) => {
-  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
-  if (!channel?.isTextBased()) return;
-  const start = timestamp(new Date(scheduledEvent.scheduledStartTime));
-  await channel.send(`Nouvel événement : **${scheduledEvent.name}**, ${start}.`);
+export default event({
+  name: 'scheduledEventCreate',
+  async run({ scheduledEvent, guild }) {
+    const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+    if (!channel?.isTextBased()) return;
+    const start = timestamp(new Date(scheduledEvent.scheduledStartTime));
+    await channel.send(`Nouvel événement : **${scheduledEvent.name}**, ${start}.`);
+  },
 });
 ```
 
@@ -71,11 +83,14 @@ export default event(async ({ scheduledEvent, guild }) => {
 
 Un fil créé, modifié ou supprimé est un salon : [`channelCreate`, `channelUpdate` et `channelDelete`](/fr/reference/events#channelcreate) tournent pour lui. Qui est dans un fil a deux événements à lui : `threadMemberJoin` (avec `thread` et `member`) et `threadMemberLeave` (avec `thread` et `userId` ; `user` et `member` quand le bot les connaît).
 
-```ts src/events/threadMemberJoin/hello.ts
+```ts src/events/hello.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ thread, member }) => {
-  await thread.send(`Bienvenue dans le fil, ${member.displayName} !`);
+export default event({
+  name: 'threadMemberJoin',
+  async run({ thread, member }) {
+    await thread.send(`Bienvenue dans le fil, ${member.displayName} !`);
+  },
 });
 ```
 
@@ -85,12 +100,15 @@ Ils ont besoin du **Server Members Intent** : sans lui, Discord ne dit que quand
 
 `presenceUpdate` tourne quand le statut ou l’activité de quelqu’un change : en ligne, absent, en train de jouer. `presence` est une [`UserPresence`](/fr/reference/data#userpresence).
 
-```ts src/events/presenceUpdate/games.ts
+```ts src/events/games.ts
 import { event } from 'chapterjs';
 
-export default event(({ userId, user, presence }) => {
-  const game = presence.activities.find(activity => activity.type === 0);
-  if (game) console.log(`${user?.username ?? userId} joue à ${game.name}`);
+export default event({
+  name: 'presenceUpdate',
+  run({ userId, user, presence }) {
+    const game = presence.activities.find(activity => activity.type === 0);
+    if (game) console.log(`${user?.username ?? userId} joue à ${game.name}`);
+  },
 });
 ```
 

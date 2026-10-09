@@ -33,7 +33,7 @@ import {
   type DataInputOf,
   type DataValuesOf,
 } from './custom-id.js';
-import { createFile } from './file.js';
+import { createComponent } from './declared.js';
 import type { ModalComponent, Rendered } from './instance.js';
 import {
   hasDynamicOption,
@@ -298,12 +298,13 @@ export interface ModalInstanceOptions<
 }
 
 /**
- * What `modal()` returns: the default export of a modal file. Import it
- * where someone uses a command or a component, and open it:
+ * What `modal()` returns: a declaration the framework finds in the exports
+ * of a file. Import it where someone uses a command or a component, and
+ * open it:
  * `interaction.showModal(report({ userId }))`, or
  * `interaction.showModal(feedback)` for a form without data.
  */
-export type ModalFile<
+export type ModalDeclaration<
   Fields extends ModalFields = ModalFields,
   Data extends DataShape = {},
 > = {
@@ -324,14 +325,13 @@ export type ModalFile<
       ) => ModalComponent);
 
 /**
- * Declares a form. Export the result as the default export of a file of
- * `src/components/modals/`: the path of the file is what tells the form
- * apart, so you never write an id.
+ * Declares a form. Export the result from any file of `src/`: the name of
+ * the export is what tells the form apart, so you never write an id.
  *
  * ```ts
  * import { modal } from 'chapterjs';
  *
- * export default modal({
+ * export const feedback = modal({
  *   title: 'Feedback',
  *   fields: {
  *     text: { type: 'text', label: 'What do you think?', style: 'paragraph' },
@@ -346,11 +346,11 @@ export function modal<
   const Fields extends ModalFields,
   const Data extends DataShape = {},
   const Where extends ComponentWhere = 'guild',
->(config: ModalConfig<Fields, Data, Where>): ModalFile<Fields, Data> {
-  return createFile('modal', config, {
+>(config: ModalConfig<Fields, Data, Where>): ModalDeclaration<Fields, Data> {
+  return createComponent('modal', config, {
     asPiece: true,
     pieceKind: 'modal',
-  }) as unknown as ModalFile<Fields, Data>;
+  }) as unknown as ModalDeclaration<Fields, Data>;
 }
 
 /** A field of a form, checked, with how it is sent. */
@@ -364,10 +364,11 @@ export interface LoadedField {
   readonly max: number;
 }
 
-/** A modal file, checked. */
+/** A form, checked. */
 export interface LoadedModal {
   readonly kind: 'modal';
-  readonly path: string;
+  /** The name of the export that declares it: its id for Discord. */
+  readonly name: string;
   /** The title (45 characters at most): a text, or computed when the form opens. */
   readonly title: DynamicText;
   readonly fields: readonly LoadedField[];
@@ -808,7 +809,7 @@ export function renderModal(
   args: readonly unknown[]
 ): Rendered<'modal'> {
   const hasData = Object.keys(loaded.data).length > 0;
-  const name = loaded.path.split('/').pop()!;
+  const { name } = loaded;
   if (args.length > (hasData ? 2 : 1)) {
     fail(
       `${name} takes ${hasData ? 'its data, then options' : 'options'} at most.`
@@ -817,7 +818,7 @@ export function renderModal(
   const values = checkData(name, loaded.data, hasData ? args[0] : undefined);
   const prefill = readPrefill(loaded, name, hasData ? args[1] : args[0]);
   const make = (context: TextContext): RawInteractionCallbackModalData => ({
-    custom_id: encodeCustomId(loaded.path, loaded.data, values),
+    custom_id: encodeCustomId(loaded.name, loaded.data, values),
     title: resolveText(`The title of ${name}`, loaded.title, context, {
       max: Limits.ModalTitle,
     })!,

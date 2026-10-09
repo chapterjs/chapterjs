@@ -3,9 +3,9 @@ title: 'Embeds et mise en page'
 description: 'Écrire un embed une fois et l’utiliser partout, et construire des messages avec des textes, des sections, des galeries et des conteneurs'
 ---
 
-Un embed utilisé dans plusieurs messages est un fichier de `src/components/embeds/`. C’est l’embed lui-même, ou une fonction de ce qu’il affiche.
+Un embed utilisé dans plusieurs messages se déclare avec `embed()`, dans n’importe quel fichier de `src/`, et s’exporte. C’est l’embed lui-même, ou une fonction de ce qu’il affiche.
 
-```ts src/components/embeds/welcome.ts
+```ts src/components/welcome.ts
 import { embed, type GuildMember } from 'chapterjs';
 
 export default embed((member: GuildMember) => ({
@@ -16,19 +16,22 @@ export default embed((member: GuildMember) => ({
 }));
 ```
 
-```ts src/events/memberJoin/greet.ts
+```ts src/events/greet.ts
 import { event } from 'chapterjs';
-import welcome from '../../components/embeds/welcome';
+import welcome from '../components/welcome';
 
-export default event(async ({ member, guild }) => {
-  const general = [...guild.channels.values()].find(channel => channel.name === 'general');
-  if (general?.isText()) await general.send({ embeds: [welcome(member)] });
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild }) {
+    const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+    if (general?.isText()) await general.send({ embeds: [welcome(member)] });
+  },
 });
 ```
 
 C’est tout : `welcome(member)` renvoie l’embed, vérifié par rapport aux limites de Discord au moment de l’envoi. Un embed qui a toujours la même apparence se donne directement, et s’utilise sans l’appeler :
 
-```ts src/components/embeds/rules.ts
+```ts src/components/rules.ts
 import { embed } from 'chapterjs';
 
 export default embed({
@@ -40,9 +43,10 @@ export default embed({
 
 ```ts src/commands/rules.ts
 import { command } from 'chapterjs';
-import rules from '../components/embeds/rules';
+import rules from '../components/rules';
 
 export default command({
+  name: 'rules',
   description: 'Affiche le règlement',
   async run({ interaction }) {
     await interaction.reply({ embeds: [rules] });
@@ -64,6 +68,7 @@ Discord peut afficher un message fait uniquement de composants : des textes, des
 import { command, container, linkButton, section, separator, text, thumbnail } from 'chapterjs';
 
 export default command({
+  name: 'profile',
   description: 'Affiche votre profil',
   async run({ interaction, member }) {
     await interaction.reply({
@@ -105,6 +110,7 @@ Une image de galerie ou une miniature est un lien, ou un fichier du message avec
 import { asset, command, gallery, text } from 'chapterjs';
 
 export default command({
+  name: 'photos',
   description: 'Affiche les photos de la semaine',
   async run({ interaction }) {
     await interaction.reply({

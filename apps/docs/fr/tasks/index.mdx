@@ -1,9 +1,9 @@
 ---
 title: 'Tâches'
-description: 'Faire faire quelque chose à votre bot tout seul, régulièrement ou à des heures données, avec un fichier par tâche'
+description: 'Faire faire quelque chose à votre bot tout seul, régulièrement ou à des heures données, avec une déclaration task()'
 ---
 
-Une tâche est un fichier de `src/tasks/`. Elle dit quand tourner et quoi faire ; ChapterJS la lance une fois le bot connecté, et continue de la lancer tant que le bot est en ligne.
+Une tâche se déclare avec `task()`, dans n’importe quel fichier de `src/`, et s’exporte. Elle dit quand tourner et quoi faire ; ChapterJS la lance une fois le bot connecté, et continue de la lancer tant que le bot est en ligne.
 
 ```ts src/tasks/report.ts
 import { task } from 'chapterjs';
@@ -20,7 +20,7 @@ export default task({
 });
 ```
 
-C’est tout : chaque lundi à 9 h, heure de Paris, la tâche tourne avec les serveurs où se trouve le bot. Le nom du fichier est le nom de la tâche, et rien d’autre n’est à enregistrer.
+C’est tout : chaque lundi à 9 h, heure de Paris, la tâche tourne avec les serveurs où se trouve le bot. Le nom de l’export (ou du fichier, pour un export par défaut) est le nom de la tâche, et rien d’autre n’est à enregistrer.
 
 <Note>
   Tout ce que déclare un fichier de tâche est dans la [référence](/fr/reference/task).

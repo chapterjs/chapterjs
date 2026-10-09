@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { command } from '../src/commands/command.js';
-import { commandsConvention } from '../src/commands/convention.js';
+import { commandDeclaration } from '../src/commands/declaration.js';
 import {
   checkCooldown,
   MemoryCooldowns,
@@ -20,6 +20,7 @@ import {
   runDev,
   world,
   type FakeWorld,
+  site,
 } from './dev-helpers.js';
 
 describe('a duration', () => {
@@ -147,15 +148,14 @@ describe('checking a cooldown', () => {
 
 describe('the cooldown of a command file', () => {
   const read = (config: Record<string, unknown>) =>
-    commandsConvention.read(
-      {
-        default: command({
-          description: 'd',
-          run() {},
-          ...config,
-        } as never),
-      },
-      'ping.ts'
+    commandDeclaration.read(
+      command({
+        name: 'ping',
+        description: 'd',
+        run() {},
+        ...config,
+      } as never),
+      site('src/commands/ping.ts')
     );
 
   it('is none when left out', () => {
@@ -312,8 +312,12 @@ describe.skipIf(process.platform === 'win32')(
       },
     };
 
-    const COOLDOWN = (cooldown: string) => `import { command } from 'chapterjs';
+    const COOLDOWN = (
+      name: string,
+      cooldown: string
+    ) => `import { command } from 'chapterjs';
 export default command({
+  name: '${name}',
   description: 'd',
   cooldown: ${cooldown},
   async run({ interaction }) { console.log('ran', interaction.id); await interaction.reply('ok'); },
@@ -323,9 +327,10 @@ export default command({
     it('refuses the person who used it a moment ago, saying when, and runs nothing', async () => {
       const fake = await world();
       const cwd = project({
-        'src/commands/daily.ts': COOLDOWN(`'2s'`),
+        'src/commands/daily.ts': COOLDOWN('daily', `'2s'`),
         'src/messages/fr.ts': `import { language } from 'chapterjs';
 export default language({
+  locale: 'fr',
   default: true,
   texts: {},
   framework: { command: 'commande', cooldown: 'Tu pourras réutiliser cette {what} {when}.' },
@@ -378,7 +383,7 @@ export default language({
     it('shows the date and time when it is too long to delete the answer', async () => {
       const fake = await world();
       const cli = runDev(
-        project({ 'src/commands/daily.ts': COOLDOWN(`'1d'`) }),
+        project({ 'src/commands/daily.ts': COOLDOWN('daily', `'1d'`) }),
         fake
       );
       await cli.waitFor('✓ 1 command loaded');
@@ -403,8 +408,8 @@ export default language({
     it('can be for a channel or a server, whoever used it', async () => {
       const fake = await world();
       const cwd = project({
-        'src/commands/channel.ts': COOLDOWN(`{ channel: '1h' }`),
-        'src/commands/server.ts': COOLDOWN(`{ guild: '1h' }`),
+        'src/commands/channel.ts': COOLDOWN('channel', `{ channel: '1h' }`),
+        'src/commands/server.ts': COOLDOWN('server', `{ guild: '1h' }`),
       });
       const cli = runDev(cwd, fake);
       await cli.waitFor('✓ 2 commands loaded');
@@ -454,7 +459,9 @@ export default language({
 
     it('holds through a reload, and is gone when the file drops it', async () => {
       const fake = await world();
-      const cwd = project({ 'src/commands/daily.ts': COOLDOWN(`'1h'`) });
+      const cwd = project({
+        'src/commands/daily.ts': COOLDOWN('daily', `'1h'`),
+      });
       const cli = runDev(cwd, fake);
       await cli.waitFor('✓ 1 command loaded');
       const connection = await connected(fake);
@@ -467,7 +474,7 @@ export default language({
       expect(await run('100000000000000721')).toBe('ok');
       writeFileSync(
         join(cwd, 'src/commands/daily.ts'),
-        COOLDOWN(`'1h'`).replace("'ok'", "'ok again'")
+        COOLDOWN('daily', `'1h'`).replace("'ok'", "'ok again'")
       );
       await cli.waitFor(/↻ Reloaded in \d+ ms, 1 command loaded/);
       // A save does not reset the cooldowns.
@@ -478,7 +485,7 @@ export default language({
       // is the one loaded.
       writeFileSync(
         join(cwd, 'src/commands/daily.ts'),
-        COOLDOWN(`'1h'`).replace("cooldown: '1h',\n", '') +
+        COOLDOWN('daily', `'1h'`).replace("cooldown: '1h',\n", '') +
           "console.log('loaded without cooldown');\n"
       );
       await cli.waitFor('loaded without cooldown');
@@ -489,7 +496,7 @@ export default language({
     it('is reported when it is not a duration', async () => {
       const fake = await world();
       const cli = runDev(
-        project({ 'src/commands/daily.ts': COOLDOWN(`'10 minutes'`) }),
+        project({ 'src/commands/daily.ts': COOLDOWN('daily', `'10 minutes'`) }),
         fake
       );
       await cli.waitFor(

@@ -1,9 +1,9 @@
 ---
 title: 'Tasks'
-description: 'Make your bot do something by itself, every so often or at given times, with one file per task'
+description: 'Make your bot do something by itself, every so often or at given times, with a task() declaration'
 ---
 
-A task is a file of `src/tasks/`. It says when to run and what to do; ChapterJS runs it once the bot is connected, and keeps running it for as long as the bot is online.
+A task is declared with `task()`, in any file of `src/`, and exported. It says when to run and what to do; ChapterJS runs it once the bot is connected, and keeps running it for as long as the bot is online.
 
 ```ts src/tasks/report.ts
 import { task } from 'chapterjs';
@@ -20,7 +20,7 @@ export default task({
 });
 ```
 
-That is all: every Monday at 9:00 in Paris, the task runs with the servers the bot is in. The name of the file is the name of the task, and nothing else has to be registered.
+That is all: every Monday at 9:00 in Paris, the task runs with the servers the bot is in. The name of the export (or of the file, for a default export) is the name of the task, and nothing else has to be registered.
 
 <Note>
   Everything a task file declares is in the [reference](/reference/task).

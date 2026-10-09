@@ -7,9 +7,9 @@ Les embeds étaient écrits sur place dans [Envoyer des messages](/fr/tutorial/s
 
 ## Un fichier d’embed
 
-Un embed utilisé à plusieurs endroits est un fichier de `src/components/embeds/`. C’est une fonction de ce qu’il affiche, ou l’embed lui-même quand il ne change jamais. Créez `src/components/embeds/card.ts` :
+Un embed utilisé à plusieurs endroits se déclare avec `embed()` et s’exporte. C’est une fonction de ce qu’il affiche, ou l’embed lui-même quand il ne change jamais. Créez `src/components/card.ts` :
 
-```ts src/components/embeds/card.ts
+```ts src/components/card.ts
 import { embed, type GuildMember } from 'chapterjs';
 
 export default embed((member: GuildMember) => ({
@@ -28,9 +28,10 @@ Puis utilisez-le depuis une commande :
 
 ```ts src/commands/card.ts
 import { command } from 'chapterjs';
-import card from '../components/embeds/card';
+import card from '../components/card';
 
 export default command({
+  name: 'card',
   description: 'Affiche votre carte de membre',
   async run({ interaction, member }) {
     await interaction.reply({ embeds: [card(member)] });
@@ -40,7 +41,7 @@ export default command({
 
 Et depuis l’événement d’accueil, de la même façon : `channel.send({ embeds: [card(member)] })`. `card(member)` renvoie l’embed, vérifié par rapport aux limites de Discord au moment de l’envoi. Un fichier d’embed est une fonction comme une autre, à une différence près : il est vérifié et typé comme un embed. Un titre de plus de 256 caractères, une couleur qui n’est pas un nombre, sont des erreurs avec la limite dans le message.
 
-Contrairement aux boutons et aux formulaires, un embed n’est jamais cliqué, donc il n’a ni `run` ni chemin à renvoyer : le dossier n’est là que pour que les embeds vivent avec les autres pièces réutilisables.
+Contrairement aux boutons et aux formulaires, un embed n’est jamais cliqué, donc il n’a ni `run` ni nom à renvoyer : le déclarer en fait seulement une pièce à importer là où un message en a besoin.
 
 <Info>
   `member.avatarURL()` est l’image du membre, et `member.highestRole.color` la couleur de son rôle le plus haut, sous forme de nombre ; `0` veut dire pas de couleur, d’où le `||`. Le paramètre typé, `member: GuildMember`, est le seul endroit de ce tutoriel où vous écrivez un type : un fichier d’embed est une fonction de ce que vous voulez lui donner, alors vous dites ce qu’il prend.
@@ -54,6 +55,7 @@ Discord a une seconde façon de mettre en page un message, sans `content` ni `em
 import { command, container, section, separator, text, thumbnail } from 'chapterjs';
 
 export default command({
+  name: 'profile-card',
   description: 'Affiche votre profil',
   async run({ interaction, member }) {
     await interaction.reply({
@@ -88,7 +90,7 @@ Dès qu’un message contient l’une de ces pièces, Discord n’affiche que de
 | `container(children, { color })` | Un cadre autour de textes, sections, rangées, galeries, fichiers et séparateurs |
 | `row(components)` | Une rangée de 5 boutons au plus, ou un menu, quand vous voulez choisir les rangées vous-même |
 
-Les boutons et menus de `src/components/` y vont aussi, dans une `row()` ou seuls comme accessoire d’une section. Un message contient 40 composants au plus, ceux qui sont imbriqués compris.
+Vos boutons et menus y vont aussi, dans une `row()` ou seuls comme accessoire d’une section. Un message contient 40 composants au plus, ceux qui sont imbriqués compris.
 
 ## Lequel utiliser
 
@@ -96,7 +98,7 @@ Les embeds sont plus simples et suffisent pour la plupart des choses : un titre,
 
 ## Récapitulatif
 
-- Un embed utilisé plusieurs fois est un fichier de `src/components/embeds/` : une fonction de ce qu’il affiche, ou l’embed lui-même.
+- Un embed utilisé plusieurs fois est `embed(...)`, exporté : une fonction de ce qu’il affiche, ou l’embed lui-même.
 - `text()`, `section()`, `container()` et les autres construisent un message fait de composants, sans `content` ni `embeds`.
 - Les deux sont vérifiés par rapport aux limites de Discord avant tout envoi.
 

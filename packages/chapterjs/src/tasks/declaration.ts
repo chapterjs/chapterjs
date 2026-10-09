@@ -1,14 +1,18 @@
-// `src/tasks/`: one file per task, named after it. What the file declares
-// is checked when it loads, so a wrong duration or cron is explained
-// before the bot waits for it.
+// What a file declares with `task()`, checked when it loads, so a wrong
+// duration or cron is explained before the bot waits for it. The name of
+// the export is the name of the task.
 
-import type { Convention } from '../loader/loader.js';
+import type { Declaration } from '../loader/loader.js';
 import { parseCron, parseEvery, type Schedule } from './schedule.js';
-import { isTaskFile, type TaskConfig, type TaskContext } from './task.js';
+import {
+  isTaskDeclaration,
+  type TaskConfig,
+  type TaskContext,
+} from './task.js';
 
-/** A task file, checked: what the scheduler works with. */
+/** A task, checked: what the scheduler works with. */
 export interface LoadedTask {
-  /** The name of the task: the path of the file, without extension. */
+  /** The name of the task: the name of the export that declares it. */
   readonly name: string;
   readonly schedule: Schedule;
   readonly onStart: boolean;
@@ -24,48 +28,21 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const KEYS = ['every', 'cron', 'timezone', 'onStart', 'run'];
 
+const EXAMPLE = `task({ every: '10m', run() { ... } })`;
+
 /**
- * `src/tasks/`: each file is a task, named after its path. It exports by
- * default what `task()` returns:
- *
- * ```ts
- * // src/tasks/report.ts
- * import { task } from 'chapterjs';
- *
- * export default task({
- *   cron: '0 9 * * 1',
- *   async run({ guilds }) { ... },
- * });
- * ```
+ * A task, declared anywhere in `src/` with `task()` and exported: the name
+ * of the export is the name of the task.
  */
-export const tasksConvention: Convention<LoadedTask> = {
-  folder: 'tasks',
+export const taskDeclaration: Declaration<LoadedTask> = {
   one: 'task',
   many: 'tasks',
-  check(path) {
-    for (const part of path.replace(/\.[^./]+$/, '').split('/')) {
-      if (!/^[A-Za-z0-9_-]+$/.test(part)) {
-        fail(
-          `"${part}" can't be in the name of a task: use letters, digits, - and _ only. The path of the file is the name of the task.`
-        );
-      }
-    }
-  },
-  read(exports, path) {
-    const file = exports.default;
-    const example = `import { task } from 'chapterjs'; export default task({ every: '10m', run() { ... } })`;
-    if (!isTaskFile(file)) {
-      return fail(
-        'default' in exports
-          ? `The default export of this file must be what task() returns: ${example}`
-          : `This file has no default export. It should look like: ${example}`
-      );
-    }
-    const config = file.config as TaskConfig;
+  is: isTaskDeclaration,
+  list: false,
+  read(value, { name }) {
+    const config = (value as { config: unknown }).config as TaskConfig;
     if (!isRecord(config)) {
-      return fail(
-        `task() needs an object: task({ every: '10m', run() { ... } })`
-      );
+      return fail(`task() needs an object: ${EXAMPLE}`);
     }
     for (const key of Object.keys(config)) {
       if (!KEYS.includes(key)) {
@@ -104,7 +81,7 @@ export const tasksConvention: Convention<LoadedTask> = {
       );
     }
     return Object.freeze({
-      name: path.replace(/\.[^./]+$/, ''),
+      name,
       schedule,
       onStart: config.onStart === true,
       run: config.run,

@@ -3,12 +3,13 @@ title: 'Commands'
 description: 'Write a slash command as one file, choose where it works and who can use it, and see it appear in your test server'
 ---
 
-A slash command is what people type after `/` in Discord. To create one, add a file in `src/commands/`:
+A slash command is what people type after `/` in Discord. To create one, declare it with `command()` in any file of `src/`, and export it:
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'ping',
   description: 'Replies with Pong!',
   async run({ interaction }) {
     await interaction.reply('Pong!');
@@ -22,65 +23,51 @@ That is all: `/ping` shows up in your test server as soon as you save, and your 
   Every field a command takes and every type it uses is in the [reference](/reference/command).
 </Note>
 
-## The path is the name
+## The name
 
-The path of a file is the name of its command:
+`name` is what people type after the `/`. A subcommand is written with its parents, separated by spaces:
 
-<Tree>
-  <Tree.Folder name="src/commands" defaultOpen>
-    <Tree.File name="ping.ts" highlight />
-    <Tree.Folder name="mod" defaultOpen>
-      <Tree.File name="ban.ts" />
-      <Tree.File name="kick.ts" />
-      <Tree.Folder name="roles" defaultOpen>
-        <Tree.File name="add.ts" />
-      </Tree.Folder>
-    </Tree.Folder>
-  </Tree.Folder>
-</Tree>
+| `name`              | Command          |
+| ------------------- | ---------------- |
+| `'ping'`            | `/ping`          |
+| `'mod ban'`         | `/mod ban`       |
+| `'mod kick'`        | `/mod kick`      |
+| `'mod roles add'`   | `/mod roles add` |
 
-| File | Command |
-| --- | --- |
-| `ping.ts` | `/ping` |
-| `mod/ban.ts` | `/mod ban` |
-| `mod/kick.ts` | `/mod kick` |
-| `mod/roles/add.ts` | `/mod roles add` |
-
-- A **file** is a command.
-- A file in a **folder** is a subcommand of the command named after the folder.
-- A second folder makes a group. Discord allows nothing deeper: a file in a third folder is reported.
+- One word is a command.
+- Two words make a subcommand of the command named by the first.
+- Three make a group. Discord allows nothing deeper: a fourth word is reported.
 
 ```text
-✗ src/commands/mod/roles/admin/add.ts This file is 3 folders deep: Discord allows a command, a group and a subcommand, so 2 folders at most (src/commands/mod/roles/add.ts is /mod roles add).
+✗ src/commands/add.ts The name "mod roles admin add" has 4 words: Discord allows a command, a group and a subcommand, so 3 at most ('mod roles add' is /mod roles add).
 ```
 
-Names follow the rules of Discord: lowercase letters, digits, `-` and `_`, 32 characters at most. A file that breaks them is reported when it loads:
+Names follow the rules of Discord: lowercase letters, digits, `-` and `_`, 32 characters at most. A command that breaks them is reported when its file loads:
 
 ```text
-✗ src/commands/Ping.ts "Ping" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most. The path of the file is the name of the command.
+✗ src/commands/ping.ts "Ping" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most.
 ```
 
-A folder needs no file of its own: Discord asks for its description but never shows it, so ChapterJS generates one.
+A command with subcommands (`/mod`) needs no declaration of its own: Discord asks for its description but never shows it, so ChapterJS generates one.
 
 <Warning>
-  A command with subcommands can't be used by itself: with `mod/ban.ts`, there is no `/mod`. A file `mod.ts` next to the folder `mod/` is reported and left out:
-
+  A command with subcommands can't be used by itself: with `'mod ban'`, there is no `/mod`. A command named `'mod'` next to it is reported and left out:
   ```text
-  ✗ src/commands/mod.ts /mod can't be a command and have subcommands (src/commands/mod/ban.ts is /mod ban): Discord only lets people use the subcommands. Move this file into the folder, for example as mod/run.ts.
+  ✗ src/commands/mod.ts /mod can't be a command and have subcommands (src/commands/ban.ts is /mod ban): Discord only lets people use the subcommands. Make this one a subcommand too, for example name: 'mod run'.
   ```
 </Warning>
 
 ### Organising your files
 
-A folder in parentheses, like `(moderation)`, only groups files, and a file or a folder starting with `_` is never a command: both are explained in [Project structure](/setup/project-structure#two-naming-rules). Two files that are the same command once the parentheses are removed are reported, and the second one is left out:
+Where a file is and what it is called mean nothing to the command: `src/commands/ban.ts`, `src/moderation/ban.ts` or a file that declares `/ban` next to the button it shows are all the same `/ban`. A file may declare several commands, each exported under its own name. Two declarations of the same command are reported, and the second one is left out:
 
 ```text
-✗ src/commands/(b)/ban.ts /ban is already src/commands/(a)/ban.ts: two files can't be the same command. A folder in parentheses only groups files, it is not part of the name.
+✗ src/moderation/ban.ts (again) /ban is already declared in src/moderation/ban.ts: two commands can't have the same name.
 ```
 
 ### A command or a subcommand?
 
-Prefer **commands** (`/ban`, `/kick`) sorted in a folder in parentheses, and keep **subcommands** for the variants of one action (`/timeout add`, `/timeout remove`).
+Prefer **commands** (`/ban`, `/kick`), sorted in the folders you like, and keep **subcommands** for the variants of one action (`/timeout add`, `/timeout remove`).
 
 The reason is how Discord hides commands: it shows or hides a whole command, never one subcommand. With `/mod ban` and `/mod kick`, someone who may only kick still sees `/mod ban`; ChapterJS refuses it when they use it, but with `/ban` and `/kick` they would not see it at all.
 
@@ -102,6 +89,7 @@ A bot in several languages can leave it out of the file and write it, with its t
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'whoami',
   description: 'Says who you are',
   async run({ interaction, user, member, guild, channel }) {
     await interaction.reply(
@@ -136,6 +124,7 @@ A command works in servers. `where` changes that, and what `run` receives follow
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'hello',
   description: 'Says hello',
   where: 'both',
   async run({ interaction, guild, member, channel }) {
@@ -169,6 +158,7 @@ The same goes for `interaction.guild`, `interaction.member` and `interaction.cha
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'purge',
   description: 'Deletes the last messages of this channel',
   permissions: ['ManageMessages'],
   options: {
@@ -198,6 +188,7 @@ The names are the ones of [Permissions](/reference/permissions#permissionname): 
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'daily',
   description: 'Claims your daily reward',
   cooldown: '1d',
   async run({ interaction }) {
@@ -214,6 +205,7 @@ A cooldown can also be for a channel or a server, whoever used it; the three can
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'announce',
   description: 'Pings everyone',
   permissions: ['MentionEveryone'],
   cooldown: { user: '10m', guild: '1h' },

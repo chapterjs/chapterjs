@@ -232,8 +232,8 @@ export const Message = ({ bot, name, children }) => (
 {/* Deux fichiers */}
 
 <div className="mx-auto mt-28 max-w-6xl px-6">
-  <Heading eyebrow="En pratique" title="Le fichier est l’API">
-    L’endroit où est un fichier dit ce qu’il est. Le chemin d’une commande est son nom, le dossier d’un événement est l’événement, et le même import fonctionne dans chaque fichier. Rien n’est répété, rien n’est annoté.
+  <Heading eyebrow="En pratique" title="L’export est l’API">
+    Ce qu’un fichier exporte dit ce qu’il est. Une commande a son nom, un événement a son nom, un bouton est nommé par son export, et le même import fonctionne dans chaque fichier. Rien n’est enregistré, rien n’est annoté.
   </Heading>
 
   <div className="mt-10 grid gap-4 md:grid-cols-2 [&_div.my-4]:my-0 [&>div]:min-w-0">
@@ -242,6 +242,7 @@ export const Message = ({ bot, name, children }) => (
       import { command } from 'chapterjs';
 
       export default command({
+        name: 'ping',
         description: 'Répond Pong !',
         async run({ interaction }) {
           await interaction.reply('Pong !');
@@ -250,11 +251,14 @@ export const Message = ({ bot, name, children }) => (
       ```
     </div>
     <div>
-      ```ts src/events/memberJoin/welcome.ts
+      ```ts src/events/welcome.ts
       import { event } from 'chapterjs';
 
-      export default event(async ({ member, guild }) => {
-        await member.send(`Bienvenue sur ${guild.name} !`);
+      export default event({
+        name: 'memberJoin',
+        async run({ member, guild }) {
+          await member.send(`Bienvenue sur ${guild.name} !`);
+        },
       });
       ```
     </div>
@@ -274,14 +278,14 @@ export const Message = ({ bot, name, children }) => (
     <Cell
       className="md:col-span-2"
       icon="folder-tree"
-      title="Les fichiers sont l’API"
+      title="Les exports sont l’API"
       visual={
         <div className="grid w-full max-w-lg grid-cols-[1fr_auto_1fr] items-center gap-4">
           <Mono className="space-y-1.5 text-left">
-            <div>src/commands/<span className="text-zinc-950 dark:text-white">ping.ts</span></div>
-            <div>src/commands/<span className="text-zinc-950 dark:text-white">poll.ts</span></div>
-            <div>src/events/memberJoin/<span className="text-zinc-950 dark:text-white">welcome.ts</span></div>
-            <div>src/components/buttons/<span className="text-zinc-950 dark:text-white">vote.ts</span></div>
+            <div>command({'{'} name: <span className="text-zinc-950 dark:text-white">'ping'</span> {'}'})</div>
+            <div>command({'{'} name: <span className="text-zinc-950 dark:text-white">'poll'</span> {'}'})</div>
+            <div>event({'{'} name: <span className="text-zinc-950 dark:text-white">'memberJoin'</span> {'}'})</div>
+            <div>export const <span className="text-zinc-950 dark:text-white">vote</span> = button(...)</div>
           </Mono>
           <span className="cj-accent"><Icon icon="arrow-right" size={16} /></span>
           <div className="cj-chip space-y-1 rounded-lg p-2">
@@ -293,7 +297,7 @@ export const Message = ({ bot, name, children }) => (
         </div>
       }
     >
-      Un fichier dans <C>src/events/memberJoin/</C> tourne quand quelqu’un arrive. Un fichier dans <C>src/commands/</C> apparaît comme une commande slash. Un fichier dans <C>src/components/buttons/</C> est un bouton, avec un identifiant que vous n’écrivez jamais. Pas de client, pas de script d’enregistrement, pas de liste d’intents.
+      <C>event({'{'} name: 'memberJoin' {'}'})</C> tourne quand quelqu’un arrive. <C>command({'{'} name: 'ping' {'}'})</C> apparaît comme une commande slash. <C>export const vote = button(...)</C> est un bouton, avec un identifiant que vous n’écrivez jamais. Mettez-les dans les fichiers que vous voulez : pas de client, pas de script d’enregistrement, pas de liste d’intents.
     </Cell>
 
     <Cell

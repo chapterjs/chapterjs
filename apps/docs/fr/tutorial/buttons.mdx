@@ -7,9 +7,9 @@ Un message peut porter des boutons. Quand quelqu’un clique sur l’un d’eux,
 
 ## Un bouton est un fichier
 
-Un bouton est un fichier de `src/components/buttons/`. Il dit à quoi ressemble le bouton et quoi faire quand on clique dessus. Créez `src/components/buttons/reroll.ts` :
+Un bouton se déclare avec `button()` et s’exporte. Il dit à quoi ressemble le bouton et quoi faire quand on clique dessus. Créez `src/components/reroll.ts` (n’importe quel fichier de `src/` ferait l’affaire) :
 
-```ts src/components/buttons/reroll.ts
+```ts src/components/reroll.ts
 import { button } from 'chapterjs';
 
 const reroll = button({
@@ -32,9 +32,10 @@ Puis mettez-le dans la réponse de `/dice` :
 
 ```ts src/commands/dice.ts
 import { command } from 'chapterjs';
-import reroll from '../components/buttons/reroll';
+import reroll from '../components/reroll';
 
 export default command({
+  name: 'dice',
   description: 'Lance un dé',
   options: {
     sides: { type: 'integer', description: 'Combien de faces', min: 2, max: 100 },
@@ -56,7 +57,7 @@ Utilisez `/dice sides:20` : la réponse a un bouton. Cliquez dessus : le message
 
 Quand Discord affiche un bouton, il doit se souvenir duquel il s’agit, pour qu’un clic soit renvoyé au bon bot avec le bon sens. Discord le fait avec un court texte attaché au bouton, que le bot choisit, et qu’il récupère au clic.
 
-Dans ChapterJS, **ce texte est le chemin du fichier** : `buttons/reroll`. Vous ne l’écrivez jamais, vous ne le voyez jamais, et il ne peut pas entrer en collision avec un autre bouton, puisque deux fichiers ne peuvent pas avoir le même chemin. Quand le clic revient, le framework lit le chemin, trouve le fichier, et lance son `run`. C’est la même règle que pour les commandes : l’endroit où est le fichier dit ce qu’il est.
+Dans ChapterJS, **ce texte est le nom de l’export** : `reroll` (un export par défaut prend le nom de son fichier). Vous ne l’écrivez jamais, vous ne le voyez jamais, et il ne peut pas entrer en collision avec un autre bouton : deux boutons du même nom sont signalés, et le second est mis de côté. Quand le clic revient, le framework lit le chemin, trouve le fichier, et lance son `run`. C’est la même règle que pour les commandes : l’endroit où est le fichier dit ce qu’il est.
 
 ## Les données : ce que transporte un bouton
 
@@ -88,7 +89,7 @@ Comme pour une commande, un clic doit recevoir une réponse en moins de 3 second
 
 Par défaut, tous ceux qui voient le message peuvent cliquer. Pour un bouton qui appartient à la personne qui a utilisé la commande, `who: 'author'` : n’importe qui d’autre lit « Only the person who used the command can use this button. » en privé, et `run` ne démarre jamais. Voici un bouton « Fermer » qui retire le message :
 
-```ts src/components/buttons/close.ts
+```ts src/components/close.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -101,7 +102,7 @@ export default button({
 });
 ```
 
-`style` vaut `'primary'` (bleu), `'secondary'` (gris), `'success'` (vert) ou `'danger'` (rouge). Le fichier donne l’apparence par défaut ; là où vous mettez le bouton dans un message, un second argument la change pour ce message : `reroll({ sides }, { disabled: true })`.
+`style` vaut `'primary'` (bleu), `'secondary'` (gris), `'success'` (vert) ou `'danger'` (rouge). La déclaration donne l’apparence par défaut ; là où vous mettez le bouton dans un message, un second argument la change pour ce message : `reroll({ sides }, { disabled: true })`.
 
 Un bouton qui ne fait qu’ouvrir un lien ne lance rien dans votre bot, donc il n’a pas de fichier : `linkButton({ label: 'Docs', url: 'https://...' })`, écrit là où est le message.
 
@@ -128,7 +129,7 @@ Un bouton vit dans les messages où il a été envoyé, bien après que vous ave
 
 ## Récapitulatif
 
-- Un bouton est un fichier de `src/components/buttons/` ; son chemin est ce que renvoie un clic.
+- Un bouton est `button({ ... })`, exporté ; le nom de son export est ce que renvoie un clic.
 - `data` est ce que transporte le bouton dans le message, typé, et survit aux redémarrages.
 - `update()` modifie le message sur lequel est le bouton ; `who: 'author'` le réserve à la personne.
 - Les vieux messages reçoivent une réponse simple quand le fichier a changé.
