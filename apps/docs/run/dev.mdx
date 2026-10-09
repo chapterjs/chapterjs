@@ -226,6 +226,18 @@ The connection to Discord is kept alive by the framework. When it drops, the bot
 
 An error in one of your functions is shown with the file and the line, and stops nothing else: see [when your function fails](/commands/answering#when-your-function-fails). The bot also looks after its own memory: see [Memory](/memory).
 
+## A new version of ChapterJS
+
+Once the bot is online, `chapterjs dev` tells you when a newer version of the package is out, with the command that installs it, written for the package manager of your project:
+
+```text
+ℹ A new version of chapterjs is out: 0.3.0 (you have 0.2.0). To update, run:
+  pnpm update chapterjs --latest
+  What changed: https://www.chapterjs.org/changelog
+```
+
+npm is asked at most once a day, after the bot is online, and never holds it: without internet, the line does not appear. Nothing is installed for you: run the command when you want, then start `chapterjs dev` again.
+
 ## Stopping
 
 Press `Ctrl+C`. The bot disconnects properly and goes offline at once:

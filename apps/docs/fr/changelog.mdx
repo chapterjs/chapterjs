@@ -3,7 +3,7 @@ title: 'Changelog'
 description: 'Ce qui a changé dans chaque version de ChapterJS'
 ---
 
-`chapterjs`, `create-chapter` et `create-chapterjs` ont toujours le même numéro de version. Mettez-les à jour ensemble :
+`chapterjs`, `create-chapter` et `create-chapterjs` ont toujours le même numéro de version. Seul `chapterjs` vit dans votre projet ; `chapterjs dev` vous prévient quand un plus récent est sorti. Pour le mettre à jour :
 
 <CodeGroup>
 
@@ -34,6 +34,8 @@ Plus rien n’est lié à un dossier. Chaque fichier de `src/` est chargé, et c
 - **[Les composants](/fr/components)** et **[les tâches](/fr/tasks)** sont nommés par leur export : `export const again = button(...)` est le bouton `again`. Déplacer un fichier ne change rien ; renommer l’export, si, comme renommer le fichier le faisait.
 - **[Les langues](/fr/translated-messages)** disent leur `locale` : `language({ locale: 'fr', ... })`, et un deuxième `default: true` est souligné dans les deux fichiers. Une langue peut être déclarée à plusieurs endroits : les textes d’une fonctionnalité vivent à côté d’elle, et `t` les propose tous. Un texte que la langue par défaut n’a pas est pris dans la langue qui l’a, donc un module écrit dans d’autres langues que les vôtres fonctionne quand même.
 - `.chapterjs/` est un seul projet TypeScript pour tout `src/`, et ne contient que ce que le projet ajoute : les fichiers de `public/`, les langues et les commandes. Les dossiers entre parenthèses et les fichiers `_` ne servent plus : un dossier n’est qu’un dossier, et un fichier qui ne déclare rien est à vous.
+
+`chapterjs dev` vous prévient maintenant, une fois le bot en ligne, quand une version plus récente de `chapterjs` est sortie, avec la commande qui l’installe. Voir [Une nouvelle version de ChapterJS](/fr/run/dev#une-nouvelle-version-de-chapterjs).
 
 Les types `EventFile`, `CommandFile`, `ButtonFile`, `SelectFile`, `ModalFile`, `EmbedFile`, `TaskFile`, `PresenceFile` et `LanguageFile` s’appellent maintenant `EventDeclaration`, `CommandDeclaration`, `ButtonDeclaration`, `SelectDeclaration`, `ModalDeclaration`, `EmbedDeclaration`, `TaskDeclaration`, `PresenceDeclaration` et `LanguageDeclaration`.
 
