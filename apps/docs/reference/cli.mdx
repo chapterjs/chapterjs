@@ -41,6 +41,7 @@ Runs the bot of the current folder on the test server of `DEV_GUILD_ID`, and rel
 | Privileged intents | Those the files need must be enabled: otherwise the files and the link are printed and, in a terminal, the command waits. |
 | Connection | To the test server only. What happens in other servers and in private messages is dropped, and the intents that only serve private messages are not asked for. |
 | Commands | Registered on the test server, only when they changed since the last time, without the ones production already shows as declared. Registered again after a reload that changed them. |
+| New version | npm is asked, at most once a day, whether a newer `chapterjs` is published: if so, an `ℹ` gives the command to run, with the package manager of the project (its lockfile, else the one that started the command, else npm). Without an answer in 5 seconds, nothing is said. |
 | Reload | On every save under `src/`: files are loaded again, a failing file keeps its last working version, the bot reconnects when the files need new intents. |
 | Stop | `Ctrl+C` or `SIGTERM`: the session is closed and the bot goes offline at once. A second one exits without waiting. |
 
@@ -158,6 +159,7 @@ What the CLI keeps in the project, ignored by git:
 | --- | --- | --- |
 | `types/project.d.ts`, `tsconfig.json` | `sync`, `dev`, `build` | What the project adds to the types of `chapterjs`, and the one TypeScript project that covers `src/`. |
 | `cache/commands.json`, `cache/commands.global.json` | `dev`, `start` | A fingerprint of the commands last registered on the test server and for everyone, so that nothing is sent when they did not change. |
+| `cache/update.json` | `dev` | The latest version npm published, and when it was asked: it is asked again a day later. |
 | `build/bot.js`, `build/bot.js.map`, `build/build.json` | `build` | The compiled bot, its map back to `src/`, and what the build was made of. |
 
 The folder can be deleted at any time: `sync` writes the types again, the next `dev` or `start` registers the commands again, and `build` makes a new build.

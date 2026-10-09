@@ -28,6 +28,7 @@ import {
   type PreflightOptions,
 } from './preflight.js';
 import { createProject, explain, hasSources, writeTypes } from './project.js';
+import { checkForUpdate, describeUpdate } from './update-check.js';
 
 export interface DevOptions {
   /** The folder of the project. */
@@ -58,6 +59,13 @@ export async function dev(options: DevOptions): Promise<number> {
   const { token, devGuildId } = read.env;
   const src = join(cwd, 'src');
   if (!(await hasSources(cwd, log))) return 1;
+  // Asked now, said once the bot is online: the registry answers while the
+  // files load and Discord is checked, so nobody waits for it.
+  const update = checkForUpdate({
+    cwd,
+    version: options.version,
+    env: options.env,
+  });
 
   // 2. The files of the project.
   const project = createProject({
@@ -226,6 +234,9 @@ export async function dev(options: DevOptions): Promise<number> {
       }
     };
     notePrivateOnly();
+    update.then(found => {
+      if (found && !signal.aborted) log.info(describeUpdate(found));
+    });
 
     // 4. Every save reloads the project. Watching starts right away; the
     // first thing done is to tell Discord the commands.

@@ -41,6 +41,7 @@ Fait tourner le bot du dossier courant sur le serveur de test de `DEV_GUILD_ID`,
 | Intents privilégiés | Ceux dont les fichiers ont besoin doivent être activés : sinon les fichiers et le lien sont affichés et, dans un terminal, la commande attend. |
 | Connexion | Au serveur de test uniquement. Ce qui se passe dans les autres serveurs et en messages privés est écarté, et les intents qui ne servent qu’aux messages privés ne sont pas demandés. |
 | Commandes | Enregistrées sur le serveur de test, seulement quand elles ont changé depuis la dernière fois, sans celles que la production affiche déjà telles que déclarées. Enregistrées à nouveau après un rechargement qui les a changées. |
+| Nouvelle version | npm est interrogé, au plus une fois par jour, pour savoir si un `chapterjs` plus récent est publié : si oui, un `ℹ` donne la commande à lancer, avec le gestionnaire de paquets du projet (son lockfile, sinon celui qui a lancé la commande, sinon npm). Sans réponse en 5 secondes, rien n’est dit. |
 | Rechargement | À chaque enregistrement dans `src/` : les fichiers sont rechargés, un fichier qui échoue garde sa dernière version qui fonctionnait, le bot se reconnecte quand les fichiers ont besoin de nouveaux intents. |
 | Arrêt | `Ctrl+C` ou `SIGTERM` : la session est fermée et le bot passe hors ligne immédiatement. Un second arrêt sort sans attendre. |
 
@@ -158,6 +159,7 @@ Ce que le CLI garde dans le projet, ignoré par git :
 | --- | --- | --- |
 | `types/project.d.ts`, `tsconfig.json` | `sync`, `dev`, `build` | Ce que le projet ajoute aux types de `chapterjs`, et le seul projet TypeScript qui couvre `src/`. |
 | `cache/commands.json`, `cache/commands.global.json` | `dev`, `start` | Une empreinte des dernières commandes enregistrées sur le serveur de test et pour tout le monde, pour que rien ne soit envoyé quand elles n’ont pas changé. |
+| `cache/update.json` | `dev` | La dernière version publiée par npm, et quand il a été interrogé : il l’est à nouveau un jour plus tard. |
 | `build/bot.js`, `build/bot.js.map`, `build/build.json` | `build` | Le bot compilé, sa correspondance vers `src/`, et ce dont la compilation était faite. |
 
 Le dossier peut être supprimé à tout moment : `sync` réécrit les types, le prochain `dev` ou `start` enregistre à nouveau les commandes, et `build` fait une nouvelle compilation.

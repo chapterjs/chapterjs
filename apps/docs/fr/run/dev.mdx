@@ -226,6 +226,18 @@ La connexion à Discord est gardée en vie par le framework. Quand elle tombe, l
 
 Une erreur dans une de vos fonctions est affichée avec le fichier et la ligne, et n’arrête rien d’autre : voir [quand votre fonction échoue](/fr/commands/answering#quand-votre-fonction-échoue). Le bot s’occupe aussi de sa propre mémoire : voir [Mémoire](/fr/memory).
 
+## Une nouvelle version de ChapterJS
+
+Une fois le bot en ligne, `chapterjs dev` vous prévient quand une version plus récente du paquet est sortie, avec la commande qui l’installe, écrite pour le gestionnaire de paquets de votre projet :
+
+```text
+ℹ A new version of chapterjs is out: 0.3.0 (you have 0.2.0). To update, run:
+  pnpm update chapterjs --latest
+  What changed: https://www.chapterjs.org/changelog
+```
+
+npm est interrogé au plus une fois par jour, après la mise en ligne du bot, et ne le retient jamais : sans internet, la ligne n’apparaît pas. Rien n’est installé à votre place : lancez la commande quand vous voulez, puis relancez `chapterjs dev`.
+
 ## Arrêter
 
 Appuyez sur `Ctrl+C`. Le bot se déconnecte proprement et passe hors ligne immédiatement :
