@@ -3,9 +3,9 @@ title: 'Forms'
 description: 'Open a form in Discord from a command or a button, and receive what was filled in, typed field by field'
 ---
 
-A form (Discord calls it a modal) is a file of `src/components/modals/`. Declare its fields; `run` receives them under the same names, typed from their kind.
+A form (Discord calls it a modal) is declared with `modal()`, in any file of `src/`, and exported. Declare its fields; `run` receives them under the same names, typed from their kind.
 
-```ts src/components/modals/feedback.ts
+```ts src/components/feedback.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -24,9 +24,10 @@ A command or a button opens it with `interaction.showModal()`:
 
 ```ts src/commands/feedback.ts
 import { command } from 'chapterjs';
-import feedback from '../components/modals/feedback';
+import feedback from '../components/feedback';
 
 export default command({
+  name: 'feedback',
   description: 'Sends your feedback',
   async run({ interaction }) {
     await interaction.showModal(feedback);
@@ -57,7 +58,7 @@ A form has 1 to 5 fields, each with a `label` (45 characters at most) and an opt
 
 Every field is required unless it says `required: false`; a `text` or a `radio` that is not required is then `string | undefined`. `min` and `max` say how many can be picked or uploaded; `minLength` and `maxLength` how long a text can be.
 
-```ts src/components/modals/report.ts
+```ts src/components/report.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -87,9 +88,9 @@ export default modal({
 
 A button or a menu can open a form too. The form then knows the message of the button (`message`), and can change it with `update()` instead of sending a new message:
 
-```ts src/components/buttons/rename.ts
+```ts src/components/rename-button.ts
 import { button } from 'chapterjs';
-import rename from '../modals/rename';
+import rename from './rename';
 
 export default button({
   label: 'Rename',
@@ -100,7 +101,7 @@ export default button({
 });
 ```
 
-```ts src/components/modals/rename.ts
+```ts src/components/rename.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -123,9 +124,9 @@ export default modal({
 
 Where you open the form, `values` fills some fields in advance: a text, the picked options of a menu, radio or checkboxes, or whether a checkbox is checked.
 
-```ts src/components/buttons/edit.ts
+```ts src/components/edit.ts
 import { button } from 'chapterjs';
-import feedback from '../modals/feedback';
+import feedback from './feedback';
 
 export default button({
   label: 'Edit my feedback',

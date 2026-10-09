@@ -170,26 +170,27 @@ describe.skipIf(exe === null || process.platform === 'win32')(
           type: 'module',
           dependencies: { chapterjs: '*' },
         }),
-        'src/events/ready/online.ts': `import { event } from 'chapterjs';\nexport default event(({ user }) => user.id);\n`,
+        'src/events/ready/online.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'ready', run: ({ user }) => user.id });\n`,
         // Files being written: `event` is typed, not imported yet.
-        'src/events/messageCreate/reply.ts': `export default event(({ message }) => {});\n`,
-        'src/events/messageCreate/nested/deep.ts': `export default event(({ message }) => {});\n`,
-        'src/commands/new.ts': `export default command({ description: 'd', run() {} });\n`,
+        'src/events/messageCreate/reply.ts': `export default event({ name: 'messageCreate', run({ message }) {} });\n`,
+        'src/events/messageCreate/nested/deep.ts': `export default event({ name: 'messageCreate', run({ message }) {} });\n`,
+        'src/commands/new.ts': `export default command({ name: 'new', description: 'd', run() {} });\n`,
         // Options being written.
-        'src/events/messageCreate/options.ts': `import { event } from 'chapterjs';\nexport default event(({ message }) => message.id, { });\n`,
-        'src/events/messageUpdate/second.ts': `import { event } from 'chapterjs';\nexport default event(({ message }) => message.id, { where: 'both', });\n`,
-        'src/events/messageDelete/options.ts': `import { event } from 'chapterjs';\nexport default event(({ messageId }) => messageId, { });\n`,
+        'src/events/messageCreate/options.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'messageCreate', `,
+        'src/events/messageUpdate/second.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'messageUpdate', where: 'both', `,
+        'src/events/messageDelete/options.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'messageDelete', `,
+        'src/events/ready/options.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'ready', `,
         // A folder created after the types were written.
-        'src/events/memberJoin/welcome.ts': `export default event(({ member }) => {});\n`,
+        'src/events/memberJoin/welcome.ts': `export default event({ name: 'memberJoin', run({ member }) {} });\n`,
         // The files of public/ are offered to asset(), in every folder.
         'public/logo.png': '',
         'public/photos/monday.png': '',
         // The languages of src/messages/ are offered to t.in().
-        'src/messages/en-US.ts': `import { language } from 'chapterjs';\nexport default language({ default: true, texts: { pong: 'Pong!' } });\n`,
-        'src/messages/fr.ts': `import { language } from 'chapterjs';\nexport default language({ texts: { pong: 'Pong !' } });\n`,
-        'src/commands/lang.ts': `import { command } from 'chapterjs';\nexport default command({ description: 'd', run({ t }) { return t.in('`,
-        'src/commands/photo.ts': `import { asset, command } from 'chapterjs';\nexport default command({ description: 'd', async run({ channel }) { await channel.send({ files: [asset('`,
-        'src/events/ready/photo.ts': `import { asset, event } from 'chapterjs';\nexport default event(({ guilds }) => asset('`,
+        'src/messages/en-US.ts': `import { language } from 'chapterjs';\nexport default language({ locale: 'en-US', default: true, texts: { pong: 'Pong!' } });\n`,
+        'src/messages/fr.ts': `import { language } from 'chapterjs';\nexport default language({ locale: 'fr', texts: { pong: 'Pong !' } });\n`,
+        'src/commands/lang.ts': `import { command } from 'chapterjs';\nexport default command({ name: 'lang', description: 'd', run({ t }) { return t.in('`,
+        'src/commands/photo.ts': `import { asset, command } from 'chapterjs';\nexport default command({ name: 'photo', description: 'd', async run({ channel }) { await channel.send({ files: [asset('`,
+        'src/events/ready/photo.ts': `import { asset, event } from 'chapterjs';\nexport default event({ name: 'ready', run: ({ guilds }) => asset(' })`,
       });
       cpSync(join(template, 'tsconfig.json'), join(cwd, 'tsconfig.json'));
       symlinkSync(
@@ -263,14 +264,24 @@ describe.skipIf(exe === null || process.platform === 'win32')(
     it.each([
       [
         'src/events/messageCreate/options.ts',
-        'message.id, { ',
-        ['bots', 'where'],
+        "name: 'messageCreate', ",
+        ['bots', 'run', 'where'],
       ],
       // What is already written is not offered again.
-      ['src/events/messageUpdate/second.ts', "where: 'both', ", ['bots']],
-      ['src/events/messageDelete/options.ts', 'messageId, { ', ['where']],
+      [
+        'src/events/messageUpdate/second.ts',
+        "where: 'both', ",
+        ['bots', 'run'],
+      ],
+      [
+        'src/events/messageDelete/options.ts',
+        "name: 'messageDelete', ",
+        ['run', 'where'],
+      ],
+      // An event without options offers none.
+      ['src/events/ready/options.ts', "name: 'ready', ", ['run']],
     ])(
-      'offers the options of the event, and nothing else, in %s',
+      'offers the options of the event named, and nothing else, in %s',
       async (file, after, options) => {
         const cwd = await scaffolded();
         expect(

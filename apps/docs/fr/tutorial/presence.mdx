@@ -59,7 +59,7 @@ Un usage courant est un indice : `{ type: 'playing', name: '/help' }` dit aux ge
 
 ## Récapitulatif
 
-- `src/presence.ts` exporte `presence({ status, activity })` ; l’enregistrer s’applique immédiatement.
+- `presence({ status, activity })` se déclare une fois, dans `src/presence.ts` dans le modèle ; l’enregistrer s’applique immédiatement.
 - `status` est la pastille ; `activity` est la ligne sous le nom, avec un `type` et un `name`.
 - Une seule présence pour tout le bot, dans chaque serveur.
 

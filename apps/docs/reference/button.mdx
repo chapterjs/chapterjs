@@ -3,9 +3,9 @@ title: 'button()'
 description: 'Everything a button file declares, what its run function receives, and the types shared by every interactive component'
 ---
 
-`button()` is what a file of `src/components/buttons/` exports by default. It takes one object, `ButtonConfig`, and types `run` from it.
+`button()` declares a button, from any file of `src/`; the name of its export is its id. It takes one object, `ButtonConfig`, and types `run` from it.
 
-```ts src/components/buttons/confirm.ts
+```ts src/components/confirm.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -24,19 +24,19 @@ export default button({
 ## button()
 
 ```ts
-button<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ButtonConfig<Data, Where>): ButtonFile<Data>
+button<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ButtonConfig<Data, Where>): ButtonDeclaration<Data>
 ```
 
-Declares a button. Export the result as the default export of a file of `src/components/buttons/`: the path of the file is what tells the button apart, so you never write an id.
+Declares a button. Export the result from any file of `src/`: the name of the export is what tells the button apart, so you never write an id.
 
 `Data` and `Where` are inferred from what you pass: you never write them.
 
-### ButtonFile
+### ButtonDeclaration
 
-What `button()` returns: the default export of a button file. Import it where you send a message, and call it with the data the button carries (`ban({ userId })`); a button without data is used as is (`confirm`), or called with a look (`confirm({ disabled: true })`).
+What `button()` returns: a declaration the framework finds in the exports of a file. Import it where you send a message, and call it with the data the button carries (`ban({ userId })`); a button without data is used as is (`confirm`), or called with a look (`confirm({ disabled: true })`).
 
 ```ts
-type ButtonFile<Data extends DataShape = {}> = { readonly config: unknown } &
+type ButtonDeclaration<Data extends DataShape = {}> = { readonly config: unknown } &
   ({} extends Data
     ? ((look?: ButtonLook) => ButtonComponent) & ButtonComponent
     : {} extends DataInputOf<Data>
@@ -131,7 +131,7 @@ What every interactive component gives to its `run`, besides the place.
   The message the component is on.
 </ResponseField>
 
-Every component also receives `t` when the project has a language in `src/messages/`: see [`TranslationContext`](/reference/messages#translationcontext).
+Every component also receives `t` when the project has a language: see [`TranslationContext`](/reference/messages#translationcontext).
 
 <ResponseField name="data" type="DataValuesOf<Data>">
   What the component carries, as declared in `data`.

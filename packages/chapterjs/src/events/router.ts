@@ -9,12 +9,13 @@ import type {
 import type { Context } from '../structures/context.js';
 import { audienceLocale, translation } from '../messages/translate.js';
 import type { Guild } from '../structures/guild.js';
-import type { EventHandler } from './convention.js';
+import type { EventHandler } from './declaration.js';
 import { EVENTS, type EventContexts, type EventName } from './registry.js';
 
-/** A handler, with the file it comes from (to report its errors). */
+/** A handler, with the file and the export it comes from (to report its errors). */
 export interface LoadedEvent {
   file: string;
+  export: string;
   event: EventHandler;
 }
 

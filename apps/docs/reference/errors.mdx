@@ -110,6 +110,7 @@ Catch only what you expect, and let the rest through: an error you don't handle 
 import { command, DiscordApiError } from 'chapterjs';
 
 export default command({
+  name: 'kick',
   description: 'Kick a member',
   options: { target: { type: 'user', description: 'Who to kick', required: true } },
   permissions: ['KickMembers'],
@@ -142,7 +143,7 @@ When the error is a `DiscordApiError` with code `50013` or `50001`, the answer s
 I don't have the permission to do that here.
 ```
 
-The error itself, with its file and line, goes to your terminal. See [Answering](/commands/answering). Both phrases can be translated in the language files of `src/messages/`: see [What the bot answers by itself](/translated-messages#what-the-bot-answers-by-itself).
+The error itself, with its file and line, goes to your terminal. See [Answering](/commands/answering). Both phrases can be translated in the language files of the project: see [What the bot answers by itself](/translated-messages#what-the-bot-answers-by-itself).
 
 ## What never throws
 

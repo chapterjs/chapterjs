@@ -1,5 +1,5 @@
-// Translated messages: the languages of `src/messages/`, and `t` in every
-// handler.
+// Translated messages: the languages declared with `language()`, and `t`
+// in every handler.
 import {
   cpSync,
   existsSync,
@@ -15,11 +15,11 @@ import { describe, expect, it } from 'vitest';
 import {
   assembleMessages,
   commandsDeclarations,
-  languagesConvention,
-  languageTypedFolders,
+  languageDeclaration,
+  languageDefaultsDeclaration,
   messagesDeclarations,
   type LanguageEntry,
-} from '../src/messages/convention.js';
+} from '../src/messages/declaration.js';
 import { language } from '../src/messages/messages.js';
 import { translateCommand, unknownCommands } from '../src/messages/commands.js';
 import {
@@ -42,8 +42,8 @@ import {
   phrase,
 } from '../src/messages/phrases.js';
 import { EVENTS, EVENT_NAMES } from '../src/events/registry.js';
-import { commandsConvention } from '../src/commands/convention.js';
-import { componentsConvention } from '../src/components/convention.js';
+import { commandDeclaration } from '../src/commands/declaration.js';
+import { componentDeclaration } from '../src/components/declaration.js';
 import { button } from '../src/components/button.js';
 import { select } from '../src/components/select.js';
 import { modal } from '../src/components/modal.js';
@@ -64,20 +64,21 @@ import {
   rawMessage,
   runDev,
   runProduction,
+  site,
   world,
   type FakeWorld,
 } from './dev-helpers.js';
 
-/** A language file as the loader reads it. */
+/** A language as the loader reads it, declared in src/messages/<locale>.ts. */
 const lang = (
   locale: string,
   texts: Record<string, string | Record<string, string>>,
   extra: Record<string, unknown> = {}
 ): LanguageEntry => ({
-  file: `src/messages/${locale}.ts`,
-  language: languagesConvention.read(
-    { default: language({ texts, ...extra } as never) },
-    `${locale}.ts`
+  ...site(`src/messages/${locale}.ts`),
+  language: languageDeclaration.read(
+    language({ locale, texts, ...extra } as never),
+    site(`src/messages/${locale}.ts`)
   ),
 });
 
@@ -90,6 +91,7 @@ const assemble = (...entries: LanguageEntry[]): LoadedMessages => {
 
 const EN = `import { language } from 'chapterjs';
 export default language({
+  locale: 'en-US',
   default: true,
   texts: {
     pong: 'Pong!',
@@ -100,6 +102,7 @@ export default language({
 `;
 const FR = `import { language } from 'chapterjs';
 export default language({
+  locale: 'fr',
   texts: {
     pong: 'Pong !',
     welcome: 'Bienvenue {name}, membre n°{count} !',
@@ -240,9 +243,9 @@ describe('the language', () => {
     ).toBe('Salut');
     expect(() =>
       (t.in as unknown as (...args: unknown[]) => string)('fr', 'bye')
-    ).toThrow('There is no message "bye" in src/messages/. It has: hi.');
+    ).toThrow('There is no message "bye" in your languages. They have: hi.');
     expect(() => (t as unknown as (key: string) => string)('bye')).toThrow(
-      'There is no message "bye" in src/messages/. It has: hi.'
+      'There is no message "bye" in your languages. They have: hi.'
     );
     expect(Object.keys(t)).toEqual(['locale']);
     expect(Object.isFrozen(t)).toBe(true);
@@ -295,11 +298,11 @@ describe('the language', () => {
     expect(none.locale).toBe('de');
     expect(none.in('fr')).toBe(none);
     expect(() => (none as unknown as (key: string) => string)('hi')).toThrow(
-      'This project has no language in src/messages/: add one, like src/messages/en-US.ts, to use t().'
+      "This project has no language: declare one with language({ locale: 'en-US', texts: { ... } }) to use t()."
     );
     expect(() =>
       (none.in as unknown as (...args: unknown[]) => string)('fr', 'hi')
-    ).toThrow('This project has no language in src/messages/');
+    ).toThrow('This project has no language: declare one');
     expect(missingTranslator(null).locale).toBe('en-US');
   });
 });
@@ -450,7 +453,7 @@ describe('the texts of a component', () => {
   );
   const t = (locale: string | null) => translatorFor(loaded, locale);
   const load = (path: string, exports: Record<string, unknown>) =>
-    componentsConvention.read(exports, path);
+    componentDeclaration.read(exports.default, site(`src/components/${path}`));
 
   it('can be computed when the message is sent, in the language of who reads it', () => {
     const again = button({
@@ -458,12 +461,12 @@ describe('the texts of a component', () => {
       data: { count: 'number' },
       run() {},
     });
-    load('buttons/again.ts', { default: again });
+    load('again.ts', { default: again });
     const rendered = again({ count: 3 }) as unknown as { raw: unknown };
     expect(typeof rendered.raw).toBe('function');
     expect(resolve(rendered as never, t('fr')).raw).toMatchObject({
       label: 'Encore (3)',
-      custom_id: 'buttons/again:3',
+      custom_id: 'again:3',
     });
     // A message resolves them for its reader; rows and containers too.
     const body = (locale: string | null) =>
@@ -481,22 +484,22 @@ describe('the texts of a component', () => {
     expect(JSON.stringify(body(null))).toContain('"label":"Again (2)"');
     // Without t, a function is an error that says why.
     expect(() => buildMessage({ components: [again({ count: 1 })] })).toThrow(
-      'This project has no language in src/messages/'
+      'This project has no language: declare one'
     );
     // A text that was written stays as it is: nothing to compute.
     const plain = button({ label: 'Again', run() {} });
-    load('buttons/plain.ts', { default: plain });
+    load('plain.ts', { default: plain });
     expect(typeof (plain as unknown as { raw: unknown }).raw).toBe('object');
   });
 
   it('is checked against the limits of Discord when computed', () => {
     const long = button({ label: () => 'x'.repeat(81), run() {} });
-    load('buttons/long.ts', { default: long });
+    load('long.ts', { default: long });
     expect(() => buildMessage({ components: [long] }, { t: t(null) })).toThrow(
       'The label of long, as its function returned it, is 81 characters long: Discord accepts between 1 and 80.'
     );
     const wrong = button({ label: (() => 3) as never, run() {} });
-    load('buttons/wrong.ts', { default: wrong });
+    load('wrong.ts', { default: wrong });
     expect(() => buildMessage({ components: [wrong] }, { t: t(null) })).toThrow(
       'is a text of 1 to 80 characters, got number.'
     );
@@ -515,7 +518,7 @@ describe('the texts of a component', () => {
       ],
       run() {},
     });
-    load('selects/menu.ts', { default: menu });
+    load('menu.ts', { default: menu });
     const raw = resolve(menu as never, t('fr')).raw as {
       placeholder: string;
       options: { label: string; description?: string }[];
@@ -526,7 +529,7 @@ describe('the texts of a component', () => {
       { label: 'B', value: 'b' },
     ]);
     const plain = select({ placeholder: 'Pick', options: ['a'], run() {} });
-    load('selects/plain.ts', { default: plain });
+    load('plain.ts', { default: plain });
     expect(typeof (plain as unknown as { raw: unknown }).raw).toBe('object');
   });
 
@@ -552,12 +555,12 @@ describe('the texts of a component', () => {
       },
       run() {},
     });
-    load('modals/form.ts', { default: form });
+    load('form.ts', { default: form });
     const raw = resolve(form as never, t('fr')).raw;
     expect(JSON.parse(JSON.stringify(raw))).toEqual(
       JSON.parse(
         JSON.stringify({
-          custom_id: 'modals/form',
+          custom_id: 'form',
           title: 'Bonjour',
           components: [
             {
@@ -593,30 +596,28 @@ describe('the texts of a component', () => {
 
 describe('the commands section', () => {
   /** Described in its file. */
-  const described = commandsConvention.read(
-    {
-      default: command({
-        description: 'Pong',
-        options: {
-          who: { type: 'string', description: 'd', choices: ['warm', 'cold'] },
-        },
-        run() {},
-      }),
-    },
-    'ping.ts'
+  const described = commandDeclaration.read(
+    command({
+      name: 'ping',
+      description: 'Pong',
+      options: {
+        who: { type: 'string', description: 'd', choices: ['warm', 'cold'] },
+      },
+      run() {},
+    }),
+    site('src/commands/ping.ts')
   );
   /** Described by the languages: no description in the file. */
-  const bare = commandsConvention.read(
-    {
-      default: command({
-        options: {
-          who: { type: 'string', choices: ['warm', 'cold'] },
-          why: { type: 'string', description: 'In the file' },
-        },
-        run() {},
-      }),
-    },
-    'ping.ts'
+  const bare = commandDeclaration.read(
+    command({
+      name: 'ping',
+      options: {
+        who: { type: 'string', choices: ['warm', 'cold'] },
+        why: { type: 'string', description: 'In the file' },
+      },
+      run() {},
+    }),
+    site('src/commands/ping.ts')
   );
   const file = (
     en: Record<string, Record<string, unknown>> | undefined,
@@ -637,12 +638,12 @@ describe('the commands section', () => {
       `"commands" is an object whose keys are the paths of your command files: commands: { ping: { description: '...' }, 'mod/ban': { name: '...' } }`,
     ],
     [
-      { commands: { Ping: {} } },
-      `"Ping" in "commands" is not the path of a command file: write it as the file is named, like 'ping' or 'mod/ban'.`,
+      { commands: { ' ping': {} } },
+      `" ping" in "commands" is not the name of a command: write it as the command declares it, like 'ping' or 'mod ban'.`,
     ],
-    [{ commands: { 'a/b/c/d': {} } }, 'is not the path of a command file'],
+    [{ commands: { 'a b c d': {} } }, 'is not the name of a command'],
     [
-      { commands: { 'mod/ban': 'Bannir' } },
+      { commands: { 'mod ban': 'Bannir' } },
       `The texts of the command /mod ban must be an object like { name: '...', description: '...' }.`,
     ],
   ])('is refused when wrong (%#)', (extra, message) => {
@@ -665,14 +666,16 @@ describe('the commands section', () => {
 
   it('a command without description in its file has no "locales" either', () => {
     expect(() =>
-      commandsConvention.read(
-        {
-          default: command({ locales: { fr: { description: 'x' } }, run() {} }),
-        },
-        'ping.ts'
+      commandDeclaration.read(
+        command({
+          name: 'ping',
+          locales: { fr: { description: 'x' } },
+          run() {},
+        }),
+        site('src/commands/ping.ts')
       )
     ).toThrow(
-      'This command has no "description", so its texts come from the language files of src/messages/: put its "locales" there too (commands: { ... }), or give it a description here.'
+      'This command has no "description", so its texts come from the language files: put its "locales" there too (commands: { ... }), or give it a description here.'
     );
     expect(described.described).toBe(true);
     expect(bare.described).toBe(false);
@@ -681,6 +684,32 @@ describe('the commands section', () => {
       '',
       'In the file',
     ]);
+  });
+
+  it('describes a command from another language when the default one does not', () => {
+    const { command: merged, failed } = translateCommand(
+      'src/commands/ping.ts',
+      bare,
+      file(undefined, {
+        ping: {
+          name: 'pong',
+          description: 'Pong !',
+          options: { who: { name: 'qui', description: 'Qui' } },
+        },
+      })
+    );
+    expect(failed).toEqual([]);
+    // What Discord shows to everyone comes from French; nothing is left to translate.
+    expect(merged).toMatchObject({
+      description: 'Pong !',
+      options: [
+        { name: 'who', description: 'Qui' },
+        { name: 'why', description: 'In the file' },
+      ],
+      names: {},
+      descriptions: {},
+    });
+    expect(merged!.optionLocales).toEqual({});
   });
 
   it('refuses to translate a command its file describes', () => {
@@ -756,12 +785,14 @@ describe('the commands section', () => {
     [
       null,
       'src/commands/ping.ts',
-      `This command has no description: write it in src/messages/en-US.ts (commands: { "ping": { description: '...' } }), or in the file (description: '...').`,
+      `This command has no description: write it in the default language file (commands: { "ping": { description: '...' } }), or in the file (description: '...').`,
     ],
     [
+      // Only French describes it: that description is what everyone sees,
+      // and the option still needs one.
       file(undefined, { ping: { description: 'Pong !' } }),
       'src/commands/ping.ts',
-      `This command has no description: write it in src/messages/en-US.ts (commands: { "ping": { description: '...' } }), or in the file (description: '...').`,
+      `The option "who" of /ping has no description: write it in src/messages/en-US.ts (commands: { "ping": { options: { who: { description: '...' } } } }), or in the file.`,
     ],
     [
       file({ ping: { description: 'Pong' } }, undefined),
@@ -797,99 +828,134 @@ describe('the commands section', () => {
   );
 });
 
-describe('a language file', () => {
-  const read = (path: string, exports: Record<string, unknown>) => {
-    languagesConvention.check?.(path);
-    return languagesConvention.read(exports, path);
-  };
-  const example =
-    "import { language } from 'chapterjs'; export default language({ texts: { pong: 'Pong!' } })";
+describe('language()', () => {
+  const read = (path: string, exports: Record<string, unknown>) =>
+    languageDeclaration.read(exports.default, site(path));
+  const example = `language({ locale: 'en-US', texts: { pong: 'Pong!' } })`;
 
-  it.each([
-    [
-      'en.ts',
-      '"en" is not a language Discord knows: the name of a file of src/messages/ is the language it holds. It can be: id, da, de, en-GB, en-US, es-ES, es-419, fr, hr, it, lt, hu, nl, no, pl, pt-BR, ro, fi, sv-SE, vi, tr, cs, el, bg, ru, uk, hi, th, zh-CN, ja, zh-TW, ko.',
-    ],
-    ['French.ts', '"French" is not a language Discord knows'],
-    [
-      'old/fr.ts',
-      "A language is a file directly in src/messages/, named after the language: src/messages/fr.ts. It can't be in a subfolder.",
-    ],
-  ])('is named after its language (%s)', (path, message) => {
-    expect(() => languagesConvention.check!(path)).toThrow(message);
+  it('is recognised among the exports of a file, alone or in a list', () => {
+    expect(languageDeclaration.is(language({ locale: 'fr', texts: {} }))).toBe(
+      true
+    );
+    expect(languageDeclaration.is({ locale: 'fr', texts: {} })).toBe(false);
+    expect(languageDeclaration.list).toBe(true);
   });
 
   it.each([
-    [{}, `This file has no default export. It should look like: ${example}`],
     [
-      { default: { texts: {} } },
-      'The default export of this file must be what language() returns',
+      { default: language({ texts: {} } as never) },
+      `This language has no "locale": the language its texts are in, like ${example}. It can be: id, da, de, en-GB, en-US, es-ES, es-419, fr, hr, it, lt, hu, nl, no, pl, pt-BR, ro, fi, sv-SE, vi, tr, cs, el, bg, ru, uk, hi, th, zh-CN, ja, zh-TW, ko.`,
+    ],
+    [
+      { default: language({ locale: 'en', texts: {} } as never) },
+      '"en" is not a language Discord knows. "locale" can be: id, da, de, en-GB, en-US',
+    ],
+    [
+      { default: language({ locale: 'French', texts: {} } as never) },
+      '"French" is not a language Discord knows',
+    ],
+    [
+      { default: language({ locale: 3, texts: {} } as never) },
+      '3 is not a language Discord knows',
     ],
     [
       { default: language('x' as never) },
-      "language() needs an object: language({ texts: { pong: 'Pong!' } })",
+      `language() needs an object: ${example}`,
     ],
     [
-      { default: language({ texts: {}, locale: 'fr' } as never) },
-      '"locale" is not something a language has. It can have: default, texts, commands, framework.',
+      { default: language({ texts: {}, locale: 'fr', region: 'CA' } as never) },
+      '"region" is not something a language has. It can have: locale, default, texts, commands, framework.',
     ],
     [
-      { default: language({ texts: {}, default: 'yes' } as never) },
+      {
+        default: language({ locale: 'fr', texts: {}, default: 'yes' } as never),
+      },
       '"default" is true or false, got "yes".',
     ],
     [
-      { default: language({} as never) },
+      { default: language({ locale: 'fr' } as never) },
       `"texts" is an object, one text per key: texts: { pong: 'Pong!', welcome: 'Welcome {name}!' }`,
     ],
     [
-      { default: language({ texts: 'Salut' } as never) },
+      { default: language({ locale: 'fr', texts: 'Salut' } as never) },
       '"texts" is an object, one text per key',
     ],
     [
-      { default: language({ texts: { a: '' } }) },
+      { default: language({ locale: 'fr', texts: { a: '' } }) },
       `The message "a" must be a text: a: 'Hello {name}!', or a plural: a: { one: '{count} member', other: '{count} members' }`,
     ],
     [
-      { default: language({ texts: { a: 3 } } as never) },
+      { default: language({ locale: 'fr', texts: { a: 3 } } as never) },
       'The message "a" must be a text',
     ],
     [
-      { default: language({ texts: { a: { one: 'x' } } } as never) },
+      {
+        default: language({
+          locale: 'fr',
+          texts: { a: { one: 'x' } },
+        } as never),
+      },
       `The plural "a" needs an "other" form, used when no other form fits: a: { one: '{count} member', other: '{count} members' }`,
     ],
     [
       {
-        default: language({ texts: { a: { other: 'x', some: 'y' } } } as never),
+        default: language({
+          locale: 'fr',
+          texts: { a: { other: 'x', some: 'y' } },
+        } as never),
       },
       `"some" is not a form of the plural "a". A plural has: zero, one, two, few, many, other (other at least): a: { one: '{count} member', other: '{count} members' }`,
     ],
     [
-      { default: language({ texts: { a: { other: '' } } }) },
+      { default: language({ locale: 'fr', texts: { a: { other: '' } } }) },
       `The form "other" of the plural "a" must be a text: other: '{count} members'`,
     ],
     [
-      { default: language({ texts: { a: { other: 'x {a b}' } } }) },
+      {
+        default: language({ locale: 'fr', texts: { a: { other: 'x {a b}' } } }),
+      },
       'The form "other" of the plural "a" has a placeholder "{a b}": a placeholder is a name made of letters, digits and _, like {name}.',
     ],
     [
-      { default: language({ texts: {}, framework: 'x' } as never) },
+      {
+        default: language({ locale: 'fr', texts: {}, framework: 'x' } as never),
+      },
       `"framework" is an object, one phrase per key: framework: { guildOnly: '...' }. It can have: command, button, menu, form, guildOnly, dmOnly, notHere, unavailable, gone, outdated, authorOnly, failed, missingPermission, cooldown, needsPermissions.`,
     ],
     [
-      { default: language({ texts: {}, framework: { hello: 'x' } } as never) },
+      {
+        default: language({
+          locale: 'fr',
+          texts: {},
+          framework: { hello: 'x' },
+        } as never),
+      },
       '"hello" is not a phrase of the framework. It can be: command, button, menu, form, guildOnly, dmOnly, notHere, unavailable, gone, outdated, authorOnly, failed, missingPermission, cooldown, needsPermissions.',
     ],
     [
-      { default: language({ texts: {}, framework: { guildOnly: '' } }) },
+      {
+        default: language({
+          locale: 'fr',
+          texts: {},
+          framework: { guildOnly: '' },
+        }),
+      },
       `The phrase "guildOnly" must be a text: guildOnly: 'Hello {name}!'`,
     ],
     [
-      { default: language({ texts: {}, framework: { guildOnly: 'Nope.' } }) },
+      {
+        default: language({
+          locale: 'fr',
+          texts: {},
+          framework: { guildOnly: 'Nope.' },
+        }),
+      },
       'The phrase "guildOnly" does not have the placeholders of the framework: it has none, the framework has {what}.',
     ],
     [
       {
         default: language({
+          locale: 'fr',
           texts: {},
           framework: { needsPermissions: 'Missing: {permissions} ({n})' },
         }),
@@ -897,20 +963,21 @@ describe('a language file', () => {
       'The phrase "needsPermissions" does not have the placeholders of the framework: it has {permissions}, {n}, the framework has {count}, {permissions}.',
     ],
     [
-      { default: language({ texts: { a: 'Hi { name }' } }) },
+      { default: language({ locale: 'fr', texts: { a: 'Hi { name }' } }) },
       'The message "a" has a placeholder "{ name }": a placeholder is a name made of letters, digits and _, like {name}.',
     ],
     [
-      { default: language({ texts: { a: 'Hi {}' } }) },
+      { default: language({ locale: 'fr', texts: { a: 'Hi {}' } }) },
       'has a placeholder "{}"',
     ],
   ])('is refused when wrong (%#)', (exports, message) => {
-    expect(() => read('fr.ts', exports)).toThrow(message);
+    expect(() => read('src/messages/fr.ts', exports)).toThrow(message);
   });
 
   it('is read, compiled once per text', () => {
-    const loaded = read('fr.ts', {
+    const loaded = read('src/messages/fr.ts', {
       default: language({
+        locale: 'fr',
         default: true,
         texts: { pong: 'Pong !', hi: 'Salut {name}' },
       }),
@@ -923,12 +990,15 @@ describe('a language file', () => {
       parts: ['Salut ', 'name', ''],
       params: ['name'],
     });
-    expect(read('fr.ts', { default: language({ texts: {} }) }).isDefault).toBe(
-      false
-    );
+    expect(
+      read('src/messages/fr.ts', {
+        default: language({ locale: 'fr', texts: {} }),
+      }).isDefault
+    ).toBe(false);
     expect(loaded.framework.size).toBe(0);
-    const phrases = read('fr.ts', {
+    const phrases = read('src/messages/fr.ts', {
       default: language({
+        locale: 'fr',
         texts: { n: { one: '{count} x', other: '{count} xs' } },
         framework: {
           command: 'commande',
@@ -964,7 +1034,7 @@ describe('the languages together', () => {
       'src/messages/de.ts',
     ]);
     expect(String(none.failed[0]!.error)).toContain(
-      'None of the 2 languages of src/messages/ is the default one, used when the language of a person or of a server is not there. Add default: true in one of them.'
+      'None of the 2 languages is the default one, used when the language of a person or of a server is not there. Add default: true in one of them.'
     );
     const two = assembleMessages([
       lang('fr', { a: 'b' }, { default: true }),
@@ -977,7 +1047,7 @@ describe('the languages together', () => {
       'src/messages/de.ts',
     ]);
     expect(String(two.failed[0]!.error)).toContain(
-      '2 languages say default: true (src/messages/fr.ts, src/messages/de.ts): only one can be the default.'
+      '2 languages say default: true (fr in src/messages/fr.ts, de in src/messages/de.ts): only one can be the default.'
     );
   });
 
@@ -997,23 +1067,55 @@ describe('the languages together', () => {
     // A text of the default language is written its way.
     expect(t('n', { n: 1234 })).toBe('Number 1,234');
     expect(() => any(t)('z')).toThrow(
-      'There is no message "z" in src/messages/. It has: a, c, n.'
+      'There is no message "z" in your languages. They have: a, c, n.'
+    );
+  });
+
+  it('take from another language a text the default one does not have', () => {
+    const { messages, failed } = assembleMessages([
+      lang('en-US', { a: 'Hi {name}' }, { default: true }),
+      // Like a module written in German and Spanish only.
+      lang('de', { a: 'Hallo {name}', reg: 'Nur {n} übrig' }),
+      lang('es-ES', { reg: 'Quedan {n}', other: 'Otro' }),
+      lang('fr', { reg: 'Il en reste {n}' }),
+    ]);
+    expect(failed).toEqual([]);
+    // en-US first, then the others in order: German gives `reg`, Spanish `other`.
+    expect([...messages!.locales.get('en-US')!.keys()]).toEqual([
+      'a',
+      'reg',
+      'other',
+    ]);
+    const t = translatorFor(messages!, 'en-US');
+    expect(t('reg', { n: 2 })).toBe('Nur 2 übrig');
+    expect(t('other')).toBe('Otro');
+    expect(translatorFor(messages!, 'fr')('reg', { n: 2 })).toBe(
+      'Il en reste 2'
+    );
+    expect(translatorFor(messages!, 'fr')('other')).toBe('Otro');
+    // The placeholders of such a text are the ones of the language it comes from.
+    const wrong = assembleMessages([
+      lang('en-US', { a: 'Hi {name}' }, { default: true }),
+      lang('de', { reg: 'Nur {n} übrig' }),
+      lang('fr', { reg: 'Il en reste {count}' }),
+    ]);
+    expect(wrong.failed.map(({ file }) => file)).toEqual([
+      'src/messages/fr.ts',
+    ]);
+    expect(String(wrong.failed[0]!.error)).toBe(
+      'TypeError: The message "reg" does not have the placeholders of de (src/messages/de.ts), the language this message comes from: it has {count}, that one has {n}.'
     );
   });
 
   it.each([
     [
-      { a: 'Hi {name}', c: 'd', e: 'f' },
-      'The message "e" is not in en-US.ts: add it there, or remove it here.',
-    ],
-    [
       { a: 'Hi {nom}', c: 'd' },
-      'The message "a" does not have the placeholders of en-US.ts: it has {nom}, en-US.ts has {name}.',
+      'The message "a" does not have the placeholders of the default language (src/messages/en-US.ts): it has {nom}, that one has {name}.',
     ],
-    [{ a: 'Hi', c: 'd' }, 'it has none, en-US.ts has {name}.'],
+    [{ a: 'Hi', c: 'd' }, 'it has none, that one has {name}.'],
     [
       { a: { one: 'Hi {name}', other: 'Hi all' }, c: 'd' },
-      'The message "a" does not have the placeholders of en-US.ts: it has {count}, {name}, en-US.ts has {name}.',
+      'The message "a" does not have the placeholders of the default language (src/messages/en-US.ts): it has {count}, {name}, that one has {name}.',
     ],
   ])(
     'leave out a language that differs, and say why (%#)',
@@ -1054,104 +1156,220 @@ describe('the languages together', () => {
     );
   });
 
+  it('merge the declarations of one language, wherever they are', () => {
+    const more = (
+      locale: string,
+      texts: Record<string, string | Record<string, string>>,
+      extra: Record<string, unknown> = {}
+    ): LanguageEntry => ({
+      ...site('src/(moderation)/messages.ts', locale.replace('-', '')),
+      language: languageDeclaration.read(
+        language({ locale, texts, ...extra } as never),
+        site('src/(moderation)/messages.ts', locale.replace('-', ''))
+      ),
+    });
+    const { messages, failed } = assembleMessages([
+      lang(
+        'en-US',
+        { a: 'Hi {name}' },
+        { default: true, commands: { ping: { description: 'd' } } }
+      ),
+      more(
+        'en-US',
+        { ban: 'Ban {user}' },
+        { commands: { ban: { description: 'd' } } }
+      ),
+      lang('fr', { a: 'Salut {name}' }),
+      more(
+        'fr',
+        { ban: 'Bannir {user}' },
+        { framework: { command: 'commande' } }
+      ),
+    ]);
+    expect(failed).toEqual([]);
+    expect(messages!.default).toBe('en-US');
+    expect([...messages!.locales.get('en-US')!.keys()]).toEqual(['a', 'ban']);
+    expect([...messages!.locales.get('fr')!.keys()]).toEqual(['a', 'ban']);
+    expect(Object.keys(messages!.commands.get('en-US')!)).toEqual([
+      'ping',
+      'ban',
+    ]);
+    expect([...messages!.framework.get('fr')!.keys()]).toEqual(['command']);
+    // The first declaration names the language in messages.
+    expect(messages!.files.get('en-US')).toBe('src/messages/en-US.ts');
+    expect(translatorFor(messages!, 'fr')('ban', { user: 'x' })).toBe(
+      'Bannir x'
+    );
+    // A second declaration saying default: true for the same language is fine.
+    expect(
+      assembleMessages([
+        lang('en-US', { a: 'b' }, { default: true }),
+        more('en-US', { c: 'd' }, { default: true }),
+      ]).failed
+    ).toEqual([]);
+  });
+
+  it('refuse the same message, phrase or command twice in one language', () => {
+    const second = (
+      locale: string,
+      texts: Record<string, string>,
+      extra: Record<string, unknown> = {}
+    ): LanguageEntry => ({
+      ...site('src/(moderation)/messages.ts', locale.replace('-', '')),
+      language: languageDeclaration.read(
+        language({ locale, texts, ...extra } as never),
+        site('src/(moderation)/messages.ts', locale.replace('-', ''))
+      ),
+    });
+    const { messages, failed } = assembleMessages([
+      lang(
+        'en-US',
+        { a: 'b' },
+        {
+          default: true,
+          framework: { command: 'cmd' },
+          commands: { ping: { description: 'd' } },
+        }
+      ),
+      second(
+        'en-US',
+        { a: 'c', d: 'e' },
+        {
+          framework: { command: 'command' },
+          commands: { ping: { description: 'x' } },
+        }
+      ),
+      lang('fr', { a: 'f' }),
+      second('fr', { a: 'h' }),
+    ]);
+    expect(
+      failed.map(({ file, export: name, error }) => [
+        `${file}#${name}`,
+        String(error),
+      ])
+    ).toEqual([
+      [
+        'src/(moderation)/messages.ts#enUS',
+        'TypeError: The message "a" is already in src/messages/en-US.ts: the en-US language has it twice.',
+      ],
+      [
+        'src/(moderation)/messages.ts#enUS',
+        'TypeError: The phrase "command" is already in src/messages/en-US.ts: the en-US language has it twice.',
+      ],
+      [
+        'src/(moderation)/messages.ts#enUS',
+        'TypeError: The command "ping" is already translated in src/messages/en-US.ts: the en-US language translates it twice.',
+      ],
+      [
+        'src/(moderation)/messages.ts#fr',
+        'TypeError: The message "a" is already in src/messages/fr.ts: the fr language has it twice.',
+      ],
+    ]);
+    // What is not in conflict is kept: the first one wins.
+    expect([...messages!.locales.get('en-US')!.keys()]).toEqual(['a', 'd']);
+    expect(translatorFor(messages!, 'en-US')('a')).toBe('b');
+  });
+
   it('offer the commands of the project in the editor, but not the ones their file describes', () => {
     expect(commandsDeclarations([])).toBe('');
     expect(
       commandsDeclarations([
-        { file: 'src/commands/(mod)/mod/ban.ts', described: true },
-        { file: 'src/commands/ping.ts', described: false },
+        { name: 'mod ban', described: true },
+        { name: 'ping', described: false },
       ])
     ).toBe(`export {};
 
 declare module 'chapterjs' {
-  /** The commands of src/commands/, by the path of their file: true when the language files describe it, false when the file has its own description. */
+  /** The commands of the project, by name: true when the language files describe it, false when the command has its own description. */
   export interface ProjectCommands {
-    "mod/ban": false;
+    "mod ban": false;
     "ping": true;
   }
 }
 `);
   });
 
-  it('type t from the default language file, or the first one until it is known', () => {
+  it('type t from every declaration, the default language first, or the first one until it is known', () => {
     expect(messagesDeclarations([])).toBe('');
-    const files = [
-      { file: 'src/messages/_old.ts', path: '' },
-      { file: 'src/messages/fr.ts', path: '' },
-      { file: 'src/messages/en-US.ts', path: '' },
+    const languages = [
+      { ...site('src/messages/fr.ts'), locale: 'fr' as const },
+      { ...site('src/i18n.ts', 'enUS'), locale: 'en-US' as const },
+      { ...site('src/i18n.ts', 'de-DE'), locale: 'de' as const },
     ];
-    expect(messagesDeclarations(files)).toContain(
-      "extends MessagesOf<typeof import('../../src/messages/fr').default> {}"
+    const parts = (text: string): string[] =>
+      [
+        ...text.matchAll(
+          /MessagesOf<typeof import\('\.\.\/\.\.\/src\/([^']+)'\)([^>]*)>/g
+        ),
+      ].map(match => `${match[1]}${match[2]}`);
+    // Sorted by file, then export: the first one types t when none is
+    // known; then en-US, then the others by language.
+    expect(parts(messagesDeclarations(languages))).toEqual([
+      'i18n["de-DE"]',
+      'i18n.enUS',
+      'messages/fr.default',
+    ]);
+    expect(parts(messagesDeclarations(languages, 'en-US'))).toEqual([
+      'i18n.enUS',
+      'i18n["de-DE"]',
+      'messages/fr.default',
+    ]);
+    expect(parts(messagesDeclarations(languages, 'fr'))).toEqual([
+      'messages/fr.default',
+      'i18n.enUS',
+      'i18n["de-DE"]',
+    ]);
+    // Every declaration of the default language comes first.
+    expect(
+      parts(
+        messagesDeclarations(
+          [
+            ...languages,
+            { ...site('src/(mod)/texts.ts', 'fr'), locale: 'fr' as const },
+          ],
+          'fr'
+        )
+      )
+    ).toEqual([
+      '(mod)/texts.fr',
+      'messages/fr.default',
+      'i18n.enUS',
+      'i18n["de-DE"]',
+    ]);
+    expect(messagesDeclarations(languages, 'fr')).toContain(
+      `  export interface ProjectMessages
+    extends MergedMessages<
+      [`
     );
-    expect(messagesDeclarations(files, 'src/messages/en-US.ts')).toContain(
-      "extends MessagesOf<typeof import('../../src/messages/en-US').default> {}"
+    expect(parts(messagesDeclarations(languages, 'it'))[0]).toBe(
+      'i18n["de-DE"]'
     );
-    expect(messagesDeclarations(files, 'src/messages/de.ts')).toContain(
-      "import('../../src/messages/fr')"
-    );
-    // The languages, for t.in(): the named files, whatever the default.
-    expect(messagesDeclarations(files))
+    // The languages, for t.in(): every one declared, whatever the default.
+    expect(messagesDeclarations(languages))
       .toContain(`  export interface ProjectLocales {
+    "de": true;
     "en-US": true;
     "fr": true;
   }`);
-    expect(messagesDeclarations([{ file: 'src/messages/fr.ts', path: '' }]))
+    expect(messagesDeclarations([languages[0]!]))
       .toContain(`  export interface ProjectLocales {
     "fr": true;
   }`);
-    expect(
-      messagesDeclarations([{ file: 'src/messages/nope.ts', path: '' }])
-    ).toBe('');
   });
 
-  it('gives each language file its own language(), which refuses a second default', () => {
-    expect(languageTypedFolders([])).toEqual([]);
-    const files = [
-      { file: 'src/messages/_old.ts', path: '' },
-      { file: 'src/messages/nope.ts', path: '' },
-      { file: 'src/messages/fr.ts', path: '' },
-      { file: 'src/messages/en-US.ts', path: '' },
-      { file: 'src/messages/de.ts', path: '' },
-    ];
-    // Nothing known about the defaults (sync): the plain language().
-    const plain = languageTypedFolders(files);
-    expect(
-      plain.map(({ id, folder, includes }) => [id, folder, includes])
-    ).toEqual([
-      ['messages.fr', 'src/messages/fr.ts', ['main']],
-      ['messages.en-US', 'src/messages/en-US.ts', ['main']],
-      ['messages.de', 'src/messages/de.ts', ['main']],
-    ]);
-    for (const { declarations } of plain) {
-      expect(declarations).toContain('export declare function language<');
-      expect(declarations).toContain('config: LanguageConfig<T>\n');
-      expect(declarations).not.toContain('default?: false');
-    }
-    // One default: the other files refuse default: true, naming it.
-    const one = languageTypedFolders(files, ['src/messages/en-US.ts']);
-    const of = (folders: typeof one, id: string) =>
-      folders.find(folder => folder.id === id)!.declarations;
-    expect(of(one, 'messages.en-US')).not.toContain('default?: false');
-    expect(of(one, 'messages.fr')).toContain(
-      '/** src/messages/en-US.ts already says `default: true`: only one file of src/messages/ is the default language. Remove it there to make this one the default. */\n    default?: false;'
-    );
-    expect(of(one, 'messages.de')).toContain(
-      'src/messages/en-US.ts already says'
-    );
-    // Two: each one refuses because of the other, and the third names both.
-    const two = languageTypedFolders(files, [
-      'src/messages/fr.ts',
-      'src/messages/en-US.ts',
-    ]);
-    expect(of(two, 'messages.en-US')).toContain(
-      'src/messages/fr.ts already says'
-    );
-    expect(of(two, 'messages.fr')).toContain(
-      'src/messages/en-US.ts already says'
-    );
-    expect(of(two, 'messages.de')).toContain(
-      'src/messages/en-US.ts and src/messages/fr.ts already say `default: true`'
-    );
+  it('refuse default: true in the editor in every language that says it, when two do', () => {
+    expect(languageDefaultsDeclaration([])).toBe('');
+    expect(languageDefaultsDeclaration(['fr'])).toBe('');
+    expect(languageDefaultsDeclaration(['fr', 'en-US', 'fr'])).toBe(`export {};
+
+declare module 'chapterjs' {
+  /** The languages that say \`default: true\`: only one can be the default, so \`default: true\` is refused in each of them until one gives it up. */
+  export interface ProjectLanguageDefaults {
+    "en-US": true;
+    "fr": true;
+  }
+}
+`);
   });
 });
 
@@ -1195,7 +1413,7 @@ describe.skipIf(process.platform === 'win32')('in the editor', () => {
       'src/messages/en-US.ts': EN,
       'src/messages/fr.ts': FR,
       'src/commands/ping.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('pong'); } });
+export default command({ name: 'ping', description: 'd', run({ t }) { return t('pong'); } });
 `,
     });
     const errors = () => {
@@ -1213,29 +1431,18 @@ export default command({ description: 'd', run({ t }) { return t('pong'); } });
         ),
       ].sort();
     };
-    const declared = (locale: string) =>
-      readFileSync(
-        join(cwd, `.chapterjs/types/messages.${locale}.d.ts`),
-        'utf8'
-      );
-    // `sync` runs nothing: both files are fine for the editor.
+    const types = () =>
+      readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8');
+    // `sync` runs nothing: it reads the files, and both are fine for the editor.
     await runDev(cwd, fake, ['sync']).exited;
     expect(errors()).toEqual([]);
-    expect(
-      JSON.parse(
-        readFileSync(join(cwd, '.chapterjs/projects/messages.fr.json'), 'utf8')
-      ).include
-    ).toEqual([
-      '../../src/messages/fr.ts',
-      '../types/messages.fr.d.ts',
-      '../types/main.d.ts',
-    ]);
+    expect(types()).toContain("import('../../src/messages/en-US').default");
+    expect(types()).not.toContain('ProjectLanguageDefaults');
 
-    // One default: the other file refuses a second one, and that is all.
+    // One default: nothing to refuse.
     const cli = runDev(cwd, fake);
     await cli.waitFor('✓ Connected');
-    expect(declared('fr')).toContain('src/messages/en-US.ts already says');
-    expect(declared('en-US')).not.toContain('default?: false');
+    expect(types()).not.toContain('ProjectLanguageDefaults');
     expect(errors()).toEqual([]);
 
     // A second one saved: both files are underlined because of the other,
@@ -1246,8 +1453,12 @@ export default command({ description: 'd', run({ t }) { return t('pong'); } });
     );
     await cli.waitFor('✗ src/messages/fr.ts 2 languages say default: true');
     await cli.waitFor('↻ Types updated');
-    expect(declared('fr')).toContain('src/messages/en-US.ts already says');
-    expect(declared('en-US')).toContain('src/messages/fr.ts already says');
+    expect(types()).toContain(
+      `  export interface ProjectLanguageDefaults {
+    "en-US": true;
+    "fr": true;
+  }`
+    );
     const result = spawnSync(
       join(packageDir, 'node_modules/.bin/tsc'),
       ['-b'],
@@ -1257,7 +1468,10 @@ export default command({ description: 'd', run({ t }) { return t('pong'); } });
       }
     );
     expect(result.stdout).toContain(
-      "src/messages/fr.ts(3,3): error TS2322: Type 'true' is not assignable to type 'false'."
+      "src/messages/fr.ts(4,3): error TS2322: Type 'true' is not assignable to type 'false'."
+    );
+    expect(result.stdout).toContain(
+      "src/messages/en-US.ts(4,3): error TS2322: Type 'true' is not assignable to type 'false'."
     );
     expect(errors()).toEqual(['src/messages/en-US.ts', 'src/messages/fr.ts']);
 
@@ -1265,8 +1479,7 @@ export default command({ description: 'd', run({ t }) { return t('pong'); } });
     writeFileSync(join(cwd, 'src/messages/fr.ts'), FR);
     await cli.waitFor('↻ Types updated');
     await cli.waitFor('messages in 2 languages loaded');
-    expect(declared('fr')).toContain('src/messages/en-US.ts already says');
-    expect(declared('en-US')).not.toContain('default?: false');
+    expect(types()).not.toContain('ProjectLanguageDefaults');
     expect(errors()).toEqual([]);
     cli.signal('SIGTERM');
     await cli.exited;
@@ -1278,7 +1491,7 @@ export default command({ description: 'd', run({ t }) { return t('pong'); } });
       'src/messages/en-US.ts': EN,
       'src/messages/fr.ts': FR,
       'src/commands/ok.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', async run({ interaction, t, user }) {
+export default command({ name: 'ok', description: 'd', async run({ interaction, t, user }) {
   const a: string = t('pong');
   const b: string = t('welcome', { name: user.username, count: 3 });
   const c: string = t.in('fr')('welcome', { name: 'x', count: 'three' });
@@ -1292,52 +1505,52 @@ export default command({ description: 'd', async run({ interaction, t, user }) {
 } });
 `,
       'src/commands/wrong-key.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('pang'); } });
+export default command({ name: 'wrong-key', description: 'd', run({ t }) { return t('pang'); } });
 `,
       'src/commands/missing-param.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('welcome', { name: 'x' }); } });
+export default command({ name: 'missing-param', description: 'd', run({ t }) { return t('welcome', { name: 'x' }); } });
 `,
       'src/commands/extra-param.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('pong', { name: 'x' }); } });
+export default command({ name: 'extra-param', description: 'd', run({ t }) { return t('pong', { name: 'x' }); } });
 `,
       'src/commands/no-param.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('welcome'); } });
+export default command({ name: 'no-param', description: 'd', run({ t }) { return t('welcome'); } });
 `,
       'src/commands/wrong-locale.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t.in('en')('pong'); } });
+export default command({ name: 'wrong-locale', description: 'd', run({ t }) { return t.in('en')('pong'); } });
 `,
       'src/commands/wrong-locale-key.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t.in('en', 'pong'); } });
+export default command({ name: 'wrong-locale-key', description: 'd', run({ t }) { return t.in('en', 'pong'); } });
 `,
       'src/commands/in-wrong-key.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t.in('fr', 'pang'); } });
+export default command({ name: 'in-wrong-key', description: 'd', run({ t }) { return t.in('fr', 'pang'); } });
 `,
       'src/commands/in-missing-param.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t.in('fr', 'welcome', { name: 'x' }); } });
+export default command({ name: 'in-missing-param', description: 'd', run({ t }) { return t.in('fr', 'welcome', { name: 'x' }); } });
 `,
       'src/commands/in-extra-param.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t.in('fr', 'pong', { x: 1 }); } });
+export default command({ name: 'in-extra-param', description: 'd', run({ t }) { return t.in('fr', 'pong', { x: 1 }); } });
 `,
       'src/commands/in-any-string.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t.in(String(1), 'pong'); } });
+export default command({ name: 'in-any-string', description: 'd', run({ t }) { return t.in(String(1), 'pong'); } });
 `,
       'src/commands/plural.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('members', { count: 2 }); } });
+export default command({ name: 'plural', description: 'd', run({ t }) { return t('members', { count: 2 }); } });
 `,
       'src/commands/plural-string.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('members', { count: '2' }); } });
+export default command({ name: 'plural-string', description: 'd', run({ t }) { return t('members', { count: '2' }); } });
 `,
       'src/commands/plural-missing.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('members'); } });
+export default command({ name: 'plural-missing', description: 'd', run({ t }) { return t('members'); } });
 `,
       'src/lib/framework.ts': `import { language } from 'chapterjs';
-export default language({ texts: { pong: 'x', welcome: 'x', members: 'x' }, framework: { command: 'commande', needsPermissions: { one: '{permissions} {count}', other: '{permissions}' } } });
+export default language({ locale: 'fr', texts: { pong: 'x', welcome: 'x', members: 'x' }, framework: { command: 'commande', needsPermissions: { one: '{permissions} {count}', other: '{permissions}' } } });
 `,
       'src/lib/wrong-framework.ts': `import { language } from 'chapterjs';
-export default language({ texts: { pong: 'x' }, framework: { nope: 'x' } });
+export default language({ locale: 'fr', texts: { pong: 'x' }, framework: { nope: 'x' } });
 `,
       'src/lib/wrong-plural.ts': `import { language } from 'chapterjs';
-export default language({ texts: { pong: { one: 'x' } } });
+export default language({ locale: 'fr', texts: { pong: { one: 'x' } } });
 `,
       'src/components/buttons/ok.ts': `import { button } from 'chapterjs';
 export default button({ label: 'x', async run({ interaction, t }) { await interaction.update(t('pong')); } });
@@ -1349,13 +1562,13 @@ export default select({ placeholder: 'x', options: ['a'], run({ t }) { return t(
 export default modal({ title: 'x', fields: { a: { type: 'text', label: 'a' } }, async run({ interaction, t }) { await interaction.reply(t('pong')); } });
 `,
       'src/events/ready/ok.ts': `import { event } from 'chapterjs';
-export default event(({ t }) => console.log(t('pong')));
+export default event({ name: 'ready', run: ({ t }) => console.log(t('pong')) });
 `,
       'src/events/messageCreate/ok.ts': `import { event } from 'chapterjs';
-export default event(async ({ message, t }) => { await message.reply(t('welcome', { name: message.author.username, count: 1 })); }, { where: 'both' });
+export default event({ name: 'messageCreate', where: 'both', async run({ message, t }) { await message.reply(t('welcome', { name: message.author.username, count: 1 })); } });
 `,
       'src/events/ready/wrong.ts': `import { event } from 'chapterjs';
-export default event(({ t }) => console.log(t('pong', { x: 1 })));
+export default event({ name: 'ready', run: ({ t }) => console.log(t('pong', { x: 1 })) });
 `,
       'src/tasks/ok.ts': `import { task } from 'chapterjs';
 export default task({ every: '1h', run({ t }) { console.log(t('pong')); } });
@@ -1384,7 +1597,7 @@ export default task({ every: '1h', run({ t }) { console.log(t('welcome', { count
       'src/tasks/wrong.ts',
     ]);
     expect(
-      readFileSync(join(cwd, '.chapterjs/types/shared.d.ts'), 'utf8')
+      readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8')
     ).toContain('interface ProjectMessages');
   });
 
@@ -1393,50 +1606,51 @@ export default task({ every: '1h', run({ t }) { console.log(t('welcome', { count
     const cwd = typed({
       'src/messages/en-US.ts': EN,
       'src/commands/ping.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', options: { who: { type: 'string', description: 'd', choices: ['warm', 'cold'] } }, run({ t }) { return t('pong'); } });
+export default command({ name: 'ping', description: 'd', options: { who: { type: 'string', description: 'd', choices: ['warm', 'cold'] } }, run({ t }) { return t('pong'); } });
 `,
       'src/commands/(mod)/mod/ban.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t('pong'); } });
+export default command({ name: 'mod ban', description: 'd', run({ t }) { return t('pong'); } });
 `,
       'src/messages/fr.ts': `import { language } from 'chapterjs';
 export default language({
+  locale: 'fr',
   texts: { pong: 'Pong !', welcome: 'Bienvenue {name}, membre n°{count} !' },
   commands: {
     ping: { name: 'pong', description: 'd', options: { who: { name: 'qui', choices: { warm: 'Chaud' } } } },
-    'mod/ban': { description: 'Bannit' },
+    'mod ban': { description: 'Bannit' },
   },
 });
 `,
       'src/lib/unknown-command.ts': `import { language } from 'chapterjs';
-export default language({ texts: { a: 'b' }, commands: { pong: { description: 'd' } } });
+export default language({ locale: 'fr', texts: { a: 'b' }, commands: { pong: { description: 'd' } } });
 `,
       'src/lib/unknown-option.ts': `import { language } from 'chapterjs';
-export default language({ texts: { a: 'b' }, commands: { ping: { options: { nope: { name: 'x' } } } } });
+export default language({ locale: 'fr', texts: { a: 'b' }, commands: { ping: { options: { nope: { name: 'x' } } } } });
 `,
       'src/lib/unknown-choice.ts': `import { language } from 'chapterjs';
-export default language({ texts: { a: 'b' }, commands: { ping: { options: { who: { choices: { hot: 'Chaud' } } } } } });
+export default language({ locale: 'fr', texts: { a: 'b' }, commands: { ping: { options: { who: { choices: { hot: 'Chaud' } } } } } });
 `,
       'src/lib/no-texts.ts': `import { language } from 'chapterjs';
-export default language({ default: true });
+export default language({ locale: 'fr', default: true });
 `,
       'src/lib/wrong-text.ts': `import { language } from 'chapterjs';
-export default language({ texts: { a: 3 } });
+export default language({ locale: 'fr', texts: { a: 3 } });
 `,
       'src/lib/wrong-default.ts': `import { language } from 'chapterjs';
-export default language({ default: 'yes', texts: { a: 'b' } });
+export default language({ locale: 'fr', default: 'yes', texts: { a: 'b' } });
 `,
       'src/lib/wrong-command.ts': `import { language } from 'chapterjs';
-export default language({ texts: { a: 'b' }, commands: { ping: { description: 3 } } });
+export default language({ locale: 'fr', texts: { a: 'b' }, commands: { ping: { description: 3 } } });
 `,
       'src/lib/ok.ts': `import { language } from 'chapterjs';
-export default language({ texts: { a: 'b {x}' }, commands: { ping: { description: 'd', options: { who: { name: 'qui', choices: { warm: 'Chaud' } } } } } });
+export default language({ locale: 'fr', texts: { a: 'b {x}' }, commands: { ping: { description: 'd', options: { who: { name: 'qui', choices: { warm: 'Chaud' } } } } } });
 `,
     });
-    // The paths are typed from the file names; options and choices are
-    // checked when the files load (typing them would need the command
-    // files, whose `t` needs the languages: a circle). `sync` runs no
-    // file, so it does not know that ping.ts is described: every command
-    // is offered until `dev` or `build` runs them.
+    // The names are read from the files without running them; options and
+    // choices are checked when the files load (typing them would need the
+    // command files, whose `t` needs the languages: a circle). `sync` runs
+    // no file, so it does not know that ping.ts is described: every
+    // command is offered until `dev` or `build` runs them.
     expect(await typeErrors(cwd, fake)).toEqual([
       'src/lib/no-texts.ts',
       'src/lib/unknown-command.ts',
@@ -1444,33 +1658,28 @@ export default language({ texts: { a: 'b {x}' }, commands: { ping: { description
       'src/lib/wrong-default.ts',
       'src/lib/wrong-text.ts',
     ]);
-    // The commands are only pulled into the main project, where languages are.
     expect(
-      readFileSync(join(cwd, '.chapterjs/types/main.d.ts'), 'utf8')
-    ).toContain(`"mod/ban": true;`);
+      readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8')
+    ).toContain(`"mod ban": true;`);
     expect(
-      readFileSync(join(cwd, '.chapterjs/types/shared.d.ts'), 'utf8')
-    ).not.toContain('ProjectCommands');
-    expect(
-      JSON.parse(
-        readFileSync(join(cwd, '.chapterjs/projects/main.json'), 'utf8')
-      ).include
-    ).toEqual(['../../src', '../types/shared.d.ts', '../types/main.d.ts']);
+      JSON.parse(readFileSync(join(cwd, '.chapterjs/tsconfig.json'), 'utf8'))
+        .include
+    ).toEqual(['../src', './types/project.d.ts']);
   });
 
   it('has no t without a language', async () => {
     const fake = await world();
     const cwd = typed({
       'src/commands/no-t.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', run({ t }) { return t; } });
+export default command({ name: 'no-t', description: 'd', run({ t }) { return t; } });
 `,
       'src/commands/ok.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', async run({ interaction }) { await interaction.reply('x'); } });
+export default command({ name: 'ok', description: 'd', async run({ interaction }) { await interaction.reply('x'); } });
 `,
     });
     expect(await typeErrors(cwd, fake)).toEqual(['src/commands/no-t.ts']);
     expect(
-      readFileSync(join(cwd, '.chapterjs/types/shared.d.ts'), 'utf8')
+      readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8')
     ).not.toContain('ProjectMessages');
   });
 });
@@ -1534,17 +1743,17 @@ const waitUntil = async (check: () => boolean, what: string) => {
 };
 
 const HELLO = `import { command } from 'chapterjs';
-export default command({ description: 'd', ephemeral: true, async run({ interaction, t, user }) {
+export default command({ name: 'hello', description: 'd', ephemeral: true, async run({ interaction, t, user }) {
   await interaction.reply(t('welcome', { name: user.username, count: 7 }) + ' [' + t.locale + ']');
 } });
 `;
 const COUNT = `import { command } from 'chapterjs';
-export default command({ description: 'd', ephemeral: true, async run({ interaction, t }) {
+export default command({ name: 'count', description: 'd', ephemeral: true, async run({ interaction, t }) {
   await interaction.reply(t('members', { count: 1 }) + ', ' + t('members', { count: 1234 }));
 } });
 `;
 const PUBLIC = `import { command } from 'chapterjs';
-export default command({ description: 'd', async run({ interaction, t, user }) {
+export default command({ name: 'open', description: 'd', async run({ interaction, t, user }) {
   await interaction.reply(t('welcome', { name: user.username, count: 7 }) + ' [' + t.locale + ']');
 } });
 `;
@@ -1559,7 +1768,7 @@ describe.skipIf(process.platform === 'win32')('chapterjs dev', () => {
       'src/commands/open.ts': PUBLIC,
       'src/commands/count.ts': COUNT,
       'src/events/ready/hi.ts': `import { event } from 'chapterjs';
-export default event(({ t }) => console.log('ready says', t('pong'), t.locale));
+export default event({ name: 'ready', run: ({ t }) => console.log('ready says', t('pong'), t.locale) });
 `,
       'src/tasks/tick.ts': `import { task } from 'chapterjs';
 export default task({ every: '1h', onStart: true, run({ t }) { console.log('task says', t.in('fr')('pong')); } });
@@ -1624,7 +1833,7 @@ export default task({ every: '1h', onStart: true, run({ t }) { console.log('task
       FR.replace('{count} !', '{n} !').replace('Bienvenue', 'Coucou')
     );
     await cli.waitFor(
-      `✗ src/messages/fr.ts The message "welcome" does not have the placeholders of en-US.ts: it has {n}, {name}, en-US.ts has {count}, {name}.`
+      `✗ src/messages/fr.ts The message "welcome" does not have the placeholders of the default language (src/messages/en-US.ts): it has {n}, {name}, that one has {count}, {name}.`
     );
     await cli.waitFor('⚠ Reloaded with an error');
     const kept = answers(fake, '5');
@@ -1650,7 +1859,7 @@ export default task({ every: '1h', onStart: true, run({ t }) { console.log('task
 
     // Removed: the types follow, and t is gone.
     expect(
-      readFileSync(join(cwd, '.chapterjs/types/shared.d.ts'), 'utf8')
+      readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8')
     ).toContain('ProjectMessages');
     rmSync(join(cwd, 'src/messages'), { recursive: true });
     await cli.waitFor('↻ Types updated');
@@ -1658,7 +1867,7 @@ export default task({ every: '1h', onStart: true, run({ t }) { console.log('task
       /↻ Reloaded in \d+ ms, 3 commands, 1 event, 1 task loaded/
     );
     expect(
-      readFileSync(join(cwd, '.chapterjs/types/shared.d.ts'), 'utf8')
+      readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8')
     ).not.toContain('ProjectMessages');
     const gone = answers(fake, '7');
     connection.dispatch('INTERACTION_CREATE', use('7', 'hello', 'fr'));
@@ -1682,7 +1891,7 @@ export default task({ every: '1h', onStart: true, run({ t }) { console.log('task
     await cli.waitFor('↻ Types updated');
     await cli.waitFor('messages in 2 languages loaded');
     expect(
-      readFileSync(join(cwd, '.chapterjs/types/shared.d.ts'), 'utf8')
+      readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8')
     ).toContain("import('../../src/messages/fr')");
     cli.signal('SIGTERM');
     await cli.exited;
@@ -1710,7 +1919,7 @@ export default task({ every: '1h', onStart: true, run({ t }) { console.log('task
       'src/messages/en-US.ts': EN,
       'src/messages/fr.ts': FR,
       'src/events/messageCreate/echo.ts': `import { event } from 'chapterjs';
-export default event(({ message, t }) => console.log('event says', t('welcome', { name: message.author.username, count: 2 }), t.locale));
+export default event({ name: 'messageCreate', run: ({ message, t }) => console.log('event says', t('welcome', { name: message.author.username, count: 2 }), t.locale) });
 `,
       'src/commands/open.ts': PUBLIC,
       'src/components/buttons/again.ts': `import { button } from 'chapterjs';
@@ -1718,7 +1927,7 @@ export default button({ label: ({ t, data }) => t('welcome', { name: 'x', count:
 `,
       'src/commands/show.ts': `import { command } from 'chapterjs';
 import again from '../components/buttons/again';
-export default command({ description: 'd', async run({ interaction, channel }) {
+export default command({ name: 'show', description: 'd', async run({ interaction, channel }) {
   await interaction.reply({ content: 'public', components: [again({ n: 1 })] });
   await channel.send({ content: 'channel', components: [again({ n: 2 })] });
 } });
@@ -1774,7 +1983,7 @@ export default command({ description: 'd', async run({ interaction, channel }) {
       'src/commands/ping.ts': `import { command } from 'chapterjs';
 import again from '../components/buttons/again';
 import more from '../components/buttons/more';
-export default command({ description: 'd', async run({ interaction, t }) {
+export default command({ name: 'ping', description: 'd', async run({ interaction, t }) {
   await interaction.reply({ ephemeral: true, content: t('pong') + ' [' + t.locale + ']', components: [again, more] });
 } });
 `,
@@ -1819,12 +2028,12 @@ export default button({ label: 'More', async run({ interaction, t }) {
       data: { custom_id: customId, component_type: 2 },
     });
     const updated = answers(fake, '2');
-    connection.dispatch('INTERACTION_CREATE', onPrivate('2', 'buttons/again'));
+    connection.dispatch('INTERACTION_CREATE', onPrivate('2', 'again'));
     await waitUntil(() => updated().length === 1, 'the update');
     expect(bodies(fake, '2')[0]).toEqual({ content: 'Pong ! [fr]' });
     // And a new answer stays with her, in her language.
     const replied = answers(fake, '3');
-    connection.dispatch('INTERACTION_CREATE', onPrivate('3', 'buttons/more'));
+    connection.dispatch('INTERACTION_CREATE', onPrivate('3', 'more'));
     await waitUntil(() => replied().length === 1, 'the reply');
     expect(bodies(fake, '3')[0]).toEqual({
       content: 'Bienvenue you, membre n°1 !',
@@ -1833,7 +2042,7 @@ export default button({ label: 'More', async run({ interaction, t }) {
     // On a message everyone sees, the file decides, as before.
     const open = answers(fake, '4');
     connection.dispatch('INTERACTION_CREATE', {
-      ...onPrivate('4', 'buttons/more'),
+      ...onPrivate('4', 'more'),
       message: rawMessage('100000000000000093', 'x', { flags: 0 }),
     });
     await waitUntil(() => open().length === 1, 'the public reply');
@@ -1854,6 +2063,7 @@ describe.skipIf(process.platform === 'win32')(
       const cwd = project({
         'src/messages/en-US.ts': `import { language } from 'chapterjs';
 export default language({
+  locale: 'en-US',
   default: true,
   texts: { a: 'b' },
   commands: { ping: { description: 'Pong', options: { who: { description: 'Who' } } } },
@@ -1861,18 +2071,19 @@ export default language({
 `,
         'src/messages/fr.ts': `import { language } from 'chapterjs';
 export default language({
+  locale: 'fr',
   texts: { a: 'c' },
   commands: {
     ping: { name: 'pong', description: 'Pong !', options: { who: { name: 'qui', choices: { warm: 'Chaud' } } } },
-    'mod/ban': { description: 'Bannit' },
+    'mod ban': { description: 'Bannit' },
   },
 });
 `,
         'src/commands/ping.ts': `import { command } from 'chapterjs';
-export default command({ options: { who: { type: 'string', choices: ['warm', 'cold'] } }, run() {} });
+export default command({ name: 'ping', options: { who: { type: 'string', choices: ['warm', 'cold'] } }, run() {} });
 `,
         'src/commands/mod/ban.ts': `import { command } from 'chapterjs';
-export default command({ description: 'Ban', run() {} });
+export default command({ name: 'mod ban', description: 'Ban', run() {} });
 `,
       });
       const cli = runDev(cwd, fake);
@@ -1904,18 +2115,20 @@ export default command({ description: 'Ban', run() {} });
         options: [{ name: 'ban', description: 'Ban' }],
       });
 
-      // The default language stops describing it: the command is left out.
+      // The default language stops describing it.
       writeFileSync(
         join(cwd, 'src/messages/en-US.ts'),
         `import { language } from 'chapterjs';
-export default language({ default: true, texts: { a: 'b' }, commands: { pong: { name: 'x' } } });
+export default language({ locale: 'en-US', default: true, texts: { a: 'b' }, commands: { pong: { name: 'x' } } });
 `
       );
       await cli.waitFor(
-        `✗ src/messages/en-US.ts "commands" translates "pong", which is not a command of this project (its commands are: mod/ban, ping). The key is the path of the command file, like 'ping' or 'mod/ban'.`
+        `✗ src/messages/en-US.ts "commands" translates "pong", which is not a command of this project (its commands are: mod ban, ping). The key is the name of the command, like 'ping' or 'mod ban'.`
       );
+      // French describes the command, so it takes over, but its option
+      // has no description there either: the command is left out.
       await cli.waitFor(
-        `✗ src/commands/ping.ts This command has no description: write it in src/messages/en-US.ts (commands: { "ping": { description: '...' } }), or in the file (description: '...').`
+        `✗ src/commands/ping.ts The option "who" of /ping has no description: write it in src/messages/en-US.ts (commands: { "ping": { options: { who: { description: '...' } } } }), or in the file.`
       );
       await cli.waitFor('↻ Commands updated on Discord');
       const again = fake.discord.requestsTo(
@@ -1938,27 +2151,27 @@ describe.skipIf(process.platform === 'win32')(
       const fake = await world();
       const cwd = project({
         'src/messages/en-US.ts': `import { language } from 'chapterjs';
-export default language({ texts: { a: 'b' }, commands: { ping: { description: 'Pong' } } });
+export default language({ locale: 'en-US', texts: { a: 'b' }, commands: { ping: { description: 'Pong' } } });
 `,
         'src/commands/ping.ts': `import { command } from 'chapterjs';
-export default command({ run() {} });
+export default command({ name: 'ping', run() {} });
 `,
         'src/commands/mod/ban.ts': `import { command } from 'chapterjs';
-export default command({ description: 'Ban', run() {} });
+export default command({ name: 'mod ban', description: 'Ban', run() {} });
 `,
       });
       const declared = () =>
-        readFileSync(join(cwd, '.chapterjs/types/main.d.ts'), 'utf8');
+        readFileSync(join(cwd, '.chapterjs/types/project.d.ts'), 'utf8');
       const cli = runDev(cwd, fake);
       await cli.waitFor('✓ Commands updated on Dev Server');
-      expect(declared()).toContain('"mod/ban": false;');
+      expect(declared()).toContain('"mod ban": false;');
       expect(declared()).toContain('"ping": true;');
 
       // The file takes its description: the language file no longer may.
       writeFileSync(
         join(cwd, 'src/commands/ping.ts'),
         `import { command } from 'chapterjs';
-export default command({ description: 'Pong', run() {} });
+export default command({ name: 'ping', description: 'Pong', run() {} });
 `
       );
       await cli.waitFor(

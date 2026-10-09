@@ -9,6 +9,7 @@ Tout ce qui peut recevoir un message a un `send()` : un salon, un utilisateur, u
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'announce',
   description: 'Publie une annonce dans ce salon',
   options: {
     text: { type: 'string', description: 'Quoi annoncer', required: true },
@@ -133,6 +134,7 @@ Les images et documents qu’envoie votre bot vivent dans le dossier `public/` d
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'chart',
   description: 'Affiche le graphique de la semaine',
   async run({ interaction }) {
     await interaction.reply({
@@ -324,13 +326,14 @@ async function lastMessagesOf(channel: TextChannel, authorId: string, count: num
 
 ## Boutons, menus et mise en page
 
-Un message peut contenir des boutons et des menus déroulants, qui lancent un fichier de `src/components/` quand on les utilise, et être construit avec des textes, des sections, des galeries et des conteneurs au lieu d’un texte et d’embeds :
+Un message peut contenir des boutons et des menus déroulants, déclarés avec `button()` et `select()`, qui lancent votre code quand on les utilise, et être construit avec des textes, des sections, des galeries et des conteneurs au lieu d’un texte et d’embeds :
 
 ```ts src/commands/vote.ts
 import { command } from 'chapterjs';
-import yes from '../components/buttons/yes';
+import yes from '../components/yes';
 
 export default command({
+  name: 'vote',
   description: 'Lance un vote',
   async run({ interaction }) {
     await interaction.reply({ content: 'Pizza ce soir ?', components: [yes] });
@@ -338,7 +341,7 @@ export default command({
 });
 ```
 
-```ts src/components/buttons/yes.ts
+```ts src/components/yes.ts
 import { button } from 'chapterjs';
 
 export default button({

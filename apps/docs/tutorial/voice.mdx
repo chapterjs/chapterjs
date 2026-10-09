@@ -17,6 +17,7 @@ Create `src/commands/fanfare.ts`:
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'fanfare',
   description: 'Plays a fanfare in your voice channel',
   async run({ interaction, member }) {
     const channel = member.voiceChannel;
@@ -64,6 +65,7 @@ The simplest is to convert your sounds once, on your computer, and keep the `.og
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'hush',
   description: 'Stops what the bot plays',
   async run({ interaction, guild }) {
     if (!guild.voice?.playing) {

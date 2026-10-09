@@ -176,7 +176,7 @@ Après `deferUpdate()`, `reply()` envoie son message comme une suite, ce qui rev
 showModal(form: ModalComponent): Promise<void>
 ```
 
-Sur une `CommandInteraction` et une `ComponentInteraction`. Ouvre un formulaire, en guise de réponse : `showModal(report({ userId }))`, avec un formulaire de `src/components/modals/`. Ce doit être la première réponse, et la personne a tout le temps qu’elle veut pour le remplir.
+Sur une `CommandInteraction` et une `ComponentInteraction`. Ouvre un formulaire, en guise de réponse : `showModal(report({ userId }))`, avec un formulaire déclaré avec `modal()`. Ce doit être la première réponse, et la personne a tout le temps qu’elle veut pour le remplir.
 
 Lève une erreur quand quelque chose a déjà été répondu : « A form can only be the first answer to an interaction: call interaction.showModal() before reply() or defer(), and the framework waits for it. »
 

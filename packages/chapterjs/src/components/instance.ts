@@ -1,5 +1,5 @@
 // What goes in the `components` of a message: pieces made by the framework
-// (a button of `src/components/buttons/`, a `row()`, a `container()`...),
+// (a button declared with `button()`, a `row()`, a `container()`...),
 // never raw JSON. Each piece knows the Discord shape it is sent as; the
 // brand is what lets a message refuse anything else, so that no custom_id
 // is ever written by hand.
@@ -30,9 +30,9 @@ export interface Piece<Kind extends string> {
   readonly [brand]: Kind;
 }
 
-/** A button: of a file of `src/components/buttons/`, `linkButton()` or `premiumButton()`. */
+/** A button: declared with `button()`, or made with `linkButton()` or `premiumButton()`. */
 export type ButtonComponent = Piece<'button'>;
-/** A select menu of a file of `src/components/selects/`. */
+/** A select menu declared with `select()`. */
 export type SelectComponent = Piece<'select'>;
 /** A row of up to 5 buttons, or of one menu: `row()`. */
 export type ActionRowComponent = Piece<'row'>;
@@ -50,7 +50,7 @@ export type FileComponent = Piece<'file'>;
 export type SeparatorComponent = Piece<'separator'>;
 /** A box around other pieces, with an optional color: `container()`. */
 export type ContainerComponent = Piece<'container'>;
-/** A form to open with `interaction.showModal()`: of a file of `src/components/modals/`. */
+/** A form to open with `interaction.showModal()`: declared with `modal()`. */
 export type ModalComponent = Piece<'modal'>;
 
 /** What a container can hold. */
@@ -185,7 +185,7 @@ export function isPiece(value: unknown): value is Piece<PieceKind> {
 export function renderedOf(value: unknown, where: string): Rendered {
   if (!isPiece(value)) {
     throw new TypeError(
-      `${where} is not a component made by ChapterJS, got ${value === null ? 'null' : typeof value === 'object' && 'custom_id' in (value as object) ? 'an object with a custom_id' : typeof value}. Use the buttons, menus and modals of src/components/, and row(), text(), section(), container()... from 'chapterjs'. Components are never written as JSON.`
+      `${where} is not a component made by ChapterJS, got ${value === null ? 'null' : typeof value === 'object' && 'custom_id' in (value as object) ? 'an object with a custom_id' : typeof value}. Use the buttons, menus and forms declared with button(), select() and modal(), and row(), text(), section(), container()... from 'chapterjs'. Components are never written as JSON.`
     );
   }
   const { kind, raw } = value as unknown as Rendered;

@@ -3,9 +3,9 @@ title: 'modal()'
 description: 'Everything a form file declares, every kind of field, and what the run function receives for each'
 ---
 
-`modal()` is what a file of `src/components/modals/` exports by default. It takes one object, `ModalConfig`, and types `fields` in `run` from it.
+`modal()` declares a form, from any file of `src/`; the name of its export is its id. It takes one object, `ModalConfig`, and types `fields` in `run` from it.
 
-```ts src/components/modals/feedback.ts
+```ts src/components/feedback.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -26,17 +26,17 @@ export default modal({
 ## modal()
 
 ```ts
-modal<Fields extends ModalFields, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ModalConfig<Fields, Data, Where>): ModalFile<Fields, Data>
+modal<Fields extends ModalFields, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ModalConfig<Fields, Data, Where>): ModalDeclaration<Fields, Data>
 ```
 
-Declares a form. Export the result as the default export of a file of `src/components/modals/`: the path of the file is what tells the form apart, so you never write an id.
+Declares a form. Export the result from any file of `src/`: the name of the export is what tells the form apart, so you never write an id.
 
-### ModalFile
+### ModalDeclaration
 
-What `modal()` returns: the default export of a modal file. Import it where someone uses a command or a component, and open it: `interaction.showModal(report({ userId }))`, or `interaction.showModal(feedback)` for a form without data.
+What `modal()` returns: a declaration the framework finds in the exports of a file. Import it where someone uses a command or a component, and open it: `interaction.showModal(report({ userId }))`, or `interaction.showModal(feedback)` for a form without data.
 
 ```ts
-type ModalFile<Fields extends ModalFields = ModalFields, Data extends DataShape = {}> = { readonly config: unknown } &
+type ModalDeclaration<Fields extends ModalFields = ModalFields, Data extends DataShape = {}> = { readonly config: unknown } &
   ({} extends Data
     ? ((options?: ModalInstanceOptions<Fields>) => ModalComponent) & ModalComponent
     : {} extends DataInputOf<Data>

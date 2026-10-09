@@ -112,6 +112,7 @@ async function world() {
     listen(name: EventName, options: Record<string, unknown> = {}) {
       files.push({
         file: `src/events/${name}/x.ts`,
+        export: 'default',
         event: {
           name,
           handler: (context: Record<string, unknown>) =>
@@ -718,6 +719,7 @@ describe('messages deleted together', () => {
 describe('the intents of the new events', () => {
   const file = (name: EventName, options: Record<string, unknown> = {}) => ({
     file: `src/events/${name}/x.ts`,
+    export: 'default',
     event: { name, handler: () => {}, options } as never,
   });
   it.each<[EventName, Record<string, unknown>, number]>([

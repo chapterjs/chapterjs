@@ -28,6 +28,7 @@ import { command } from 'chapterjs';
 import { warningsOf } from '../lib/warnings';
 
 export default command({
+  name: 'warnings',
   description: 'Counts the warnings of someone',
   options: {
     who: { type: 'user', description: 'Who', required: true },
@@ -43,7 +44,7 @@ export default command({
 
 The files you import are watched like the others: saving `src/lib/warnings.ts` reloads every file that uses it.
 
-Inside a conventional folder, a file starting with `_` is never read as a command or an event, so shared code can also sit next to the files that use it: `src/commands/(moderation)/_checks.ts`. Pick one habit and keep it; `src/lib/` is the simplest.
+A file that declares nothing is just code: shared code can also sit next to the files that use it, `src/moderation/checks.ts` beside `src/moderation/ban.ts`. Pick one habit and keep it; `src/lib/` is the simplest.
 
 ## Keeping files short
 
@@ -77,6 +78,7 @@ Whatever you choose, keep it in `src/lib/` behind a few functions (`getSettings(
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'daily',
   description: 'Claims your daily reward',
   ephemeral: true,
   cooldown: '1d',
@@ -90,9 +92,9 @@ Someone who uses `/daily` again too soon gets a private answer saying when they 
 
 ## Grouping files
 
-The two naming rules of the [tour](/tutorial/tour#two-naming-rules-for-your-own-order) are what you need: `(fun)/`, `(moderation)/`, `(admin)/` folders in `src/commands/`, `src/events/` and `src/components/`, and `_` files for what they share. They change nothing for Discord.
+Where a file is and what it is called mean nothing to the framework: a command is a command because of `command()`, wherever the file sits. So sort your files the way you think: a folder per kind (`src/commands/`, `src/events/`), as the template does, or a folder per feature (`src/moderation/`, with its commands, its buttons and its events together, in one file or several). The [tour](/tutorial/tour#your-files-your-order) shows both.
 
-For commands, prefer **commands** sorted in groups (`/ban`, `/kick` in `(moderation)/`) over **subcommands** (`/mod ban`, `/mod kick` in `mod/`), unless they are variants of one action (`/timeout add`, `/timeout remove`). Discord hides a whole command from people who lack its permissions, never one subcommand: with `/mod ban` and `/mod kick`, someone who may only kick still sees `/mod ban`.
+For commands, prefer **commands** (`/ban`, `/kick`) over **subcommands** (`/mod ban`, `/mod kick`), unless they are variants of one action (`/timeout add`, `/timeout remove`). Discord hides a whole command from people who lack its permissions, never one subcommand: with `/mod ban` and `/mod kick`, someone who may only kick still sees `/mod ban`.
 
 ## What the framework does not do yet
 
@@ -111,9 +113,9 @@ The full list, kept up to date, is [What's not there yet](/not-yet).
 
 ## Recap
 
-- Shared code goes in `src/lib/` (or a `_` file), imported without extension, and reloaded with the files that use it.
+- Shared code goes in `src/lib/` (or next to the files that use it), imported without extension, and reloaded with the files that use it.
 - Nothing survives a restart but the `data` of components: store what matters in a JSON file or a database, behind a few functions.
-- A cooldown is one setting of the command, `cooldown: '1d'`, kept in memory; a growing project uses `(group)` folders.
+- A cooldown is one setting of the command, `cooldown: '1d'`, kept in memory; a growing project sorts its files by feature, since the framework reads what they export, not where they are.
 
 <CardGroup cols={2}>
   <Card

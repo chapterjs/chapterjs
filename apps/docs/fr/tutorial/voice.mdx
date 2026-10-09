@@ -17,6 +17,7 @@ Créez `src/commands/fanfare.ts` :
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'fanfare',
   description: 'Joue une fanfare dans votre salon vocal',
   async run({ interaction, member }) {
     const channel = member.voiceChannel;
@@ -64,6 +65,7 @@ Le plus simple est de convertir vos sons une fois, sur votre ordinateur, et de g
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'hush',
   description: 'Arrête ce que joue le bot',
   async run({ interaction, guild }) {
     if (!guild.voice?.playing) {

@@ -1,6 +1,5 @@
-// `src/commands/`: the path of a file is the name of a slash command.
-// Everything a file declares is checked when it loads, against the limits
-// of Discord, so a mistake is explained before Discord refuses it.
+// What a file declares with `command()`, checked when it loads against the
+// limits of Discord, so a mistake is explained before Discord refuses it.
 // https://docs.discord.com/developers/interactions/application-commands
 
 import { ALL_PERMISSIONS } from '../discord/permissions.js';
@@ -12,10 +11,11 @@ import {
   NO_COOLDOWN,
   type CooldownLimits,
 } from '../interactions/cooldown.js';
-import type { Convention } from '../loader/loader.js';
+import { readFile } from 'node:fs/promises';
+import { listSources, type Declaration } from '../loader/loader.js';
 import { DURATION_EXAMPLE, parseDuration } from '../util/duration.js';
 import {
-  isCommandFile,
+  isCommandDeclaration,
   type AutocompleteContext,
   type CommandConfig,
   type CommandContext,
@@ -46,20 +46,20 @@ export type AutocompleteFunction = (
   context: AutocompleteContext
 ) => readonly Suggestion[] | Promise<readonly Suggestion[]>;
 
-/** A command file, checked: what the rest of the feature works with. */
+/** A command, checked: what the rest of the feature works with. */
 export interface LoadedCommand {
   /** The name and description of the command in other languages. */
   readonly names: Localizations;
   readonly descriptions: Localizations;
   /** The translations of the options, by option name. */
   readonly optionLocales: Readonly<Record<string, OptionLocales>>;
-  /** `['mod', 'ban']` for `src/commands/mod/ban.ts`: `/mod ban`. */
+  /** `['mod', 'ban']` for `name: 'mod ban'`: `/mod ban`. */
   readonly path: readonly string[];
   /**
    * Whether the file gives its own texts (`description`, `locales`). When
-   * it does not, the language files of `src/messages/` do: `description`
-   * and the descriptions of the options are empty until `project.ts`
-   * fills them in from the default language.
+   * it does not, the language files do: `description` and the
+   * descriptions of the options are empty until `project.ts` fills them
+   * in from the default language.
    */
   readonly described: boolean;
   readonly description: string;
@@ -112,6 +112,7 @@ const OPTION_KEYS: Record<string, readonly string[]> = {
   channel: ['channelTypes'],
 };
 const COMMAND_KEYS = [
+  'name',
   'description',
   'options',
   'locales',
@@ -595,49 +596,53 @@ function checkPermissions(permissions: unknown): bigint {
   return bits & ALL_PERMISSIONS;
 }
 
+const EXAMPLE = `command({ name: 'ping', description: '...', run({ interaction }) { ... } })`;
+
 /**
- * `src/commands/`: each file is a slash command, named after its path.
- * One folder makes a command with subcommands (`mod/ban.ts` is `/mod ban`),
- * two make a group (`mod/roles/add.ts` is `/mod roles add`): Discord allows
- * nothing deeper.
+ * The parts of the name of a command: `'mod ban'` is `['mod', 'ban']`.
+ * One part is a command, two a subcommand, three a subcommand in a group:
+ * Discord allows nothing deeper.
  */
-export const commandsConvention: Convention<LoadedCommand> = {
-  folder: 'commands',
+export function readCommandName(name: unknown): string[] {
+  if (typeof name !== 'string' || name.trim() === '') {
+    return fail(
+      `This command has no "name": what people type after the /, like ${EXAMPLE}. A subcommand is written with its parents: name: 'mod ban' is /mod ban.`
+    );
+  }
+  const parts = name.trim().split(/\s+/);
+  if (parts.length > 3) {
+    fail(
+      `The name ${JSON.stringify(name)} has ${parts.length} words: Discord allows a command, a group and a subcommand, so 3 at most ('mod roles add' is /mod roles add).`
+    );
+  }
+  for (const part of parts) {
+    if (!isName(part)) {
+      fail(
+        `"${part}" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most.`
+      );
+    }
+  }
+  return parts;
+}
+
+/**
+ * A slash command, declared anywhere in `src/` with `command()`: `name` is
+ * what people type after the `/`, with its parents for a subcommand
+ * (`'mod ban'` is `/mod ban`, `'mod roles add'` is `/mod roles add`). A
+ * file may declare several.
+ */
+export const commandDeclaration: Declaration<LoadedCommand> = {
   one: 'command',
   many: 'commands',
-  check(path) {
-    const parts = path.replace(/\.[^./]+$/, '').split('/');
-    if (parts.length > 3) {
-      fail(
-        `This file is ${parts.length - 1} folders deep: Discord allows a command, a group and a subcommand, so 2 folders at most (src/commands/mod/roles/add.ts is /mod roles add).`
-      );
-    }
-    for (const part of parts) {
-      if (!isName(part)) {
-        fail(
-          `"${part}" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most. The path of the file is the name of the command.`
-        );
-      }
-    }
-  },
-  read(exports, path) {
-    const file = exports.default;
-    const parts = path.replace(/\.[^./]+$/, '').split('/');
-    if (!isCommandFile(file)) {
-      const example = `import { command } from 'chapterjs'; export default command({ description: '...', run({ interaction }) { ... } })`;
-      return fail(
-        'default' in exports
-          ? `The default export of this file must be what command() returns: ${example}`
-          : `This file has no default export. It should look like: ${example}`
-      );
-    }
-    const config = file.config as CommandConfig;
+  is: isCommandDeclaration,
+  list: true,
+  read(value) {
+    const config = (value as { config: unknown }).config as CommandConfig;
     if (!isRecord(config)) {
-      return fail(
-        `command() needs an object: command({ description: '...', run({ interaction }) { ... } })`
-      );
+      return fail(`command() needs an object: ${EXAMPLE}`);
     }
     checkKeys('a command', config, COMMAND_KEYS);
+    const parts = readCommandName(config.name);
     // No description: the language files describe the command, options
     // included, and hold its translations.
     const described = config.description !== undefined;
@@ -646,7 +651,7 @@ export const commandsConvention: Convention<LoadedCommand> = {
       : '';
     if (!described && config.locales !== undefined) {
       fail(
-        `This command has no "description", so its texts come from the language files of src/messages/: put its "locales" there too (commands: { ... }), or give it a description here.`
+        `This command has no "description", so its texts come from the language files: put its "locales" there too (commands: { ... }), or give it a description here.`
       );
     }
     if (typeof config.run !== 'function') {
@@ -689,3 +694,25 @@ export const commandsConvention: Convention<LoadedCommand> = {
     });
   },
 };
+
+/** `command({ ... name: '...' ... })`, as written in a file. */
+const DECLARED = /\bcommand\s*\(\s*\{[^]*?\bname\s*:\s*['"`]([^'"`]+)['"`]/g;
+
+/**
+ * The names of the commands of a project, found without running its
+ * files: a text search for `command({ name: '...' })`. Approximate on
+ * purpose, for `sync`, which runs nothing: `dev` and `build` then write
+ * the exact ones. Whether a command is described is not known: none is.
+ */
+export async function scanCommands(cwd: string): Promise<string[]> {
+  const names = new Set<string>();
+  for (const { path } of await listSources(cwd)) {
+    const code = await readFile(path, 'utf8').catch(() => '');
+    if (!code.includes('command(')) continue;
+    for (const match of code.matchAll(DECLARED)) {
+      const name = match[1]!.trim().split(/\s+/).join(' ');
+      if (name !== '') names.add(name);
+    }
+  }
+  return [...names].sort();
+}

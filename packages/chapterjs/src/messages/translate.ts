@@ -31,7 +31,7 @@ export interface PluralTemplate {
 
 export type Template = TextTemplate | PluralTemplate;
 
-/** The languages of `src/messages/`, checked and assembled: what `t` reads. */
+/** The languages of the project, checked and assembled: what `t` reads. */
 export interface LoadedMessages {
   readonly default: Locale;
   /** The texts of each language declared, compiled. */
@@ -44,7 +44,7 @@ export interface LoadedMessages {
    * needed for that.
    */
   readonly commands: ReadonlyMap<Locale, Readonly<Record<string, unknown>>>;
-  /** The file of each language: `src/messages/fr.ts`. */
+  /** The file each language is declared in. */
   readonly files: ReadonlyMap<Locale, string>;
 }
 
@@ -247,7 +247,7 @@ export function translatorFor(
     const template = base.get(key);
     if (!template) {
       throw new TypeError(
-        `There is no message "${key}" in src/messages/. It has: ${[...base.keys()].join(', ')}.`
+        `There is no message "${key}" in your languages. They have: ${[...base.keys()].join(', ')}.`
       );
     }
     return fill(key, template, params, messages.default);
@@ -301,7 +301,7 @@ export function audienceLocale({
 
 const missing = new Map<string, Translator<MessageTexts>>();
 
-/** A `t` for a project without a language in `src/messages/`: it says so when called. */
+/** A `t` for a project without a language: it says so when called. */
 export function missingTranslator(
   locale: string | null
 ): Translator<MessageTexts> {
@@ -310,7 +310,7 @@ export function missingTranslator(
   if (known) return known;
   const t = (() => {
     throw new TypeError(
-      'This project has no language in src/messages/: add one, like src/messages/en-US.ts, to use t().'
+      "This project has no language: declare one with language({ locale: 'en-US', texts: { ... } }) to use t()."
     );
   }) as unknown as Translator<MessageTexts> & { locale: string };
   Object.defineProperties(t, {
@@ -343,7 +343,7 @@ export function translatorOf(
 
 /**
  * What a handler receives about translations: `t` in the language asked
- * when the project has a language in `src/messages/`, nothing otherwise. Spread it
+ * when the project has a language, nothing otherwise. Spread it
  * into the context of any handler.
  */
 export function translation(

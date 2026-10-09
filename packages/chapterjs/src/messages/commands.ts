@@ -1,5 +1,5 @@
-// The `commands` of the languages of `src/messages/`: what Discord shows of
-// each command in each language. A command has its texts in one place: in
+// The `commands` of the language files: what Discord shows of each command
+// in each language. A command has its texts in one place: in
 // its file (`description`, `locales`), or in the language files, where the
 // default language gives what Discord shows to everyone and the others
 // their translations. Which one is decided by `description` in the file.
@@ -8,13 +8,13 @@ import {
   checkLocales,
   type LoadedCommand,
   type LoadedOption,
-} from '../commands/convention.js';
+} from '../commands/declaration.js';
 import { commandName } from '../commands/tree.js';
 import type { Locale } from '../discord/types/common.js';
 import type { FailedFile } from '../loader/loader.js';
 import type { LoadedMessages } from './translate.js';
 
-/** A command given its texts by the languages of `src/messages/`. */
+/** A command given its texts by the language files. */
 export interface TranslatedCommand {
   /** The command, described; `null` when it can't be, said in `failed`. */
   readonly command: LoadedCommand | null;
@@ -22,7 +22,7 @@ export interface TranslatedCommand {
   readonly failed: readonly FailedFile[];
 }
 
-/** The paths the languages translate that no command file has, by file. */
+/** The names the languages translate that no command has, by file. */
 export function unknownCommands(
   messages: LoadedMessages,
   known: ReadonlySet<string>
@@ -40,7 +40,7 @@ export function unknownCommands(
 
 /** Where the default language file is, or would be. */
 export const defaultLanguageFile = (messages: LoadedMessages | null): string =>
-  messages?.files.get(messages.default) ?? 'src/messages/en-US.ts';
+  messages?.files.get(messages.default) ?? 'the default language file';
 
 /**
  * Gives a command its texts from the languages, when its file does not
@@ -52,7 +52,7 @@ export function translateCommand(
   command: LoadedCommand,
   messages: LoadedMessages | null
 ): TranslatedCommand {
-  const path = command.path.join('/');
+  const path = command.path.join(' ');
   const name = commandName(command.path);
   const failed: FailedFile[] = [];
   const languages = [...(messages?.commands ?? [])].filter(
@@ -91,8 +91,28 @@ export function translateCommand(
       });
     }
   }
-  const main = messages ? given.get(messages.default) : undefined;
-  const description = main?.descriptions[messages!.default];
+  // The default language describes the command; when it does not, the
+  // first language that does (en-US first) is what Discord shows to all.
+  const order = messages
+    ? [...given.keys()].sort((a, b) =>
+        a === messages.default
+          ? -1
+          : b === messages.default
+            ? 1
+            : a === 'en-US'
+              ? -1
+              : b === 'en-US'
+                ? 1
+                : a < b
+                  ? -1
+                  : 1
+      )
+    : [];
+  const mainLocale =
+    order.find(locale => given.get(locale)!.descriptions[locale]) ??
+    messages?.default;
+  const main = mainLocale ? given.get(mainLocale) : undefined;
+  const description = mainLocale ? main?.descriptions[mainLocale] : undefined;
   if (description === undefined) {
     failed.push({
       file,
@@ -106,7 +126,9 @@ export function translateCommand(
   for (const option of command.options) {
     const text =
       option.description ||
-      main?.optionLocales[option.name]?.descriptions[messages!.default];
+      (mainLocale
+        ? main?.optionLocales[option.name]?.descriptions[mainLocale]
+        : undefined);
     if (!text) {
       failed.push({
         file,
@@ -132,7 +154,7 @@ export function translateCommand(
     }
   > = {};
   for (const [locale, texts] of given) {
-    if (locale === messages!.default) continue;
+    if (locale === mainLocale) continue;
     const text = texts.names[locale];
     if (text !== undefined) names[locale] = text;
     const about = texts.descriptions[locale];

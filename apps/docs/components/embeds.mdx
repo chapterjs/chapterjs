@@ -3,9 +3,9 @@ title: 'Embeds and layout'
 description: 'Write an embed once and use it everywhere, and build messages out of texts, sections, galleries and containers'
 ---
 
-An embed used in several messages is a file of `src/components/embeds/`. It is the embed itself, or a function of what it shows.
+An embed used in several messages is declared with `embed()`, in any file of `src/`, and exported. It is the embed itself, or a function of what it shows.
 
-```ts src/components/embeds/welcome.ts
+```ts src/components/welcome.ts
 import { embed, type GuildMember } from 'chapterjs';
 
 export default embed((member: GuildMember) => ({
@@ -16,19 +16,22 @@ export default embed((member: GuildMember) => ({
 }));
 ```
 
-```ts src/events/memberJoin/greet.ts
+```ts src/events/greet.ts
 import { event } from 'chapterjs';
-import welcome from '../../components/embeds/welcome';
+import welcome from '../components/welcome';
 
-export default event(async ({ member, guild }) => {
-  const general = [...guild.channels.values()].find(channel => channel.name === 'general');
-  if (general?.isText()) await general.send({ embeds: [welcome(member)] });
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild }) {
+    const general = [...guild.channels.values()].find(channel => channel.name === 'general');
+    if (general?.isText()) await general.send({ embeds: [welcome(member)] });
+  },
 });
 ```
 
 That is all: `welcome(member)` returns the embed, checked against the limits of Discord when the message is sent. An embed that always looks the same is given directly, and used without calling it:
 
-```ts src/components/embeds/rules.ts
+```ts src/components/rules.ts
 import { embed } from 'chapterjs';
 
 export default embed({
@@ -40,9 +43,10 @@ export default embed({
 
 ```ts src/commands/rules.ts
 import { command } from 'chapterjs';
-import rules from '../components/embeds/rules';
+import rules from '../components/rules';
 
 export default command({
+  name: 'rules',
   description: 'Shows the rules',
   async run({ interaction }) {
     await interaction.reply({ embeds: [rules] });
@@ -64,6 +68,7 @@ Discord can show a message made of components only: texts, sections with a thumb
 import { command, container, linkButton, section, separator, text, thumbnail } from 'chapterjs';
 
 export default command({
+  name: 'profile',
   description: 'Shows your profile',
   async run({ interaction, member }) {
     await interaction.reply({
@@ -105,6 +110,7 @@ A picture of a gallery or a thumbnail is a link, or a file of the message with `
 import { asset, command, gallery, text } from 'chapterjs';
 
 export default command({
+  name: 'photos',
   description: 'Shows the photos of the week',
   async run({ interaction }) {
     await interaction.reply({

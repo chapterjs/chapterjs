@@ -232,8 +232,8 @@ export const Message = ({ bot, name, children }) => (
 {/* Two files */}
 
 <div className="mx-auto mt-28 max-w-6xl px-6">
-  <Heading eyebrow="How it feels" title="The file is the API">
-    Where a file is says what it is. The path of a command is its name, the folder of an event is the event, and the same import works in every file. Nothing is repeated, nothing is annotated.
+  <Heading eyebrow="How it feels" title="The export is the API">
+    What a file exports says what it is. A command has its name, an event has its name, a button is named by its export, and the same import works in every file. Nothing is registered, nothing is annotated.
   </Heading>
 
   <div className="mt-10 grid gap-4 md:grid-cols-2 [&_div.my-4]:my-0 [&>div]:min-w-0">
@@ -242,6 +242,7 @@ export const Message = ({ bot, name, children }) => (
       import { command } from 'chapterjs';
 
       export default command({
+        name: 'ping',
         description: 'Replies with Pong!',
         async run({ interaction }) {
           await interaction.reply('Pong!');
@@ -250,18 +251,21 @@ export const Message = ({ bot, name, children }) => (
       ```
     </div>
     <div>
-      ```ts src/events/memberJoin/welcome.ts
+      ```ts src/events/welcome.ts
       import { event } from 'chapterjs';
 
-      export default event(async ({ member, guild }) => {
-        await member.send(`Welcome to ${guild.name}!`);
+      export default event({
+        name: 'memberJoin',
+        async run({ member, guild }) {
+          await member.send(`Welcome to ${guild.name}!`);
+        },
       });
       ```
     </div>
   </div>
 
   <p className="mt-6 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-    That is all. <C>/ping</C> is registered on Discord, the bot asks for the Server Members intent because a file needs it, and <C>member</C> and <C>guild</C> are typed without you writing a type.
+    That is all. <C>/ping</C> is registered on Discord, the bot asks for the Server Members intent because a declaration needs it, and <C>member</C> and <C>guild</C> are typed from <C>name</C>, without you writing a type.
   </p>
 </div>
 
@@ -274,14 +278,14 @@ export const Message = ({ bot, name, children }) => (
     <Cell
       className="md:col-span-2"
       icon="folder-tree"
-      title="Files are the API"
+      title="Exports are the API"
       visual={
         <div className="grid w-full max-w-lg grid-cols-[1fr_auto_1fr] items-center gap-4">
           <Mono className="space-y-1.5 text-left">
-            <div>src/commands/<span className="text-zinc-950 dark:text-white">ping.ts</span></div>
-            <div>src/commands/<span className="text-zinc-950 dark:text-white">poll.ts</span></div>
-            <div>src/events/memberJoin/<span className="text-zinc-950 dark:text-white">welcome.ts</span></div>
-            <div>src/components/buttons/<span className="text-zinc-950 dark:text-white">vote.ts</span></div>
+            <div>command({'{'} name: <span className="text-zinc-950 dark:text-white">'ping'</span> {'}'})</div>
+            <div>command({'{'} name: <span className="text-zinc-950 dark:text-white">'poll'</span> {'}'})</div>
+            <div>event({'{'} name: <span className="text-zinc-950 dark:text-white">'memberJoin'</span> {'}'})</div>
+            <div>export const <span className="text-zinc-950 dark:text-white">vote</span> = button(...)</div>
           </Mono>
           <span className="cj-accent"><Icon icon="arrow-right" size={16} /></span>
           <div className="cj-chip space-y-1 rounded-lg p-2">
@@ -293,7 +297,7 @@ export const Message = ({ bot, name, children }) => (
         </div>
       }
     >
-      A file in <C>src/events/memberJoin/</C> runs when someone joins. A file in <C>src/commands/</C> shows up as a slash command. A file in <C>src/components/buttons/</C> is a button, with an id you never write. No client, no registration script, no list of intents.
+      <C>event({'{'} name: 'memberJoin' {'}'})</C> runs when someone joins. <C>command({'{'} name: 'ping' {'}'})</C> shows up as a slash command. <C>export const vote = button(...)</C> is a button, with an id you never write. Put them in the files you like: no client, no registration script, no list of intents.
     </Cell>
 
     <Cell

@@ -1,14 +1,15 @@
 ---
 title: 'Translated messages'
-description: 'Answer each person in their language, with one file per language in src/messages/'
+description: 'Answer each person in their language, with one language() declaration per language'
 ---
 
-The texts your bot answers with live in `src/messages/`, one file per language, named after the language. Every function of your project then receives `t`, which gives a text in the right language.
+The texts your bot answers with are declared with `language()`, one declaration per language, in the files you like (the template keeps them in `src/messages/`). Every function of your project then receives `t`, which gives a text in the right language.
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'en-US',
   default: true,
   texts: {
     pong: 'Pong!',
@@ -23,6 +24,7 @@ export default language({
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'fr',
   texts: {
     pong: 'Pong !',
     welcome: 'Bienvenue {name}, tu es le membre n°{count} !',
@@ -36,6 +38,7 @@ export default language({
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'hello',
   description: 'Says hello',
   async run({ interaction, guild, user, t }) {
     await interaction.reply(
@@ -52,14 +55,34 @@ That is all: a person whose Discord is in French reads "Bienvenue…", anyone el
   [reference](/reference/messages).
 </Note>
 
-## The files
+## The declarations
 
-- **The name of the file is the language**, as the [`Locale`](/reference/enums#locale) values write it: `en-US.ts`, `fr.ts`, `de.ts`, `es-ES.ts`, `pt-BR.ts`, `ja.ts`… A name Discord does not know is refused before the file even runs, with the list.
+- **`locale` is the language**, as the [`Locale`](/reference/enums#locale) values write it: `'en-US'`, `'fr'`, `'de'`, `'es-ES'`, `'pt-BR'`, `'ja'`… A word Discord does not know is underlined, and refused when the file loads, with the list.
 - **`default: true`** marks the language used when the one of a person or of a server is not there. Exactly one file says so; with a single file, it goes without saying. When two files say so, both are underlined in the editor, on their `default: true`, once `chapterjs dev` or `chapterjs build` ran the files: hover it to read which other file says it.
-- **The default language has every text**: `t` offers its keys, and a language that does not have one of them answers with the text of the default language. A text in another language that the default one does not have, or a `{name}` that became `{nom}`, is reported on that file, with the key: the language is left out until it matches again, and the others keep working.
+- **A language that does not have a text answers with the default language's.** A text the default language does not have either comes from the language that has it (`en-US` first, then the others in order): a module written in German and Spanish works in a bot whose default language is French, and `t` offers its keys all the same. A `{name}` that became `{nom}` is reported on that declaration, with the key and the language the text comes from: the declaration is left out until it matches again, and the others keep working.
 - **A placeholder** is a name between braces, made of letters, digits and `_`: `{name}`, `{count}`. It takes a text or a number. A number is written the way the language writes numbers (`1,234` in English, `1 234` in French, `1.234` in German): give it as a text to keep it as is, like a year or an id.
 - **A brace written as is** is doubled: `'{{name}}'` shows `{name}`.
-- A folder in parentheses only groups files, like everywhere in `src/`, and a file starting with `_` is never a language: free for what the files share.
+- **A language may be declared in several places.** The texts of a feature can live next to it, in a second `language({ locale: 'en-US', ... })`: its `texts`, `commands` and `framework` are added to the others of that language, `t` offers them all, and `default: true` in any of them decides for the whole language. The same key in two places is reported on the later one, with the first:
+
+```ts src/(moderation)/messages.ts
+import { language } from 'chapterjs';
+
+export const en = language({
+  locale: 'en-US',
+  texts: { 'ban.confirm': 'Ban {user}?', 'ban.done': 'Banned.' },
+  commands: { ban: { description: 'Bans a member, after a confirmation' } },
+});
+
+export const fr = language({
+  locale: 'fr',
+  texts: { 'ban.confirm': 'Bannir {user} ?', 'ban.done': 'Banni.' },
+  commands: { ban: { name: 'bannir', description: 'Bannit un membre' } },
+});
+```
+
+```text
+✗ src/(moderation)/messages.ts (en) The message "pong" is already in src/messages/en-US.ts: the en-US language has it twice.
+```
 
 ## Plurals
 
@@ -69,6 +92,7 @@ A text that depends on a number has one form per quantity, like `members` above.
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'count',
   description: 'Counts the members',
   async run({ interaction, guild, t }) {
     await interaction.reply(t('members', { count: guild.memberCount ?? 0 }));
@@ -94,22 +118,25 @@ Discord only knows the language of a **Community** server. Elsewhere it says `en
 
 When that language is not in the file, `t` takes one of the same language in another region (`en-GB` reads the `'en-US'` texts, `es-419` the `'es-ES'` ones, `zh-TW` the `'zh-CN'` ones: add the file when that is not what you want), and the default one otherwise. `t.locale` says which one was taken, and `t.in(locale, key, params)` gives a text in another language, to write to someone else:
 
-```ts src/events/memberJoin/notify.ts
+```ts src/events/notify.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, guild, t }) => {
-  // `t` speaks the language of the server; the owner may prefer another.
-  const owner = await guild.fetchOwner();
-  await owner.send(
-    t.in('fr', 'welcome', {
-      name: member.displayName,
-      count: guild.memberCount ?? 1,
-    })
-  );
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild, t }) {
+    // `t` speaks the language of the server; the owner may prefer another.
+    const owner = await guild.fetchOwner();
+    await owner.send(
+      t.in('fr', 'welcome', {
+        name: member.displayName,
+        count: guild.memberCount ?? 1,
+      })
+    );
+  },
 });
 ```
 
-The editor offers the languages of `src/messages/`, and a language that comes from Discord (`interaction.locale`, `guild.preferredLocale`) is taken as is: `t` picks the closest one declared, as above. To write several texts in that language, `t.in(locale)` alone is the same `t` for it: `const say = t.in(interaction.locale); say('pong')`.
+The editor offers the languages of the project, and a language that comes from Discord (`interaction.locale`, `guild.preferredLocale`) is taken as is: `t` picks the closest one declared, as above. To write several texts in that language, `t.in(locale)` alone is the same `t` for it: `const say = t.in(interaction.locale); say('pong')`.
 
 <Warning>
   `t` is given to your function before it runs, for the audience the file
@@ -127,7 +154,7 @@ The editor offers the languages of `src/messages/`, and a language that comes fr
 
 A label, a placeholder or a title is written in the file of the component. To translate it, make it a function: it receives `t`, in the language of who will read the message, and the `data` the component carries. It runs when the message is sent.
 
-```ts src/components/buttons/next.ts
+```ts src/components/next.ts
 import { button } from 'chapterjs';
 
 const next = button({
@@ -151,6 +178,7 @@ When the bot can't run what was asked, it answers by itself: a command used wher
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'fr',
   texts: { pong: 'Pong !' },
   framework: {
     command: 'commande',
@@ -175,10 +203,11 @@ What Discord shows of a command before it is used (its name, its description, it
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'fr',
   texts: { pong: 'Pong !' },
   commands: {
     ping: { description: 'Répond Pong !' },
-    'mod/ban': {
+    'mod ban': {
       name: 'bannir',
       description: 'Bannit un membre',
       options: { target: { name: 'qui', description: 'Qui bannir' } },

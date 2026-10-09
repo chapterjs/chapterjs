@@ -7,9 +7,9 @@ A form (Discord calls it a modal) is a window that opens in Discord with fields 
 
 ## A form is a file
 
-Create `src/components/modals/suggest.ts`:
+Create `src/components/suggest.ts` (a form is declared with `modal()` and exported, from any file of `src/`):
 
-```ts src/components/modals/suggest.ts
+```ts src/components/suggest.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -45,9 +45,10 @@ A command opens it with `showModal()`:
 
 ```ts src/commands/suggest.ts
 import { command } from 'chapterjs';
-import suggest from '../components/modals/suggest';
+import suggest from '../components/suggest';
 
 export default command({
+  name: 'suggest',
   description: 'Suggests something for the server',
   async run({ interaction }) {
     await interaction.showModal(suggest);
@@ -80,9 +81,9 @@ Every field is required unless it says `required: false`. `minLength` and `maxLe
 
 A button or a menu can open a form too. The form then knows the message of the button (`interaction.message`) and can change it with `update()` instead of sending a new message. The `data` of a form works like the data of a button: given when the form is opened, received typed in `run`:
 
-```ts src/components/buttons/edit-topic.ts
+```ts src/components/edit-topic.ts
 import { button } from 'chapterjs';
-import topic from '../modals/topic';
+import topic from './topic';
 
 export default button({
   label: 'Edit the topic',
@@ -93,7 +94,7 @@ export default button({
 });
 ```
 
-```ts src/components/modals/topic.ts
+```ts src/components/topic.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -124,7 +125,7 @@ To fill some fields in advance, pass `values` where the form is opened: `topic({
 
 ## Recap
 
-- A form is a file of `src/components/modals/` with `title` and `fields`; `run` receives `fields` typed per kind.
+- A form is `modal({ title, fields, run })`, exported; `run` receives `fields` typed per kind.
 - `interaction.showModal(form)` opens it, from a command, a button or a menu, as the first answer.
 - `data` and `values` are given where the form is opened.
 

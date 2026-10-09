@@ -1,6 +1,6 @@
-// The `custom_id` of a component is never written by users: it is the path
-// of the file of the component (`buttons/ban`), followed by the data the
-// component carries, encoded by the framework. Stateless by design: it
+// The `custom_id` of a component is never written by users: it is the name
+// of the export that declares the component (`ban`), followed by the data
+// the component carries, encoded by the framework. Stateless by design: it
 // survives a restart, and every process of the bot reads it the same way.
 // https://docs.discord.com/developers/components/reference#anatomy-of-a-component-custom-id
 
@@ -155,31 +155,31 @@ export function checkData(
 }
 
 /**
- * The `custom_id` of a component: its path, then its values in the order
+ * The `custom_id` of a component: its name, then its values in the order
  * of the declaration. Discord accepts 100 characters: when the data does
  * not fit, the error says by how much.
  */
 export function encodeCustomId(
-  path: string,
+  name: string,
   shape: DataShape,
   values: Record<string, string | number | boolean>
 ): string {
-  const parts = [path];
-  for (const name of Object.keys(shape))
-    parts.push(escape(String(values[name])));
+  const parts = [name];
+  for (const field of Object.keys(shape))
+    parts.push(escape(String(values[field])));
   const id = parts.join(SEPARATOR);
   if (id.length > Limits.CustomId) {
     throw new RangeError(
-      `The data of ${path} is ${id.length - path.length - 1} characters long once encoded, and Discord leaves ${Limits.CustomId - path.length - 1} for it (its id is ${path}, ${path.length} characters, out of ${Limits.CustomId}). Carry less: an id instead of a name, or a shorter file name.`
+      `The data of ${name} is ${id.length - name.length - 1} characters long once encoded, and Discord leaves ${Limits.CustomId - name.length - 1} for it (its id is ${name}, ${name.length} characters, out of ${Limits.CustomId}). Carry less: an id instead of a name, or a shorter export name.`
     );
   }
   return id;
 }
 
-/** The path and the encoded values of a `custom_id` the framework wrote. */
-export function decodeCustomId(id: string): { path: string; parts: string[] } {
-  const [path = '', ...parts] = split(id);
-  return { path, parts };
+/** The name and the encoded values of a `custom_id` the framework wrote. */
+export function decodeCustomId(id: string): { name: string; parts: string[] } {
+  const [name = '', ...parts] = split(id);
+  return { name, parts };
 }
 
 /**

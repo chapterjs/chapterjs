@@ -1,4 +1,4 @@
-// Components: the files of src/components/, their ids written by the
+// Components: declared with button(), select(), modal() and embed(), their ids written by the
 // framework, the pieces of a message, and what runs when someone clicks,
 // picks or sends a form.
 import type { RawButton } from '../src/discord/types/component.js';
@@ -8,9 +8,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { button, renderButton } from '../src/components/button.js';
 import {
-  componentsConvention,
+  componentDeclaration,
   findDuplicates,
-} from '../src/components/convention.js';
+} from '../src/components/declaration.js';
 import {
   checkData,
   decodeCustomId,
@@ -18,7 +18,7 @@ import {
   readData,
 } from '../src/components/custom-id.js';
 import { embed } from '../src/components/embed.js';
-import { fileStateOf } from '../src/components/file.js';
+import { componentStateOf } from '../src/components/declared.js';
 import {
   isPiece,
   renderedOf,
@@ -50,55 +50,53 @@ import {
   project,
   rawMessage,
   runDev,
+  site,
   world,
   type FakeWorld,
 } from './dev-helpers.js';
 
-/** A file of src/components/ as the loader reads it, bound to its path. */
+/** A component as the loader reads it from the default export of a file, bound to its name. */
 function load(path: string, exports: Record<string, unknown>) {
-  componentsConvention.check?.(path);
-  return componentsConvention.read(exports, path);
+  return componentDeclaration.read(
+    exports.default,
+    site(`src/components/${path}`)
+  );
 }
 
 const raw = (piece: unknown) => renderedOf(piece, 'test').raw;
 
 describe('the id of a component', () => {
   it.each([
-    ['buttons/ban', {}, {}, 'buttons/ban'],
+    ['ban', {}, {}, 'ban'],
     [
-      'buttons/ban',
+      'ban',
       { userId: 'string', page: 'number', hard: 'boolean' },
       { userId: '1234', page: 3, hard: true },
-      'buttons/ban:1234:3:true',
+      'ban:1234:3:true',
     ],
-    [
-      'selects/pick',
-      { text: 'string' },
-      { text: 'a:b\\c' },
-      'selects/pick:a\\:b\\\\c',
-    ],
-    ['buttons/x', { s: 'string' }, { s: '' }, 'buttons/x:'],
-    ['buttons/x', { n: 'number' }, { n: -0.5 }, 'buttons/x:-0.5'],
-    ['buttons/x', { s: 'string' }, { s: '日本:語' }, 'buttons/x:日本\\:語'],
+    ['pick', { text: 'string' }, { text: 'a:b\\c' }, 'pick:a\\:b\\\\c'],
+    ['x', { s: 'string' }, { s: '' }, 'x:'],
+    ['x', { n: 'number' }, { n: -0.5 }, 'x:-0.5'],
+    ['x', { s: 'string' }, { s: '日本:語' }, 'x:日本\\:語'],
   ] as const)(
-    'is the path then the data, and reads back the same (%s %j)',
+    'is the name then the data, and reads back the same (%s %j)',
     (path, shape, values, expected) => {
       const id = encodeCustomId(path, shape, { ...values });
       expect(id).toBe(expected);
       const decoded = decodeCustomId(id);
-      expect(decoded.path).toBe(path);
+      expect(decoded.name).toBe(path);
       expect(readData(shape, decoded.parts)).toEqual(values);
     }
   );
 
   it('refuses data that does not fit in 100 characters, and says by how much', () => {
     expect(() =>
-      encodeCustomId('buttons/ban', { s: 'string' }, { s: 'x'.repeat(95) })
+      encodeCustomId('ban', { s: 'string' }, { s: 'x'.repeat(97) })
     ).toThrow(
-      'The data of buttons/ban is 95 characters long once encoded, and Discord leaves 88 for it (its id is buttons/ban, 11 characters, out of 100). Carry less: an id instead of a name, or a shorter file name.'
+      'The data of ban is 97 characters long once encoded, and Discord leaves 96 for it (its id is ban, 3 characters, out of 100). Carry less: an id instead of a name, or a shorter export name.'
     );
     expect(() =>
-      encodeCustomId('buttons/ban', { s: 'string' }, { s: 'x'.repeat(88) })
+      encodeCustomId('ban', { s: 'string' }, { s: 'x'.repeat(96) })
     ).not.toThrow();
   });
 
@@ -161,11 +159,11 @@ describe('the pieces of a message', () => {
   it('makes rows by itself: 5 buttons per row, a menu alone', () => {
     const link = (n: number) =>
       linkButton({ label: `L${n}`, url: 'https://x.y' });
-    const menu = load('selects/pick.ts', {
+    const menu = load('pick.ts', {
       default: select({ options: ['a'], run() {} }),
     });
     const pick = select({ options: ['a'], run() {} });
-    load('selects/pick.ts', { default: pick });
+    load('pick.ts', { default: pick });
     const { raw: rows, v2 } = renderComponents([
       link(1),
       link(2),
@@ -240,7 +238,7 @@ describe('the pieces of a message', () => {
   it.each([
     [
       [{ type: 2, custom_id: 'mine', label: 'x' }],
-      /Component 1 of the message is not a component made by ChapterJS, got an object with a custom_id\. Use the buttons, menus and modals of src\/components\/.*never written as JSON/,
+      /Component 1 of the message is not a component made by ChapterJS, got an object with a custom_id\. Use the buttons, menus and forms declared with button\(\), select\(\) and modal\(\).*never written as JSON/,
     ],
     [[null], 'got null'],
     [['text'], 'got string'],
@@ -262,7 +260,7 @@ describe('the pieces of a message', () => {
       fields: { a: { type: 'text', label: 'A' } },
       run() {},
     });
-    load('modals/form.ts', { default: form });
+    load('form.ts', { default: form });
     expect(() => renderComponents([form])).toThrow(
       'A form is not part of a message: open it with interaction.showModal().'
     );
@@ -485,42 +483,45 @@ describe('the pieces of a message', () => {
   });
 });
 
-describe('the files of src/components/', () => {
-  it.each([
-    [
-      'ban.ts',
-      'This file is directly in src/components/. Put it in the folder of its kind: src/components/buttons/, src/components/selects/, src/components/modals/, src/components/embeds/.',
-    ],
-    [
-      'button/ban.ts',
-      'The folder src/components/button is not a kind of component. Kinds are: buttons, selects, modals, embeds.',
-    ],
-    [
-      'buttons/my ban.ts',
-      '"my ban" can\'t be in the path of a component: use letters, digits, - and _ only. The path of the file is the id of the component.',
-    ],
-    ['buttons/a:b.ts', '"a:b" can\'t be in the path of a component'],
-    [
-      `buttons/${'x'.repeat(80)}.ts`,
-      'Discord gives 100 characters to the id of a component and its data together. Shorten the names.',
-    ],
-  ])('refuse a misplaced file: %s', (path, message) => {
-    expect(() => componentsConvention.check!(path)).toThrow(message);
+describe('a component declared in a file', () => {
+  it('is recognised among the exports, one per export, by what made it', () => {
+    expect(componentDeclaration.is(button({ label: 'x', run() {} }))).toBe(
+      true
+    );
+    expect(componentDeclaration.is(embed({ title: 'x' }))).toBe(true);
+    expect(componentDeclaration.is({ label: 'x', run() {} })).toBe(false);
+    expect(componentDeclaration.is(() => {})).toBe(false);
+    // A list has no name to give each component.
+    expect(componentDeclaration.list).toBe(false);
   });
 
   it.each([
     [
-      {},
-      "This file has no default export. It should look like: import { button } from 'chapterjs'; export default button({ ... })",
+      'my ban',
+      '"my ban" can\'t be the name of a button: the name of the export is its id, and an id has no space and no ":". Rename the export.',
     ],
+    ['a:b', '"a:b" can\'t be the name of a button'],
     [
-      { default: 3 },
-      'The default export of this file must be what button() returns',
+      'x'.repeat(81),
+      `The name of the button ${'x'.repeat(81)} is 81 characters long: Discord gives 100 characters to the id of a component and its data together. Rename the export with something shorter.`,
     ],
-    [
-      { default: select({ options: ['a'], run() {} }) },
-      'This file exports a select, but it is in src/components/buttons/. Move it to src/components/selects/.',
-    ],
+  ])('refuses a name an id can not hold: %s', (name, message) => {
+    expect(() =>
+      componentDeclaration.read(
+        button({ label: 'x', run() {} }),
+        site('src/mod.ts', name)
+      )
+    ).toThrow(message);
+    // The name of the file, for a default export.
+    expect(() =>
+      componentDeclaration.read(
+        button({ label: 'x', run() {} }),
+        site(`src/${name}.ts`)
+      )
+    ).toThrow(message.replace(/\. Rename the export.*$/, ''));
+  });
+
+  it.each([
     [{ default: button('x' as never) }, 'button() needs an object'],
     [
       { default: button({ run() {} } as never) },
@@ -584,11 +585,11 @@ describe('the files of src/components/', () => {
       { default: button({ label: 'x', ephemeral: 1 as never, run() {} }) },
       '"ephemeral" is true or false, got 1.',
     ],
-  ])('refuse a button file that is wrong (%#)', (exports, message) => {
-    expect(() => load('buttons/ban.ts', exports)).toThrow(message);
+  ])('refuse a button that is wrong (%#)', (exports, message) => {
+    expect(() => load('ban.ts', exports)).toThrow(message);
   });
 
-  it('reads a button, binds it to its path, and makes instances from it', () => {
+  it('reads a button, binds it to its name, and makes instances from it', () => {
     const ban = button({
       label: 'Ban',
       style: 'danger',
@@ -598,14 +599,12 @@ describe('the files of src/components/', () => {
       run() {},
     });
     expect(() => ban({ userId: '1', days: 7 })).toThrow(
-      'This button was not loaded by ChapterJS: a button is a file of src/components/buttons/, exported by default, and used after the bot started.'
+      'This button was not loaded by ChapterJS: a button is exported from a file of src/ (export const name = button({ ... })), and used once the bot started.'
     );
-    const loaded = load('(mod)/buttons/ban.ts'.replace('(mod)/', ''), {
-      default: ban,
-    });
+    const loaded = load('ban.ts', { default: ban });
     expect(loaded).toMatchObject({
       kind: 'button',
-      path: 'buttons/ban',
+      name: 'ban',
       who: 'author',
       where: 'guild',
       ephemeral: false,
@@ -616,7 +615,7 @@ describe('the files of src/components/', () => {
       style: 4,
       label: 'Ban',
       emoji: { name: '🔨' },
-      custom_id: 'buttons/ban:1:7',
+      custom_id: 'ban:1:7',
     });
     expect(
       raw(
@@ -630,7 +629,7 @@ describe('the files of src/components/', () => {
       style: 2,
       label: 'Banned',
       emoji: { name: '🔨' },
-      custom_id: 'buttons/ban:1:7',
+      custom_id: 'ban:1:7',
       disabled: true,
     });
     expect(() =>
@@ -651,24 +650,24 @@ describe('the files of src/components/', () => {
     expect(() => renderComponents([ban])).toThrow(
       "ban needs its data: write ban({ userId: '...', days: 1 })."
     );
-    expect(fileStateOf(ban)?.kind).toBe('button');
+    expect(componentStateOf(ban)?.kind).toBe('button');
     expect((ban as { config: unknown }).config).toMatchObject({ label: 'Ban' });
   });
 
   it('lets a button without data stand for itself', () => {
     const confirm = button({ label: 'OK', run() {} });
-    load('buttons/confirm.ts', { default: confirm });
+    load('confirm.ts', { default: confirm });
     expect(raw(confirm)).toEqual({
       type: 2,
       style: 1,
       label: 'OK',
-      custom_id: 'buttons/confirm',
+      custom_id: 'confirm',
     });
     expect(raw(confirm({ disabled: true }))).toEqual({
       type: 2,
       style: 1,
       label: 'OK',
-      custom_id: 'buttons/confirm',
+      custom_id: 'confirm',
       disabled: true,
     });
     expect(() =>
@@ -680,19 +679,17 @@ describe('the files of src/components/', () => {
       {
         type: 1,
         components: [
-          { type: 2, style: 1, label: 'OK', custom_id: 'buttons/confirm' },
-          { type: 2, style: 1, label: 'Again', custom_id: 'buttons/confirm' },
+          { type: 2, style: 1, label: 'OK', custom_id: 'confirm' },
+          { type: 2, style: 1, label: 'Again', custom_id: 'confirm' },
         ],
       },
     ]);
     expect(
       (
-        renderButton(
-          load('buttons/confirm.ts', { default: confirm }) as never,
-          []
-        ).raw as RawButton
+        renderButton(load('confirm.ts', { default: confirm }) as never, [])
+          .raw as RawButton
       ).custom_id
-    ).toBe('buttons/confirm');
+    ).toBe('confirm');
   });
 
   it.each([
@@ -796,7 +793,7 @@ describe('the files of src/components/', () => {
       'this select menu has no "run"',
     ],
   ])('refuse a select file that is wrong (%#)', (exports, message) => {
-    expect(() => load('selects/pick.ts', exports)).toThrow(message);
+    expect(() => load('pick.ts', exports)).toThrow(message);
   });
 
   it('reads select menus of every kind, and what they are shown with', () => {
@@ -817,10 +814,10 @@ describe('the files of src/components/', () => {
       data: { page: 'number' },
       run() {},
     });
-    load('selects/pick.ts', { default: pick });
+    load('pick.ts', { default: pick });
     expect(raw(pick({ page: 2 }))).toEqual({
       type: 3,
-      custom_id: 'selects/pick:2',
+      custom_id: 'pick:2',
       placeholder: 'Pick',
       min_values: 0,
       max_values: 2,
@@ -871,15 +868,15 @@ describe('the files of src/components/', () => {
     );
 
     const roles = select({ type: 'role', max: 3, run() {} });
-    load('selects/roles.ts', { default: roles });
+    load('roles.ts', { default: roles });
     expect(raw(roles)).toEqual({
       type: 6,
-      custom_id: 'selects/roles',
+      custom_id: 'roles',
       max_values: 3,
     });
     expect(raw(roles({ defaults: ['1', { id: '2' }] }))).toEqual({
       type: 6,
-      custom_id: 'selects/roles',
+      custom_id: 'roles',
       max_values: 3,
       default_values: [
         { id: '1', type: 'role' },
@@ -892,24 +889,24 @@ describe('the files of src/components/', () => {
       placeholder: 'Where?',
       run() {},
     });
-    load('selects/channels.ts', { default: channels });
+    load('channels.ts', { default: channels });
     expect(raw(channels)).toEqual({
       type: 8,
-      custom_id: 'selects/channels',
+      custom_id: 'channels',
       placeholder: 'Where?',
       channel_types: [0, 2],
     });
     const anyone = select({ type: 'mentionable', disabled: true, run() {} });
-    load('selects/anyone.ts', { default: anyone });
+    load('anyone.ts', { default: anyone });
     expect(raw(anyone({ defaults: ['9'] }))).toEqual({
       type: 7,
-      custom_id: 'selects/anyone',
+      custom_id: 'anyone',
       disabled: true,
       default_values: [{ id: '9', type: 'user' }],
     });
     const users = select({ type: 'user', run() {} });
-    load('selects/users.ts', { default: users });
-    expect(raw(users)).toEqual({ type: 5, custom_id: 'selects/users' });
+    load('users.ts', { default: users });
+    expect(raw(users)).toEqual({ type: 5, custom_id: 'users' });
   });
 
   it.each([
@@ -1154,7 +1151,7 @@ describe('the files of src/components/', () => {
       '"who" is not something a form has. It can have: title, fields, data, where, ephemeral, run.',
     ],
   ])('refuse a modal file that is wrong (%#)', (exports, message) => {
-    expect(() => load('modals/report.ts', exports)).toThrow(message);
+    expect(() => load('report.ts', exports)).toThrow(message);
   });
 
   it('reads a form with every kind of field, and what it is opened with', () => {
@@ -1196,10 +1193,10 @@ describe('the files of src/components/', () => {
       },
       run() {},
     });
-    const loaded = load('modals/report.ts', { default: report });
+    const loaded = load('report.ts', { default: report });
     expect(loaded.kind).toBe('modal');
     expect(raw(report({ userId: '42' }))).toEqual({
-      custom_id: 'modals/report:42',
+      custom_id: 'report:42',
       title: 'Report',
       components: [
         { type: 10, content: 'Tell us more.' },
@@ -1314,9 +1311,9 @@ describe('the files of src/components/', () => {
       },
       run() {},
     });
-    load('modals/other.ts', { default: other });
+    load('other.ts', { default: other });
     expect(raw(other)).toEqual({
-      custom_id: 'modals/other',
+      custom_id: 'other',
       title: 'Other',
       components: [
         {
@@ -1370,7 +1367,7 @@ describe('the files of src/components/', () => {
       },
       run() {},
     });
-    load('modals/boxes.ts', { default: boxes });
+    load('boxes.ts', { default: boxes });
     expect(raw(boxes({ values: { pick: ['a', 'c'] } }))).toMatchObject({
       components: [
         {
@@ -1393,9 +1390,9 @@ describe('the files of src/components/', () => {
   it('reads embeds, static or as functions, and refuses a static one over the limits', () => {
     const rules = embed({ title: 'Rules', description: 'Be nice.' });
     expect(() => rules()).toThrow('This embed was not loaded by ChapterJS');
-    expect(load('embeds/rules.ts', { default: rules })).toEqual({
+    expect(load('rules.ts', { default: rules })).toEqual({
       kind: 'embed',
-      path: 'embeds/rules',
+      name: 'rules',
     });
     expect(rules()).toEqual({ title: 'Rules', description: 'Be nice.' });
     expect(() => (rules as unknown as (x: unknown) => unknown)('x')).toThrow(
@@ -1405,7 +1402,7 @@ describe('the files of src/components/', () => {
       title: `Welcome ${name}`,
       footer: { text: `${count} members` },
     }));
-    load('embeds/welcome.ts', { default: welcome });
+    load('welcome.ts', { default: welcome });
     expect(welcome('Ann', 3)).toEqual({
       title: 'Welcome Ann',
       footer: { text: '3 members' },
@@ -1417,48 +1414,59 @@ describe('the files of src/components/', () => {
       { title: 'Welcome Bo', footer: { text: '1 members' } },
     ]);
     expect(() => buildMessage({ embeds: [(() => ({})) as never] })).toThrow(
-      "Embed 1 of the message is a function: an embed is an object like { title: '...' }, or a file of src/components/embeds/."
+      "Embed 1 of the message is a function: an embed is an object like { title: '...' }, or one declared with embed()."
     );
     expect(() =>
-      load('embeds/big.ts', { default: embed({ title: 'x'.repeat(257) }) })
+      load('big.ts', { default: embed({ title: 'x'.repeat(257) }) })
     ).toThrow(
       'The title of this embed is 257 characters long: Discord accepts 256 at most.'
     );
-    expect(() => load('embeds/bad.ts', { default: embed(3 as never) })).toThrow(
+    expect(() => load('bad.ts', { default: embed(3 as never) })).toThrow(
       "embed() takes the embed itself ({ title: '...' }) or a function that returns one."
     );
     expect(() =>
-      load('embeds/bad.ts', {
+      load('bad.ts', {
         default: embed({ fields: Array(26).fill({ name: 'n', value: 'v' }) }),
       })
     ).toThrow('This embed has 26 fields: Discord accepts 25 at most.');
   });
 
-  it('finds two files that are the same component', () => {
+  it('leaves out the later of two components of one kind with the same name', () => {
     const entries = [
       {
-        file: 'src/components/(b)/buttons/ok.ts',
-        component: { path: 'buttons/ok' },
+        file: 'src/b.ts',
+        export: 'ok',
+        component: { kind: 'button' as const, name: 'ok' },
       },
       {
-        file: 'src/components/(a)/buttons/ok.ts',
-        component: { path: 'buttons/ok' },
+        file: 'src/a.ts',
+        export: 'ok',
+        component: { kind: 'button' as const, name: 'ok' },
       },
       {
-        file: 'src/components/buttons/no.ts',
-        component: { path: 'buttons/no' },
+        file: 'src/a.ts',
+        export: 'no',
+        component: { kind: 'button' as const, name: 'no' },
+      },
+      // A menu may have the name of a button: what was used tells them apart.
+      {
+        file: 'src/c.ts',
+        export: 'ok',
+        component: { kind: 'select' as const, name: 'ok' },
       },
     ];
     const { valid, conflicts } = findDuplicates(entries);
-    expect(valid.map(one => one.file)).toEqual([
-      'src/components/(a)/buttons/ok.ts',
-      'src/components/buttons/no.ts',
+    expect(valid.map(({ file, export: name }) => `${file}#${name}`)).toEqual([
+      'src/a.ts#no',
+      'src/a.ts#ok',
+      'src/c.ts#ok',
     ]);
     expect(conflicts).toEqual([
       {
-        file: 'src/components/(b)/buttons/ok.ts',
+        file: 'src/b.ts',
+        export: 'ok',
         message:
-          "buttons/ok is already src/components/(a)/buttons/ok.ts: two files can't be the same component. A folder in parentheses only groups files, it is not part of the id.",
+          'There is already a button named ok, in src/a.ts: the name of the export is what tells a button apart, so rename one of them.',
       },
     ]);
   });
@@ -1603,6 +1611,7 @@ describe.skipIf(process.platform === 'win32')('components', () => {
 import again from '../components/buttons/again';
 import confirm from '../components/buttons/confirm';
 export default command({
+  name: 'ping',
   description: 'Pong',
   async run({ interaction }) {
     await interaction.reply({ content: 'Pong! x1', components: [again({ count: 1 }), linkButton({ label: 'Docs', url: 'https://chapterjs.dev' }), confirm] });
@@ -1645,7 +1654,7 @@ export default button({
                 type: 2,
                 style: 1,
                 label: 'Again',
-                custom_id: 'buttons/again:1',
+                custom_id: 'again:1',
               },
               {
                 type: 2,
@@ -1657,7 +1666,7 @@ export default button({
                 type: 2,
                 style: 3,
                 label: 'Only me',
-                custom_id: 'buttons/confirm',
+                custom_id: 'confirm',
               },
             ],
           },
@@ -1669,7 +1678,7 @@ export default button({
     const again = answers(fake, '100000000000000602');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000602', 'buttons/again:1', 2)
+      click('100000000000000602', 'again:1', 2)
     );
     await waitUntil(
       () => again.callbacks().length === 1,
@@ -1687,7 +1696,7 @@ export default button({
                 type: 2,
                 style: 1,
                 label: 'Again',
-                custom_id: 'buttons/again:2',
+                custom_id: 'again:2',
               },
             ],
           },
@@ -1703,7 +1712,7 @@ export default button({
     const bob = answers(fake, '100000000000000603');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000603', 'buttons/confirm', 2, { member: member(BOB) })
+      click('100000000000000603', 'confirm', 2, { member: member(BOB) })
     );
     await waitUntil(() => bob.callbacks().length === 1, 'the refusal');
     expect(bob.callbacks()[0]!.body).toEqual({
@@ -1717,7 +1726,7 @@ export default button({
     const alice = answers(fake, '100000000000000604');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000604', 'buttons/confirm', 2)
+      click('100000000000000604', 'confirm', 2)
     );
     await waitUntil(() => alice.callbacks().length === 1, 'the answer');
     expect(alice.callbacks()[0]!.body).toEqual({
@@ -1729,7 +1738,7 @@ export default button({
     const gone = answers(fake, '100000000000000605');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000605', 'buttons/gone', 2)
+      click('100000000000000605', 'gone', 2)
     );
     await waitUntil(() => gone.callbacks().length === 1, 'the refusal');
     expect(gone.callbacks()[0]!.body).toEqual({
@@ -1739,7 +1748,7 @@ export default button({
     const stale = answers(fake, '100000000000000606');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000606', 'buttons/again:abc', 2)
+      click('100000000000000606', 'again:abc', 2)
     );
     await waitUntil(() => stale.callbacks().length === 1, 'the refusal');
     expect(stale.callbacks()[0]!.body).toEqual({
@@ -1750,7 +1759,7 @@ export default button({
     const wrong = answers(fake, '100000000000000607');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000607', 'buttons/again:1', 3, {}, { values: [] })
+      click('100000000000000607', 'again:1', 3, {}, { values: [] })
     );
     await waitUntil(() => wrong.callbacks().length === 1, 'the refusal');
     expect(
@@ -1769,6 +1778,7 @@ export default button({
 import roles from '../components/selects/roles';
 import color from '../components/selects/color';
 export default command({
+  name: 'setup',
   description: 'Setup',
   async run({ interaction }) {
     await interaction.reply({ content: 'Pick', components: [roles, color({ theme: 'dark' }, { defaults: ['blue'] })] });
@@ -1838,7 +1848,7 @@ export default modal({
         components: [
           {
             type: 6,
-            custom_id: 'selects/roles',
+            custom_id: 'roles',
             placeholder: 'Roles',
             max_values: 3,
           },
@@ -1849,7 +1859,7 @@ export default modal({
         components: [
           {
             type: 3,
-            custom_id: 'selects/color:dark',
+            custom_id: 'color:dark',
             options: [
               { label: 'Red', value: 'red' },
               { label: 'Blue', value: 'blue', default: true },
@@ -1865,7 +1875,7 @@ export default modal({
       'INTERACTION_CREATE',
       click(
         '100000000000000612',
-        'selects/roles',
+        'roles',
         6,
         {},
         {
@@ -1896,7 +1906,7 @@ export default modal({
     expect(picked.callbacks()[0]!.body).toEqual({
       type: 9,
       data: {
-        custom_id: `modals/report:${ROLE}`,
+        custom_id: `report:${ROLE}`,
         title: 'Report',
         components: [
           {
@@ -1948,7 +1958,7 @@ export default modal({
       'INTERACTION_CREATE',
       submit(
         '100000000000000613',
-        `modals/report:${ROLE}`,
+        `report:${ROLE}`,
         [
           {
             type: 18,
@@ -1984,7 +1994,7 @@ export default modal({
         {
           message: messageWith([]),
           data: {
-            custom_id: `modals/report:${ROLE}`,
+            custom_id: `report:${ROLE}`,
             components: [
               {
                 type: 18,
@@ -2058,7 +2068,7 @@ export default modal({
       'INTERACTION_CREATE',
       click(
         '100000000000000614',
-        'selects/color:dark',
+        'color:dark',
         3,
         {},
         { values: ['red', 'blue'] }
@@ -2076,7 +2086,7 @@ export default modal({
     const noMessage = answers(fake, '100000000000000615');
     connection.dispatch(
       'INTERACTION_CREATE',
-      submit('100000000000000615', `modals/report:${ROLE}`, [
+      submit('100000000000000615', `report:${ROLE}`, [
         {
           type: 18,
           id: 1,
@@ -2154,14 +2164,14 @@ export default button({
     const cli = runDev(cwd, fake, ['dev']);
     await cli.waitFor('✓ 6 components loaded');
     await cli.waitFor(
-      'ℹ src/components/buttons/private.ts the button buttons/private only works in private messages'
+      'ℹ src/components/buttons/private.ts the button private only works in private messages'
     );
     const connection = await connected(fake);
 
     const boom = answers(fake, '100000000000000621');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000621', 'buttons/boom', 2)
+      click('100000000000000621', 'boom', 2)
     );
     await waitUntil(() => boom.callbacks().length === 1, 'the error answer');
     await cli.waitFor('✗ src/components/buttons/boom.ts:2 kaboom');
@@ -2175,16 +2185,16 @@ export default button({
 
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000622', 'buttons/silent', 2)
+      click('100000000000000622', 'silent', 2)
     );
     await cli.waitFor(
-      '⚠ src/components/buttons/silent.ts buttons/silent finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run, or interaction.deferUpdate() to change nothing.'
+      '⚠ src/components/buttons/silent.ts silent finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run, or interaction.deferUpdate() to change nothing.'
     );
 
     const slow = answers(fake, '100000000000000623');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000623', 'buttons/slow', 2)
+      click('100000000000000623', 'slow', 2)
     );
     await waitUntil(() => slow.edits().length === 1, 'the late update');
     // The framework said nothing would show meanwhile, then the update
@@ -2195,7 +2205,7 @@ export default button({
     const slowBoom = answers(fake, '100000000000000624');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000624', 'buttons/slowboom', 2)
+      click('100000000000000624', 'slowboom', 2)
     );
     await waitUntil(() => slowBoom.followUps().length === 1, 'the late error');
     // The bad news never replaces the message of the button.
@@ -2209,7 +2219,7 @@ export default button({
     const privateOnly = answers(fake, '100000000000000625');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000625', 'buttons/private', 2)
+      click('100000000000000625', 'private', 2)
     );
     await waitUntil(() => privateOnly.callbacks().length === 1, 'the refusal');
     expect(privateOnly.callbacks()[0]!.body).toEqual({
@@ -2223,7 +2233,7 @@ export default button({
     const twice = answers(fake, '100000000000000626');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000626', 'buttons/twice', 2)
+      click('100000000000000626', 'twice', 2)
     );
     await cli.waitFor(
       '✗ src/components/buttons/twice.ts:6 This interaction was already answered: the message can no longer be changed through it. Use interaction.message.edit() to change the message, or interaction.followUp() to send another one.'
@@ -2246,13 +2256,19 @@ export default button({ label: 'OK', async run({ interaction }) { await interact
       'src/components/buttons/bad.ts': `import { button } from 'chapterjs';
 export default button({ label: '', run() {} });
 `,
-      'src/components/cards/x.ts': `export default 1;`,
-      'src/components/modals/wrong.ts': `import { button } from 'chapterjs';
-export default button({ label: 'x', run() {} });
+      // Plain code next to the components: not a component, nothing to say.
+      'src/components/cards/x.ts': `export default 1;\nexport const two = 2;`,
+      // A list of components has no name to give each one.
+      'src/components/buttons/list.ts': `import { button } from 'chapterjs';
+export const pages = [button({ label: 'x', run() {} })];
 `,
-      'src/components/embeds/_shared.ts': `export const color = 1;`,
-      'src/components/embeds/(info)/rules.ts': `import { embed } from 'chapterjs';
-import { color } from '../_shared';
+      // The same name twice, in two files: the later one is left out.
+      'src/components/buttons/twin.ts': `import { button } from 'chapterjs';
+export const ok = button({ label: 'Twin', run() {} });
+`,
+      'src/components/embeds/shared.ts': `export const color = 1;`,
+      'src/components/embeds/info/rules.ts': `import { embed } from 'chapterjs';
+import { color } from '../shared';
 export default embed({ title: 'Rules', color });
 `,
     });
@@ -2261,17 +2277,17 @@ export default embed({ title: 'Rules', color });
       '✗ src/components/buttons/bad.ts The label of this button is a text of 1 to 80 characters.'
     );
     await cli.waitFor(
-      '✗ src/components/cards/x.ts The folder src/components/cards is not a kind of component. Kinds are: buttons, selects, modals, embeds.'
+      '✗ src/components/buttons/list.ts (pages) This export is a list with a component in it: export each component on its own (export const pages = ...), its name is the name of its export.'
     );
     await cli.waitFor(
-      '✗ src/components/modals/wrong.ts This file exports a button, but it is in src/components/modals/. Move it to src/components/buttons/.'
+      '✗ src/components/buttons/twin.ts (ok) There is already a button named ok, in src/components/buttons/ok.ts: the name of the export is what tells a button apart, so rename one of them.'
     );
     await cli.waitFor('✓ 2 components loaded');
     const connection = await connected(fake);
     const ok = answers(fake, '100000000000000631');
     connection.dispatch(
       'INTERACTION_CREATE',
-      click('100000000000000631', 'buttons/ok', 2)
+      click('100000000000000631', 'ok', 2)
     );
     await waitUntil(() => ok.callbacks().length === 1, 'the acknowledgement');
     expect(ok.callbacks()[0]!.body).toEqual({ type: 6 });
@@ -2312,13 +2328,13 @@ describe('a data with a default value', () => {
   });
 
   it('is encoded as the value really carried, and read back', () => {
-    const id = encodeCustomId('buttons/next', shape, {
+    const id = encodeCustomId('next', shape, {
       page: 4,
       tab: 'all',
       hard: false,
       userId: '1',
     });
-    expect(id).toBe('buttons/next:4:all:false:1');
+    expect(id).toBe('next:4:all:false:1');
     expect(readData(shape, decodeCustomId(id).parts)).toEqual({
       page: 4,
       tab: 'all',
@@ -2351,7 +2367,7 @@ describe('a data with a default value', () => {
     ],
   ] as const)('is checked when the file loads (%j)', (data, message) => {
     expect(() =>
-      load('buttons/next.ts', {
+      load('next.ts', {
         default: button({ label: 'x', data: data as never, run() {} }),
       })
     ).toThrow(message);
@@ -2366,7 +2382,7 @@ describe('a data with a default value', () => {
       },
       run() {},
     });
-    load('buttons/next.ts', { default: next });
+    load('next.ts', { default: next });
     const ids = (components: MessageComponent[]) =>
       (
         buildMessage({ components }).body.components as {
@@ -2382,11 +2398,11 @@ describe('a data with a default value', () => {
         next({ tab: 'x' }, { disabled: true }),
       ])
     ).toEqual([
-      'buttons/next:4:all',
-      'buttons/next:4:all',
-      'buttons/next:4:all',
-      'buttons/next:7:all',
-      'buttons/next:4:x',
+      'next:4:all',
+      'next:4:all',
+      'next:4:all',
+      'next:7:all',
+      'next:4:x',
     ]);
     // Its texts and its run receive the value really carried.
     const shown = button({
@@ -2394,7 +2410,7 @@ describe('a data with a default value', () => {
       data: { page: { type: 'number', default: 4 } },
       run() {},
     });
-    load('buttons/shown.ts', { default: shown });
+    load('shown.ts', { default: shown });
     expect(
       JSON.stringify(buildMessage({ components: [shown] }).body.components)
     ).toContain('"label":"Page 4"');
@@ -2424,25 +2440,25 @@ export default button({ label: 'x', data: { page: { type: 'number', default: 'fo
         'src/commands/ok.ts': `import { command } from 'chapterjs';
 import next from '../components/buttons/next';
 import free from '../components/buttons/free';
-export default command({ description: 'd', async run({ interaction }) {
+export default command({ name: 'ok', description: 'd', async run({ interaction }) {
   await interaction.reply({ components: [next({ userId: '1' }), next({ userId: '1', page: 7 }), free, free(), free({}), free({ page: 2 }, { disabled: true })] });
 } });
 `,
         'src/commands/missing.ts': `import { command } from 'chapterjs';
 import next from '../components/buttons/next';
-export default command({ description: 'd', async run({ interaction }) {
+export default command({ name: 'missing', description: 'd', async run({ interaction }) {
   await interaction.reply({ components: [next({ page: 7 })] });
 } });
 `,
         'src/commands/bare.ts': `import { command } from 'chapterjs';
 import next from '../components/buttons/next';
-export default command({ description: 'd', async run({ interaction }) {
+export default command({ name: 'bare', description: 'd', async run({ interaction }) {
   await interaction.reply({ components: [next] });
 } });
 `,
         'src/commands/wrong-kind.ts': `import { command } from 'chapterjs';
 import free from '../components/buttons/free';
-export default command({ description: 'd', async run({ interaction }) {
+export default command({ name: 'wrong-kind', description: 'd', async run({ interaction }) {
   await interaction.reply({ components: [free({ page: 'x' })] });
 } });
 `,

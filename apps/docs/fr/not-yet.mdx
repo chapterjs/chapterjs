@@ -21,7 +21,7 @@ En attendant : une commande slash avec une option `user`, ou une option `string`
 
 Des commandes écrites dans un message, comme `!ban` ou `?help`. Pas disponible : un fichier de `src/commands/` est toujours une commande slash, enregistrée auprès de Discord.
 
-En attendant : un fichier de `src/events/messageCreate/` qui lit `message.content`. Il a besoin du [Message Content Intent](/fr/events/messages#message-content-intent), et la personne n’a rien de ce que donne une commande slash : pas de liste d’options, pas d’aide à la saisie, pas de vérification des permissions avant que votre fonction ne tourne.
+En attendant : un événement `messageCreate` qui lit `message.content`. Il a besoin du [Message Content Intent](/fr/events/messages#message-content-intent), et la personne n’a rien de ce que donne une commande slash : pas de liste d’options, pas d’aide à la saisie, pas de vérification des permissions avant que votre fonction ne tourne.
 
 ## Attendre une réponse
 
@@ -71,7 +71,7 @@ Il n’y a pas de `chapterjs.config.ts` : ce que fait votre bot vient des fichie
 
 Faire tourner vos fonctions dans un test, sans Discord. Pas disponible : rien dans ChapterJS n’est fait pour un lanceur de tests.
 
-En attendant : gardez ce qui peut être testé dans des fichiers qui commencent par `_` (le texte d’une réponse, un calcul), et testez-les seuls. Les fichiers de `src/commands/`, `src/events/`, `src/components/` et `src/tasks/` restent minces.
+En attendant : gardez ce qui peut être testé dans des fichiers simples (le texte d’une réponse, un calcul), et testez-les seuls. Un fichier à côté de votre code nommé `*.test.ts` ou `*.spec.ts` est laissé à votre lanceur de tests, jamais chargé par le bot. Les déclarations de commandes, d’événements, de composants et de tâches restent minces.
 
 ## Partager des fichiers entre bots
 

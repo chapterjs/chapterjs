@@ -15,7 +15,7 @@ Not everything is kept, and what is kept follows your files, the way intents do:
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | Servers, channels, threads, roles, custom emojis | All of them                                                                                         | Few, and everything else refers to them                             |
 | Your bot as a member of each server              | Always                                                                                              | `guild.me` is never missing                                         |
-| Members                                          | The 100 seen most recently in each server; 1000 when a file of `src/events/memberLeave/` needs them | A server can have millions; a bot rarely needs the silent ones      |
+| Members                                          | The 100 seen most recently in each server; 1000 when a `memberLeave` event needs them | A server can have millions; a bot rarely needs the silent ones      |
 | Users                                            | Every one it met                                                                                    | They come with members and messages                                 |
 | Messages                                         | None                                                                                                | By far the most frequent thing, and most bots never read an old one |
 

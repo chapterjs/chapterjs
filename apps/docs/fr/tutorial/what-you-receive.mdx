@@ -30,6 +30,7 @@ Rouvrez `/whois` et affichez davantage :
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'whois',
   description: 'Vous parle de quelqu’un',
   options: {
     who: { type: 'user', description: 'Qui regarder', required: true },
@@ -69,6 +70,7 @@ Voici `/warn`, qui exclut temporairement quelqu’un pendant dix minutes et le p
 import { command, DiscordApiError } from 'chapterjs';
 
 export default command({
+  name: 'warn',
   description: 'Avertit un membre avec une courte exclusion',
   permissions: ['ModerateMembers'],
   options: {

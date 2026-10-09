@@ -1,4 +1,4 @@
-// Presence: what the bot shows under its name, from `src/presence.ts`.
+// Presence: what the bot shows under its name, declared with `presence()`.
 import { fakeGateway } from '@chapterjs/test-utils';
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -6,38 +6,31 @@ import { describe, expect, it } from 'vitest';
 import { GatewayOpcode } from '../src/discord/codes.js';
 import { Shard, type ShardOptions } from '../src/gateway/shard.js';
 import {
-  listFolder,
-  loadBuilt,
-  loadFolder,
-  type Convention,
-} from '../src/loader/loader.js';
-import {
   DEFAULT_PRESENCE,
-  presenceConvention,
-} from '../src/presence/convention.js';
+  presenceDeclaration,
+} from '../src/presence/declaration.js';
 import { presence } from '../src/presence/presence.js';
 import {
   connected,
   project,
   runDev,
   runProduction,
+  site,
   world,
 } from './dev-helpers.js';
 
 const tick = (ms = 30) => new Promise(resolve => setTimeout(resolve, ms));
 const read = (exports: Record<string, unknown>) =>
-  presenceConvention.read(exports, 'presence.ts');
+  presenceDeclaration.read(exports.default, site('src/presence.ts'));
 
-describe('src/presence.ts', () => {
+describe('presence()', () => {
+  it('is recognised among the exports of a file, and nothing else is', () => {
+    expect(presenceDeclaration.is(presence({}))).toBe(true);
+    expect(presenceDeclaration.is({ status: 'online' })).toBe(false);
+    expect(presenceDeclaration.list).toBe(false);
+  });
+
   it.each([
-    [
-      {},
-      "This file has no default export. It should look like: import { presence } from 'chapterjs'; export default presence({ status: 'online', activity: { type: 'watching', name: 'over the server' } })",
-    ],
-    [
-      { default: { status: 'online' } },
-      'The default export of this file must be what presence() returns',
-    ],
     [
       { default: presence('online' as never) },
       "presence() needs an object: presence({ status: 'online', activity: { type: 'watching', name: 'over the server' } })",
@@ -132,7 +125,7 @@ describe('src/presence.ts', () => {
       },
       '"url" only goes with a "streaming" activity: a "playing" activity has no link.',
     ],
-  ])('refuses a wrong file (%#)', (exports, message) => {
+  ])('refuses a wrong presence (%#)', (exports, message) => {
     expect(() => read(exports)).toThrow(message);
   });
 
@@ -232,50 +225,6 @@ describe('src/presence.ts', () => {
     const b = read({ default: presence({}) });
     expect(a.key).toBe(b.key);
     expect(a.key).toBe(JSON.stringify(DEFAULT_PRESENCE));
-  });
-});
-
-describe('a single-file convention', () => {
-  const single: Convention<string> = {
-    folder: 'presence',
-    single: true,
-    one: 'presence',
-    many: 'presences',
-    read: (exports, path) => `${path}:${String(exports.default)}`,
-  };
-
-  it('is one file at the root of src, with any source extension', async () => {
-    const cwd = project({
-      'src/presence.ts': 'export default 1;',
-      'src/presence.d.ts': 'export default 2;',
-      'src/presence/index.ts': 'export default 3;',
-      'src/presence.txt': '4',
-      'src/presence-old.ts': 'export default 5;',
-      'src/events/presence.ts': 'export default 6;',
-    });
-    expect((await listFolder(cwd, single)).map(found => found.file)).toEqual([
-      'src/presence.ts',
-    ]);
-    const result = await loadFolder(cwd, single);
-    expect(result.loaded).toEqual([
-      { file: 'src/presence.ts', value: 'presence.ts:1' },
-    ]);
-    expect(result.failed).toEqual([]);
-    expect(await listFolder(project({}), single)).toEqual([]);
-  });
-
-  it('is read from a build the same way', async () => {
-    const result = await loadBuilt(single, [
-      { file: 'src/presence.ts', exports: { default: 1 } },
-      { file: 'src/presence/index.ts', exports: { default: 3 } },
-      { file: 'src/presence-old.ts', exports: { default: 5 } },
-      { file: 'src/events/presence.ts', exports: { default: 6 } },
-      { file: 'src/presence.js', exports: { default: 7 } },
-    ]);
-    expect(result.loaded.map(({ value }) => value)).toEqual([
-      'presence.js:7',
-      'presence.ts:1',
-    ]);
   });
 });
 
@@ -446,19 +395,19 @@ describe('chapterjs dev', () => {
     await cli.exited;
   });
 
-  it('refuses to start with a broken presence file, like any other file', async () => {
+  it('refuses to start with a broken presence, like any other declaration', async () => {
     const fake = await world();
     const cli = runDev(
       project({
-        'src/presence.ts': `export default { status: 'online' };\n`,
+        'src/presence.ts': `import { presence } from 'chapterjs';\nexport default presence({ status: 'busy' } as never);\n`,
         'src/commands/ping.ts': `import { command } from 'chapterjs';
-export default command({ description: 'Pong', run({ interaction }) { return interaction.reply('Pong'); } });
+export default command({ name: 'ping', description: 'Pong', run({ interaction }) { return interaction.reply('Pong'); } });
 `,
       }),
       fake
     );
     await cli.waitFor(
-      '✗ src/presence.ts The default export of this file must be what presence() returns'
+      `✗ src/presence.ts "status" is "busy": it can be 'online', 'idle', 'dnd', 'invisible'.`
     );
     await cli.waitFor('✓ 1 command loaded');
     const connection = await connected(fake);

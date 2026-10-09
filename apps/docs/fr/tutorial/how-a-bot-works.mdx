@@ -28,7 +28,7 @@ Traitez-le comme un mot de passe : ne le partagez jamais, ne le collez jamais da
 
 Votre programme et Discord échangent des informations dans deux sens.
 
-**Discord dit à votre bot ce qui se passe : les événements.** Quand quelqu’un rejoint un serveur, écrit un message ou utilise une de vos commandes, Discord envoie un *événement* à votre bot. Votre bot garde en permanence une connexion ouverte avec Discord, comme une ligne téléphonique qui ne raccroche jamais, et les événements arrivent dessus. Avec ChapterJS, vous réagissez à un événement en mettant un fichier dans un dossier qui porte son nom, comme `src/events/memberJoin/`.
+**Discord dit à votre bot ce qui se passe : les événements.** Quand quelqu’un rejoint un serveur, écrit un message ou utilise une de vos commandes, Discord envoie un *événement* à votre bot. Votre bot garde en permanence une connexion ouverte avec Discord, comme une ligne téléphonique qui ne raccroche jamais, et les événements arrivent dessus. Avec ChapterJS, vous réagissez à un événement en le déclarant, `event({ name: 'memberJoin', run })`, dans un fichier de `src/`.
 
 **Votre bot demande à Discord de faire des choses : les actions.** Envoyer un message, donner un rôle, bannir quelqu’un : chacune de ces choses est une *requête* que votre bot envoie à Discord, et Discord répond s’il l’a faite. Avec ChapterJS, ce sont des méthodes de ce que reçoit votre fonction : `channel.send()`, `member.addRole()`, `member.ban()`.
 
@@ -47,7 +47,7 @@ Un serveur actif produit énormément d’événements : chaque message, chaque 
 
 Quelques intents sont **privilégiés** : ils donnent accès à des choses plus personnelles, comme le texte de chaque message ou la liste complète des membres. Pour ceux-là, Discord vous demande d’activer une option dans le Developer Portal, pour confirmer que vous en avez vraiment besoin.
 
-Avec ChapterJS, vous ne listez jamais les intents vous-même. Le framework lit vos dossiers : un fichier dans `src/events/memberJoin/` veut dire que vous avez besoin de connaître les membres, donc il demande cela. Quand un intent privilégié manque, il vous dit quel fichier en a besoin et vous donne le lien pour l’activer.
+Avec ChapterJS, vous ne listez jamais les intents vous-même. Le framework lit vos fichiers : un `event({ name: 'memberJoin' })` veut dire que vous avez besoin de connaître les membres, donc il demande cela. Quand un intent privilégié manque, il vous dit quel fichier en a besoin et vous donne le lien pour l’activer.
 
 ## Les commandes slash : enregistrées, puis utilisées
 

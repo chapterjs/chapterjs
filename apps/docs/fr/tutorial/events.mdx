@@ -1,25 +1,28 @@
 ---
 title: 'Les événements'
-description: 'Réagir à ce qui se passe sur Discord avec un dossier par événement : accueillir les nouveaux membres, suivre les changements, lancer du code à la connexion, et voir comment les intents suivent vos fichiers'
+description: 'Réagir à ce qui se passe sur Discord avec un event() par réaction : accueillir les nouveaux membres, suivre les changements, lancer du code à la connexion, et voir comment les intents suivent vos fichiers'
 ---
 
 Les commandes tournent quand quelqu’un demande. Les événements tournent quand quelque chose **se passe** : un membre arrive, un rôle est supprimé, un salon est renommé, le bot se connecte. Cette page fait accueillir les nouveaux venus par votre bot, et explique au passage la seule chose dont les événements ont besoin dans le Developer Portal.
 
-## Un dossier par événement
+## Une déclaration par réaction
 
-Pour réagir à un événement, créez un dossier qui porte son nom dans `src/events/`, et mettez un fichier dedans. Le dossier est l’événement ; le fichier est une réaction, nommée comme vous voulez. Créez `src/events/memberJoin/hello.ts` :
+Pour réagir à un événement, déclarez-le avec `event()` et exportez-le : `name` est l’événement, et le reste est une réaction. Le fichier est à vous à placer et à nommer ; le modèle garde ses événements dans `src/events/`. Créez `src/events/hello.ts` :
 
-```ts src/events/memberJoin/hello.ts
+```ts src/events/hello.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, guild }) => {
-  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
-  if (!channel?.isTextBased()) return;
-  await channel.send(`Bienvenue sur ${guild.name}, ${member} ! Vous êtes le membre numéro ${guild.memberCount ?? '?'}.`);
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild }) {
+    const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+    if (!channel?.isTextBased()) return;
+    await channel.send(`Bienvenue sur ${guild.name}, ${member} ! Vous êtes le membre numéro ${guild.memberCount ?? '?'}.`);
+  },
 });
 ```
 
-Comparez avec un fichier de commande : `event()` prend directement une fonction, pas un objet, parce qu’un événement n’a rien à déclarer : pas de nom, pas de description, pas d’options. Le dossier a tout dit. Et la fonction reçoit ce dont parle l’événement : ici un `member` (qui est arrivé) et un `guild` (où). Survolez `member` dans votre éditeur : c’est un `GuildMember`, avec tout ce que les pages précédentes ont montré. La même ligne `import { event } from 'chapterjs'`, dans `src/events/roleDelete/`, donnerait un `role` à votre fonction.
+Comparez avec une commande : un événement n’a ni description ni options à déclarer, seulement son `name` et `run`. Et la fonction reçoit ce dont parle l’événement : ici un `member` (qui est arrivé) et un `guild` (où). Survolez `member` dans votre éditeur : c’est un `GuildMember`, avec tout ce que les pages précédentes ont montré. La même ligne `import { event } from 'chapterjs'`, avec `name: 'roleDelete'`, donnerait un `role` à votre fonction.
 
 `guild.systemChannelId` est le salon où Discord lui-même publie « X a rejoint le serveur », quand le serveur en a un : un choix par défaut raisonnable pour un accueil. `guild.channels.get()` le lit dans ce que sait le bot, et `isTextBased()` s’assure qu’un message peut y aller.
 
@@ -29,7 +32,7 @@ Enregistrez le fichier. Le terminal ne dit pas « Reloaded ». Il dit :
 
 ```text
 ⚠ Your files need an option that is not enabled for your bot:
-  - Server Members Intent, needed by src/events/memberJoin/hello.ts
+  - Server Members Intent, needed by src/events/hello.ts
   Enable it under "Privileged Gateway Intents", then save:
   https://discord.com/developers/applications/123456789012345678/bot
   Waiting for you to enable it...
@@ -48,36 +51,42 @@ Ouvrez le lien (il mène directement à la page **Bot** de votre application de 
 Les intents sont donnés à Discord à la connexion, donc avoir besoin d’un nouvel intent veut dire se reconnecter. Le framework l’a fait. Désormais, chaque fois que quelqu’un rejoint votre serveur de test, votre fichier tourne. Essayez avec un second compte, ou en quittant et en revenant.
 
 <Info>
-  Vous n’avez jamais écrit un intent. Le framework lit vos dossiers, déduit ce dont ils ont besoin, demande exactement cela à Discord, et vous prévient quand l’un d’eux nécessite un interrupteur dans le Developer Portal. Quand vous supprimez le dossier, l’intent n’est plus demandé. C’est ce que veut dire « intents computed from your files » sur la première ligne de chaque démarrage.
+  Vous n’avez jamais écrit un intent. Le framework lit les événements que vos fichiers déclarent, déduit ce dont ils ont besoin, demande exactement cela à Discord, et vous prévient quand l’un d’eux nécessite un interrupteur dans le Developer Portal. Quand vous supprimez le dossier, l’intent n’est plus demandé. C’est ce que veut dire « intents computed from your files » sur la première ligne de chaque démarrage.
 </Info>
 
 ## Plusieurs fichiers pour un événement
 
-Un dossier contient autant de fichiers que vous voulez, et **tous tournent** quand l’événement se produit, en même temps, sans ordre particulier. Ajoutez `src/events/memberJoin/role.ts`, qui donne un rôle aux nouveaux venus :
+Déclarez autant de réactions que vous voulez à un même événement, et **toutes tournent** quand il se produit, en même temps, sans ordre particulier. Ajoutez `src/events/role.ts`, qui donne un rôle aux nouveaux venus :
 
-```ts src/events/memberJoin/role.ts
+```ts src/events/role.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, guild }) => {
-  const role = [...guild.roles.values()].find(role => role.name === 'Newcomer');
-  if (!role) return;
-  await member.addRole(role, 'Vient d’arriver');
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild }) {
+    const role = [...guild.roles.values()].find(role => role.name === 'Newcomer');
+    if (!role) return;
+    await member.addRole(role, 'Vient d’arriver');
+  },
 });
 ```
 
 Créez un rôle appelé « Newcomer » sur votre serveur de test, et assurez-vous que le rôle du bot est **au-dessus** dans les paramètres du serveur : Discord ne laisse un bot donner que les rôles situés sous son propre rôle le plus haut.
 
-Pourquoi un fichier par chose, plutôt qu’une grosse fonction ? Parce qu’un fichier qui échoue n’arrête jamais les autres. Si `role.ts` lève une erreur (le rôle a été supprimé, le rôle du bot est trop bas), `hello.ts` accueille quand même. Et chaque fichier reste assez court pour être lu. Quand deux étapes doivent se faire dans l’ordre, gardez-les dans le même fichier.
+Pourquoi une déclaration par chose, plutôt qu’une grosse fonction ? Parce qu’une déclaration qui échoue n’arrête jamais les autres. Si `role.ts` lève une erreur (le rôle a été supprimé, le rôle du bot est trop bas), `hello.ts` accueille quand même. Et chaque fichier reste assez court pour être lu. Quand deux étapes doivent se faire dans l’ordre, gardez-les dans le même fichier.
 
 ## L’événement ready
 
 `ready` est spécial : ce n’est pas quelque chose qui se passe sur Discord, mais le moment où votre bot est connecté et connaît chaque serveur où il se trouve. Il tourne **une fois par démarrage**, jamais lors d’un rechargement. Le modèle s’en sert pour afficher une ligne :
 
-```ts src/events/ready/online.ts
+```ts src/events/online.ts
 import { event } from 'chapterjs';
 
-export default event(({ user, guilds }) => {
-  console.log(`${user.username} est en ligne sur ${guilds.size} serveur(s)`);
+export default event({
+  name: 'ready',
+  run({ user, guilds }) {
+    console.log(`${user.username} est en ligne sur ${guilds.size} serveur(s)`);
+  },
 });
 ```
 
@@ -95,39 +104,42 @@ export default event(({ user, guilds }) => {
 | `messageCreate`, `messageUpdate`, `messageDelete` | Un message est envoyé, modifié, supprimé | `message` et plus : la page suivante |
 | `reactionAdd`, `voiceJoin`, `banAdd`... | Une réaction, quelqu’un en vocal, un bannissement, et d’autres | Dans deux pages |
 
-Un dossier avec un autre nom est signalé au chargement, avec le nom d’événement le plus proche quand il y en a un. Le contenu exact de chacun est dans la [Référence](/fr/reference/events).
+Un `name` qui n’est pas un événement est souligné dans l’éditeur, puis signalé au chargement, avec le nom d’événement le plus proche quand il y en a un. Le contenu exact de chacun est dans la [Référence](/fr/reference/events).
 
 ### Ce qui a été supprimé
 
 Pour quelque chose qui n’existe plus, l’événement vous le donne **tel qu’il était** : `roleDelete` donne le rôle, `channelDelete` le salon, `guildLeave` le serveur. Le bot s’en souvenait, donc ils sont là. `memberLeave` est l’exception : un serveur peut avoir plus de membres que le bot n’en garde en mémoire, donc `member` est `null` quand le bot n’a jamais vu cette personne, et `user` (le compte) est toujours là.
 
-```ts src/events/memberLeave/bye.ts
+```ts src/events/bye.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ user, member, guild }) => {
-  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
-  if (!channel?.isTextBased()) return;
-  const name = member?.displayName ?? user.displayName;
-  await channel.send(`${name} est parti. Nous sommes ${guild.memberCount ?? '?'} maintenant.`);
+export default event({
+  name: 'memberLeave',
+  async run({ user, member, guild }) {
+    const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+    if (!channel?.isTextBased()) return;
+    const name = member?.displayName ?? user.displayName;
+    await channel.send(`${name} est parti. Nous sommes ${guild.memberCount ?? '?'} maintenant.`);
+  },
 });
 ```
 
 ## Points d’attention
 
-- **Tout ce que reçoit votre fonction est en lecture seule.** Y affecter une valeur lève une erreur ; c’est partagé par chaque fichier du dossier.
+- **Tout ce que reçoit votre fonction est en lecture seule.** Y affecter une valeur lève une erreur ; c’est partagé par chaque réaction à l’événement.
 - **Ce qui doit exister est là.** `member.guild`, `channel.guild`, `guild.me` : pas de `?.`. Ce qui peut vraiment manquer est nullable, comme `guild.memberCount`, que Discord n’envoie pas toujours.
 - **En dev, seulement votre serveur de test.** `chapterjs dev` ignore ce qui se passe dans les autres serveurs et en messages privés. C’est pour cela que vous pouvez faire tourner le bot de dev et le bot de production avec un seul token sans qu’ils répondent deux fois ; `chapterjs start` entend tout.
 - **Un fichier qui échoue est signalé avec le fichier et la ligne**, et rien d’autre ne s’arrête :
 
 ```text
-✗ src/events/memberJoin/role.ts:6 Discord refused PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}: Missing Permissions (50013)
+✗ src/events/role.ts:6 Discord refused PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}: Missing Permissions (50013)
 ```
 
 ## Récapitulatif
 
-- Un dossier de `src/events/` est un événement ; chaque fichier dedans est une réaction, et tous tournent.
-- `event()` prend une fonction ; ce qu’elle reçoit suit le dossier, sans type à écrire.
-- Les intents sont déduits de vos dossiers ; un intent privilégié est un interrupteur dans le Developer Portal, et le terminal vous attend.
+- `event({ name, run })` est une réaction à l’événement `name` ; déclarez-en autant que vous voulez, et toutes tournent.
+- Ce que reçoit `run` suit `name`, sans type à écrire.
+- Les intents sont déduits des événements que vous déclarez ; un intent privilégié est un interrupteur dans le Developer Portal, et le terminal vous attend.
 - `ready` tourne une fois par démarrage ; ce qui est supprimé arrive tel qu’il était.
 
 <CardGroup cols={2}>

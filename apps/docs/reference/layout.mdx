@@ -3,7 +3,7 @@ title: 'Layout'
 description: 'The pieces of a message written where the message is: rows, link buttons, texts, sections, galleries, files, separators and containers'
 ---
 
-The `components` of a message take pieces made by ChapterJS: the files of `src/components/`, and the helpers of this page, imported from `'chapterjs'`. Each is checked against the limits of Discord when it is made.
+The `components` of a message take pieces made by ChapterJS: your buttons, menus and forms, and the helpers of this page, imported from `'chapterjs'`. Each is checked against the limits of Discord when it is made.
 
 ```ts
 import { container, separator, text, type GuildMember, type TextChannel } from 'chapterjs';
@@ -211,9 +211,9 @@ A piece of a message made by ChapterJS: a button, a menu, a layout. Only the fra
 
 | Type | Made by |
 | --- | --- |
-| `ButtonComponent` | A file of `src/components/buttons/`, `linkButton()`, `premiumButton()` |
-| `SelectComponent` | A file of `src/components/selects/` |
-| `ModalComponent` | A file of `src/components/modals/`, for `interaction.showModal()` |
+| `ButtonComponent` | A button declared with `button()`, `linkButton()`, `premiumButton()` |
+| `SelectComponent` | A select menu declared with `select()` |
+| `ModalComponent` | A form declared with `modal()`, for `interaction.showModal()` |
 | `ActionRowComponent` | `row()` |
 | `TextComponent` | `text()` |
 | `SectionComponent` | `section()` |

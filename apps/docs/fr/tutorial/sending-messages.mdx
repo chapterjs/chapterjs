@@ -22,6 +22,7 @@ Voici `/say`, qui publie dans le salon de la commande sans montrer qui l’a dem
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'say',
   description: 'Fait dire quelque chose au bot ici',
   permissions: ['ManageMessages'],
   options: {
@@ -62,6 +63,7 @@ Un embed est l’encadré avec une ligne de couleur sur le côté que les bots u
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'serverinfo',
   description: 'Affiche des informations sur ce serveur',
   async run({ interaction, guild }) {
     const icon = guild.iconURL();
@@ -95,6 +97,7 @@ Les images et documents qu’envoie votre bot vivent dans le dossier `public/` d
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'banner',
   description: 'Affiche la bannière du serveur',
   async run({ interaction }) {
     await interaction.reply({
@@ -123,6 +126,7 @@ Par défaut, un message **notifie** tous ceux qu’il mentionne, @everyone et le
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'quote',
   description: 'Répète un texte sans notifier personne',
   options: {
     text: { type: 'string', description: 'Le texte', required: true, maxLength: 1900 },
@@ -146,6 +150,7 @@ Un sondage est une question avec jusqu’à 10 réponses ; les gens votent dans 
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'pizza',
   description: 'Pose une question sur ce soir',
   async run({ interaction }) {
     await interaction.reply({

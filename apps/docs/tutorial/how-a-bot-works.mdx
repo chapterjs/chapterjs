@@ -30,7 +30,7 @@ Treat it like a password: never share it, never paste it in a public place, neve
 
 Your program and Discord exchange information in two directions.
 
-**Discord tells your bot what happens: events.** When someone joins a server, writes a message, or uses one of your commands, Discord sends your bot an _event_. Your bot keeps a connection open with Discord all the time, like a phone line that never hangs up, and the events arrive on it. In ChapterJS, you react to an event by putting a file in a folder named after it, like `src/events/memberJoin/`.
+**Discord tells your bot what happens: events.** When someone joins a server, writes a message, or uses one of your commands, Discord sends your bot an _event_. Your bot keeps a connection open with Discord all the time, like a phone line that never hangs up, and the events arrive on it. In ChapterJS, you react to an event by declaring it, `event({ name: 'memberJoin', run })`, in a file of `src/`.
 
 **Your bot asks Discord to do things: actions.** Sending a message, giving a role, banning someone: each of these is a _request_ your bot sends to Discord, and Discord answers whether it did it. In ChapterJS, these are methods on what your function receives: `channel.send()`, `member.addRole()`, `member.ban()`.
 
@@ -49,7 +49,7 @@ A busy server produces a lot of events: every message, every typing indicator, e
 
 A few intents are **privileged**: they give access to more personal things, like the text of every message or the full list of members. For those, Discord asks you to enable an option in the Developer Portal, so that you confirm you really need it.
 
-With ChapterJS you never list intents yourself. The framework reads your folders: a file in `src/events/memberJoin/` means you need to know about members, so it asks for that. When a privileged one is missing, it tells you which file needs it and gives you the link to enable it.
+With ChapterJS you never list intents yourself. The framework reads your files: an `event({ name: 'memberJoin' })` means you need to know about members, so it asks for that. When a privileged one is missing, it tells you which file needs it and gives you the link to enable it.
 
 ## Slash commands: registered, then used
 

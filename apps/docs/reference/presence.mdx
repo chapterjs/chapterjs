@@ -1,9 +1,9 @@
 ---
 title: 'presence()'
-description: 'Everything src/presence.ts declares: the status of the bot and what it is doing'
+description: 'Everything presence() declares: the status of the bot and what it is doing'
 ---
 
-`presence()` is what `src/presence.ts` exports by default. It takes one object, `PresenceConfig`.
+`presence()` declares the presence of the bot, once, from any file of `src/`. It takes one object, `PresenceConfig`.
 
 ```ts src/presence.ts
 import { presence } from 'chapterjs';
@@ -22,14 +22,14 @@ export default presence({
 ## presence()
 
 ```ts
-presence(config: PresenceConfig): PresenceFile
+presence(config: PresenceConfig): PresenceDeclaration
 ```
 
-Declares the presence of the bot: its status and what it is doing, shown under its name. Export the result as the default export of `src/presence.ts`; the bot has it as soon as it is connected.
+Declares the presence of the bot: its status and what it is doing, shown under its name. Export the result from any file of `src/`, once; the bot has it as soon as it is connected.
 
-### PresenceFile
+### PresenceDeclaration
 
-What `presence()` returns: the default export of `src/presence.ts`.
+What `presence()` returns: a declaration the framework finds in the exports of a file.
 
 <ResponseField name="config" type="unknown">
   What the file gave to `presence()`, not checked yet.
@@ -37,7 +37,7 @@ What `presence()` returns: the default export of `src/presence.ts`.
 
 ## PresenceConfig
 
-What `src/presence.ts` gives to `presence()`.
+What a file gives to `presence()`.
 
 <ResponseField name="status" type="PresenceStatusName">
   The status of the bot. `'online'` by default.

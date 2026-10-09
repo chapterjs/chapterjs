@@ -7,7 +7,7 @@ Avec une douzaine de commandes, quelques événements et des composants, un proj
 
 ## Le code partagé
 
-Tout dossier de `src/` que le framework ne lit pas est à vous. Le plus courant est `src/lib/`. Mettez-y une fonction, importez-la par un chemin relatif, sans extension :
+Tout fichier de `src/` qui ne déclare rien est à vous. L’endroit habituel est `src/lib/`. Mettez-y une fonction, importez-la par un chemin relatif, sans extension :
 
 ```ts src/lib/warnings.ts
 const warnings = new Map<string, number>();
@@ -28,6 +28,7 @@ import { command } from 'chapterjs';
 import { warningsOf } from '../lib/warnings';
 
 export default command({
+  name: 'warnings',
   description: 'Compte les avertissements de quelqu’un',
   options: {
     who: { type: 'user', description: 'Qui', required: true },
@@ -41,7 +42,7 @@ export default command({
 
 Les fichiers que vous importez sont surveillés comme les autres : enregistrer `src/lib/warnings.ts` recharge chaque fichier qui l’utilise.
 
-Dans un dossier conventionnel, un fichier qui commence par `_` n’est jamais lu comme une commande ou un événement, donc le code partagé peut aussi se trouver à côté des fichiers qui l’utilisent : `src/commands/(moderation)/_checks.ts`. Choisissez une habitude et gardez-la ; `src/lib/` est la plus simple.
+Un fichier qui ne déclare rien n’est que du code : le code partagé peut aussi se trouver à côté des fichiers qui l’utilisent, `src/moderation/checks.ts` à côté de `src/moderation/ban.ts`. Choisissez une habitude et gardez-la ; `src/lib/` est la plus simple.
 
 ## Garder les fichiers courts
 
@@ -73,6 +74,7 @@ Quel que soit votre choix, gardez-le dans `src/lib/` derrière quelques fonction
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'daily',
   description: 'Récupère votre récompense quotidienne',
   ephemeral: true,
   cooldown: '1d',
@@ -86,9 +88,9 @@ Quelqu’un qui utilise à nouveau `/daily` trop tôt reçoit une réponse priv�
 
 ## Regrouper les fichiers
 
-Les deux règles de nommage de la [visite](/fr/tutorial/tour#deux-règles-de-nommage-pour-votre-propre-rangement) sont ce qu’il vous faut : des dossiers `(fun)/`, `(moderation)/`, `(admin)/` dans `src/commands/`, `src/events/` et `src/components/`, et des fichiers `_` pour ce qu’ils partagent. Ils ne changent rien pour Discord.
+L’endroit d’un fichier et son nom ne veulent rien dire pour le framework : une commande est une commande à cause de `command()`, où que soit le fichier. Rangez donc vos fichiers comme vous pensez : un dossier par sorte (`src/commands/`, `src/events/`), comme le fait le modèle, ou un dossier par fonctionnalité (`src/moderation/`, avec ses commandes, ses boutons et ses événements ensemble, dans un fichier ou plusieurs). La [visite](/fr/tutorial/tour#vos-fichiers-votre-ordre) montre les deux.
 
-Pour les commandes, préférez des **commandes** rangées en groupes (`/ban`, `/kick` dans `(moderation)/`) aux **sous-commandes** (`/mod ban`, `/mod kick` dans `mod/`), sauf si ce sont des variantes d’une même action (`/timeout add`, `/timeout remove`). Discord cache une commande entière aux personnes qui n’ont pas ses permissions, jamais une seule sous-commande : avec `/mod ban` et `/mod kick`, quelqu’un qui a seulement le droit d’expulser voit quand même `/mod ban`.
+Pour les commandes, préférez des **commandes** (`/ban`, `/kick`) aux **sous-commandes** (`/mod ban`, `/mod kick`), sauf si ce sont des variantes d’une même action (`/timeout add`, `/timeout remove`). Discord cache une commande entière aux personnes qui n’ont pas ses permissions, jamais une seule sous-commande : avec `/mod ban` et `/mod kick`, quelqu’un qui a seulement le droit d’expulser voit quand même `/mod ban`.
 
 ## Ce que le framework ne fait pas encore
 
@@ -107,9 +109,9 @@ La liste complète, tenue à jour, est dans [Ce qui n’est pas encore là](/fr/
 
 ## Récapitulatif
 
-- Le code partagé va dans `src/lib/` (ou un fichier `_`), importé sans extension, et rechargé avec les fichiers qui l’utilisent.
+- Le code partagé va dans `src/lib/` (ou à côté des fichiers qui l’utilisent), importé sans extension, et rechargé avec les fichiers qui l’utilisent.
 - Rien ne survit à un redémarrage sauf les `data` des composants : stockez ce qui compte dans un fichier JSON ou une base de données, derrière quelques fonctions.
-- Un délai entre deux utilisations est un réglage de la commande, `cooldown: '1d'`, gardé en mémoire ; un projet qui grandit utilise des dossiers `(groupe)`.
+- Un délai entre deux utilisations est un réglage de la commande, `cooldown: '1d'`, gardé en mémoire ; un projet qui grandit range ses fichiers par fonctionnalité, puisque le framework lit ce qu’ils exportent, pas où ils sont.
 
 <CardGroup cols={2}>
   <Card title="Mémoire et limites" icon="brain" href="/fr/tutorial/memory-and-limits">

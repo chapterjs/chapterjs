@@ -30,6 +30,7 @@ Open `/whois` again and show more:
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'whois',
   description: 'Tells you about someone',
   options: {
     who: { type: 'user', description: 'Who to look at', required: true },
@@ -73,6 +74,7 @@ Here is `/warn`, which times someone out for ten minutes and tells them in priva
 import { command, DiscordApiError } from 'chapterjs';
 
 export default command({
+  name: 'warn',
   description: 'Warns a member with a short timeout',
   permissions: ['ModerateMembers'],
   options: {

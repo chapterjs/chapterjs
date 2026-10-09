@@ -3,9 +3,9 @@ title: 'Menus déroulants'
 description: 'Ajouter des menus à vos messages : des options que vous déclarez, ou les utilisateurs, rôles et salons du serveur'
 ---
 
-Un menu déroulant est un fichier de `src/components/selects/`. Déclarez ses options, et `run` reçoit ce qui a été choisi, typé d’après elles.
+Un menu déroulant se déclare avec `select()`, dans n’importe quel fichier de `src/`, et s’exporte. Déclarez ses options, et `run` reçoit ce qui a été choisi, typé d’après elles.
 
-```ts src/components/selects/color.ts
+```ts src/components/color.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -19,9 +19,10 @@ export default select({
 
 ```ts src/commands/color.ts
 import { command } from 'chapterjs';
-import color from '../components/selects/color';
+import color from '../components/color';
 
 export default command({
+  name: 'color',
   description: 'Demande votre couleur préférée',
   async run({ interaction }) {
     await interaction.reply({ content: 'Laquelle ?', components: [color] });
@@ -47,7 +48,7 @@ C’est tout : `value` vaut `'red' | 'blue' | 'green'`, et `values` est la liste
 
 Jusqu’à 25 options. `min` et `max` disent combien peuvent être choisies (1 par défaut) : avec `max: 3`, `values` en contient jusqu’à trois.
 
-```ts src/components/selects/toppings.ts
+```ts src/components/toppings.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -69,7 +70,7 @@ export default select({
 
 Avec un `type`, Discord remplit le menu avec le serveur : `'user'`, `'role'`, `'mentionable'` (utilisateurs et rôles) ou `'channel'`. `values` est alors une liste de [User](/fr/reference/user), [Role](/fr/reference/role), `User | Role` ou [Channel](/fr/reference/channels), et `channelTypes` restreint les salons listés.
 
-```ts src/components/selects/helpers.ts
+```ts src/components/helpers.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -85,7 +86,7 @@ export default select({
 });
 ```
 
-```ts src/components/selects/logs.ts
+```ts src/components/logs.ts
 import { ChannelType, select } from 'chapterjs';
 
 export default select({
@@ -103,10 +104,11 @@ Là où vous mettez le menu dans un message, passez ce qu’il faut afficher : `
 
 ```ts src/commands/setup.ts
 import { command } from 'chapterjs';
-import color from '../components/selects/color';
-import helpers from '../components/selects/helpers';
+import color from '../components/color';
+import helpers from '../components/helpers';
 
 export default command({
+  name: 'setup',
   description: 'Configure le bot',
   async run({ interaction, guild }) {
     await interaction.reply({

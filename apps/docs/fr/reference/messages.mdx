@@ -1,14 +1,15 @@
 ---
 title: 'language()'
-description: 'Tout ce que déclare un fichier de src/messages/, et t, que reçoit chaque fonction'
+description: 'Tout ce que déclare language(), et t, que reçoit chaque fonction'
 ---
 
-`language()` est ce qu’un fichier de `src/messages/` exporte par défaut. Le nom du fichier est la langue ; elle prend un objet, `LanguageConfig`.
+`language()` déclare une langue du bot, depuis n’importe quel fichier de `src/`. Elle prend un objet, `LanguageConfig`, dont `locale` est la langue.
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'en-US',
   default: true,
   texts: {
     pong: 'Pong!',
@@ -27,14 +28,18 @@ export default language({
 ## language()
 
 ```ts
-language<const T extends MessageTexts>(config: LanguageConfig<T>): LanguageFile<T>
+language<const T extends MessageTexts, L extends Locale>(config: LanguageConfig<T, L>): LanguageDeclaration<T, L>
 ```
 
-Déclare une langue du bot. Exportez le résultat comme export par défaut d’un fichier de `src/messages/` nommé d’après la langue (`en-US.ts`, `fr.ts`...) : chaque fonction reçoit alors `t`, qui donne un texte dans la langue de qui lira le message, avec ses `{paramètres}` remplis.
+Déclare une langue du bot, ou d’autres textes de celle-ci. Exportez le résultat depuis n’importe quel fichier de `src/` ; `locale` dit quelle langue : chaque fonction reçoit alors `t`, qui donne un texte dans la langue de qui lira le message, avec ses `{paramètres}` remplis. Une langue peut être déclarée à plusieurs endroits : les textes d’une fonctionnalité à côté d’elle, avec le même `locale`, s’ajoutent aux autres.
 
 ### LanguageConfig
 
-Ce qu’un fichier de `src/messages/` donne à `language()`.
+Ce qu’un fichier donne à `language()`.
+
+<ResponseField name="locale" type="Locale" required>
+  La langue de ces textes : `'en-US'`, `'fr'`...
+</ResponseField>
 
 <ResponseField name="texts" type="MessageTexts" required>
   Les textes du bot dans cette langue, par clé.
@@ -42,10 +47,11 @@ Ce qu’un fichier de `src/messages/` donne à `language()`.
 
 <ResponseField name="default" type="boolean">
   Si c’est la langue utilisée quand celle d’une personne ou d’un serveur n’est
-  pas dans `src/messages/`. Exactement un fichier le dit ; avec un seul fichier,
-  cela va sans dire. Une fois les fichiers exécutés (`chapterjs dev`,
-  `chapterjs build`), un deuxième fichier qui le dit est une erreur de type sur le
-  `default: true` des deux, qui nomme l’autre fichier.
+  pas déclarée. Exactement une langue le dit ; avec une seule langue, cela va
+  sans dire. Quand une autre langue le dit déjà, c’est refusé : une seule peut
+  être celle par défaut. Une fois les fichiers exécutés (`chapterjs dev`,
+  `chapterjs build`), une deuxième langue qui le dit est une erreur de type sur
+  le `default: true` des deux (voir `ProjectLanguageDefaults`).
 </ResponseField>
 
 <ResponseField name="commands" type="CommandsTranslations">
@@ -119,15 +125,19 @@ type CommandsTranslations = {
 };
 ```
 
-Ce que Discord affiche des commandes dans une langue : par le chemin du fichier de la commande (`'ping'`, `'mod/ban'`), son nom, sa description, ses options et ses choix dans cette langue, comme les prennent les `locales` d’un fichier de commande ([`CommandTranslation`](/fr/reference/command#commandtranslation)). L’éditeur propose les commandes du projet qui n’ont pas de `description` dans leur fichier (une qui en a une possède ses textes, `locales` compris) ; leurs options et choix sont vérifiés au chargement des fichiers.
+Ce que Discord affiche des commandes dans une langue : par le nom de la commande (`'ping'`, `'mod ban'`), son nom, sa description, ses options et ses choix dans cette langue, comme les prennent les `locales` d’un fichier de commande ([`CommandTranslation`](/fr/reference/command#commandtranslation)). L’éditeur propose les commandes du projet qui n’ont pas de `description` dans leur fichier (une qui en a une possède ses textes, `locales` compris) ; leurs options et choix sont vérifiés au chargement des fichiers.
 
 ### ProjectCommands
 
-Les commandes du projet, telles que les voit l’éditeur : le chemin de chaque fichier de commande, `true` quand les fichiers de langue la décrivent, `false` quand le fichier a sa propre `description`. Rempli par le dossier `.chapterjs/` du projet, pour que les `commands` d’un fichier de langue proposent celles qu’il peut traduire. Les options et les choix sont vérifiés au chargement des fichiers.
+Les commandes du projet, telles que les voit l’éditeur : le nom de chaque commande, `true` quand les fichiers de langue la décrivent, `false` quand la commande a sa propre `description`. Rempli par le dossier `.chapterjs/` du projet, pour que les `commands` d’un fichier de langue proposent celles qu’il peut traduire. Les options et les choix sont vérifiés au chargement des fichiers.
 
-### LanguageFile
+### ProjectLanguageDefaults
 
-Ce que renvoie `language()` : l’export par défaut d’un fichier de `src/messages/`.
+Les langues qui disent `default: true` quand plus d’une le dit, telles que les voit l’éditeur : une clé par langue. Rempli par le dossier `.chapterjs/` du projet, pour que chacune soit soulignée ; vide quand au plus une langue le dit.
+
+### LanguageDeclaration
+
+Ce que renvoie `language()` : une déclaration que le framework trouve dans les exports d’un fichier.
 
 <ResponseField name="config" type="LanguageConfig<T>" required>
   Ce que le fichier a donné à `language()`, pas encore vérifié.
@@ -139,7 +149,7 @@ Ce que renvoie `language()` : l’export par défaut d’un fichier de `src/mess
 interface Translator<M extends object = ProjectMessages>
 ```
 
-`t`, tel que le reçoivent les fonctions : donne un texte de `src/messages/` dans la langue de qui lira le message, avec ses paramètres remplis. `M` est l’ensemble des textes de la langue par défaut, qui type les clés et les paramètres : un texte qu’une autre langue n’a pas est pris dans celle-ci.
+`t`, tel que le reçoivent les fonctions : donne un texte des fichiers de langue dans la langue de qui lira le message, avec ses paramètres remplis. `M` est l’ensemble des textes de la langue par défaut, qui type les clés et les paramètres : un texte qu’une autre langue n’a pas est pris dans celle-ci.
 
 ### t()
 
@@ -167,7 +177,7 @@ Le même `t` pour une autre langue, pour écrire plusieurs textes : `t.in('fr')(
 
 ### ProjectLocales
 
-Les langues de `src/messages/`, telles que les voit l’éditeur : une clé par fichier. Rempli par le dossier `.chapterjs/` du projet, vide quand le dossier n’a aucune langue.
+Les langues du projet, telles que les voit l’éditeur : une clé par langue déclarée. Rempli par le dossier `.chapterjs/` du projet, vide quand le projet n’a aucune langue.
 
 ### ProjectLocale
 
@@ -175,7 +185,7 @@ Les langues de `src/messages/`, telles que les voit l’éditeur : une clé par 
 type ProjectLocale = keyof ProjectLocales & string;
 ```
 
-Une langue de `src/messages/` : `'en-US'`, `'fr'`...
+Une langue du projet : `'en-US'`, `'fr'`...
 
 ### LocaleGiven
 
@@ -183,24 +193,32 @@ Une langue de `src/messages/` : `'en-US'`, `'fr'`...
 type LocaleGiven<L extends string> = L extends Locale ? L : ProjectLocale;
 ```
 
-Une langue donnée à `t.in()` : l’éditeur propose celles de `src/messages/`, et toute langue de Discord est acceptée (celle d’une personne, d’un serveur), `t` prenant alors la plus proche déclarée. Un mot qui n’est pas une langue de Discord est souligné, avec celles du projet.
+Une langue donnée à `t.in()` : l’éditeur propose celles du projet, et toute langue de Discord est acceptée (celle d’une personne, d’un serveur), `t` prenant alors la plus proche déclarée. Un mot qui n’est pas une langue de Discord est souligné, avec celles du projet.
 
 ### TranslationContext
 
-`TranslationContext` est ce que reçoit chaque fonction quand le projet a une langue dans `src/messages/` : `t`. Rien sinon.
+`TranslationContext` est ce que reçoit chaque fonction quand le projet a une langue : `t`. Rien sinon.
 
 <ResponseField name="t" type="Translator">
-  Les textes de `src/messages/`, dans la bonne langue.
+  Les textes des fichiers de langue, dans la bonne langue.
 </ResponseField>
 
 ### ProjectMessages
 
-Les textes de `src/messages/`, tels que les voit l’éditeur : les clés qu’accepte `t` et les paramètres de chacun. Rempli par le dossier `.chapterjs/` du projet quand le dossier a une langue, vide sinon.
+Les textes du projet, tels que les voit l’éditeur : les clés qu’accepte `t` et les paramètres de chacun, depuis chaque déclaration de chaque langue, la langue par défaut d’abord. Rempli par le dossier `.chapterjs/` du projet quand il a une langue, vide sinon.
+
+### MergedMessages
+
+```ts
+type MergedMessages<T extends readonly object[]>
+```
+
+Les textes de plusieurs déclarations, la première l’emportant pour une clé que plusieurs ont : ce dont `t` est typé quand un projet a plusieurs langues, celle par défaut d’abord, puis les autres (un texte que la langue par défaut n’a pas est pris dans la langue qui l’a).
 
 ### MessagesOf
 
 ```ts
-type MessagesOf<F> = F extends LanguageFile<infer T> ? T : never;
+type MessagesOf<F> = F extends LanguageDeclaration<infer T> ? T : never;
 ```
 
 Ce d’après quoi `t` est typé, pour un fichier de langue : ses textes.
@@ -221,7 +239,7 @@ Un texte affiché par un composant : écrit tel quel, ou calculé au moment de l
 Ce à partir de quoi un texte d’un composant est calculé quand c’est une fonction : `t` dans la langue de qui lira le message, et les données que transporte le composant.
 
 <ResponseField name="t" type="Translator" required>
-  Les textes de `src/messages/`, dans la langue de qui lira le message.
+  Les textes des fichiers de langue, dans la langue de qui lira le message.
 </ResponseField>
 
 <ResponseField name="data" type="DataValuesOf<Data>" required>

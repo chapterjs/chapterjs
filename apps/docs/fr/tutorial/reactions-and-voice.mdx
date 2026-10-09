@@ -3,19 +3,22 @@ title: 'Réactions et vocal'
 description: 'Réagir aux réactions que les gens ajoutent et à qui rejoint un salon vocal, et comprendre pourquoi certains événements ne donnent qu’un identifiant'
 ---
 
-Sur Discord, les gens font plus qu’écrire : ils réagissent aux messages, votent dans des sondages, rejoignent des salons vocaux. Chacune de ces choses est aussi un événement, avec son dossier dans `src/events/`. Cette page en ajoute deux à votre bot, un marque-page qui fonctionne avec une réaction et un bonjour en vocal, et montre ce qui les distingue : certains événements arrivent avec moins qu’un message.
+Sur Discord, les gens font plus qu’écrire : ils réagissent aux messages, votent dans des sondages, rejoignent des salons vocaux. Chacune de ces choses est aussi un événement, avec son nom. Cette page en ajoute deux à votre bot, un marque-page qui fonctionne avec une réaction et un bonjour en vocal, et montre ce qui les distingue : certains événements arrivent avec moins qu’un message.
 
 ## Un marque-page avec une réaction
 
-Créez `src/events/reactionAdd/bookmark.ts` :
+Créez `src/events/bookmark.ts` :
 
-```ts src/events/reactionAdd/bookmark.ts
+```ts src/events/bookmark.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ emoji, member, guild, channel, messageId }) => {
-  if (emoji.name !== '🔖') return;
-  const link = `https://discord.com/channels/${guild.id}/${channel.id}/${messageId}`;
-  await member.send(`Vous avez mis un marque-page sur un message de #${channel.name} : ${link}`);
+export default event({
+  name: 'reactionAdd',
+  async run({ emoji, member, guild, channel, messageId }) {
+    if (emoji.name !== '🔖') return;
+    const link = `https://discord.com/channels/${guild.id}/${channel.id}/${messageId}`;
+    await member.send(`Vous avez mis un marque-page sur un message de #${channel.name} : ${link}`);
+  },
 });
 ```
 
@@ -43,13 +46,16 @@ Souvent, l’identifiant suffit : le lien ci-dessus est construit avec, sans rie
 
 ## Bonjour en vocal
 
-Créez `src/events/voiceJoin/greeter.ts` :
+Créez `src/events/greeter.ts` :
 
-```ts src/events/voiceJoin/greeter.ts
+```ts src/events/greeter.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, channel }) => {
-  await channel.send(`Bienvenue dans ${channel.name}, ${member.displayName} !`);
+export default event({
+  name: 'voiceJoin',
+  async run({ member, channel }) {
+    await channel.send(`Bienvenue dans ${channel.name}, ${member.displayName} !`);
+  },
 });
 ```
 
@@ -66,7 +72,7 @@ Discord dit seulement à un bot que « l’état vocal de quelqu’un a changé 
 
 ## Et les autres
 
-Les sondages (`pollVoteAdd`), la saisie (`typingStart`), les bannissements (`banAdd`), le journal d’audit, les invitations, les emojis, les événements programmés, les fils et les présences fonctionnent tous de la même façon : un dossier nommé d’après l’événement, un fichier dedans, et ce que reçoit votre fonction typé pour ce dossier. Le [Guide](/fr/events) a une page pour chaque famille.
+Les sondages (`pollVoteAdd`), la saisie (`typingStart`), les bannissements (`banAdd`), le journal d’audit, les invitations, les emojis, les événements programmés, les fils et les présences fonctionnent tous de la même façon : un `event()` avec le nom de l’événement, et ce que reçoit votre fonction typé d’après lui. Le [Guide](/fr/events) a une page pour chaque famille.
 
 ## Points d’attention
 
@@ -77,7 +83,7 @@ Les sondages (`pollVoteAdd`), la saisie (`typingStart`), les bannissements (`ban
 
 ## Récapitulatif
 
-- `reactionAdd`, `reactionRemove`, `pollVoteAdd`, `typingStart`, les événements vocaux et les autres sont des dossiers de `src/events/`, comme `memberJoin`.
+- `reactionAdd`, `reactionRemove`, `pollVoteAdd`, `typingStart`, les événements vocaux et les autres se déclarent avec `event()`, comme `memberJoin`.
 - Les réactions ignorent par défaut les bots et les messages privés, comme les messages ; `bots` et `where` changent cela.
 - Certains événements ne donnent que des identifiants : `messageId` est toujours là, `message` vaut `null` ; `user` est demandé une fois à Discord quand il le faut.
 - Quatre événements vocaux distinguent une arrivée, un départ, un changement de salon et un changement d’état.

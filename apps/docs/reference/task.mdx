@@ -3,7 +3,7 @@ title: 'task()'
 description: 'Everything a task file declares: its schedule, its timezone, and what the run function receives'
 ---
 
-`task()` is what a file of `src/tasks/` exports by default. It takes one object, `TaskConfig`.
+`task()` declares a task, from any file of `src/`, and the name of its export is the name of the task. It takes one object, `TaskConfig`.
 
 ```ts src/tasks/cleanup.ts
 import { task } from 'chapterjs';
@@ -23,14 +23,14 @@ export default task({
 ## task()
 
 ```ts
-task(config: TaskConfig): TaskFile
+task(config: TaskConfig): TaskDeclaration
 ```
 
-Declares a task: something the bot does by itself. Export the result as the default export of a file of `src/tasks/`: the name of the file is the name of the task.
+Declares a task: something the bot does by itself. Export the result from any file of `src/`: the name of the export is the name of the task.
 
-### TaskFile
+### TaskDeclaration
 
-What `task()` returns: the default export of a task file.
+What `task()` returns: a declaration the framework finds in the exports of a file.
 
 <ResponseField name="config" type="unknown">
   What the file gave to `task()`, not checked yet.
@@ -86,4 +86,4 @@ What `run` receives: the bot, as the `ready` event gives it, and the time.
   When this run was due.
 </ResponseField>
 
-A task also receives `t`, in the default language, when the project has a language in `src/messages/`: see [`TranslationContext`](/reference/messages#translationcontext).
+A task also receives `t`, in the default language, when the project has a language: see [`TranslationContext`](/reference/messages#translationcontext).

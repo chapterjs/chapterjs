@@ -1,6 +1,6 @@
 {
   "name": "create-chapterjs",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Alias of create-chapter: scaffolds a ChapterJS Discord bot",
   "license": "MIT",
   "repository": {

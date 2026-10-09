@@ -9,6 +9,7 @@ Votre bot peut rejoindre un salon vocal et y jouer du son. Mettez un fichier dan
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'intro',
   description: 'Joue l’intro dans votre salon vocal',
   async run({ interaction, member }) {
     const channel = member.voiceChannel;
@@ -59,6 +60,7 @@ Une option `attachment` permet à la personne d’envoyer la musique avec la com
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'song',
   description: 'Joue la musique que vous envoyez',
   options: {
     file: { type: 'attachment', description: 'La musique', required: true },
@@ -86,6 +88,7 @@ Ce qui joue peut être mis en pause, repris et arrêté de partout : une autre c
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'pause',
   description: 'Met en pause ou reprend ce qui joue',
   async run({ interaction, guild }) {
     const voice = guild.voice;
@@ -112,6 +115,7 @@ export default command({
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'follow',
   description: 'Amène le bot dans votre salon vocal',
   async run({ interaction, member, guild }) {
     const channel = member.voiceChannel;

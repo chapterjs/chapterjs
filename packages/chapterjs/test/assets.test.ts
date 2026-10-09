@@ -244,6 +244,7 @@ describe.skipIf(process.platform === 'win32')('files of public/', () => {
       'public/notes.txt': 'notes',
       'src/commands/photo.ts': `import { asset, command, gallery } from 'chapterjs';
 export default command({
+  name: 'photo',
   description: 'Sends a photo',
   async run({ interaction, channel }) {
     await channel.send({
@@ -256,6 +257,7 @@ export default command({
 `,
       'src/commands/missing.ts': `import { asset, command } from 'chapterjs';
 export default command({
+  name: 'missing',
   description: 'Sends a photo that is not there',
   async run({ channel }) {
     await channel.send({ files: [asset('photos/tuesday.png' as 'photos/monday.png')] });
@@ -267,7 +269,7 @@ export default command({
     await cli.waitFor('✓ 2 commands loaded');
     const connection = await connected(fake);
 
-    const types = join(cwd, '.chapterjs/types/shared.d.ts');
+    const types = join(cwd, '.chapterjs/types/project.d.ts');
     const { readFileSync } = await import('node:fs');
     expect(readFileSync(types, 'utf8')).toContain(
       'export type PublicFile = \n    | "notes.txt"\n    | "photos/monday.png";'
@@ -361,7 +363,7 @@ export default command({
       use('100000000000000702', 'missing')
     );
     await cli.waitFor(
-      '✗ src/commands/missing.ts:5 There is no file public/photos/tuesday.png in your project: put it there, or pick one of the files the editor lists in asset().'
+      '✗ src/commands/missing.ts:6 There is no file public/photos/tuesday.png in your project: put it there, or pick one of the files the editor lists in asset().'
     );
 
     // A file added while dev runs is typed at once.
@@ -377,12 +379,12 @@ export default command({
     const fake = await world();
     const cwd = project({
       'src/commands/ping.ts': `import { command } from 'chapterjs';
-export default command({ description: 'd', async run({ interaction }) { await interaction.reply('Pong!'); } });
+export default command({ name: 'ping', description: 'd', async run({ interaction }) { await interaction.reply('Pong!'); } });
 `,
     });
     const cli = runDev(cwd, fake);
     await cli.waitFor('✓ Connected');
-    const types = join(cwd, '.chapterjs/types/shared.d.ts');
+    const types = join(cwd, '.chapterjs/types/project.d.ts');
     const { readFileSync } = await import('node:fs');
     expect(readFileSync(types, 'utf8')).toContain(
       'export type PublicFile = never;'

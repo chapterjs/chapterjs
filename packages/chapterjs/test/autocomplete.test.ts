@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { command } from '../src/commands/command.js';
-import { commandsConvention } from '../src/commands/convention.js';
+import { commandDeclaration } from '../src/commands/declaration.js';
 import { buildCommands } from '../src/commands/tree.js';
 import { sameDefinition } from '../src/commands/twins.js';
+import { site } from './dev-helpers.js';
 
 const read = (config: Record<string, unknown>) =>
-  commandsConvention.read(
-    {
-      default: command({
-        description: 'd',
-        run() {},
-        ...config,
-      } as never),
-    },
-    'play.ts'
+  commandDeclaration.read(
+    command({
+      name: 'play',
+      description: 'd',
+      run() {},
+      ...config,
+    } as never),
+    site('src/commands/play.ts')
   );
 
 const OPTIONS = {
@@ -101,6 +101,7 @@ describe('registering a command with autocomplete', () => {
   const entries = [
     {
       file: 'src/commands/play.ts',
+      export: 'default',
       command: read({
         options: OPTIONS,
         autocomplete: { song: () => [], volume: () => [] },
@@ -126,7 +127,13 @@ describe('registering a command with autocomplete', () => {
   it('is not the same command once a function is added or removed', () => {
     const [withIt] = buildCommands(entries, { guild: false });
     const [without] = buildCommands(
-      [{ file: 'src/commands/play.ts', command: read({ options: OPTIONS }) }],
+      [
+        {
+          file: 'src/commands/play.ts',
+          export: 'default',
+          command: read({ options: OPTIONS }),
+        },
+      ],
       { guild: false }
     );
     const registered = {

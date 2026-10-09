@@ -87,7 +87,7 @@ A cron that is wrong, or that can never happen (`'0 0 31 2 *'`, the 31st of Febr
 
 ## Recap
 
-- A task is a file of `src/tasks/` with `every` (an interval from the start) or `cron` (a schedule), and `run`.
+- A task is `task({ ... })`, exported, with `every` (an interval from the start) or `cron` (a schedule), and `run`; the name of its export is its name.
 - `timezone` makes a cron follow the clock of your members, not of the machine.
 - Overlapping runs, errors and reconnections are handled; saving a file keeps the next time.
 

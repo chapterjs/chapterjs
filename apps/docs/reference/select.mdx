@@ -3,9 +3,9 @@ title: 'select()'
 description: 'Everything a select menu file declares, the three ways to write options, and what the run function receives'
 ---
 
-`select()` is what a file of `src/components/selects/` exports by default. It takes one object, `SelectConfig`, and types `values` in `run` from it.
+`select()` declares a select menu, from any file of `src/`; the name of its export is its id. It takes one object, `SelectConfig`, and types `values` in `run` from it.
 
-```ts src/components/selects/color.ts
+```ts src/components/color.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -24,18 +24,18 @@ export default select({
 ## select()
 
 ```ts
-select<Options extends SelectOptions, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: StringSelectConfig<Options, Data, Where>): SelectFile<Data>
-select<Type extends EntitySelectType, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: EntitySelectConfig<Type, Data, Where>): SelectFile<Data>
+select<Options extends SelectOptions, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: StringSelectConfig<Options, Data, Where>): SelectDeclaration<Data>
+select<Type extends EntitySelectType, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: EntitySelectConfig<Type, Data, Where>): SelectDeclaration<Data>
 ```
 
-Declares a select menu. Export the result as the default export of a file of `src/components/selects/`: the path of the file is what tells the menu apart, so you never write an id.
+Declares a select menu. Export the result from any file of `src/`: the name of the export is what tells the menu apart, so you never write an id.
 
-### SelectFile
+### SelectDeclaration
 
-What `select()` returns: the default export of a select file. Import it where you send a message, and call it with the data it carries; a menu without data is used as is, or called with what to show.
+What `select()` returns: a declaration the framework finds in the exports of a file. Import it where you send a message, and call it with the data it carries; a menu without data is used as is, or called with what to show.
 
 ```ts
-type SelectFile<Data extends DataShape = {}> = { readonly config: unknown } &
+type SelectDeclaration<Data extends DataShape = {}> = { readonly config: unknown } &
   ({} extends Data
     ? ((options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
     : {} extends DataInputOf<Data>

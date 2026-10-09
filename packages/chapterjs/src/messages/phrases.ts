@@ -1,5 +1,5 @@
 // What the bot answers by itself, when it can't run what was asked: in
-// English here, and in the languages of `src/messages/` that translate
+// English here, and in the language files that translate
 // them (the `framework` of a language file).
 
 import type { Context } from '../structures/context.js';

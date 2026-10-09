@@ -7,14 +7,17 @@ Trois événements concernent les messages : `messageCreate`, `messageUpdate` et
 
 ## Réagir à un mot
 
-Créez `src/events/messageCreate/thanks.ts` :
+Créez `src/events/thanks.ts` :
 
-```ts src/events/messageCreate/thanks.ts
+```ts src/events/thanks.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  if (!/\bmerci\b/i.test(message.content)) return;
-  await message.react('💜');
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (!/\bmerci\b/i.test(message.content)) return;
+    await message.react('💜');
+  },
 });
 ```
 
@@ -22,7 +25,7 @@ Enregistrez-le. Comme l’intent des membres, il faut un interrupteur :
 
 ```text
 ⚠ Your files need an option that is not enabled for your bot:
-  - Message Content Intent, needed by src/events/messageCreate/thanks.ts
+  - Message Content Intent, needed by src/events/thanks.ts
   Enable it under "Privileged Gateway Intents", then save:
   https://discord.com/developers/applications/123456789012345678/bot
   Waiting for you to enable it...
@@ -41,7 +44,7 @@ Regardez ce que le fichier ne fait **pas**. Il ne vérifie pas `if (message.auth
 - **Les messages des bots et des webhooks sont ignorés**, y compris les vôtres. Un bot qui réagit aux messages et répond par un message verra sa propre réponse, y réagira, et ainsi de suite indéfiniment ; un serveur avec deux bots de ce genre les voit discuter toute la nuit. Alors par défaut, votre fichier ne tourne que pour les messages écrits par des personnes. Quand vous voulez vraiment les messages des bots, dites-le : `{ bots: true }` en second argument de `event()`.
 - **Seulement les messages des serveurs.** Les messages privés sont un autre endroit, sans serveur, sans membre et sans salon de serveur ; un fichier qui gère les deux doit les distinguer. Alors par défaut, votre fichier écoute sur les serveurs, où `message.guild`, `message.channel` et `message.member` sont toujours là.
 
-Le comportement sûr est le comportement par défaut, et en sortir est explicite. Voici comment le second argument de `event()` le change, et ce qu’il change dans ce que reçoit votre fonction :
+Le comportement sûr est le comportement par défaut, et en sortir est explicite. Voici comment les options écrites à côté de `name` le changent, et ce qu’elles changent dans ce que reçoit votre fonction :
 
 | Second argument | Tourne pour | `message.member` | `message.guild` |
 | --- | --- | --- | --- |
@@ -60,18 +63,21 @@ Les types suivent les options : dans un fichier `'dm'`, l’éditeur ne propose 
 
 `message.reply()` répond dans le salon, avec l’original affiché au-dessus de la réponse. Voici un fichier qui répond à une question sur le règlement :
 
-```ts src/events/messageCreate/rules.ts
+```ts src/events/rules.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  if (!message.content.toLowerCase().includes('où est le règlement')) return;
-  const rules = message.guild.rulesChannelId
-    ? message.guild.channels.get(message.guild.rulesChannelId)
-    : undefined;
-  await message.reply({
-    content: rules ? `Il est dans ${rules}.` : 'Ce serveur n’a pas encore de salon de règlement.',
-    allowedMentions: { repliedUser: false },
-  });
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (!message.content.toLowerCase().includes('où est le règlement')) return;
+    const rules = message.guild.rulesChannelId
+      ? message.guild.channels.get(message.guild.rulesChannelId)
+      : undefined;
+    await message.reply({
+      content: rules ? `Il est dans ${rules}.` : 'Ce serveur n’a pas encore de salon de règlement.',
+      allowedMentions: { repliedUser: false },
+    });
+  },
 });
 ```
 
@@ -81,11 +87,14 @@ export default event(async ({ message }) => {
 
 `messageUpdate` donne le message après la modification. `messageDelete` est différent : le message n’existe plus, donc vous recevez son identifiant, le salon et le serveur où il était, et le message lui-même seulement quand le bot s’en souvenait, ce qui n’est pas le cas par défaut (les messages sont ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message). Utilisez toujours `messageId` :
 
-```ts src/events/messageDelete/audit.ts
+```ts src/events/audit.ts
 import { event } from 'chapterjs';
 
-export default event(({ messageId, channel, guild }) => {
-  console.log(`Message ${messageId} supprimé dans #${channel.name} de ${guild.name}`);
+export default event({
+  name: 'messageDelete',
+  run({ messageId, channel, guild }) {
+    console.log(`Message ${messageId} supprimé dans #${channel.name} de ${guild.name}`);
+  },
 });
 ```
 
@@ -100,7 +109,7 @@ export default event(({ messageId, channel, guild }) => {
 
 ## Récapitulatif
 
-- `src/events/messageCreate/` tourne pour les messages écrits par des personnes, sur les serveurs, par défaut : aucune vérification `author.bot` à écrire.
+- Un événement `messageCreate` tourne pour les messages écrits par des personnes, sur les serveurs, par défaut : aucune vérification `author.bot` à écrire.
 - Le Message Content Intent est nécessaire pour lire `message.content` dans `messageCreate` et `messageUpdate`.
 - `{ bots: true }` et `{ where: 'dm' | 'both' }` élargissent ce qu’un fichier entend, et les types suivent.
 - `messageDelete` donne l’identifiant, le salon et le serveur ; le message lui-même est `null`.

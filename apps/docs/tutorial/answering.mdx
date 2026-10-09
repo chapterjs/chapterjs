@@ -33,6 +33,7 @@ Sometimes only the person should see the answer: a confirmation, an error, a sec
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'secret-number',
   description: 'Gives you a secret number',
   async run({ interaction }) {
     const number = Math.floor(Math.random() * 100);
@@ -54,6 +55,7 @@ When every answer of a command is private, put `ephemeral: true` on the command 
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'mynumber',
   description: 'Gives you a secret number',
   ephemeral: true,
   async run({ interaction }) {
@@ -75,6 +77,7 @@ import { command } from 'chapterjs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 export default command({
+  name: 'slow',
   description: 'Takes its time',
   async run({ interaction }) {
     await sleep(5_000); // something slow: a request to a website, for example
@@ -98,6 +101,7 @@ import { command } from 'chapterjs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 export default command({
+  name: 'countdown3',
   description: 'Counts down from 3',
   async run({ interaction }) {
     await interaction.reply('3...');

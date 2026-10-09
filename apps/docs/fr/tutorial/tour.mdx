@@ -13,23 +13,21 @@ Votre projet tourne. Avant de le modifier, faites-en le tour : un projet Chapter
       <Tree.File name="hello.ogg" />
     </Tree.Folder>
     <Tree.Folder name="src" defaultOpen>
+      <Tree.Folder name="(moderation)" defaultOpen>
+        <Tree.File name="ban.ts" />
+        <Tree.File name="checks.ts" />
+        <Tree.File name="kick.ts" />
+        <Tree.File name="messages.ts" />
+        <Tree.File name="warn.ts" />
+      </Tree.Folder>
       <Tree.Folder name="commands" defaultOpen>
         <Tree.File name="hello.ts" />
         <Tree.File name="ping.ts" />
         <Tree.File name="play.ts" />
       </Tree.Folder>
-      <Tree.Folder name="components" defaultOpen>
-        <Tree.Folder name="buttons" defaultOpen>
-          <Tree.File name="again.ts" />
-        </Tree.Folder>
-      </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
-        <Tree.Folder name="reactionAdd" defaultOpen>
-          <Tree.File name="wave.ts" />
-        </Tree.Folder>
-        <Tree.Folder name="ready" defaultOpen>
-          <Tree.File name="online.ts" />
-        </Tree.Folder>
+        <Tree.File name="ready.ts" />
+        <Tree.File name="wave.ts" />
       </Tree.Folder>
       <Tree.Folder name="messages" defaultOpen>
         <Tree.File name="en-US.ts" />
@@ -45,14 +43,15 @@ Votre projet tourne. Avant de le modifier, faites-en le tour : un projet Chapter
   </Tree.Folder>
 </Tree>
 
-## La règle unique : l’endroit où est un fichier dit ce qu’il est
+## La règle unique : ce qu’un fichier exporte dit ce qu’il est
 
-Tout ce que fait votre bot vit dans `src/`. ChapterJS ne vous demande jamais d’enregistrer quoi que ce soit : un fichier est une commande, une réaction à un événement ou un bouton **à cause du dossier où il se trouve**, comme une page d’un site web se trouve à l’adresse de son fichier. Ouvrez `src/commands/ping.ts` :
+Tout ce que fait votre bot vit dans `src/`. ChapterJS ne vous demande jamais d’enregistrer quoi que ce soit : il charge chaque fichier de `src/`, et ce que les fichiers **exportent**, fabriqué avec l’une de ses fonctions, est ce que le bot fait tourner. Ouvrez `src/commands/ping.ts` :
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'ping',
   description: 'Répond Pong !',
   async run({ interaction }) {
     await interaction.reply('Pong !');
@@ -60,34 +59,32 @@ export default command({
 });
 ```
 
-Rien dans ce fichier ne dit « ceci est la commande `/ping` ». Le nom vient du nom du fichier, `ping.ts`, et le fait que ce soit une commande vient du dossier, `src/commands/`. Le fichier dit seulement ce que la commande *fait*. Renommez le fichier en `hello.ts`, et la commande devient `/hello`, sans rien d’autre à changer.
+Rien d’autre ne dit « ceci est une commande » : `command()` le dit. Son `name` est ce que les gens tapent après le `/`, et le fichier dit seulement ce que la commande *fait*. Changez `name` en `'hello'`, et la commande devient `/hello` ; déplacez le fichier vers `src/fun/ping.ts`, et rien ne change.
 
-C’est la règle pour chaque dossier que lit le framework :
+C’est la règle pour tout ce que le framework fait tourner :
 
-| Dossier | Un fichier dedans est | Il exporte |
-| --- | --- | --- |
-| `src/commands/` | Une commande slash, nommée d’après son chemin : `ping.ts` est `/ping`, `mod/ban.ts` est `/mod ban` | `command({ ... })` |
-| `src/events/<event>/` | Une réaction à l’événement nommé par le dossier : chaque fichier de `memberJoin/` tourne quand quelqu’un arrive | `event(({ ... }) => { ... })` |
-| `src/components/buttons/`, `selects/`, `modals/`, `embeds/` | Un bouton, un menu déroulant, un formulaire ou un embed, distingués par leur chemin | `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed(...)` |
-| `src/tasks/` | Quelque chose que le bot fait tout seul, régulièrement ou à des heures données | `task({ ... })` |
-| `src/messages/` | Une langue du bot, nommée d’après elle : `fr.ts` est le français | `language({ ... })` |
-| `src/presence.ts` | Le seul fichier qui dit ce que le bot affiche sous son nom | `presence({ ... })` |
+| Déclaré avec                | Ce que c’est                                                                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `command({ name, ... })`    | Une commande slash : `name: 'ping'` est `/ping`, `name: 'mod ban'` est `/mod ban`                                                 |
+| `event({ name, ... })`      | Une réaction à un événement : `name: 'memberJoin'` tourne quand quelqu’un arrive                                                  |
+| `button({ ... })`, `select({ ... })`, `modal({ ... })`, `embed(...)` | Un bouton, un menu déroulant, un formulaire ou un embed, nommé par son export : `export const vote = button(...)` est le bouton `vote` |
+| `task({ ... })`             | Quelque chose que le bot fait tout seul, régulièrement ou à des heures données, nommé par son export                             |
+| `language({ locale, ... })` | Une langue du bot : `locale: 'fr'` est le français                                                                                |
+| `presence({ ... })`         | Ce que le bot affiche sous son nom, déclaré une fois                                                                              |
 
-Tout autre dossier de `src/` est à vous : `src/lib/`, `src/db/`, n’importe quoi. Le framework ne lit que les dossiers ci-dessus, et vos fichiers importent le reste comme d’habitude.
+Un fichier peut en déclarer plusieurs, et un fichier qui n’en déclare aucun est juste du code : `src/lib/`, `src/db/`, tout ce que vous importez depuis les autres. Le modèle fait les deux : un dossier par sorte (`src/commands/`, `src/events/`), et `src/(moderation)/`, où tout ce qui touche à la modération vit ensemble : les commandes `/ban`, `/kick` et `/warn`, le bouton qu’affiche `/ban`, l’événement qui enregistre un bannissement, leurs textes dans les deux langues, et le code qu’ils partagent. Les parenthèses sont une habitude, pas une règle : un dossier n’est qu’un dossier.
 
-Pourquoi ce choix ? Parce que l’alternative, une liste quelque part qui dit « la commande `/ping` est dans ce fichier, l’événement de bienvenue dans celui-là », est une liste que vous devez tenir à jour à la main. Ici, il n’y a pas de liste. Ajouter une commande, c’est ajouter un fichier ; en retirer une, c’est le supprimer.
+Pourquoi ce choix ? Parce que l’alternative, une liste quelque part qui dit « la commande `/ping` est dans ce fichier, l’événement de bienvenue dans celui-là », est une liste que vous devez tenir à jour à la main. Ici, il n’y a pas de liste. Ajouter une commande, c’est ajouter une déclaration ; en retirer une, c’est la supprimer.
 
 ## Le même import partout
 
-Chaque fichier commence par `import { command } from 'chapterjs'`, ou `event`, `button`... Tous viennent du même paquet, `chapterjs`. Il n’y a rien d’autre à importer : pas de client, pas de configuration, pas de fichier du framework. Et dans chaque dossier, la fonction sait à quoi s’attendre : `event` dans `src/events/memberJoin/` donne un membre à votre fonction, et `event` dans `src/events/messageCreate/` lui donne un message, avec la même ligne d’import.
-
-Comment le sait-elle ? C’est le dossier suivant.
+Chaque fichier commence par `import { command } from 'chapterjs'`, ou `event`, `button`... Tous viennent du même paquet, `chapterjs`. Il n’y a rien d’autre à importer : pas de client, pas de configuration, pas de fichier du framework. Et chaque fonction sait à quoi s’attendre d’après ce que vous lui donnez : `event({ name: 'memberJoin' })` donne un membre à votre fonction, `event({ name: 'messageCreate' })` un message, avec la même ligne d’import.
 
 ## `.chapterjs/` : généré, ignoré, supprimable
 
-Ce dossier est écrit par le framework, et git l’ignore. Il contient les **types de votre projet** : la description de ce que reçoit chaque fonction dans chaque dossier, que votre éditeur lit pour compléter ce que vous tapez et souligner une erreur. Il garde aussi un petit cache (ce qui a été enregistré en dernier auprès de Discord, pour que relancer ne coûte rien) et, plus tard, le bot compilé.
+Ce dossier est écrit par le framework, et git l’ignore. Il contient ce que votre **projet** ajoute aux types de `chapterjs` : les fichiers de `public/` que `asset()` propose, vos langues, qui typent `t`, et vos commandes. Votre éditeur le lit pour compléter ce que vous tapez et souligner une erreur. Il garde aussi un petit cache (ce qui a été enregistré en dernier auprès de Discord, pour que relancer ne coûte rien) et, plus tard, le bot compilé.
 
-Il est écrit quand vous installez le projet (`postinstall` lance `chapterjs sync`) et à chaque démarrage de `chapterjs dev`. Si votre éditeur dit un jour que `event` n’existe pas, ou qu’il ne sait pas ce que reçoit votre fonction, lancez `chapterjs sync` (`pnpm chapterjs sync`, ou l’équivalent) et rechargez l’éditeur. Vous pouvez aussi supprimer le dossier : il est reconstruit.
+Il est écrit quand vous installez le projet (`postinstall` lance `chapterjs sync`) et à chaque démarrage de `chapterjs dev`. Si votre éditeur dit un jour qu’il ne connaît pas les fichiers de `public/` ou vos textes, lancez `chapterjs sync` (`pnpm chapterjs sync`, ou l’équivalent) et rechargez l’éditeur. Vous pouvez aussi supprimer le dossier : il est reconstruit.
 
 ## Essayer l’éditeur
 
@@ -107,6 +104,7 @@ Lancez le bot (`pnpm dev`) et laissez-le tourner. Changez la réponse dans `src/
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'ping',
   description: 'Répond Pong !',
   async run({ interaction }) {
     await interaction.reply('Pong ! 🏓');
@@ -144,35 +142,36 @@ Le bot est toujours en ligne, et `/ping` répond toujours avec la dernière vers
 
 `chapterjs` est la seule dépendance de votre bot. `typescript` et `@types/node` sont des dépendances de développement : elles vérifient votre code dans l’éditeur et avant une compilation, et ne sont pas nécessaires pour faire tourner le bot.
 
-## Deux règles de nommage pour votre propre rangement
+## Vos fichiers, votre ordre
 
-À mesure qu’un projet grandit, `src/commands/` se remplit. Deux sortes de noms ne font jamais partie d’une commande, d’un événement ou d’un composant, pour que vous puissiez ranger les fichiers à votre façon :
+À mesure qu’un projet grandit, `src/commands/` se remplit. Comme le framework lit ce que les fichiers exportent et non l’endroit où ils sont, rangez-les à votre façon :
 
 <Tree>
-  <Tree.Folder name="src/commands" defaultOpen>
-    <Tree.File name="_shared.ts" />
-    <Tree.Folder name="(fun)" defaultOpen>
+  <Tree.Folder name="src" defaultOpen>
+    <Tree.Folder name="fun" defaultOpen>
       <Tree.File name="dice.ts" />
       <Tree.File name="ping.ts" />
     </Tree.Folder>
-    <Tree.Folder name="(moderation)" defaultOpen>
+    <Tree.Folder name="moderation" defaultOpen>
+      <Tree.File name="shared.ts" />
       <Tree.File name="warn.ts" />
     </Tree.Folder>
   </Tree.Folder>
 </Tree>
 
-- **Un dossier entre parenthèses ne fait que regrouper des fichiers.** `(fun)/dice.ts` est toujours `/dice`. Discord ne voit jamais le groupe.
-- **Un nom qui commence par `_` est privé.** `_shared.ts` n’est jamais lu comme une commande ; servez-vous-en pour le code que plusieurs fichiers partagent, et importez-le comme n’importe quel fichier.
+- **Un dossier n’est qu’un dossier.** `src/fun/dice.ts` déclare `/dice` aussi bien que `src/commands/dice.ts` le ferait. Discord ne voit jamais vos dossiers.
+- **Un fichier qui ne déclare rien est à vous.** `shared.ts` contient le code que plusieurs fichiers partagent ; importez-le comme n’importe quel fichier.
+- **Un fichier peut déclarer plusieurs choses.** `warn.ts` peut contenir la commande `/warn`, le bouton qu’elle affiche et l’événement qui l’enregistre, chacun exporté sous son propre nom.
 
-Sans les parenthèses, un dossier serait une sous-commande : `fun/dice.ts` serait `/fun dice`. C’est une vraie fonctionnalité, utilisée plus tard pour des commandes comme `/mod ban`.
+Une sous-commande est une affaire de `name`, pas de dossier : `name: 'mod warn'` est `/mod warn`, où que soit le fichier. C’est utilisé plus tard pour des commandes comme `/mod ban`.
 
 ## Récapitulatif
 
-- L’endroit où est un fichier dit ce qu’il est : `src/commands/ping.ts` est `/ping`, et rien ne l’enregistre.
-- Chaque fichier importe une fonction de `chapterjs`, qui sait à quoi s’attendre dans son dossier.
+- Ce qu’un fichier exporte dit ce qu’il est : `command({ name: 'ping' })` est `/ping`, et rien ne l’enregistre.
+- Chaque fichier importe ses fonctions de `chapterjs`, et chacune sait à quoi s’attendre d’après ce que vous lui donnez.
 - `.chapterjs/` contient les types générés ; votre éditeur les lit ; `chapterjs sync` les réécrit.
 - Enregistrez un fichier et le bot l’utilise ; un fichier cassé garde sa dernière version qui fonctionnait.
-- Les dossiers `(groupe)` et les fichiers `_privé` vous servent à ranger.
+- Les dossiers et les noms de fichiers vous servent à ranger : le framework lit ce que les fichiers exportent.
 
 <CardGroup cols={2}>
   <Card title="Votre première commande" icon="terminal" href="/fr/tutorial/first-command">
