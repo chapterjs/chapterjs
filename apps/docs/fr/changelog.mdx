@@ -25,6 +25,20 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
+<Update label="0.2.0" description="Vos fichiers, votre ordre : le framework lit ce qu’ils exportent">
+
+Plus rien n’est lié à un dossier. Chaque fichier de `src/` est chargé, et ce qu’il exporte de fabriqué avec `command()`, `event()`, `button()`, `select()`, `modal()`, `embed()`, `task()`, `presence()` ou `language()` est ce que le bot fait tourner : un fichier peut déclarer plusieurs choses, et se trouver où vous voulez. Voir [Structure du projet](/fr/setup/project-structure).
+
+- **[Les commandes](/fr/commands)** prennent un `name` : `command({ name: 'ping', ... })`, `'mod ban'` pour une sous-commande. Deux commandes du même nom sont signalées, où qu’elles soient.
+- **[Les événements](/fr/events)** prennent un `name` aussi, qui type ce que reçoit `run` : `event({ name: 'memberJoin', run({ member }) { ... } })`. Les options s’écrivent à côté (`bots: true`, `where: 'dm'`), et une faute dans l’un ou l’autre est soulignée.
+- **[Les composants](/fr/components)** et **[les tâches](/fr/tasks)** sont nommés par leur export : `export const again = button(...)` est le bouton `again`. Déplacer un fichier ne change rien ; renommer l’export, si, comme renommer le fichier le faisait.
+- **[Les langues](/fr/translated-messages)** disent leur `locale` : `language({ locale: 'fr', ... })`, et un deuxième `default: true` est souligné dans les deux fichiers. Une langue peut être déclarée à plusieurs endroits : les textes d’une fonctionnalité vivent à côté d’elle, et `t` les propose tous. Un texte que la langue par défaut n’a pas est pris dans la langue qui l’a, donc un module écrit dans d’autres langues que les vôtres fonctionne quand même.
+- `.chapterjs/` est un seul projet TypeScript pour tout `src/`, et ne contient que ce que le projet ajoute : les fichiers de `public/`, les langues et les commandes. Les dossiers entre parenthèses et les fichiers `_` ne servent plus : un dossier n’est qu’un dossier, et un fichier qui ne déclare rien est à vous.
+
+Les types `EventFile`, `CommandFile`, `ButtonFile`, `SelectFile`, `ModalFile`, `EmbedFile`, `TaskFile`, `PresenceFile` et `LanguageFile` s’appellent maintenant `EventDeclaration`, `CommandDeclaration`, `ButtonDeclaration`, `SelectDeclaration`, `ModalDeclaration`, `EmbedDeclaration`, `TaskDeclaration`, `PresenceDeclaration` et `LanguageDeclaration`.
+
+</Update>
+
 <Update label="0.1.4" description="La première version du framework">
 
 Un dossier de fichiers devient un bot Discord.

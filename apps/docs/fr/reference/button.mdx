@@ -3,9 +3,9 @@ title: 'button()'
 description: 'Tout ce que déclare un fichier de bouton, ce que reçoit sa fonction run, et les types partagés par chaque composant interactif'
 ---
 
-`button()` est ce qu’un fichier de `src/components/buttons/` exporte par défaut. Elle prend un objet, `ButtonConfig`, et type `run` d’après lui.
+`button()` déclare un bouton, depuis n’importe quel fichier de `src/` ; le nom de son export est son identifiant. Elle prend un objet, `ButtonConfig`, et type `run` d’après lui.
 
-```ts src/components/buttons/confirm.ts
+```ts src/components/confirm.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -24,19 +24,19 @@ export default button({
 ## button()
 
 ```ts
-button<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ButtonConfig<Data, Where>): ButtonFile<Data>
+button<Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: ButtonConfig<Data, Where>): ButtonDeclaration<Data>
 ```
 
-Déclare un bouton. Exportez le résultat comme export par défaut d’un fichier de `src/components/buttons/` : le chemin du fichier est ce qui distingue le bouton, donc vous n’écrivez jamais d’identifiant.
+Déclare un bouton. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est ce qui distingue le bouton, donc vous n’écrivez jamais d’identifiant.
 
 `Data` et `Where` sont déduits de ce que vous passez : vous ne les écrivez jamais.
 
-### ButtonFile
+### ButtonDeclaration
 
-Ce que renvoie `button()` : l’export par défaut d’un fichier de bouton. Importez-le là où vous envoyez un message, et appelez-le avec les données que transporte le bouton (`ban({ userId })`) ; un bouton sans données s’utilise tel quel (`confirm`), ou s’appelle avec une apparence (`confirm({ disabled: true })`).
+Ce que renvoie `button()` : une déclaration que le framework trouve dans les exports d’un fichier. Importez-le là où vous envoyez un message, et appelez-le avec les données que transporte le bouton (`ban({ userId })`) ; un bouton sans données s’utilise tel quel (`confirm`), ou s’appelle avec une apparence (`confirm({ disabled: true })`).
 
 ```ts
-type ButtonFile<Data extends DataShape = {}> = { readonly config: unknown } &
+type ButtonDeclaration<Data extends DataShape = {}> = { readonly config: unknown } &
   ({} extends Data
     ? ((look?: ButtonLook) => ButtonComponent) & ButtonComponent
     : {} extends DataInputOf<Data>
@@ -131,7 +131,7 @@ Ce que chaque composant interactif donne à son `run`, en plus de l’endroit.
   Le message sur lequel est le composant.
 </ResponseField>
 
-Chaque composant reçoit aussi `t` quand le projet a une langue dans `src/messages/` : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
+Chaque composant reçoit aussi `t` quand le projet a une langue : voir [`TranslationContext`](/fr/reference/messages#translationcontext).
 
 <ResponseField name="data" type="DataValuesOf<Data>">
   Ce que transporte le composant, tel que déclaré dans `data`.

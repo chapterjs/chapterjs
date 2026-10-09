@@ -3,63 +3,48 @@ title: 'Events'
 description: 'React to what happens on Discord: a new member, a deleted channel, a message'
 ---
 
-An event is something that happens on Discord. To react to one, create a folder named after it in `src/events/` and put a file in it:
+An event is something that happens on Discord. To react to one, declare it with `event()` in any file of `src/`, and export it:
 
-```ts src/events/memberJoin/welcome.ts
+```ts src/events/welcome.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, guild }) => {
-  await member.send(`Welcome to ${guild.name}, ${member.displayName}!`);
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild }) {
+    await member.send(`Welcome to ${guild.name}, ${member.displayName}!`);
+  },
 });
 ```
 
-That is all. `chapterjs dev` finds the file and runs your function every time someone joins your test server. Nothing to register, no list to keep up to date, and no type to write: your editor already knows that `member` is a [`GuildMember`](/reference/member) and `guild` a [`Guild`](/reference/guild).
+That is all. `chapterjs dev` finds the declaration and runs your function every time someone joins your test server. Nothing to register, no list to keep up to date, and no type to write: your editor already knows that `member` is a [`GuildMember`](/reference/member) and `guild` a [`Guild`](/reference/guild).
 
-## The folder is the event
+## The name is the event
 
-<Tree>
-  <Tree.Folder name="src/events" defaultOpen>
-    <Tree.Folder name="memberJoin" defaultOpen>
-      <Tree.File name="welcome.ts" highlight />
-      <Tree.File name="log.ts" />
-    </Tree.Folder>
-    <Tree.Folder name="messageCreate" defaultOpen>
-      <Tree.File name="ping.ts" />
-    </Tree.Folder>
-    <Tree.Folder name="ready" defaultOpen>
-      <Tree.File name="online.ts" />
-    </Tree.Folder>
-  </Tree.Folder>
-</Tree>
+- **`name` is the event.** It is one of the [events](/reference/events), and your editor offers them as you type; another word is underlined, and reported with the closest event name when the file loads.
+- **A declaration is one reaction.** Where the file is and what it is called are yours to choose: `src/events/welcome.ts`, as the template does, or `src/welcome.ts`, or next to the command it goes with. Declare as many as you want, in one file or several: they all run.
+- **The import is the same everywhere.** `name` is what tells `event` what your function receives: a member for `'memberJoin'`, a role for `'roleDelete'`. The same line, `import { event } from 'chapterjs'`, works in every file.
 
-- **The folder is the event.** Its name is one of the [events](/reference/events); a folder with another name is reported, with the closest event name when there is one.
-- **A file is one reaction.** Its name is yours to choose, and a folder holds as many files as you want: they all run.
-- **The import is the same everywhere.** `event` knows which folder the file is in, so in `src/events/memberJoin/` it gives your function a member, and in `src/events/roleDelete/` a role. The same line, `import { event } from 'chapterjs'`, works in every folder.
+## Several reactions to one event
 
-Private files (`_format.ts`) and folders in parentheses (`(logs)/memberJoin/`) follow the [two naming rules](/setup/project-structure#two-naming-rules) of every conventional folder.
+When an event happens, every declaration of that event runs, **at the same time and in no particular order**. One never waits for another, and one that fails never stops the others.
 
-<Info>
-  `event` is typed for each folder by the `.chapterjs/` folder of your project, written when you install it and every time `chapterjs dev` starts. If your editor says that `event` does not exist, run `chapterjs sync`.
-</Info>
+Use one declaration per thing your bot does: `welcome`, `log`, `roles`... When two steps must happen one after the other, keep them in the same function:
 
-## Several files for one event
-
-When an event happens, every file of its folder runs, **at the same time and in no particular order**. A file never waits for another, and a file that fails never stops the others.
-
-Use one file per thing your bot does: `welcome.ts`, `log.ts`, `roles.ts`... When two steps must happen one after the other, keep them in the same file:
-
-```ts src/events/memberJoin/roles.ts
+```ts src/events/roles.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, guild }) => {
-  const role = [...guild.roles.values()].find(role => role.name === 'Newcomer');
-  if (!role) return;
-  await member.addRole(role, 'Just joined');
-  await member.send(`You now have the ${role.name} role.`);
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild }) {
+    const role = [...guild.roles.values()].find(role => role.name === 'Newcomer');
+    if (!role) return;
+    await member.addRole(role, 'Just joined');
+    await member.send(`You now have the ${role.name} role.`);
+  },
 });
 ```
 
-Every file of a folder receives the same thing, and can read it but not change it: assigning to it (`context.role = ...`) throws, and the error is reported like any other.
+Every declaration of an event receives the same thing, and can read it but not change it: assigning to it (`context.role = ...`) throws, and the error is reported like any other.
 
 ## What is never missing
 
@@ -82,14 +67,17 @@ The events about something that no longer exists give its id, and the thing itse
 - `guildLeave`: `guild` is the server as it was.
 - `memberLeave`: `member` is `null` when the bot never saw that member. `user` is always there.
 
-```ts src/events/memberLeave/goodbye.ts
+```ts src/events/goodbye.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ user, guild, member }) => {
-  const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
-  if (!channel || !channel.isTextBased()) return;
-  const name = member?.displayName ?? user.displayName;
-  await channel.send(`${name} left ${guild.name}.`);
+export default event({
+  name: 'memberLeave',
+  async run({ user, guild, member }) {
+    const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
+    if (!channel || !channel.isTextBased()) return;
+    const name = member?.displayName ?? user.displayName;
+    await channel.send(`${name} left ${guild.name}.`);
+  },
 });
 ```
 
@@ -97,34 +85,38 @@ export default event(async ({ user, guild, member }) => {
 
 `ready` runs **once per start**, when the bot is connected and knows every server it is in. It is not an event of Discord: nothing can start it again, and saving a file in `chapterjs dev` never runs it a second time.
 
-```ts src/events/ready/online.ts
+```ts src/events/online.ts
 import { event } from 'chapterjs';
 
-export default event(({ user, guilds }) => {
-  console.log(`${user.username} is online in ${guilds.size} server(s)`);
+export default event({
+  name: 'ready',
+  run({ user, guilds }) {
+    console.log(`${user.username} is online in ${guilds.size} server(s)`);
+  },
 });
 ```
 
 ## Options
 
-Some events take options, as the second argument of `event()`. Each file decides for itself: two files of the same folder can pass different options, and what your function receives follows them.
+Some events take options, written next to `name`. Each declaration decides for itself: two reactions to the same event can have different options, and what your function receives follows them.
 
-```ts src/events/messageCreate/relay.ts
+```ts src/events/relay.ts
 import { event } from 'chapterjs';
 
-export default event(
-  ({ message }) => {
-    console.log(`${message.author.username}: ${message.content}`);
-  },
-  { bots: true }
-);
+export default event({
+  name: 'messageCreate',
+  bots: true,
+  run({ message }) {
+      console.log(`${message.author.username}: ${message.content}`);
+    },
+});
 ```
 
-An option is `true` or `false`, or one word of a list. Your editor only offers the options of the event of the folder, and an option that does not exist, or a wrong value, is reported when the file loads, before the bot runs it. The events that have options are the [events about messages](/events/messages) and the [reactions, polls and typing](/events/reactions).
+An option is `true` or `false`, or one word of a list. Your editor only offers the options of the event named, and an option that does not exist, or a wrong value, is underlined, then reported when the file loads, before the bot runs it. The events that have options are the [events about messages](/events/messages) and the [reactions, polls and typing](/events/reactions).
 
 ## Intents: nothing to list
 
-Discord only sends a bot the events it asked for, through *intents*. You never write them: ChapterJS works them out from your folders, and tells you when it connects:
+Discord only sends a bot the events it asked for, through *intents*. You never write them: ChapterJS works them out from the events your files declare, and tells you when it connects:
 
 ```text
 ℹ Intents computed from your files: GUILDS, GUILD_MEMBERS
@@ -138,7 +130,7 @@ When you save a file that needs more, `chapterjs dev` reconnects by itself:
 
 Three of the intents your files can need are **privileged**: Discord asks you to enable them yourself, in the [Developer Portal](/setup/discord-application).
 
-| Folders | Option to enable |
+| Events | Option to enable |
 | --- | --- |
 | `memberJoin`, `memberUpdate`, `memberLeave`, `threadMemberJoin`, `threadMemberLeave` | **Server Members Intent** |
 | `messageCreate`, `messageUpdate` | **Message Content Intent**: without it, the messages of other people come without their text |
@@ -148,7 +140,7 @@ When one is missing, `chapterjs dev` names the files that need it and gives you 
 
 ```text
 ⚠ Your files need an option that is not enabled for your bot:
-  - Server Members Intent, needed by src/events/memberJoin/welcome.ts
+  - Server Members Intent, needed by src/events/welcome.ts
   Enable it under "Privileged Gateway Intents", then save:
   https://discord.com/developers/applications/123456789012345678/bot
   Waiting for you to enable it...
@@ -164,7 +156,7 @@ When one is missing, `chapterjs dev` names the files that need it and gives you 
 An error in one of your functions never stops the bot, nor the other files. It is shown in your terminal with the file and the line, whether it is a bug of yours or Discord refusing what you asked:
 
 ```text
-✗ src/events/memberJoin/welcome.ts:4 Discord refused POST /channels/{channel.id}/messages: Cannot send messages to this user (50007)
+✗ src/events/welcome.ts:4 Discord refused POST /channels/{channel.id}/messages: Cannot send messages to this user (50007)
 ```
 
 To handle a failure yourself, use `try` / `catch`: see [Errors](/reference/errors).

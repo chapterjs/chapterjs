@@ -7,14 +7,17 @@ Three events are about messages: `messageCreate`, `messageUpdate` and `messageDe
 
 ## Reacting to a word
 
-Create `src/events/messageCreate/thanks.ts`:
+Create `src/events/thanks.ts`:
 
-```ts src/events/messageCreate/thanks.ts
+```ts src/events/thanks.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  if (!/\bthanks?\b/i.test(message.content)) return;
-  await message.react('💜');
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (!/\bthanks?\b/i.test(message.content)) return;
+    await message.react('💜');
+  },
 });
 ```
 
@@ -22,7 +25,7 @@ Save it. Like the members intent, this needs a switch:
 
 ```text
 ⚠ Your files need an option that is not enabled for your bot:
-  - Message Content Intent, needed by src/events/messageCreate/thanks.ts
+  - Message Content Intent, needed by src/events/thanks.ts
   Enable it under "Privileged Gateway Intents", then save:
   https://discord.com/developers/applications/123456789012345678/bot
   Waiting for you to enable it...
@@ -44,7 +47,7 @@ Look at what the file does **not** do. It does not check `if (message.author.bot
 - **Messages of bots and webhooks are ignored**, yours included. A bot that reacts to messages and answers with a message will see its own answer, react to it, and so on forever; a server with two such bots has them talking to each other all night. So by default your file only runs for messages written by people. When you really want the messages of bots, say it: `{ bots: true }` as the second argument of `event()`.
 - **Only the messages of servers.** Private messages are a different place, with no server, no member and no channel of a server; a file that handles both has to tell them apart. So by default your file listens in servers, where `message.guild`, `message.channel` and `message.member` are always there.
 
-The safe behavior is the default, and the opt-out is explicit. Here is how the second argument of `event()` changes it, and what it changes in what your function receives:
+The safe behavior is the default, and the opt-out is explicit. Here is how the options written next to `name` change it, and what they change in what your function receives:
 
 | Second argument     | Runs for                              | `message.member`                          | `message.guild`   |
 | ------------------- | ------------------------------------- | ----------------------------------------- | ----------------- |
@@ -65,20 +68,23 @@ The types follow the options: in a `'dm'` file, the editor does not even offer `
 
 `message.reply()` answers in the channel, with the original shown above the answer. Here is a file that answers a question about the rules:
 
-```ts src/events/messageCreate/rules.ts
+```ts src/events/rules.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  if (!message.content.toLowerCase().includes('where are the rules')) return;
-  const rules = message.guild.rulesChannelId
-    ? message.guild.channels.get(message.guild.rulesChannelId)
-    : undefined;
-  await message.reply({
-    content: rules
-      ? `They are in ${rules}.`
-      : 'This server has no rules channel yet.',
-    allowedMentions: { repliedUser: false },
-  });
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (!message.content.toLowerCase().includes('where are the rules')) return;
+    const rules = message.guild.rulesChannelId
+      ? message.guild.channels.get(message.guild.rulesChannelId)
+      : undefined;
+    await message.reply({
+      content: rules
+        ? `They are in ${rules}.`
+        : 'This server has no rules channel yet.',
+      allowedMentions: { repliedUser: false },
+    });
+  },
 });
 ```
 
@@ -88,13 +94,16 @@ export default event(async ({ message }) => {
 
 `messageUpdate` gives the message after the edit. `messageDelete` is different: the message no longer exists, so you get its id, the channel and the server it was in, and the message itself only when the bot remembered it, which it does not by default (messages are what a bot receives the most, and most bots never read an old one). Always use `messageId`:
 
-```ts src/events/messageDelete/audit.ts
+```ts src/events/audit.ts
 import { event } from 'chapterjs';
 
-export default event(({ messageId, channel, guild }) => {
-  console.log(
-    `Message ${messageId} deleted in #${channel.name} of ${guild.name}`
-  );
+export default event({
+  name: 'messageDelete',
+  run({ messageId, channel, guild }) {
+    console.log(
+      `Message ${messageId} deleted in #${channel.name} of ${guild.name}`
+    );
+  },
 });
 ```
 
@@ -109,7 +118,7 @@ export default event(({ messageId, channel, guild }) => {
 
 ## Recap
 
-- `src/events/messageCreate/` runs for messages written by people, in servers, by default: no `author.bot` check to write.
+- A `messageCreate` event runs for messages written by people, in servers, by default: no `author.bot` check to write.
 - The Message Content Intent is needed to read `message.content` for `messageCreate` and `messageUpdate`.
 - `{ bots: true }` and `{ where: 'dm' | 'both' }` widen what a file hears, and the types follow.
 - `messageDelete` gives the id, the channel and the server; the message itself is `null`.

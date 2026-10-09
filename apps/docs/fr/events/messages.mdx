@@ -3,24 +3,30 @@ title: 'Messages'
 description: 'Réagir aux messages envoyés, modifiés ou supprimés, sur les serveurs ou en privé, par des personnes ou des bots'
 ---
 
-Trois événements concernent les messages : `messageCreate`, `messageUpdate` et `messageDelete`. Un fichier de `src/events/messageCreate/` tourne chaque fois que quelqu’un écrit sur un serveur où se trouve votre bot :
+Trois événements concernent les messages : `messageCreate`, `messageUpdate` et `messageDelete`. Un événement `messageCreate` tourne chaque fois que quelqu’un écrit sur un serveur où se trouve votre bot :
 
-```ts src/events/messageCreate/ping.ts
+```ts src/events/ping.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  if (message.content === '!ping') await message.reply('Pong!');
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content === '!ping') await message.reply('Pong!');
+  },
 });
 ```
 
 C’est tout. Par défaut, le fichier ne tourne que pour les messages écrits **par des personnes, sur les serveurs** : pas pour les bots (le vôtre compris), pas pour les webhooks, et pas pour les messages privés. Donc `message.guild`, `message.channel` et `message.member` sont toujours là, et vous n’écrivez jamais `if (message.author.bot) return;`.
 
-```ts src/events/messageCreate/levels.ts
+```ts src/events/levels.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  // Pas besoin de "?." : un message de serveur a un serveur, un salon et un membre.
-  console.log(`${message.member.displayName} a écrit dans #${message.channel.name} de ${message.guild.name}`);
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    // Pas besoin de "?." : un message de serveur a un serveur, un salon et un membre.
+    console.log(`${message.member.displayName} a écrit dans #${message.channel.name} de ${message.guild.name}`);
+  },
 });
 ```
 
@@ -34,50 +40,55 @@ Lire ce qu’écrivent les gens est un **intent privilégié** : `messageCreate`
 
 ## Où un fichier écoute
 
-`where` dit où un fichier écoute. Passez-le en second argument de `event()`, et ce que reçoit votre fonction suit :
+`where` dit où une déclaration écoute. Écrivez-le à côté de `name`, et ce que reçoit votre fonction suit :
 
 <Tabs>
   <Tab title="'guild' (par défaut)">
     Le fichier tourne pour les messages des serveurs. Le message est un [`MemberMessage`](/fr/reference/message#membermessage) : `guild`, `channel` et `member` sont toujours là.
 
-    ```ts src/events/messageCreate/hello.ts
+    ```ts src/events/hello.ts
     import { event } from 'chapterjs';
 
-    export default event(async ({ message }) => {
-      await message.channel.send(`Bonjour ${message.member.displayName} !`);
+        export default event({
+      name: 'messageCreate',
+      async run({ message }) {
+        await message.channel.send(`Bonjour ${message.member.displayName} !`);
+      },
     });
     ```
   </Tab>
   <Tab title="'dm'">
     Le fichier tourne pour les messages privés que les gens envoient à votre bot. Le message est un [`DmMessage`](/fr/reference/message#dmmessage) : rien qui concerne un serveur n’existe dessus, donc votre éditeur ne propose même pas `message.guild`.
 
-    ```ts src/events/messageCreate/support.ts
+    ```ts src/events/support.ts
     import { event } from 'chapterjs';
 
-    export default event(
-      async ({ message }) => {
-        await message.reply(`Merci ${message.author.displayName} ! Un modérateur va vous répondre bientôt.`);
-      },
-      { where: 'dm' }
-    );
+        export default event({
+      name: 'messageCreate',
+      where: 'dm',
+      async run({ message }) {
+          await message.reply(`Merci ${message.author.displayName} ! Un modérateur va vous répondre bientôt.`);
+        },
+    });
     ```
   </Tab>
   <Tab title="'both'">
     Le fichier tourne pour les deux. Le message est un `MemberMessage` ou un `PrivateMessage` (`MemberMessage | PrivateMessage`), distingués par `message.guild` : un seul `if` restreint tout, et à l’intérieur le salon et le membre sont ceux d’un serveur.
 
-    ```ts src/events/messageCreate/everywhere.ts
+    ```ts src/events/everywhere.ts
     import { event } from 'chapterjs';
 
-    export default event(
-      async ({ message }) => {
-        if (message.guild) {
-          await message.channel.send(`Bonjour ${message.member.displayName} !`);
-        } else {
-          await message.reply('Bonjour ! Nous sommes en privé ici.');
-        }
-      },
-      { where: 'both' }
-    );
+        export default event({
+      name: 'messageCreate',
+      where: 'both',
+      async run({ message }) {
+          if (message.guild) {
+            await message.channel.send(`Bonjour ${message.member.displayName} !`);
+          } else {
+            await message.reply('Bonjour ! Nous sommes en privé ici.');
+          }
+        },
+    });
     ```
   </Tab>
 </Tabs>
@@ -88,7 +99,7 @@ Chaque fichier décide pour lui-même : dans le même dossier, un fichier peut �
   `chapterjs dev` ne fait tourner votre bot que sur votre serveur de test, donc un fichier avec `where: 'dm'` ne peut pas y être essayé. Il vous le dit une fois :
 
   ```text
-  ℹ src/events/messageCreate/support.ts this messageCreate file only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+  ℹ src/events/support.ts this messageCreate file only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
   ```
 
   Les messages privés atteignent votre bot avec [`chapterjs start`](/fr/run/start).
@@ -98,16 +109,17 @@ Chaque fichier décide pour lui-même : dans le même dossier, un fichier peut �
 
 Par défaut, `messageCreate` et `messageUpdate` ignorent les messages écrits par des bots (celui-ci compris) et par des webhooks : un bot qui répond aux bots peut finir par se répondre à lui-même, ou à un autre bot, indéfiniment. Pour les recevoir aussi, passez `{ bots: true }` :
 
-```ts src/events/messageCreate/relay.ts
+```ts src/events/relay.ts
 import { event } from 'chapterjs';
 
-export default event(
-  async ({ message }) => {
-    // Tourne aussi pour les bots et les webhooks : assurez-vous qu’il ne peut pas se répondre.
-    if (message.webhookId) console.log(`Un webhook a publié : ${message.content}`);
-  },
-  { bots: true }
-);
+export default event({
+  name: 'messageCreate',
+  bots: true,
+  async run({ message }) {
+      // Tourne aussi pour les bots et les webhooks : assurez-vous qu’il ne peut pas se répondre.
+      if (message.webhookId) console.log(`Un webhook a publié : ${message.content}`);
+    },
+});
 ```
 
 Avec `bots: true`, le message d’un serveur est un [`GuildMessage`](/fr/reference/message#guildmessage) : `guild` et `channel` sont toujours là, mais un webhook n’est pas membre du serveur, donc `message.member` peut être `null`.
@@ -118,11 +130,14 @@ Les deux options vont ensemble : `{ bots: true, where: 'both' }` reçoit tout, s
 
 Un message supprimé n’existe plus, donc `messageDelete` vous donne son identifiant, le salon et le serveur où il était, et le message lui-même **tel qu’il était** quand le bot s’en souvenait.
 
-```ts src/events/messageDelete/log.ts
+```ts src/events/log.ts
 import { event } from 'chapterjs';
 
-export default event(({ messageId, channel, guild }) => {
-  console.log(`Le message ${messageId} a été supprimé dans #${channel.name} de ${guild.name}`);
+export default event({
+  name: 'messageDelete',
+  run({ messageId, channel, guild }) {
+    console.log(`Le message ${messageId} a été supprimé dans #${channel.name} de ${guild.name}`);
+  },
 });
 ```
 

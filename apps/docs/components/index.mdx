@@ -3,9 +3,9 @@ title: 'Buttons'
 description: 'Add buttons to your messages, run code when they are clicked, and change the message they are on'
 ---
 
-A button is a file of `src/components/buttons/`. It says what the button looks like and what to do when someone clicks it; you never write an id.
+A button is declared with `button()`, in any file of `src/`, and exported. It says what the button looks like and what to do when someone clicks it; you never write an id.
 
-```ts src/components/buttons/again.ts
+```ts src/components/again.ts
 import { button } from 'chapterjs';
 
 const again = button({
@@ -27,9 +27,10 @@ Import it where you send a message, and give it its data:
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
-import again from '../components/buttons/again';
+import again from '../components/again';
 
 export default command({
+  name: 'ping',
   description: 'Replies with Pong!',
   async run({ interaction }) {
     await interaction.reply({
@@ -40,10 +41,10 @@ export default command({
 });
 ```
 
-That is all: the path of the file (`buttons/again`) is what Discord sends back when the button is clicked, with the data the button carries. ChapterJS finds the file, checks that the data still matches, and runs your function with `data.count` as a number. Buttons that follow each other are put in rows for you, 5 per row.
+That is all: the name of the export (`again`; for a default export, the name of the file) is what Discord sends back when the button is clicked, with the data the button carries. ChapterJS finds the button, checks that the data still matches, and runs your function with `data.count` as a number. Buttons that follow each other are put in rows for you, 5 per row.
 
 <Note>
-  Everything a button file declares, and the types behind it, are in the
+  Everything a button declares, and the types behind it, are in the
   [reference](/reference/button). The `interaction` of a button is a
   [ComponentInteraction](/reference/interaction#componentinteraction).
 </Note>
@@ -54,7 +55,7 @@ That is all: the path of the file (`buttons/again`) is what Discord sends back w
 
 A value can have a default, which makes it optional where the button is put in a message: `data: { page: { type: 'number', default: 1 } }`. Then `next()`, `next({})` and `next` alone carry `page: 1`, `next({ page: 7 })` carries 7, and `run` always receives a number. A wrong default (`default: 'one'` on a `'number'`) is underlined, and refused when the file loads.
 
-```ts src/components/buttons/ban.ts
+```ts src/components/ban.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -70,9 +71,10 @@ export default button({
 
 ```ts src/commands/mod/ban.ts
 import { command } from 'chapterjs';
-import ban from '../../components/buttons/ban';
+import ban from '../../components/ban';
 
 export default command({
+  name: 'mod ban',
   description: 'Bans a member, after a confirmation',
   options: {
     who: { type: 'user', description: 'Who to ban', required: true },
@@ -89,16 +91,16 @@ export default command({
 Discord gives 100 characters to the id of a button and its data together. Carrying too much is an error where the button is made, with how much room there is:
 
 ```text
-The data of buttons/ban is 95 characters long once encoded, and Discord leaves 88 for it (its id is buttons/ban, 11 characters, out of 100). Carry less: an id instead of a name, or a shorter file name.
+The data of ban is 97 characters long once encoded, and Discord leaves 96 for it (its id is ban, 3 characters, out of 100). Carry less: an id instead of a name, or a shorter export name.
 ```
 
 A button without `data` is used as is, without calling it: `components: [confirm]`.
 
 ## How it looks
 
-`label`, `emoji`, `style` (`'primary'`, `'secondary'`, `'success'` or `'danger'`) and `disabled` are the look of the button. The file gives the default; where you put the button in a message, a second argument changes it for that message only:
+`label`, `emoji`, `style` (`'primary'`, `'secondary'`, `'success'` or `'danger'`) and `disabled` are the look of the button. The declaration gives the default; where you put the button in a message, a second argument changes it for that message only:
 
-```ts src/components/buttons/next.ts
+```ts src/components/next.ts
 import { button } from 'chapterjs';
 
 const next = button({
@@ -121,12 +123,13 @@ const next = button({
 export default next;
 ```
 
-A button that opens a link has no file: nothing runs in your bot when it is clicked. Write it where the message is, with `linkButton()`:
+A button that opens a link is not declared: nothing runs in your bot when it is clicked. Write it where the message is, with `linkButton()`:
 
 ```ts src/commands/docs.ts
 import { command, linkButton } from 'chapterjs';
 
 export default command({
+  name: 'docs',
   description: 'Links to the documentation',
   async run({ interaction }) {
     await interaction.reply({
@@ -154,14 +157,14 @@ The `interaction` of a button has everything the interaction of a command has (`
 Discord wants an answer within 3 seconds. After 2 seconds without one, ChapterJS answers that nothing changes for now, the person sees nothing, and your `update()` or `reply()` completes it later. A button that finishes without answering is a warning in your terminal, since the person reads "This interaction failed":
 
 ```text
-⚠ src/components/buttons/silent.ts buttons/silent finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run, or interaction.deferUpdate() to change nothing.
+⚠ src/components/silent.ts silent finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run, or interaction.deferUpdate() to change nothing.
 ```
 
 ## Who may click
 
 By default, everyone who sees the message can click. `who: 'author'` keeps a button for the person who used the command the message answers; anyone else reads "Only the person who used the command can use this button.", privately.
 
-```ts src/components/buttons/cancel.ts
+```ts src/components/cancel.ts
 import { button } from 'chapterjs';
 
 export default button({
@@ -176,9 +179,9 @@ export default button({
 
 Like a command, a button has a `where` (`'guild'` by default, `'dm'` or `'both'`), which decides what `run` receives about the place: see [Servers and private messages](/commands#servers-and-private-messages), it works the same.
 
-## When the file changes
+## When the button changes
 
-A button stays in the messages it was sent in. When its file is renamed or removed, a click on an old message answers "This button is not available any more."; when its `data` changed shape, "This button is out of date.". Your bot never crashes for a button it no longer knows.
+A button stays in the messages it was sent in. When its export is renamed or removed, a click on an old message answers "This button is not available any more."; when its `data` changed shape, "This button is out of date.". Your bot never crashes for a button it no longer knows. Moving the file changes nothing: the name of the export is what counts.
 
 <CardGroup cols={2}>
   <Card title="Select menus" icon="list" href="/components/selects">

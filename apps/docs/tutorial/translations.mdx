@@ -1,18 +1,19 @@
 ---
 title: 'Translated messages'
-description: 'Answer each person in their language with one file per language, understand which language a message speaks, and translate what the bot says by itself'
+description: 'Answer each person in their language with one declaration per language, understand which language a message speaks, and translate what the bot says by itself'
 ---
 
 The template has two files in `src/messages/`, `en-US.ts` and `fr.ts`, and `/ping` answers with `t('pong')` instead of a text. This page explains that mechanism, which is how a bot speaks several languages without an `if` on the language in every file.
 
-## One file per language
+## One declaration per language
 
-A language file is named after the language, and holds the texts of the bot by key:
+A language is declared with `language()`: `locale` says which one, `texts` holds the texts of the bot by key. The template keeps one file per language in `src/messages/`:
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'en-US',
   default: true,
   texts: {
     pong: 'Pong!',
@@ -27,6 +28,7 @@ export default language({
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'fr',
   texts: {
     pong: 'Pong !',
     welcome: 'Bienvenue {name}, tu es le membre n°{count} !',
@@ -36,7 +38,7 @@ export default language({
 });
 ```
 
-- **The name of the file is the language**, as Discord writes it: `en-US`, `en-GB`, `fr`, `de`, `es-ES`, `pt-BR`, `ja`... A name Discord does not know is refused before the file runs, with the list.
+- **`locale` is the language**, as Discord writes it: `'en-US'`, `'en-GB'`, `'fr'`, `'de'`, `'es-ES'`, `'pt-BR'`, `'ja'`... A word Discord does not know is underlined, and refused when the file loads, with the list.
 - **`default: true`** marks the language used when the one asked for is not there. Exactly one file says so: with `chapterjs dev` running, two files saying so are both underlined in the editor.
 - **A placeholder** is a name between braces: `{name}`, `{count}`. It takes a text or a number, and a number is written the way the language writes numbers (`1,234` in English, `1 234` in French).
 - **A plural** has one form per quantity (`one`, `other`, and `zero`, `two`, `few`, `many` for the languages that need them). `count` picks the form by the rules of the language.
@@ -47,21 +49,24 @@ The default language has every text, and the other languages may have only some 
 
 Every function of your project (commands, events, buttons, forms, tasks) receives `t`. Change the welcome of the events chapter to use it:
 
-```ts src/events/memberJoin/hello.ts
+```ts src/events/hello.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, guild, t }) => {
-  const channel = guild.systemChannelId
-    ? guild.channels.get(guild.systemChannelId)
-    : undefined;
-  if (!channel?.isTextBased()) return;
-  await channel.send(
-    t('welcome', { name: member.displayName, count: guild.memberCount ?? 1 })
-  );
+export default event({
+  name: 'memberJoin',
+  async run({ member, guild, t }) {
+    const channel = guild.systemChannelId
+      ? guild.channels.get(guild.systemChannelId)
+      : undefined;
+    if (!channel?.isTextBased()) return;
+    await channel.send(
+      t('welcome', { name: member.displayName, count: guild.memberCount ?? 1 })
+    );
+  },
 });
 ```
 
-Type `t('` in your editor: it offers `pong`, `welcome`, `next`, `members`, the keys of the default file. Pick `welcome`, and the second argument asks for `name` and `count`: the placeholders of the text, read from the file. Forget `count`, and the line is underlined. The types come from the language file itself, on every keystroke, with nothing generated from its content.
+Type `t('` in your editor: it offers `pong`, `welcome`, `next`, `members`, the keys of the default language. Pick `welcome`, and the second argument asks for `name` and `count`: the placeholders of the text, read from the file. Forget `count`, and the line is underlined. The types come from the language file itself, on every keystroke, with nothing generated from its content.
 
 A plural takes its `count` the same way:
 
@@ -69,6 +74,7 @@ A plural takes its `count` the same way:
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'members',
   description: 'Counts the members of this server',
   async run({ interaction, guild, t }) {
     await interaction.reply(t('members', { count: guild.memberCount ?? 0 }));
@@ -103,7 +109,7 @@ Discord only knows the language of a **Community** server (a setting of the serv
 
 A label is written in the file of the component, where there is no `t` yet: the message is not sent. To translate it, make it a function of `t` and the data; it runs when the message is sent, for who will read it:
 
-```ts src/components/buttons/next-page.ts
+```ts src/components/next-page.ts
 import { button } from 'chapterjs';
 
 const nextPage = button({
@@ -129,6 +135,7 @@ When the bot can't run what was asked (a command used in the wrong place, a butt
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'fr',
   texts: {
     pong: 'Pong !',
     welcome: 'Bienvenue {name}, tu es le membre n°{count} !',
@@ -154,6 +161,7 @@ What Discord shows of a command before it is used (its name, its description, it
 import { language } from 'chapterjs';
 
 export default language({
+  locale: 'en-US',
   default: true,
   texts: {
     pong: 'Pong!',
@@ -177,11 +185,11 @@ The default language gives the description everyone sees; the other languages gi
 - **Keys are typed from the default file.** Add a text there first, then in the others; the editor and the loader both check it.
 - **Braces written as is are doubled**: `'{{name}}'` shows `{name}`.
 - **The language of a server is `en-US` unless it is a Community server.** Do not be surprised when a public message in a French server comes out in the default language.
-- **Without a file in `src/messages/`, there is no `t`**: it does not exist, in the types nor at runtime. Delete the two files of the template if your bot speaks one language and you prefer plain texts.
+- **Without a language, there is no `t`**: it does not exist, in the types nor at runtime. Delete the two language files of the template if your bot speaks one language and you prefer plain texts.
 
 ## Recap
 
-- `src/messages/<language>.ts` holds the texts by key; one file is `default: true`.
+- `language({ locale, texts })` holds the texts of one language by key; one of them is `default: true`.
 - `t('key', { placeholders })` gives the text in the language of who will read it; the editor checks keys and placeholders.
 - A label of a component is a function of `t`; the phrases of the bot go in `framework`; the descriptions of commands in `commands`.
 

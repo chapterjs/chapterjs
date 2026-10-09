@@ -1,6 +1,6 @@
-// `language()`, as the files of `src/messages/` import it from 'chapterjs':
-// every text the bot answers with in one language, and `t`, which handlers
-// receive to pick the right one.
+// `language()`, as user files import it from 'chapterjs': every text the
+// bot answers with in one language, and `t`, which handlers receive to pick
+// the right one.
 // https://docs.discord.com/developers/reference#locales
 
 import type { CommandTranslation } from '../commands/command.js';
@@ -81,17 +81,17 @@ export interface FrameworkTexts {
 }
 
 /**
- * The commands of the project, as the editor sees them: the path of each
- * command file, `true` when the language files describe it, `false` when
- * the file has its own `description`. Filled in by the `.chapterjs/`
- * folder of the project, so that the `commands` of a language file offers
- * the ones it may translate. The options and choices are checked when the
+ * The commands of the project, as the editor sees them: the name of each
+ * command, `true` when the language files describe it, `false` when the
+ * command has its own `description`. Filled in by the `.chapterjs/` folder
+ * of the project, so that the `commands` of a language file offers the
+ * ones it may translate. The options and choices are checked when the
  * files load.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ProjectCommands {}
 
-/** The paths of the commands the language files describe. */
+/** The names of the commands the language files describe. */
 type TranslatableCommand = {
   [Path in keyof ProjectCommands]: ProjectCommands[Path] extends true
     ? Path
@@ -99,12 +99,12 @@ type TranslatableCommand = {
 }[keyof ProjectCommands];
 
 /**
- * What Discord shows of the commands in one language: by the path of the
- * command file (`'ping'`, `'mod/ban'`), its name, description, options and
- * choices in that language, as the `locales` of a command file take them.
- * The editor offers the commands of the project that have no `description`
- * in their file (one that has owns its texts, `locales` included); their
- * options and choices are checked when the files load.
+ * What Discord shows of the commands in one language: by the name of the
+ * command (`'ping'`, `'mod ban'`), its name, description, options and
+ * choices in that language, as the `locales` of a command take them. The
+ * editor offers the commands of the project that have no `description`
+ * (one that has owns its texts, `locales` included); their options and
+ * choices are checked when the files load.
  */
 export type CommandsTranslations = [keyof ProjectCommands] extends [never]
   ? Readonly<Record<string, CommandTranslation>>
@@ -112,14 +112,29 @@ export type CommandsTranslations = [keyof ProjectCommands] extends [never]
     ? Readonly<Record<string, never>>
     : { readonly [Path in TranslatableCommand]?: CommandTranslation };
 
-/** What a file of `src/messages/` gives to `language()`. */
-export interface LanguageConfig<T extends MessageTexts = MessageTexts> {
+/**
+ * The languages that say `default: true` when more than one does, as the
+ * editor sees them: one key per language. Filled in by the `.chapterjs/`
+ * folder of the project, so that each of them is underlined; empty when at
+ * most one language says it.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ProjectLanguageDefaults {}
+
+/** What a file gives to `language()`. */
+export interface LanguageConfig<
+  T extends MessageTexts = MessageTexts,
+  L extends Locale = Locale,
+> {
+  /** The language these texts are in: `'en-US'`, `'fr'`... */
+  locale: L;
   /**
    * Whether this is the language used when the one of a person or of a
-   * server is not in `src/messages/`. Exactly one file says so; with one
-   * file, it goes without saying.
+   * server is not declared. Exactly one language says so; with one
+   * language, it goes without saying. When another language already says
+   * it, this is refused: only one can be the default.
    */
-  default?: boolean;
+  default?: L extends keyof ProjectLanguageDefaults ? false : boolean;
   /** The texts of the bot in this language, by key. */
   texts: T;
   /** What Discord shows of the commands in this language. */
@@ -184,19 +199,19 @@ export type ParamsArgs<T extends MessageText> = string extends T
     : [params: ParamsOf<T>];
 
 /**
- * The languages of `src/messages/`, as the editor sees them: one key per
- * file. Filled in by the `.chapterjs/` folder of the project, empty when
- * the folder has no language.
+ * The languages of the project, as the editor sees them: one key per
+ * language declared. Filled in by the `.chapterjs/` folder of the project,
+ * empty when the project has no language.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ProjectLocales {}
 
-/** A language of `src/messages/`: `'en-US'`, `'fr'`... */
+/** A language of the project: `'en-US'`, `'fr'`... */
 export type ProjectLocale = keyof ProjectLocales & string;
 
 /**
- * A language given to `t.in()`: the editor offers the ones of
- * `src/messages/`, and any language of Discord is accepted (the one of a
+ * A language given to `t.in()`: the editor offers the ones of the
+ * project, and any language of Discord is accepted (the one of a
  * person, of a server), `t` then taking the closest one declared. A word
  * that is no language of Discord is underlined, with the ones of the
  * project.
@@ -206,7 +221,7 @@ export type LocaleGiven<L extends string> = L extends Locale
   : ProjectLocale;
 
 /**
- * `t`, as handlers receive it: gives a text of `src/messages/` in the
+ * `t`, as handlers receive it: gives a text of the language files in the
  * language of who will read the message, with its placeholders filled in.
  * `M` is the texts of the default language, which types the keys and the
  * params: a text another language does not have is taken from it.
@@ -235,58 +250,81 @@ export interface Translator<M extends object = ProjectMessages> {
 }
 
 /**
- * The texts of `src/messages/`, as the editor sees them: the keys `t`
- * accepts and the placeholders of each. Filled in by the `.chapterjs/`
- * folder of the project when the folder has a language, empty otherwise.
+ * The texts of the project, as the editor sees them: the keys `t` accepts
+ * and the placeholders of each. Filled in by the `.chapterjs/` folder of
+ * the project when it has a language, empty otherwise.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ProjectMessages {}
 
-/** What `t` is typed from, for a language file: its texts. */
-export type MessagesOf<F> = F extends LanguageFile<infer T> ? T : never;
+/** What `t` is typed from, for a language: its texts. */
+export type MessagesOf<F> = F extends LanguageDeclaration<infer T> ? T : never;
 
 /**
- * What every handler receives when the project has a language in
- * `src/messages/`: `t`. Nothing otherwise.
+ * The texts of several declarations, the first one winning for a key
+ * several have: what `t` is typed from when a project has several
+ * languages, the default one first, then the others (a text the default
+ * language does not have is taken from the language that has it).
+ */
+export type MergedMessages<T extends readonly object[]> = T extends readonly [
+  infer First extends object,
+  ...infer Rest extends readonly object[],
+]
+  ? // A declaration the editor can't type (a mistake in it leaves its texts
+    // as any record) must not open `t` to every key: it is left out.
+    string extends keyof First
+    ? MergedMessages<Rest>
+    : First & Omit<MergedMessages<Rest>, keyof First>
+  : {};
+
+/**
+ * What every handler receives when the project has a language: `t`.
+ * Nothing otherwise.
  */
 export type TranslationContext = [keyof ProjectMessages] extends [never]
   ? {}
   : {
-      /** The texts of `src/messages/`, in the right language. */ t: Translator;
+      /** The texts of the language files, in the right language. */ t: Translator;
     };
 
-/** What `language()` returns: the default export of a file of `src/messages/`. */
-export interface LanguageFile<T extends MessageTexts = MessageTexts> {
+/** What `language()` returns: a declaration the framework finds in the exports of a file. */
+export interface LanguageDeclaration<
+  T extends MessageTexts = MessageTexts,
+  L extends Locale = Locale,
+> {
   /** What the file gave to `language()`, not checked yet. */
-  readonly config: LanguageConfig<T>;
+  readonly config: LanguageConfig<T, L>;
 }
 
 const BRAND = Symbol.for('chapterjs.language');
 
 /**
- * Declares one language of the bot. Export the result as the default
- * export of a file of `src/messages/` named after the language
- * (`en-US.ts`, `fr.ts`...): every handler then receives `t`, which gives a
- * text in the language of who will read the message, with its
- * `{placeholders}` filled in.
+ * Declares one language of the bot, or more texts of it. Export the result
+ * from any file of `src/`; `locale` says which language: every handler
+ * then receives `t`, which gives a text in the language of who will read
+ * the message, with its `{placeholders}` filled in. A language may be
+ * declared in several places: the texts of a feature next to it, with the
+ * same `locale`, add to the others.
  *
  * ```ts
- * // src/messages/fr.ts
  * import { language } from 'chapterjs';
  *
  * export default language({
+ *   locale: 'fr',
  *   texts: { pong: 'Pong !', welcome: 'Bienvenue {name} !' },
  * });
  * ```
  */
-export function language<const T extends MessageTexts>(
-  config: LanguageConfig<T>
-): LanguageFile<T> {
+export function language<const T extends MessageTexts, L extends Locale>(
+  config: LanguageConfig<T, L>
+): LanguageDeclaration<T, L> {
   return Object.freeze({ [BRAND]: true, config });
 }
 
 /** Whether a value was made by `language()`. */
-export function isLanguageFile(value: unknown): value is LanguageFile {
+export function isLanguageDeclaration(
+  value: unknown
+): value is LanguageDeclaration {
   return (
     typeof value === 'object' &&
     value !== null &&

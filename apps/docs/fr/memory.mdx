@@ -13,7 +13,7 @@ Tout vit dans la mémoire du processus qui fait tourner votre bot. Rien n’est 
 | --- | --- | --- |
 | Serveurs, salons, fils, rôles, emojis personnalisés | Tous | Discord les annonce à la connexion du bot, puis chaque changement |
 | Votre bot en tant que membre de chaque serveur | Toujours | `guild.me` ne manque jamais, quelle que soit la limite sur les membres |
-| Membres | Les 100 vus le plus récemment dans chaque serveur ; 1000 quand un fichier de `src/events/memberLeave/` en a besoin | Un serveur peut avoir des millions de membres, et un bot a rarement besoin des silencieux |
+| Membres | Les 100 vus le plus récemment dans chaque serveur ; 1000 quand un événement `memberLeave` en a besoin | Un serveur peut avoir des millions de membres, et un bot a rarement besoin des silencieux |
 | Utilisateurs | Chacun de ceux qu’il a rencontrés, dans tous les serveurs | Ils viennent avec les membres et les messages |
 | Messages | Aucun | C’est de loin ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message |
 | Qui est dans un salon vocal | Tout le monde, tant que la personne y est, quand un fichier d’un [événement vocal](/fr/events/voice) en a besoin | Pour distinguer une arrivée d’un changement de salon ou d’un micro coupé, et donner le salon que quelqu’un a quitté |
@@ -28,12 +28,15 @@ Tout vit dans la mémoire du processus qui fait tourner votre bot. Rien n’est 
 
 **Rien ne dépend du fait qu’un membre soit en mémoire.** Ce qui vient avec un événement est toujours là : l’auteur d’un message, qui a utilisé une commande, le membre qui est arrivé, le salon où cela s’est passé. Votre fonction les reçoit quoi que le bot garde en mémoire, et les garde pendant qu’elle tourne.
 
-```ts src/events/messageCreate/hello.ts
+```ts src/events/hello.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  // Toujours là, même dans un serveur d’un million de membres.
-  await message.channel.send(`Bonjour ${message.member.displayName} !`);
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    // Toujours là, même dans un serveur d’un million de membres.
+    await message.channel.send(`Bonjour ${message.member.displayName} !`);
+  },
 });
 ```
 
@@ -43,6 +46,7 @@ export default event(async ({ message }) => {
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'joined',
   description: 'Dit quand quelqu’un est arrivé',
   options: {
     who: { type: 'user', description: 'Qui', required: true },

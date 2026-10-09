@@ -130,7 +130,7 @@ Now the lines, one by one:
 - **`✓ Connected to My Server as buddy`**: the program logged in with your token, and found your test server. "My Server" is the name of the server of `DEV_GUILD_ID`.
 - **`ℹ Intents computed from your files: GUILDS`**: the intents of the previous chapter. The framework read your folders and asked Discord for what they need. `GUILDS` is the one every bot needs to know its servers; nothing in the template needs more.
 - **`✓ 1 command, 1 event, 1 component, a presence, messages in 2 languages loaded`**: the files of `src/` were read. One command (`/ping`), one event (`ready`), one component (the button), the presence file, and two language files. Each of these is a chapter of this tutorial.
-- **`buddy is online in 1 server(s)`**: this line is not from the framework. It is printed by a file of the template, `src/events/ready/online.ts`, which runs once when the bot is connected. Your first look at an event.
+- **`buddy is online in 1 server(s)`**: this line is not from the framework. It is printed by a file of the template, `src/events/online.ts`, which runs once when the bot is connected. Your first look at an event.
 - **`✓ Commands updated on My Server`**: the framework sent the list of your commands to Discord, for your test server. That is why `/ping` appears.
 
 ## Stopping

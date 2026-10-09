@@ -7,34 +7,37 @@ import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setPublicDir } from '../assets/asset.js';
 import { listPublic, publicDeclarations } from '../assets/public.js';
-import { eventTypedFolders } from '../events/types.js';
 import { MissingForEvent } from '../events/registry.js';
 import { sourcesJoinVoice } from '../voice/usage.js';
 import { writeGenerated } from '../loader/generated.js';
-import { commandsConvention } from '../commands/convention.js';
+import { commandDeclaration, scanCommands } from '../commands/declaration.js';
 import { CommandRouter } from '../commands/router.js';
 import { findConflicts, type CommandEntry } from '../commands/tree.js';
 import {
-  componentsConvention,
+  componentDeclaration,
   findDuplicates,
-} from '../components/convention.js';
+} from '../components/declaration.js';
 import { ComponentRouter, type ComponentEntry } from '../components/router.js';
-import { tasksConvention } from '../tasks/convention.js';
+import { taskDeclaration } from '../tasks/declaration.js';
 import {
   DEFAULT_PRESENCE,
-  presenceConvention,
+  presenceDeclaration,
   type LoadedPresence,
-} from '../presence/convention.js';
+} from '../presence/declaration.js';
 import {
   assembleMessages,
   commandsDeclarations,
-  languagesConvention,
-  languageTypedFolders,
+  languageDeclaration,
+  languageDefaultsDeclaration,
   messagesDeclarations,
+  scanLanguages,
+  type DeclaredCommand,
+  type DeclaredLanguage,
   type LanguageEntry,
-} from '../messages/convention.js';
+} from '../messages/declaration.js';
 import { translation, type LoadedMessages } from '../messages/translate.js';
 import { translateCommand, unknownCommands } from '../messages/commands.js';
+import type { Locale } from '../discord/types/common.js';
 import {
   TimerScheduler,
   type Scheduler,
@@ -44,7 +47,7 @@ import { createBot, type Bot, type BotOptions } from '../core/bot.js';
 import { watchMemory } from '../core/memory.js';
 import { GatewayIntent, type GatewayIntentName } from '../discord/intents.js';
 import type { GatewayDispatchEvents } from '../discord/types/gateway-events.js';
-import { eventsConvention } from '../events/convention.js';
+import { eventDeclaration } from '../events/declaration.js';
 import {
   EventRouter,
   intentsFor,
@@ -54,11 +57,14 @@ import {
 } from '../events/router.js';
 import { GatewayFatalError, SessionLimitError } from '../gateway/errors.js';
 import {
-  listFolder,
-  loadBuilt,
-  loadFolder,
+  loadSources,
+  readDeclarations,
+  siteName,
   type BuiltFile,
+  type Declaration,
+  type ExportSite,
   type FailedFile,
+  type LoadedItem,
 } from '../loader/loader.js';
 import { locate, messageOf } from '../loader/locate.js';
 import {
@@ -89,55 +95,62 @@ export interface ProjectOptions {
   deferAfter?: number;
 }
 
+/** What the types of a project are written from, once its files ran. */
+export interface TypesInfo {
+  /** Every language declared, with where. */
+  languages: readonly DeclaredLanguage[];
+  /** The language `t` is typed from, when known. */
+  defaultLocale?: Locale;
+  /** The languages that say `default: true`, as they are now. */
+  languageDefaults: readonly Locale[];
+  /** Every command, and whether its file describes it. */
+  commands: readonly DeclaredCommand[];
+}
+
 /**
- * Writes the types of a project (`.chapterjs/`): one project per typed
- * folder (every event, every language file), and what every file gets,
- * like the files of `public/`. With the commands and the languages as
- * they loaded, a language file only offers the ones without `description`
- * in their file, `t` is typed from the default language and `default:
- * true` is refused in every file when another one says it (`defaults`,
- * the files that do); without them (`sync`, which runs nothing),
- * every command is offered and the first language file types `t`.
+ * Writes the types of a project (`.chapterjs/`): what the project adds to
+ * 'chapterjs', like the files of `public/`, its languages and its
+ * commands. With the project as it loaded (`info`), a language only
+ * offers the commands without `description`, `t` is typed from the
+ * default language and `default: true` is refused in every language that
+ * says it when another one does; without it (`sync`, which runs nothing),
+ * the commands and the languages are found by reading the files, every
+ * command is offered, and the first language or the one that says
+ * `default: true` types `t`.
  * @returns how many files were written
  */
 export async function writeTypes(
   cwd: string,
-  commands?: ReadonlyMap<string, CommandEntry>,
-  messages?: LoadedMessages | null,
-  defaults: readonly string[] = []
+  info?: TypesInfo
 ): Promise<number> {
-  const [files, languageFiles, commandFiles] = await Promise.all([
+  const [files, found, names] = await Promise.all([
     listPublic(cwd),
-    listFolder(cwd, languagesConvention),
-    listFolder(cwd, commandsConvention),
+    info ? null : scanLanguages(cwd),
+    info ? null : scanCommands(cwd),
   ]);
+  const languages = info ? info.languages : found!.languages;
+  const defaultLocale = info ? info.defaultLocale : found!.defaultLocale;
+  const commands = info
+    ? info.commands
+    : names!.map(name => ({ name, described: false }));
   return writeGenerated(
     cwd,
-    [...eventTypedFolders(), ...languageTypedFolders(languageFiles, defaults)],
     publicDeclarations(files) +
-      messagesDeclarations(
-        languageFiles,
-        messages ? messages.files.get(messages.default) : undefined
-      ),
-    // Only language files use it, and they are in the main project.
-    commandsDeclarations(
-      commandFiles.map(({ file }) => ({
-        file,
-        described: commands?.get(file)?.command.described ?? false,
-      }))
-    )
+      messagesDeclarations(languages, defaultLocale) +
+      languageDefaultsDeclaration(info?.languageDefaults ?? []) +
+      commandsDeclarations(commands)
   );
 }
 
-/** The conventional folders of a project: one per feature. */
-export const CONVENTIONS = [
-  eventsConvention,
-  commandsConvention,
-  componentsConvention,
-  tasksConvention,
-  presenceConvention,
-  languagesConvention,
-] as const;
+/** The kinds of declarations a project is made of: one per feature. */
+export const DECLARATIONS: readonly Declaration<unknown>[] = [
+  eventDeclaration,
+  commandDeclaration,
+  componentDeclaration,
+  taskDeclaration,
+  presenceDeclaration,
+  languageDeclaration,
+];
 
 /** What a bot of the project is connected with. */
 export interface ConnectOptions {
@@ -159,27 +172,26 @@ export interface ConnectOptions {
 
 /** The files of a project, and what runs them. */
 export interface Project {
-  /** The last version of each file that loaded: what the bot runs. */
+  /**
+   * The last version of each declaration that loaded, by the file and the
+   * export it comes from (`src/ping.ts#default`): what the bot runs.
+   */
   readonly events: ReadonlyMap<string, LoadedEvent>;
   readonly commands: ReadonlyMap<string, CommandEntry>;
   readonly components: ReadonlyMap<string, ComponentEntry>;
   readonly tasks: ReadonlyMap<string, TaskEntry>;
-  /** What `src/presence.ts` declares, or `null` without that file. */
+  /** The presence declared, or `null` without one. */
   readonly presence: LoadedPresence | null;
-  /** The languages of `src/messages/`, assembled, or `null` without any. */
+  /** The languages of the project, assembled, or `null` without any. */
   readonly messages: LoadedMessages | null;
+  /** What the types of the project are written from, as it loaded. */
+  typesInfo(): TypesInfo;
   /**
-   * The language files that say `default: true`, as they are now: a file
-   * left out because a second one says it is counted, so that both are
-   * underlined in the editor.
-   */
-  readonly languageDefaults: readonly string[];
-  /**
-   * Loads every file (again). A file that fails is returned; it keeps its
-   * last working version when it had one.
+   * Loads every file (again). A declaration that fails is returned; it
+   * keeps its last working version when it had one.
    */
   load(): Promise<FailedFile[]>;
-  /** Shows a failure with its file and line. */
+  /** Shows a failure with its file (and export) and line. */
   report(failure: FailedFile): void;
   /** "2 commands, 3 events, 4 components, a presence loaded". */
   summary(): string;
@@ -234,14 +246,58 @@ const PRIVATE_INTENTS =
 const megabytes = (bytes: number): string =>
   `${Math.round(bytes / 1024 / 1024)} MB`;
 
+/** What tells one declaration from another: its file and its export. */
+const keyOf = (site: { file: string; export: string }): string =>
+  `${site.file}#${site.export}`;
+
+/**
+ * Two declarations with the same name, where the name is the export's
+ * (a task): the later one is left out, with a message saying so.
+ */
+function sameNames<T extends { file: string; export: string }>(
+  entries: readonly T[],
+  nameOf: (entry: T) => string,
+  what: string
+): {
+  valid: T[];
+  conflicts: { file: string; export: string; message: string }[];
+} {
+  const seen = new Map<string, T>();
+  const conflicts: { file: string; export: string; message: string }[] = [];
+  const valid = [...entries]
+    .sort((a, b) =>
+      a.file === b.file
+        ? a.export < b.export
+          ? -1
+          : 1
+        : a.file < b.file
+          ? -1
+          : 1
+    )
+    .filter(entry => {
+      const first = seen.get(nameOf(entry));
+      if (!first) {
+        seen.set(nameOf(entry), entry);
+        return true;
+      }
+      conflicts.push({
+        file: entry.file,
+        export: entry.export,
+        message: `There is already a ${what} named ${nameOf(entry)}, in ${first.file}: the name of the export is the name of the ${what}, so rename one of them.`,
+      });
+      return false;
+    });
+  return { valid, conflicts };
+}
+
 export function createProject(options: ProjectOptions): Project {
   const { cwd, log } = options;
   // Where `asset()` reads the files of the project from.
   setPublicDir(cwd);
-  const report = ({ file, error }: FailedFile): void => {
-    const where = locate(error, cwd);
+  const report = (failure: FailedFile): void => {
+    const where = locate(failure.error, cwd);
     log.error(
-      `${where ? `${where.file}:${where.line}` : file} ${messageOf(error)}`
+      `${where ? `${where.file}:${where.line}` : siteName(failure)} ${messageOf(failure.error)}`
     );
   };
   const router = new EventRouter(
@@ -273,14 +329,16 @@ export function createProject(options: ProjectOptions): Project {
   let components = new Map<string, ComponentEntry>();
   let tasks = new Map<string, TaskEntry>();
   let presence: LoadedPresence | null = null;
+  /** The files the presence was declared in, to keep it when they break. */
+  let presenceFiles = new Set<string>();
   // Joining voice needs the bot's own voice state, sent with an intent.
   let voice = options.joinsVoice ?? false;
   const neededIntents = (): number =>
     intentsFor(events.values()) | (voice ? GatewayIntent.GuildVoiceStates : 0);
   let messages: LoadedMessages | null = null;
-  /** The last version of each language file that loaded. */
+  /** The last version of each language that loaded. */
   let languages = new Map<string, LanguageEntry>();
-  let languageDefaults: readonly string[] = [];
+  let languageDefaults: readonly Locale[] = [];
   /** The bot running the files now, to give it what a reload changes. */
   let running: Bot | null = null;
   /** The presence each bot was given last, to send only what changed. */
@@ -308,119 +366,165 @@ export function createProject(options: ProjectOptions): Project {
     get messages() {
       return messages;
     },
-    get languageDefaults() {
-      return languageDefaults;
-    },
+    typesInfo: () => ({
+      languages: [...languages.values()].map(entry => ({
+        file: entry.file,
+        export: entry.export,
+        name: entry.name,
+        locale: entry.language.locale,
+      })),
+      ...(messages ? { defaultLocale: messages.default } : {}),
+      languageDefaults,
+      commands: [...commands.values()].map(({ command }) => ({
+        name: command.path.join(' '),
+        described: command.described,
+      })),
+    }),
     report,
     async load() {
       const { built } = options;
       if (options.joinsVoice === undefined) {
         voice = await sourcesJoinVoice(cwd);
       }
+      // Every file of src/ runs (or ran, in a build); what each exports is
+      // then read, kind by kind.
+      const sources: {
+        modules: readonly BuiltFile[];
+        failed: FailedFile[];
+      } = built ? { modules: built, failed: [] } : await loadSources(cwd);
+      const read = <T>(declaration: Declaration<T>) =>
+        readDeclarations(sources.modules, declaration);
       const [
-        eventFiles,
-        commandFiles,
-        componentFiles,
-        taskFiles,
-        presenceFiles,
-        messageFiles,
-      ] = await Promise.all(
-        built
-          ? [
-              loadBuilt(eventsConvention, built),
-              loadBuilt(commandsConvention, built),
-              loadBuilt(componentsConvention, built),
-              loadBuilt(tasksConvention, built),
-              loadBuilt(presenceConvention, built),
-              loadBuilt(languagesConvention, built),
-            ]
-          : [
-              loadFolder(cwd, eventsConvention),
-              loadFolder(cwd, commandsConvention),
-              loadFolder(cwd, componentsConvention),
-              loadFolder(cwd, tasksConvention),
-              loadFolder(cwd, presenceConvention),
-              loadFolder(cwd, languagesConvention),
-            ]
-      );
-      const nextEvents = new Map<string, LoadedEvent>();
-      for (const { file, value } of eventFiles.loaded) {
-        nextEvents.set(file, { file, event: value });
-      }
-      for (const { file } of eventFiles.failed) {
-        const previous = events.get(file);
-        if (previous) nextEvents.set(file, previous);
-      }
-      events = nextEvents;
+        eventItems,
+        commandItems,
+        componentItems,
+        taskItems,
+        presenceItems,
+        languageItems,
+      ] = [
+        read(eventDeclaration),
+        read(commandDeclaration),
+        read(componentDeclaration),
+        read(taskDeclaration),
+        read(presenceDeclaration),
+        read(languageDeclaration),
+      ];
+      const broken = new Set(sources.failed.map(({ file }) => file));
+      /**
+       * The next version of a kind: what loaded now, plus the last good
+       * version of what failed (an export that can't be read, or a file
+       * that can't run at all).
+       */
+      const next = <T, E extends { file: string; export: string }>(
+        previous: ReadonlyMap<string, E>,
+        items: { loaded: LoadedItem<T>[]; failed: FailedFile[] },
+        make: (item: LoadedItem<T>) => E
+      ): Map<string, E> => {
+        const result = new Map<string, E>();
+        for (const item of items.loaded) result.set(keyOf(item), make(item));
+        const failedKeys = new Set(
+          items.failed.map(({ file, export: exported }) =>
+            keyOf({ file, export: exported ?? 'default' })
+          )
+        );
+        for (const [key, entry] of previous) {
+          if (failedKeys.has(key) || broken.has(entry.file)) {
+            result.set(key, entry);
+          }
+        }
+        return result;
+      };
+
+      events = next(events, eventItems, item => ({
+        file: item.file,
+        export: item.export,
+        event: item.value,
+      }));
       router.set(events.values());
 
-      const entries: CommandEntry[] = commandFiles.loaded.map(
-        ({ file, value }) => ({ file, command: value })
-      );
-      for (const { file } of commandFiles.failed) {
-        const previous = commands.get(file);
-        if (previous) entries.push(previous);
-      }
-      const { valid, conflicts } = findConflicts(entries);
-      commands = new Map(valid.map(entry => [entry.file, entry]));
+      const { valid, conflicts } = findConflicts([
+        ...next(commands, commandItems, item => ({
+          file: item.file,
+          export: item.export,
+          command: item.value,
+        })).values(),
+      ]);
+      commands = new Map(valid.map(entry => [keyOf(entry), entry]));
 
-      const pieces: ComponentEntry[] = componentFiles.loaded.map(
-        ({ file, value }) => ({ file, component: value })
-      );
-      for (const { file } of componentFiles.failed) {
-        const previous = components.get(file);
-        if (previous) pieces.push(previous);
-      }
-      const unique = findDuplicates(pieces);
-      components = new Map(unique.valid.map(entry => [entry.file, entry]));
+      const unique = findDuplicates([
+        ...next(components, componentItems, item => ({
+          file: item.file,
+          export: item.export,
+          component: item.value,
+        })).values(),
+      ]);
+      components = new Map(unique.valid.map(entry => [keyOf(entry), entry]));
       componentRouter.set(components.values());
 
-      const nextTasks = new Map<string, TaskEntry>();
-      for (const { file, value } of taskFiles.loaded) {
-        nextTasks.set(file, { file, task: value });
-      }
-      for (const { file } of taskFiles.failed) {
-        const previous = tasks.get(file);
-        if (previous) nextTasks.set(file, previous);
-      }
-      tasks = nextTasks;
+      const sameTask = sameNames(
+        [
+          ...next(tasks, taskItems, item => ({
+            file: item.file,
+            export: item.export,
+            task: item.value,
+          })).values(),
+        ],
+        entry => entry.task.name,
+        'task'
+      );
+      tasks = new Map(sameTask.valid.map(entry => [keyOf(entry), entry]));
       scheduler.set(tasks.values());
 
-      // One presence file. A second one (another extension) is left out.
-      const [first, ...extra] = presenceFiles.loaded;
+      // One presence. A second one is left out.
+      const [first, ...extra] = presenceItems.loaded;
       if (first) presence = first.value;
-      else if (presenceFiles.failed.length === 0) presence = null;
-      const twice = extra.map(({ file }) => ({
-        file,
+      else if (
+        presenceItems.failed.length === 0 &&
+        ![...broken].some(file => presenceFiles.has(file))
+      ) {
+        presence = null;
+      }
+      presenceFiles = new Set(presenceItems.loaded.map(({ file }) => file));
+      const twice = extra.map(item => ({
+        file: item.file,
+        export: item.export,
         error: new TypeError(
-          `There are two presence files: ${first!.file} is used, keep only one.`
+          `There are two presences: the one of ${siteName(first!)} is used, keep only one.`
         ),
       }));
-      const nextLanguages = new Map<string, LanguageEntry>();
-      for (const { file, value } of messageFiles.loaded) {
-        nextLanguages.set(file, { file, language: value });
-      }
-      for (const { file } of messageFiles.failed) {
-        const previous = languages.get(file);
-        if (previous) nextLanguages.set(file, previous);
-      }
-      // What the files say now, before a file is put back to its last good
-      // version: two files saying default: true are both underlined.
+
+      const nextLanguages = next(languages, languageItems, item => ({
+        file: item.file,
+        export: item.export,
+        name: item.name,
+        language: item.value,
+      }));
+      // What the files say now, before a declaration is put back to its
+      // last good version: two languages saying default: true are both
+      // underlined.
       languageDefaults = [...nextLanguages.values()]
         .filter(({ language }) => language.isDefault)
-        .map(({ file }) => file);
+        .map(({ language }) => language.locale);
       const previousLanguages = languages;
       languages = nextLanguages;
       let assembled = assembleMessages([...languages.values()]);
       // A language that no longer matches the others keeps its last version
-      // that did, like a file that no longer loads.
-      const restored = assembled.failed.filter(({ file }) => {
-        const previous = previousLanguages.get(file);
-        return previous !== undefined && previous !== languages.get(file);
+      // that did, like a declaration that no longer loads.
+      const restored = assembled.failed.filter(failure => {
+        const key = keyOf({
+          file: failure.file,
+          export: failure.export ?? 'default',
+        });
+        const previous = previousLanguages.get(key);
+        return previous !== undefined && previous !== languages.get(key);
       });
       if (restored.length > 0) {
-        for (const { file } of restored) {
-          languages.set(file, previousLanguages.get(file)!);
+        for (const failure of restored) {
+          const key = keyOf({
+            file: failure.file,
+            export: failure.export ?? 'default',
+          });
+          languages.set(key, previousLanguages.get(key)!);
         }
         const again = assembleMessages([...languages.values()]);
         assembled = {
@@ -441,42 +545,46 @@ export function createProject(options: ProjectOptions): Project {
       // be described is left out.
       const badTexts: FailedFile[] = [...assembled.failed];
       if (messages) {
-        const paths = new Set(
-          [...commands.values()].map(entry => entry.command.path.join('/'))
+        const names = new Set(
+          [...commands.values()].map(entry => entry.command.path.join(' '))
         );
-        for (const { file, path } of unknownCommands(messages, paths)) {
+        for (const { file, path } of unknownCommands(messages, names)) {
           badTexts.push({
             file,
             error: new TypeError(
-              `"commands" translates "${path}", which is not a command of this project${paths.size > 0 ? ` (its commands are: ${[...paths].join(', ')})` : ''}. The key is the path of the command file, like 'ping' or 'mod/ban'.`
+              `"commands" translates "${path}", which is not a command of this project${names.size > 0 ? ` (its commands are: ${[...names].join(', ')})` : ''}. The key is the name of the command, like 'ping' or 'mod ban'.`
             ),
           });
         }
       }
-      for (const [file, entry] of commands) {
+      for (const [key, entry] of commands) {
         const { command, failed } = translateCommand(
-          file,
+          siteName(entry),
           entry.command,
           messages
         );
         badTexts.push(...failed);
-        if (command) commands.set(file, { ...entry, command });
-        else commands.delete(file);
+        if (command) commands.set(key, { ...entry, command });
+        else commands.delete(key);
       }
       commandRouter.set(commands.values());
       return [
-        ...eventFiles.failed,
-        ...commandFiles.failed,
-        ...componentFiles.failed,
-        ...taskFiles.failed,
-        ...presenceFiles.failed,
-        ...messageFiles.failed,
+        ...sources.failed,
+        ...eventItems.failed,
+        ...commandItems.failed,
+        ...componentItems.failed,
+        ...taskItems.failed,
+        ...presenceItems.failed,
+        ...languageItems.failed,
         ...badTexts,
         ...twice,
-        ...[...conflicts, ...unique.conflicts].map(({ file, message }) => ({
-          file,
-          error: new TypeError(message),
-        })),
+        ...[...conflicts, ...unique.conflicts, ...sameTask.conflicts].map(
+          ({ file, export: exported, message }) => ({
+            file,
+            export: exported,
+            error: new TypeError(message),
+          })
+        ),
       ];
     },
     summary() {
@@ -488,7 +596,7 @@ export function createProject(options: ProjectOptions): Project {
         presence === null &&
         messages === null
       ) {
-        return 'Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/';
+        return "Nothing to run yet: export a command or an event from a file of src/, like export default command({ name: 'ping', ... })";
       }
       return `${[
         ...(commands.size > 0

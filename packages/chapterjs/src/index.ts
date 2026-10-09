@@ -22,8 +22,9 @@ export type {
   CommandInGuild,
   CommandInPrivate,
   CommandWhere,
-  CommandFile,
+  CommandDeclaration,
   CommandLocales,
+  CommandName,
   CommandOption,
   CommandOptions,
   CommandTranslation,
@@ -49,14 +50,14 @@ export type {
   ModalInteraction,
 } from './structures/interaction.js';
 
-// Components: what the files of src/components/ are written with, and the
+// Components: what buttons, menus, forms and embeds are declared with, and the
 // pieces of a message written where the message is.
 export type { DynamicText, TextContext } from './components/component.js';
 export { button } from './components/button.js';
 export type {
   ButtonConfig,
   ButtonContext,
-  ButtonFile,
+  ButtonDeclaration,
   ButtonLook,
   ButtonStyleName,
 } from './components/button.js';
@@ -66,7 +67,7 @@ export type {
   EntitySelectType,
   SelectConfig,
   SelectContext,
-  SelectFile,
+  SelectDeclaration,
   SelectInstanceOptions,
   SelectLook,
   SelectType,
@@ -84,7 +85,7 @@ export type {
   ModalContext,
   ModalField,
   ModalFields,
-  ModalFile,
+  ModalDeclaration,
   ModalInstanceOptions,
   ModalPrefill,
   NoteField,
@@ -93,7 +94,7 @@ export type {
   TextField,
 } from './components/modal.js';
 export { embed } from './components/embed.js';
-export type { EmbedFile } from './components/embed.js';
+export type { EmbedDeclaration } from './components/embed.js';
 export type {
   ComponentWhere,
   ComponentWho,
@@ -155,12 +156,13 @@ export type {
 } from './components/instance.js';
 
 // What the functions of src/events/ receive, by event.
+export { event } from './events/event.js';
+export type { EventConfig, EventDeclaration } from './events/event.js';
 export type {
   ContextOf,
   EventWhere,
   WhereEventOptions,
   EventContexts,
-  EventFile,
   EventName,
   EventOptions,
   MessageEventOptions,
@@ -227,12 +229,14 @@ export type {
   CommandsTranslations,
   FrameworkTexts,
   LanguageConfig,
-  LanguageFile,
+  LanguageDeclaration,
+  MergedMessages,
   MessagesOf,
   MessageText,
   MessageTexts,
   PluralText,
   ProjectCommands,
+  ProjectLanguageDefaults,
   ParamsArgs,
   ParamsOf,
   Placeholders,
@@ -249,7 +253,7 @@ export type {
   ActivityKind,
   PlainActivity,
   PresenceConfig,
-  PresenceFile,
+  PresenceDeclaration,
   PresenceStatusName,
   StreamingActivity,
 } from './presence/presence.js';
@@ -259,7 +263,7 @@ export type {
   EveryTaskConfig,
   TaskConfig,
   TaskContext,
-  TaskFile,
+  TaskDeclaration,
 } from './tasks/task.js';
 
 // Files of public/: `asset()` is typed per project by `.chapterjs/`.

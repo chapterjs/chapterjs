@@ -36,7 +36,7 @@ import {
   type DataInputOf,
   type DataValuesOf,
 } from './custom-id.js';
-import { createFile } from './file.js';
+import { createComponent } from './declared.js';
 import type { Rendered, SelectComponent } from './instance.js';
 import {
   hasDynamicOption,
@@ -154,11 +154,12 @@ export type SelectConfig<
   | EntitySelectConfig<Type, Data, Where>;
 
 /**
- * What `select()` returns: the default export of a select file. Import it
- * where you send a message, and call it with the data it carries; a menu
- * without data is used as is, or called with what to show.
+ * What `select()` returns: a declaration the framework finds in the exports
+ * of a file. Import it where you send a message, and call it with the data
+ * it carries; a menu without data is used as is, or called with what to
+ * show.
  */
-export type SelectFile<Data extends DataShape = {}> = {
+export type SelectDeclaration<Data extends DataShape = {}> = {
   /** What the file gave to `select()`, not checked yet. */
   readonly config: unknown;
 } & ({} extends Data
@@ -175,14 +176,14 @@ export type SelectFile<Data extends DataShape = {}> = {
       ) => SelectComponent);
 
 /**
- * Declares a select menu. Export the result as the default export of a
- * file of `src/components/selects/`: the path of the file is what tells
- * the menu apart, so you never write an id.
+ * Declares a select menu. Export the result from any file of `src/`: the
+ * name of the export is what tells the menu apart, so you never write an
+ * id.
  *
  * ```ts
  * import { select } from 'chapterjs';
  *
- * export default select({
+ * export const color = select({
  *   placeholder: 'Pick a color',
  *   options: { Red: 'red', Blue: 'blue' },
  *   async run({ interaction, value }) {
@@ -195,23 +196,24 @@ export function select<
   const Options extends SelectOptions,
   const Data extends DataShape = {},
   const Where extends ComponentWhere = 'guild',
->(config: StringSelectConfig<Options, Data, Where>): SelectFile<Data>;
+>(config: StringSelectConfig<Options, Data, Where>): SelectDeclaration<Data>;
 export function select<
   const Type extends EntitySelectType,
   const Data extends DataShape = {},
   const Where extends ComponentWhere = 'guild',
->(config: EntitySelectConfig<Type, Data, Where>): SelectFile<Data>;
-export function select(config: unknown): SelectFile<DataShape> {
-  return createFile('select', config, {
+>(config: EntitySelectConfig<Type, Data, Where>): SelectDeclaration<Data>;
+export function select(config: unknown): SelectDeclaration<DataShape> {
+  return createComponent('select', config, {
     asPiece: true,
     pieceKind: 'select',
-  }) as unknown as SelectFile<DataShape>;
+  }) as unknown as SelectDeclaration<DataShape>;
 }
 
-/** A select file, checked. */
+/** A select menu, checked. */
 export interface LoadedSelect {
   readonly kind: 'select';
-  readonly path: string;
+  /** The name of the export that declares it: its id for Discord. */
+  readonly name: string;
   readonly type: SelectType;
   /** The options of a menu of texts, their texts maybe computed when sent. */
   readonly options: readonly LoadedOption[];
@@ -374,7 +376,7 @@ export function renderSelect(
   args: readonly unknown[]
 ): Rendered<'select'> {
   const hasData = Object.keys(loaded.data).length > 0;
-  const name = loaded.path.split('/').pop()!;
+  const { name } = loaded;
   if (args.length > (hasData ? 2 : 1)) {
     fail(
       `${name} takes ${hasData ? 'its data, then options' : 'options'} at most.`
@@ -397,7 +399,7 @@ export function renderSelect(
       { max: Limits.SelectPlaceholder }
     );
     const base = {
-      custom_id: encodeCustomId(loaded.path, loaded.data, values),
+      custom_id: encodeCustomId(loaded.name, loaded.data, values),
       ...(placeholder !== undefined ? { placeholder } : {}),
       ...(loaded.min !== 1 ? { min_values: loaded.min } : {}),
       ...(loaded.max !== 1 ? { max_values: loaded.max } : {}),

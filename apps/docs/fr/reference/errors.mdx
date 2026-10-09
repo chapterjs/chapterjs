@@ -110,6 +110,7 @@ N’attrapez que ce que vous attendez, et laissez passer le reste : une erreur q
 import { command, DiscordApiError } from 'chapterjs';
 
 export default command({
+  name: 'kick',
   description: 'Expulse un membre',
   options: { target: { type: 'user', description: 'Qui expulser', required: true } },
   permissions: ['KickMembers'],
@@ -142,7 +143,7 @@ Quand l’erreur est une `DiscordApiError` avec le code `50013` ou `50001`, la r
 I don't have the permission to do that here.
 ```
 
-L’erreur elle-même, avec son fichier et sa ligne, va dans votre terminal. Voir [Répondre](/fr/commands/answering). Les deux phrases peuvent être traduites dans les fichiers de langue de `src/messages/` : voir [Ce que le bot répond de lui-même](/fr/translated-messages#ce-que-le-bot-répond-de-lui-même).
+L’erreur elle-même, avec son fichier et sa ligne, va dans votre terminal. Voir [Répondre](/fr/commands/answering). Les deux phrases peuvent être traduites dans les fichiers de langue du projet : voir [Ce que le bot répond de lui-même](/fr/translated-messages#ce-que-le-bot-répond-de-lui-même).
 
 ## Ce qui ne lève jamais d’erreur
 

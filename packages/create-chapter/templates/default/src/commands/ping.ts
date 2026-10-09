@@ -1,14 +1,15 @@
-import { command } from 'chapterjs';
-import again from '../components/buttons/again';
+import { button, command } from 'chapterjs';
 
-// The path of the file is the name of the command: this one is /ping.
-// A file in a folder is a subcommand: src/commands/mod/ban.ts is /mod ban.
+// A command is declared with command() and exported: `name` is what people
+// type after the /. Where the file is and what it is called are up to you:
+// this one could live anywhere in src/.
 export default command({
+  name: 'ping',
   // Only the person sees the answer, so `t` speaks their language.
   ephemeral: true,
   async run({ interaction, t }) {
-    // A button of src/components/buttons/, with the data it carries, and a
-    // text of src/messages/ in the language of who will read the answer.
+    // The button below, with the data it carries, and a text of
+    // src/messages/ in the language of who will read the answer.
     await interaction.reply({
       content: t('pong'),
       components: [again({ count: 1 })],
@@ -16,10 +17,27 @@ export default command({
   },
 });
 
+// A button is declared with button() and exported: the name of the export
+// (here `again`) is what tells which one was clicked, you never write an
+// id. `data` is what the button carries from one click to the next.
+export const again = button({
+  label: 'Again',
+  data: { count: 'number' },
+  async run({ interaction, data, t }) {
+    const count = data.count + 1;
+    // Changes the message the button is on, instead of sending a new one.
+    await interaction.update({
+      content: t('again', { count }),
+      components: [again({ count })],
+    });
+  },
+});
+
 // A command can ask for options, typed for you in `run`, suggest values
 // while the person types, and make each person wait between two uses:
 //
-// export default command({
+// export const hello = command({
+//   name: 'hello',
 //   description: 'Says hello to someone',
 //   cooldown: '10s',
 //   options: {

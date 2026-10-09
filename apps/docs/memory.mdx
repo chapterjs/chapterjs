@@ -13,7 +13,7 @@ Everything lives in the memory of the process that runs your bot. Nothing is wri
 | --- | --- | --- |
 | Servers, channels, threads, roles, custom emojis | All of them | Discord announces them when the bot connects, then every change |
 | Your bot as a member of each server | Always | `guild.me` is never missing, whatever the limit on members |
-| Members | The 100 seen the most recently in each server; 1000 when a file of `src/events/memberLeave/` needs them | A server can have millions of members, and a bot rarely needs the silent ones |
+| Members | The 100 seen the most recently in each server; 1000 when a `memberLeave` event needs them | A server can have millions of members, and a bot rarely needs the silent ones |
 | Users | Every one it met, across every server | They come with members and messages |
 | Messages | None | They are by far what a bot receives the most, and most bots never read an old one |
 | Who is in a voice channel | Everyone, while they are in it, when a file of a [voice event](/events/voice) needs it | To tell a join from a move or a mute, and give the channel someone left |
@@ -28,12 +28,15 @@ Everything lives in the memory of the process that runs your bot. Nothing is wri
 
 **Nothing depends on a member being remembered.** What comes with an event is always there: the author of a message, who used a command, the member who joined, the channel it happened in. Your function receives them whatever the bot remembers, and keeps them while it runs.
 
-```ts src/events/messageCreate/hello.ts
+```ts src/events/hello.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ message }) => {
-  // Always there, even in a server of a million members.
-  await message.channel.send(`Hello ${message.member.displayName}!`);
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    // Always there, even in a server of a million members.
+    await message.channel.send(`Hello ${message.member.displayName}!`);
+  },
 });
 ```
 
@@ -43,6 +46,7 @@ export default event(async ({ message }) => {
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'joined',
   description: 'Says when someone joined',
   options: {
     who: { type: 'user', description: 'Who', required: true },

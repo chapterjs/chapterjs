@@ -16,6 +16,7 @@ import { bin, buildProject, packageDir, project } from './dev-helpers.js';
 const PING = `import { command } from 'chapterjs';
 import { answer } from '../lib/answer';
 export default command({
+  name: 'ping',
   description: 'Replies with Pong!',
   async run({ interaction }) {
     await interaction.reply(answer);
@@ -25,7 +26,7 @@ export default command({
 const files = {
   'src/commands/ping.ts': PING,
   'src/lib/answer.ts': `export const answer: string = 'Pong!';\nexport function neverUsed(): string {\n  return 'dropped from the build';\n}\n`,
-  'src/events/ready/hello.ts': `import { event } from 'chapterjs';\nexport default event(({ user }) => console.log(user.username));\n`,
+  'src/events/ready/hello.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'ready', run: ({ user }) => console.log(user.username) });\n`,
 };
 /** A project with TypeScript, as the scaffolder leaves it. */
 function typed(content: Record<string, string>): string {
@@ -68,9 +69,10 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
     expect(bot.trimEnd().split('\n')).toHaveLength(2);
     expect(bot).toMatch(/\n\/\/# sourceMappingURL=bot\.js\.map\n$/);
     expect(bot).not.toContain(': string');
-    // What the files import from the project is in, what nothing uses is not.
+    // Every file of src/ is in, as it runs in dev: what the bot runs in
+    // production is exactly what it ran while it was written.
     expect(bot).toContain('"Pong!"');
-    expect(bot).not.toContain('dropped from the build');
+    expect(bot).toContain('dropped from the build');
     // With the names the developer wrote, so errors read like their code.
     expect(bot).toContain('answer');
     // Packages are not copied in: the bot and the framework share them.
@@ -124,7 +126,7 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
     );
     expect(result.code).toBe(0);
     expect(result.output).toContain(
-      'ℹ Nothing to run yet: add a file in src/commands/ or in a folder like src/events/messageCreate/\n✓ Built in .chapterjs/build: nothing to run yet (1 kB)\n'
+      "ℹ Nothing to run yet: export a command or an event from a file of src/, like export default command({ name: 'ping', ... })\n✓ Built in .chapterjs/build: nothing to run yet (1 kB)\n"
     );
   });
 
@@ -145,29 +147,30 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
     [
       'one of its commands',
       {
-        'src/commands/greet.ts': `import { command } from 'chapterjs';\nexport default command({ run() {} });\n`,
+        'src/commands/greet.ts': `import { command } from 'chapterjs';\nexport default command({ name: 'greet', run() {} });\n`,
         'src/messages/en-US.ts': `import { language } from 'chapterjs';
-export default language({ default: true, texts: { a: 'b' }, commands: { greet: { description: 'Greets' } } });
+export default language({ locale: 'en-US', default: true, texts: { a: 'b' }, commands: { greet: { description: 'Greets' } } });
 `,
       },
-      /src\/messages\/fr\.ts\(5,5\): error TS2353: Object literal may only specify known properties, and 'ping' does not exist in type '\{ readonly greet\?: CommandTranslation<.*> \| undefined; \}'\./,
+      /src\/messages\/fr\.ts\(6,5\): error TS2353: Object literal may only specify known properties, and 'ping' does not exist in type '\{ readonly greet\?: CommandTranslation<.*> \| undefined; \}'\./,
     ],
     [
       'every command',
       {
         'src/messages/en-US.ts': `import { language } from 'chapterjs';
-export default language({ default: true, texts: { a: 'b' } });
+export default language({ locale: 'en-US', default: true, texts: { a: 'b' } });
 `,
       },
-      /src\/messages\/fr\.ts\(5,5\): error TS2322: Type '\{ description: string; \}' is not assignable to type 'never'\./,
+      /src\/messages\/fr\.ts\(6,5\): error TS2322: Type '\{ description: string; \}' is not assignable to type 'never'\./,
     ],
   ])(
     'underlines a language file that translates a command its file describes: %s',
     (_, more, error) => {
       const cwd = typed({
-        'src/commands/ping.ts': `import { command } from 'chapterjs';\nexport default command({ description: 'Pong', run() {} });\n`,
+        'src/commands/ping.ts': `import { command } from 'chapterjs';\nexport default command({ name: 'ping', description: 'Pong', run() {} });\n`,
         'src/messages/fr.ts': `import { language } from 'chapterjs';
 export default language({
+  locale: 'fr',
   texts: { a: 'c' },
   commands: {
     ping: { description: 'Pong !' },
@@ -195,30 +198,32 @@ export default language({
   it.each([
     [
       'a file that can not run',
-      { 'src/commands/broken.ts': 'export default 5;\n' },
+      {
+        'src/commands/broken.ts': `import { command } from 'chapterjs';\nexport default command({ name: 'broken', description: 'd' } as never);\n`,
+      },
       [
-        /✗ src\/commands\/broken\.ts The default export of this file must be what command\(\) returns/,
+        /✗ src\/commands\/broken\.ts This command has no "run"/,
         /✗ This file can't run, so your bot was not built\. Fix it and build again: chapterjs dev shows the same errors while you write\./,
       ],
     ],
     [
       'several files that can not run',
       {
-        'src/commands/broken.ts': 'export default 5;\n',
-        'src/events/nope/x.ts': '',
+        'src/commands/broken.ts': `import { command } from 'chapterjs';\nexport default command({ name: 'broken', description: 'd' } as never);\n`,
+        'src/events/x.ts': `import { event } from 'chapterjs';\nexport const nope = event({ name: 'nope', run() {} } as never);\n`,
         'src/commands/throws.ts': "throw new Error('boom');\n",
       },
       [
         /✗ src\/commands\/throws\.ts:1 boom/,
-        /✗ src\/events\/nope\/x\.ts The folder src\/events\/nope is not named after an event/,
+        /✗ src\/events\/x\.ts \(nope\) "nope" is not an event/,
         /✗ These 3 files can't run, so your bot was not built\. Fix them and build again/,
       ],
     ],
     [
-      'two files that are the same command',
+      'two declarations of the same command',
       { 'src/commands/(a)/ping.ts': PING.replace('../lib', '../../lib') },
       [
-        /✗ src\/commands\/ping\.ts \/ping is already src\/commands\/\(a\)\/ping\.ts/,
+        /✗ src\/commands\/ping\.ts \/ping is already declared in src\/commands\/\(a\)\/ping\.ts: two commands can't have the same name\./,
       ],
     ],
     [
@@ -226,6 +231,7 @@ export default language({
       {
         'src/commands/lazy.ts': `import { command } from 'chapterjs';
 export default command({
+  name: 'lazy',
   description: 'd',
   async run() {
     await import('./not-there');
@@ -234,7 +240,7 @@ export default command({
 `,
       },
       [
-        /✗ src\/commands\/lazy\.ts:5 Could not resolve "\.\/not-there"/,
+        /✗ src\/commands\/lazy\.ts:6 Could not resolve "\.\/not-there"/,
         /✗ This file can't be compiled, so your bot was not built\. Fix it and build again/,
       ],
     ],
@@ -255,7 +261,7 @@ export default command({
       'config.ts': `export const motto: string = 'from the root of the project';\n`,
       'src/commands/outside.ts': `import { command } from 'chapterjs';
 import { motto } from '../../config';
-export default command({ description: motto, run() {} });
+export default command({ name: 'outside', description: motto, run() {} });
 `,
     });
     const result = buildProject(cwd);
@@ -269,7 +275,10 @@ export default command({ description: motto, run() {} });
   it('replaces the last build: a removed file is no longer in it', () => {
     const cwd = project({
       ...files,
-      'src/commands/old.ts': PING.replace('Replies with Pong!', 'Old command'),
+      'src/commands/old.ts': PING.replace(
+        "name: 'ping'",
+        "name: 'old'"
+      ).replace('Replies with Pong!', 'Old command'),
     });
     const bot = () =>
       readFileSync(join(cwd, '.chapterjs/build/bot.js'), 'utf8');

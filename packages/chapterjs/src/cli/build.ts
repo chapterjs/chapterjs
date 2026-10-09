@@ -21,15 +21,10 @@ import {
 import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { enableProjectLoader } from '../loader/hot.js';
-import { listFolder, type BuiltFile } from '../loader/loader.js';
+import { listSources, type BuiltFile } from '../loader/loader.js';
 import { sourcesJoinVoice } from '../voice/usage.js';
 import type { Log } from './log.js';
-import {
-  CONVENTIONS,
-  createProject,
-  hasSources,
-  writeTypes,
-} from './project.js';
+import { createProject, hasSources, writeTypes } from './project.js';
 
 /** Where the build of a project is, from its folder. */
 export const buildDir = (cwd: string): string =>
@@ -172,15 +167,9 @@ export async function build(options: BuildOptions): Promise<number> {
   const sources = createProject({ cwd, version: options.version, log });
   const failures = await sources.load();
   // 2. Types: what the editor underlines, for the whole project. Written
-  // once the files ran, so a language file only offers the commands they
-  // do not describe; written even when a file failed, so the editor
-  // follows.
-  await writeTypes(
-    cwd,
-    sources.commands,
-    sources.messages,
-    sources.languageDefaults
-  );
+  // once the files ran, so a language only offers the commands they do
+  // not describe; written even when a file failed, so the editor follows.
+  await writeTypes(cwd, sources.typesInfo());
   if (failures.length > 0) {
     for (const failure of failures) sources.report(failure);
     return stopped(failures.length);
@@ -199,14 +188,10 @@ export async function build(options: BuildOptions): Promise<number> {
     log.success('Types checked');
   }
 
-  // 3. The whole bot in one file: every file of the conventional folders,
-  // with what it imports from the project. Packages stay where they are
-  // installed: the bot and the framework must share the same ones.
-  const found = (
-    await Promise.all(
-      CONVENTIONS.map(convention => listFolder(cwd, convention))
-    )
-  ).flat();
+  // 3. The whole bot in one file: every file of src/, with what it
+  // imports. Packages stay where they are installed: the bot and the
+  // framework must share the same ones.
+  const found = await listSources(cwd);
   const entry = [
     ...found.map(
       ({ path }, index) => `import * as m${index} from ${JSON.stringify(path)};`

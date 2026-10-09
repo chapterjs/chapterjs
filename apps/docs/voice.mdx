@@ -9,6 +9,7 @@ Your bot can join a voice channel and play sound there. Put a file in `public/`,
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'intro',
   description: 'Plays the intro in your voice channel',
   async run({ interaction, member }) {
     const channel = member.voiceChannel;
@@ -59,6 +60,7 @@ An `attachment` option lets the person send the song with the command, and `play
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'song',
   description: 'Plays the song you send',
   options: {
     file: { type: 'attachment', description: 'The song', required: true },
@@ -86,6 +88,7 @@ What is playing can be paused, resumed and stopped from anywhere: another comman
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'pause',
   description: 'Pauses or resumes what plays',
   async run({ interaction, guild }) {
     const voice = guild.voice;
@@ -112,6 +115,7 @@ export default command({
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'follow',
   description: 'Brings the bot to your voice channel',
   async run({ interaction, member, guild }) {
     const channel = member.voiceChannel;

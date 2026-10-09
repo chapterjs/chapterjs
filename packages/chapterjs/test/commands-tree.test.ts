@@ -1,21 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { command } from '../src/commands/command.js';
-import { commandsConvention } from '../src/commands/convention.js';
+import { commandDeclaration } from '../src/commands/declaration.js';
 import { buildCommands, privateOnly } from '../src/commands/tree.js';
 import { sameDefinition, withoutGlobalTwins } from '../src/commands/twins.js';
+import { site } from './dev-helpers.js';
 
-/** A command file as the loader hands it over, for a place. */
+/** A command as the loader hands it over, for a place: `path` is its name with /. */
 const entry = (path: string, where?: 'guild' | 'dm' | 'both') => ({
-  file: `src/commands/${path}`,
-  command: commandsConvention.read(
-    {
-      default: command({
-        description: 'd',
-        ...(where ? { where } : {}),
-        run() {},
-      }),
-    },
-    path
+  ...site(`src/commands/${path}`),
+  command: commandDeclaration.read(
+    command({
+      name: path.replace(/\.ts$/, '').replaceAll('/', ' '),
+      description: 'd',
+      ...(where ? { where } : {}),
+      run() {},
+    }),
+    site(`src/commands/${path}`)
   ),
 });
 
@@ -90,36 +90,35 @@ describe('where commands are offered', () => {
 });
 
 describe('a command the bot already has for everyone', () => {
-  const full = commandsConvention.read(
-    {
-      default: command({
-        description: 'Ban a member',
-        options: {
-          target: { type: 'user', description: 'Who', required: true },
-          reason: { type: 'string', description: 'Why', choices: ['spam'] },
-          days: { type: 'integer', description: 'Days', min: 0, max: 7 },
+  const full = commandDeclaration.read(
+    command({
+      name: 'ban',
+      description: 'Ban a member',
+      options: {
+        target: { type: 'user', description: 'Who', required: true },
+        reason: { type: 'string', description: 'Why', choices: ['spam'] },
+        days: { type: 'integer', description: 'Days', min: 0, max: 7 },
+      },
+      locales: {
+        fr: {
+          name: 'bannir',
+          description: 'Bannir',
+          options: { reason: { choices: { spam: 'Pourriel' } } },
         },
-        locales: {
-          fr: {
-            name: 'bannir',
-            description: 'Bannir',
-            options: { reason: { choices: { spam: 'Pourriel' } } },
-          },
-        },
-        permissions: ['BanMembers'],
-        run() {},
-      }),
-    },
-    'ban.ts'
+      },
+      permissions: ['BanMembers'],
+      run() {},
+    }),
+    site('src/commands/ban.ts')
   );
   const [ours] = buildCommands(
-    [{ file: 'src/commands/ban.ts', command: full }],
+    [{ ...site('src/commands/ban.ts'), command: full }],
     {
       guild: true,
     }
   );
   const [forEveryone] = buildCommands(
-    [{ file: 'src/commands/ban.ts', command: full }],
+    [{ file: 'src/commands/ban.ts', export: 'default', command: full }],
     { guild: false }
   );
   /** What Discord sends back for a command: what it was given, and more. */

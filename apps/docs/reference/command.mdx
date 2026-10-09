@@ -9,6 +9,7 @@ description: 'Everything a command file declares, every kind of option, and what
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'ping',
   description: 'Replies with Pong!',
   async run({ interaction }) {
     await interaction.reply('Pong!');
@@ -23,20 +24,20 @@ export default command({
 ## command()
 
 ```ts
-command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild'>(config: CommandConfig<Options, Where>): CommandFile<Options, Where>
+command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild'>(config: CommandConfig<Options, Where>): CommandDeclaration<Options, Where>
 ```
 
-Declares a slash command. Export the result as the default export of a file of `src/commands/`: the path of the file is the name of the command (`src/commands/mod/ban.ts` is `/mod ban`).
+Declares a slash command. Export the result from any file of `src/`: `name` is what people type after the `/` (`'mod ban'` for `/mod ban`).
 
 `Options` and `Where` are inferred from what you pass: you never write them.
 
-### CommandFile
+### CommandDeclaration
 
 ```ts
-interface CommandFile<Options extends CommandOptions = CommandOptions, Where extends CommandWhere = CommandWhere>
+interface CommandDeclaration<Options extends CommandOptions = CommandOptions, Where extends CommandWhere = CommandWhere>
 ```
 
-What `command()` returns: the default export of a command file. It keeps the options and the place the file declared.
+What `command()` returns: a declaration the framework finds in the exports of a file. It keeps the options and the place the file declared.
 
 <ResponseField name="config" type="CommandConfig<Options, Where>">
   What the file gave to `command()`, not checked yet.
@@ -44,10 +45,14 @@ What `command()` returns: the default export of a command file. It keeps the opt
 
 ## CommandConfig
 
-What a command file gives to `command()`: what the command is and does.
+What a file gives to `command()`: what the command is and does.
+
+<ResponseField name="name" type="CommandName" required>
+  What people type after the `/`: `'ping'` is `/ping`. A subcommand is written with its parents: `'mod ban'` is `/mod ban`, `'mod roles add'` is `/mod roles add`.
+</ResponseField>
 
 <ResponseField name="description" type="string">
-  What the command does, shown under its name (1-100 characters). Here, with `locales` for its translations; or left out, and every text of the command (description, options, their choices, translations) comes from the language files of `src/messages/`. One or the other.
+  What the command does, shown under its name (1-100 characters). Here, with `locales` for its translations; or left out, and every text of the command (description, options, their choices, translations) comes from the language files of the project. One or the other.
 </ResponseField>
 
 <ResponseField name="run" type="(context: CommandContext<Options, Where>) => unknown" required>
@@ -87,6 +92,14 @@ What a command file gives to `command()`: what the command is and does.
 <ResponseField name="autocomplete" type="CommandAutocomplete<Options, Where>">
   Suggestions that come from your bot while the person types, for the options named here (a `string`, `integer` or `number` option without `choices`): each function receives what they typed and returns the suggestions. The person may still type something else.
 </ResponseField>
+
+### CommandName
+
+```ts
+type CommandName = string
+```
+
+The name of a slash command: lowercase letters, digits, `-` and `_`, 32 characters at most (`'ping'`). A subcommand is written with its parents, separated by spaces: `'mod ban'` is `/mod ban`, `'mod roles add'` is `/mod roles add` (Discord allows nothing deeper).
 
 ### CommandWhere
 
@@ -149,7 +162,7 @@ One option of a command. Every kind has these fields:
 </ResponseField>
 
 <ResponseField name="description" type="string">
-  What the option is for, shown under its name (1-100 characters). Here when the command has its `description` here; otherwise in the default language file of `src/messages/`.
+  What the option is for, shown under its name (1-100 characters). Here when the command has its `description` here; otherwise in the default language file of the project.
 </ResponseField>
 
 <ResponseField name="required" type="boolean">
@@ -287,7 +300,7 @@ What an `autocomplete` function receives, each time the person types in its opti
 </ResponseField>
 
 <ResponseField name="t" type="Translator">
-  The texts of the project in the language of the person, when `src/messages/` has a language. See [`Translator`](/reference/messages#translator).
+  The texts of the project in the language of the person, when the project has a language. See [`Translator`](/reference/messages#translator).
 </ResponseField>
 
 The place follows `where`, like [`CommandContext`](#commandcontext) without its `interaction`: in a server `guild`, `member` and `channel` ([`CommandInGuild`](#commandinguild)); in private messages only `channel` ([`CommandInDm`](#commandindm)); with `'both'`, `if (guild)` tells which one it is ([`CommandInPrivate`](#commandinprivate)).
@@ -337,7 +350,7 @@ Whatever `where` says, it has:
 </ResponseField>
 
 <ResponseField name="t" type="Translator">
-  The texts of `src/messages/`, in the right language. Only when the project has a language there: see [`TranslationContext`](/reference/messages#translationcontext).
+  The texts of the language files, in the right language. Only when the project has a language: see [`TranslationContext`](/reference/messages#translationcontext).
 </ResponseField>
 
 And the rest follows `where`:

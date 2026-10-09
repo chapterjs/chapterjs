@@ -7,9 +7,9 @@ Un formulaire (Discord l’appelle un modal) est une fenêtre qui s’ouvre dans
 
 ## Un formulaire est un fichier
 
-Créez `src/components/modals/suggest.ts` :
+Créez `src/components/suggest.ts` (un formulaire se déclare avec `modal()` et s’exporte, depuis n’importe quel fichier de `src/`) :
 
-```ts src/components/modals/suggest.ts
+```ts src/components/suggest.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -31,9 +31,10 @@ Une commande l’ouvre avec `showModal()` :
 
 ```ts src/commands/suggest.ts
 import { command } from 'chapterjs';
-import suggest from '../components/modals/suggest';
+import suggest from '../components/suggest';
 
 export default command({
+  name: 'suggest',
   description: 'Suggère quelque chose pour le serveur',
   async run({ interaction }) {
     await interaction.showModal(suggest);
@@ -66,9 +67,9 @@ Chaque champ est obligatoire sauf s’il dit `required: false`. `minLength` et `
 
 Un bouton ou un menu peut aussi ouvrir un formulaire. Le formulaire connaît alors le message du bouton (`interaction.message`) et peut le modifier avec `update()` au lieu d’envoyer un nouveau message. Les `data` d’un formulaire fonctionnent comme celles d’un bouton : données à l’ouverture du formulaire, reçues typées dans `run` :
 
-```ts src/components/buttons/edit-topic.ts
+```ts src/components/edit-topic.ts
 import { button } from 'chapterjs';
-import topic from '../modals/topic';
+import topic from './topic';
 
 export default button({
   label: 'Modifier le sujet',
@@ -79,7 +80,7 @@ export default button({
 });
 ```
 
-```ts src/components/modals/topic.ts
+```ts src/components/topic.ts
 import { modal } from 'chapterjs';
 
 export default modal({
@@ -107,7 +108,7 @@ Pour pré-remplir certains champs, passez `values` là où le formulaire est ouv
 
 ## Récapitulatif
 
-- Un formulaire est un fichier de `src/components/modals/` avec un `title` et des `fields` ; `run` reçoit `fields`, typé selon la sorte.
+- Un formulaire est `modal({ title, fields, run })`, exporté ; `run` reçoit `fields`, typé selon la sorte.
 - `interaction.showModal(form)` l’ouvre, depuis une commande, un bouton ou un menu, en première réponse.
 - `data` et `values` se donnent là où le formulaire est ouvert.
 

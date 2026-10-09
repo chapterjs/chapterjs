@@ -39,12 +39,12 @@ Ce qu’un message peut contenir, et comment il est envoyé. Un message a besoin
   Le texte du message (jusqu’à 2000 caractères).
 </ResponseField>
 
-<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
-  Jusqu’à 10 embeds : écrits ici, ou des fichiers de `src/components/embeds/`. Voir [Embed](#embed) et [embed()](/fr/reference/embed).
+<ResponseField name="embeds" type="(Embed | EmbedDeclaration<[]>)[]">
+  Jusqu’à 10 embeds : écrits ici, ou déclarés avec `embed()`. Voir [Embed](#embed) et [embed()](/fr/reference/embed).
 </ResponseField>
 
 <ResponseField name="components" type="MessageComponent[]">
-  Des boutons, des menus déroulants et des composants de mise en page, fabriqués par ChapterJS : les fichiers de `src/components/` et `row()`, `text()`, `container()`... Voir [Composants](#composants).
+  Des boutons, des menus déroulants et des composants de mise en page, fabriqués par ChapterJS : des composants déclarés avec `button()`, `select()`... et `row()`, `text()`, `container()`... Voir [Composants](#composants).
 </ResponseField>
 
 <ResponseField name="files" type="(FileInput | AssetFile)[]">
@@ -89,12 +89,12 @@ Ce qui peut être changé dans un message déjà envoyé : `message.edit()` pren
   Le texte du message (jusqu’à 2000 caractères).
 </ResponseField>
 
-<ResponseField name="embeds" type="(Embed | EmbedFile<[]>)[]">
-  Jusqu’à 10 embeds : écrits ici, ou des fichiers de `src/components/embeds/`.
+<ResponseField name="embeds" type="(Embed | EmbedDeclaration<[]>)[]">
+  Jusqu’à 10 embeds : écrits ici, ou déclarés avec `embed()`.
 </ResponseField>
 
 <ResponseField name="components" type="MessageComponent[]">
-  Des boutons, des menus déroulants et des composants de mise en page, fabriqués par ChapterJS : les fichiers de `src/components/` et `row()`, `text()`, `container()`...
+  Des boutons, des menus déroulants et des composants de mise en page, fabriqués par ChapterJS : des composants déclarés avec `button()`, `select()`... et `row()`, `text()`, `container()`...
 </ResponseField>
 
 <ResponseField name="files" type="(FileInput | AssetFile)[]">
@@ -445,7 +445,7 @@ Un sondage à joindre à un message.
 
 ## Composants
 
-`components` ne prend que ce que ChapterJS a fabriqué : les boutons, menus et formulaires de `src/components/`, et les helpers de mise en page (`row()`, `linkButton()`, `text()`, `section()`, `container()`...). Un objet simple est refusé avant tout envoi, donc aucun identifiant n’est jamais écrit à la main. Les boutons qui se suivent sont mis en rangées de 5 ; un menu a une rangée à lui.
+`components` ne prend que ce que ChapterJS a fabriqué : les boutons, menus et formulaires déclarés avec `button()`, `select()` et `modal()`, et les helpers de mise en page (`row()`, `linkButton()`, `text()`, `section()`, `container()`...). Un objet simple est refusé avant tout envoi, donc aucun identifiant n’est jamais écrit à la main. Les boutons qui se suivent sont mis en rangées de 5 ; un menu a une rangée à lui.
 
 Un message avec un texte, une section, une galerie, un fichier, un séparateur ou un conteneur est construit uniquement avec des composants : Discord n’affiche ni `content` ni `embeds`, et le message le dit avant de partir si vous en passez un. Les pièces et leurs types sont listés dans [Mise en page](/fr/reference/layout) ; comment les utiliser est dans [Boutons](/fr/components) et [Embeds et mise en page](/fr/components/embeds).
 

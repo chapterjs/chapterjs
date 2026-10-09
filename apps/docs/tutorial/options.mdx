@@ -13,6 +13,7 @@ Add `options` to the command. Each key is the name of an option, each value says
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'dice',
   description: 'Rolls a die',
   options: {
     sides: { type: 'integer', description: 'How many sides', min: 2, max: 100 },
@@ -61,6 +62,7 @@ An option of type `user` gives you the person as an object, not as a text. Creat
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'whois',
   description: 'Tells you about someone',
   options: {
     who: { type: 'user', description: 'Who to look at', required: true },
@@ -85,6 +87,7 @@ When the possible values are known in advance, `choices` turns the option into a
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'dice',
   description: 'Rolls a die',
   options: {
     sides: {
@@ -116,6 +119,7 @@ import { command } from 'chapterjs';
 const GAMES = ['Catan', 'Monopoly', 'Risk', 'Yahtzee'];
 
 export default command({
+  name: 'dice-game',
   description: 'Rolls the die of a game',
   options: {
     game: { type: 'string', description: 'Which game', required: true },

@@ -3,19 +3,22 @@ title: 'Reactions and voice'
 description: 'React to the reactions people add and to who joins a voice channel, and see why some events only give an id'
 ---
 
-People do more on Discord than write: they react to messages, vote in polls, join voice channels. Each of these is an event too, with its folder in `src/events/`. This page adds two to your bot, a bookmark that works with a reaction and a greeting in voice, and shows what is different about them: some events come with less than a message does.
+People do more on Discord than write: they react to messages, vote in polls, join voice channels. Each of these is an event too, with its name. This page adds two to your bot, a bookmark that works with a reaction and a greeting in voice, and shows what is different about them: some events come with less than a message does.
 
 ## A bookmark with a reaction
 
-Create `src/events/reactionAdd/bookmark.ts`:
+Create `src/events/bookmark.ts`:
 
-```ts src/events/reactionAdd/bookmark.ts
+```ts src/events/bookmark.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ emoji, member, guild, channel, messageId }) => {
-  if (emoji.name !== '🔖') return;
-  const link = `https://discord.com/channels/${guild.id}/${channel.id}/${messageId}`;
-  await member.send(`You bookmarked a message in #${channel.name}: ${link}`);
+export default event({
+  name: 'reactionAdd',
+  async run({ emoji, member, guild, channel, messageId }) {
+    if (emoji.name !== '🔖') return;
+    const link = `https://discord.com/channels/${guild.id}/${channel.id}/${messageId}`;
+    await member.send(`You bookmarked a message in #${channel.name}: ${link}`);
+  },
 });
 ```
 
@@ -43,13 +46,16 @@ Often the id is enough: the link above is built from it, without asking Discord 
 
 ## Hello in voice
 
-Create `src/events/voiceJoin/greeter.ts`:
+Create `src/events/greeter.ts`:
 
-```ts src/events/voiceJoin/greeter.ts
+```ts src/events/greeter.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, channel }) => {
-  await channel.send(`Welcome to ${channel.name}, ${member.displayName}!`);
+export default event({
+  name: 'voiceJoin',
+  async run({ member, channel }) {
+    await channel.send(`Welcome to ${channel.name}, ${member.displayName}!`);
+  },
 });
 ```
 
@@ -66,7 +72,7 @@ Discord tells a bot only that "someone's voice state changed". ChapterJS remembe
 
 ## And the others
 
-Polls (`pollVoteAdd`), typing (`typingStart`), bans (`banAdd`), the audit log, invites, emojis, scheduled events, threads and presences all work the same way: a folder named after the event, a file in it, and what your function receives typed for that folder. The [Guide](/events) has a page for each family.
+Polls (`pollVoteAdd`), typing (`typingStart`), bans (`banAdd`), the audit log, invites, emojis, scheduled events, threads and presences all work the same way: an `event()` with the name of the event, and what your function receives typed for that folder. The [Guide](/events) has a page for each family.
 
 ## Points of attention
 
@@ -77,7 +83,7 @@ Polls (`pollVoteAdd`), typing (`typingStart`), bans (`banAdd`), the audit log, i
 
 ## Recap
 
-- `reactionAdd`, `reactionRemove`, `pollVoteAdd`, `typingStart`, the voice events and the others are folders of `src/events/`, like `memberJoin`.
+- `reactionAdd`, `reactionRemove`, `pollVoteAdd`, `typingStart`, the voice events and the others are declared with `event()`, like `memberJoin`.
 - Reactions ignore bots and private messages by default, like messages; `bots` and `where` change it.
 - Some events only give ids: `messageId` is always there, `message` is `null`; `user` is asked to Discord once when needed.
 - Four voice events tell a join, a leave, a move and a change apart.

@@ -3,9 +3,9 @@ title: 'select()'
 description: 'Tout ce que déclare un fichier de menu déroulant, les trois façons d’écrire les options, et ce que reçoit la fonction run'
 ---
 
-`select()` est ce qu’un fichier de `src/components/selects/` exporte par défaut. Elle prend un objet, `SelectConfig`, et type `values` dans `run` d’après lui.
+`select()` déclare un menu déroulant, depuis n’importe quel fichier de `src/` ; le nom de son export est son identifiant. Elle prend un objet, `SelectConfig`, et type `values` dans `run` d’après lui.
 
-```ts src/components/selects/color.ts
+```ts src/components/color.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -24,18 +24,18 @@ export default select({
 ## select()
 
 ```ts
-select<Options extends SelectOptions, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: StringSelectConfig<Options, Data, Where>): SelectFile<Data>
-select<Type extends EntitySelectType, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: EntitySelectConfig<Type, Data, Where>): SelectFile<Data>
+select<Options extends SelectOptions, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: StringSelectConfig<Options, Data, Where>): SelectDeclaration<Data>
+select<Type extends EntitySelectType, Data extends DataShape = {}, Where extends ComponentWhere = 'guild'>(config: EntitySelectConfig<Type, Data, Where>): SelectDeclaration<Data>
 ```
 
-Déclare un menu déroulant. Exportez le résultat comme export par défaut d’un fichier de `src/components/selects/` : le chemin du fichier est ce qui distingue le menu, donc vous n’écrivez jamais d’identifiant.
+Déclare un menu déroulant. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est ce qui distingue le menu, donc vous n’écrivez jamais d’identifiant.
 
-### SelectFile
+### SelectDeclaration
 
-Ce que renvoie `select()` : l’export par défaut d’un fichier de menu. Importez-le là où vous envoyez un message, et appelez-le avec les données qu’il transporte ; un menu sans données s’utilise tel quel, ou s’appelle avec ce qu’il faut afficher.
+Ce que renvoie `select()` : une déclaration que le framework trouve dans les exports d’un fichier. Importez-le là où vous envoyez un message, et appelez-le avec les données qu’il transporte ; un menu sans données s’utilise tel quel, ou s’appelle avec ce qu’il faut afficher.
 
 ```ts
-type SelectFile<Data extends DataShape = {}> = { readonly config: unknown } &
+type SelectDeclaration<Data extends DataShape = {}> = { readonly config: unknown } &
   ({} extends Data
     ? ((options?: SelectInstanceOptions) => SelectComponent) & SelectComponent
     : {} extends DataInputOf<Data>

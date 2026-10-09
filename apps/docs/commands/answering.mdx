@@ -9,6 +9,7 @@ The `interaction` your function receives is how you answer. `interaction.reply()
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'secret',
   description: 'Tells you a secret',
   async run({ interaction, user }) {
     // Only the person who used the command sees this answer.
@@ -55,6 +56,7 @@ To make **every** answer of a command ephemeral, put `ephemeral: true` on the co
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'roll',
   description: 'Rolls a die',
   ephemeral: true,
   async run({ interaction, user }) {
@@ -76,6 +78,7 @@ import { command } from 'chapterjs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 export default command({
+  name: 'report',
   description: 'Builds a long report',
   async run({ interaction }) {
     await sleep(10_000); // something slow
@@ -90,6 +93,7 @@ Call `interaction.defer()` yourself if you want "thinking…" to show up right a
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'lookup',
   description: 'Looks something up',
   options: {
     query: { type: 'string', description: 'What to look for', required: true },
@@ -121,6 +125,7 @@ import { command } from 'chapterjs';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 export default command({
+  name: 'countdown',
   description: 'Counts down from 3',
   async run({ interaction }) {
     await interaction.reply('3...');

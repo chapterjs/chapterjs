@@ -89,7 +89,7 @@ Il vous faut [Node.js](https://nodejs.org) 24 ou plus récent, une application D
     ✓ Commands updated on My Server
     ```
 
-    La quatrième ligne est affichée par l’événement `ready` du modèle, `src/events/ready/online.ts`.
+    La quatrième ligne est affichée par l’événement `ready` du modèle, `src/events/online.ts`.
 
     Si le bot n’est pas encore dans votre serveur de test, la commande affiche un lien qui l’y ajoute et vous attend. Si un de vos fichiers a besoin d’une option qui n’est pas activée pour votre bot, elle dit laquelle et où l’activer, et attend aussi. Chaque message dit quoi faire : voir [chapterjs dev](/fr/run/dev).
 
@@ -101,6 +101,7 @@ Il vous faut [Node.js](https://nodejs.org) 24 ou plus récent, une application D
     import { command } from 'chapterjs';
 
     export default command({
+      name: 'ping',
       description: 'Répond Pong !',
       async run({ interaction }) {
         await interaction.reply('Pong !');
@@ -119,9 +120,9 @@ Il vous faut [Node.js](https://nodejs.org) 24 ou plus récent, une application D
   </Step>
 </Steps>
 
-C’est tout. Le chemin du fichier est le nom de la commande : `src/commands/ping.ts` est `/ping`, et rien ne l’enregistre. ChapterJS lit le fichier, présente la commande à Discord et lance `run` quand quelqu’un l’utilise. Le dossier d’un événement fonctionne de la même façon : chaque fichier de `src/events/ready/` tourne quand le bot est connecté.
+C’est tout. `name` est le nom de la commande, `'ping'` est `/ping`, et rien ne l’enregistre. ChapterJS trouve la déclaration dans vos fichiers, présente la commande à Discord et lance `run` quand quelqu’un l’utilise.
 
-Pour ajouter une commande, ajoutez un fichier dans `src/commands/`. Pour réagir à quelque chose qui se passe sur Discord, ajoutez un dossier qui porte son nom dans `src/events/` et un fichier dedans. Ce qui va où est dans [Structure du projet](/fr/setup/project-structure).
+Pour ajouter une commande, déclarez-en une avec `command()` et exportez-la, dans n’importe quel fichier de `src/`. Pour réagir à quelque chose qui se passe sur Discord, déclarez un `event()` de la même façon. Comment le framework les trouve est dans [Structure du projet](/fr/setup/project-structure).
 
 Quand votre bot est prêt pour tout le monde, mettez-le sur une machine qui reste allumée : voir [Déployer](/fr/run/deploy).
 
@@ -132,6 +133,6 @@ Quand votre bot est prêt pour tout le monde, mettez-le sur une machine qui rest
     À quoi sert chaque dossier et fichier de votre projet.
   </Card>
   <Card title="Commandes" icon="terminal" href="/fr/commands">
-    Un fichier par commande slash, options typées pour vous.
+    Une commande slash, options typées pour vous.
   </Card>
 </CardGroup>

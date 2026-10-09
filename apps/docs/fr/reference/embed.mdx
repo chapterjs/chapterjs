@@ -1,11 +1,11 @@
 ---
 title: 'embed()'
-description: 'La fonction qu’exporte chaque fichier de src/components/embeds/, et ce qu’elle renvoie'
+description: 'La fonction qui déclare un embed utilisé dans plusieurs messages, et ce qu’elle renvoie'
 ---
 
-`embed()` est ce qu’un fichier de `src/components/embeds/` exporte par défaut. Elle prend l’embed lui-même, ou une fonction qui en renvoie un.
+`embed()` déclare un embed, depuis n’importe quel fichier de `src/`. Elle prend l’embed lui-même, ou une fonction qui en renvoie un.
 
-```ts src/components/embeds/welcome.ts
+```ts src/components/welcome.ts
 import { embed, type GuildMember } from 'chapterjs';
 
 export default embed((member: GuildMember) => ({
@@ -21,24 +21,24 @@ export default embed((member: GuildMember) => ({
 ## embed()
 
 ```ts
-embed(definition: Embed): EmbedFile<[]>
-embed<Args extends readonly unknown[]>(definition: (...args: Args) => Embed): EmbedFile<Args>
+embed(definition: Embed): EmbedDeclaration<[]>
+embed<Args extends readonly unknown[]>(definition: (...args: Args) => Embed): EmbedDeclaration<Args>
 ```
 
-Déclare un embed. Exportez le résultat comme export par défaut d’un fichier de `src/components/embeds/`. Donnez-lui l’embed lui-même quand il a toujours la même apparence, ou une fonction de ce qu’il affiche.
+Déclare un embed. Exportez le résultat depuis n’importe quel fichier de `src/`. Donnez-lui l’embed lui-même quand il a toujours la même apparence, ou une fonction de ce qu’il affiche.
 
 Un embed statique est vérifié par rapport aux limites de Discord au chargement du fichier ; l’embed que renvoie une fonction est vérifié au moment de l’envoi du message.
 
-### EmbedFile
+### EmbedDeclaration
 
 ```ts
-type EmbedFile<Args extends readonly unknown[] = []> = { readonly config: unknown } & ((...args: Args) => Embed)
+type EmbedDeclaration<Args extends readonly unknown[] = []> = { readonly config: unknown } & ((...args: Args) => Embed)
 ```
 
-Ce que renvoie `embed()` : l’export par défaut d’un fichier d’embed. Importez-le là où vous envoyez un message : `embeds: [welcome({ member })]`, ou `embeds: [rules]` pour un embed qui a toujours la même apparence.
+Ce que renvoie `embed()` : une déclaration que le framework trouve dans les exports d’un fichier. Importez-le là où vous envoyez un message : `embeds: [welcome({ member })]`, ou `embeds: [rules]` pour un embed qui a toujours la même apparence.
 
 <ResponseField name="config" type="unknown">
   Ce que le fichier a donné à `embed()`, pas encore vérifié.
 </ResponseField>
 
-Les `embeds` d’un message prennent un `Embed` ou un `EmbedFile<[]>` : un fichier d’embed qui a besoin d’arguments doit être appelé.
+Les `embeds` d’un message prennent un `Embed` ou une `EmbedDeclaration<[]>` : un embed qui a besoin d’arguments doit être appelé.

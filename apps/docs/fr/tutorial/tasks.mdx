@@ -80,7 +80,7 @@ Un cron faux, ou qui ne peut jamais arriver (`'0 0 31 2 *'`, le 31 février), es
 
 ## Récapitulatif
 
-- Une tâche est un fichier de `src/tasks/` avec `every` (un intervalle depuis le démarrage) ou `cron` (un horaire), et `run`.
+- Une tâche est `task({ ... })`, exportée, avec `every` (un intervalle depuis le démarrage) ou `cron` (un horaire), et `run` ; le nom de son export est son nom.
 - `timezone` fait suivre à un cron l’horloge de vos membres, pas celle de la machine.
 - Les passages qui se chevauchent, les erreurs et les reconnexions sont gérés ; enregistrer un fichier garde le prochain horaire.
 

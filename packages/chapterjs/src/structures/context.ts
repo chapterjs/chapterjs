@@ -16,7 +16,7 @@ export interface Context {
   readonly entities: Entities;
   /** Who the bot is; `null` until Discord said it. */
   self: { userId: Snowflake; applicationId: Snowflake } | null;
-  /** The texts of `src/messages/`; `null` without a language. */
+  /** The texts of the language files; `null` without a language. */
   messages: LoadedMessages | null;
   /** Where the bot is in voice; `null` outside a running bot. */
   voice: VoiceManager | null;

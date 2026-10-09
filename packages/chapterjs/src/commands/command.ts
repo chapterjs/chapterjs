@@ -25,7 +25,7 @@ interface OptionBase {
   /**
    * What the option is for, shown under its name (1-100 characters). Here
    * when the command has its `description` here; otherwise in the default
-   * language file of `src/messages/`.
+   * language file of the project.
    */
   description?: string;
   /** Whether the user must fill it in. By default it is optional. */
@@ -365,16 +365,31 @@ export type CommandContext<
       ? CommandInDm
       : CommandInGuild | CommandInPrivate);
 
-/** What a command file gives to `command()`: what the command is and does. */
+/**
+ * The name of a slash command: lowercase letters, digits, `-` and `_`, 32
+ * characters at most (`'ping'`). A subcommand is written with its parents,
+ * separated by spaces: `'mod ban'` is `/mod ban`, `'mod roles add'` is
+ * `/mod roles add` (Discord allows nothing deeper).
+ * @see https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-naming
+ */
+export type CommandName = string;
+
+/** What a file gives to `command()`: what the command is and does. */
 export interface CommandConfig<
   Options extends CommandOptions = CommandOptions,
   Where extends CommandWhere = 'guild',
 > {
   /**
+   * What people type after the `/`: `'ping'` is `/ping`. A subcommand is
+   * written with its parents: `'mod ban'` is `/mod ban`, `'mod roles add'`
+   * is `/mod roles add`.
+   */
+  name: CommandName;
+  /**
    * What the command does, shown under its name (1-100 characters). Here,
    * with `locales` for its translations; or left out, and every text of
    * the command (description, options, their choices, translations) comes
-   * from the language files of `src/messages/`. One or the other.
+   * from the language files of the project. One or the other.
    */
   description?: string;
   /** What the user can fill in (25 options at most). */
@@ -418,8 +433,8 @@ export interface CommandConfig<
   run: (context: CommandContext<Options, Where>) => unknown;
 }
 
-/** What `command()` returns: the default export of a command file. */
-export interface CommandFile<
+/** What `command()` returns: a declaration the framework finds in the exports of a file. */
+export interface CommandDeclaration<
   Options extends CommandOptions = CommandOptions,
   Where extends CommandWhere = CommandWhere,
 > {
@@ -430,14 +445,14 @@ export interface CommandFile<
 const BRAND = Symbol.for('chapterjs.command');
 
 /**
- * Declares a slash command. Export the result as the default export of a
- * file of `src/commands/`: the path of the file is the name of the command
- * (`src/commands/mod/ban.ts` is `/mod ban`).
+ * Declares a slash command. Export the result from any file of `src/`:
+ * `name` is what people type after the `/` (`'mod ban'` for `/mod ban`).
  *
  * ```ts
  * import { command } from 'chapterjs';
  *
- * export default command({
+ * export const ping = command({
+ *   name: 'ping',
  *   description: 'Replies with Pong!',
  *   async run({ interaction }) {
  *     await interaction.reply('Pong!');
@@ -448,12 +463,14 @@ const BRAND = Symbol.for('chapterjs.command');
 export function command<
   const Options extends CommandOptions = {},
   const Where extends CommandWhere = 'guild',
->(config: CommandConfig<Options, Where>): CommandFile<Options, Where> {
+>(config: CommandConfig<Options, Where>): CommandDeclaration<Options, Where> {
   return Object.freeze({ [BRAND]: true, config });
 }
 
 /** Whether a value was made by `command()`. */
-export function isCommandFile(value: unknown): value is CommandFile {
+export function isCommandDeclaration(
+  value: unknown
+): value is CommandDeclaration {
   return (
     typeof value === 'object' &&
     value !== null &&

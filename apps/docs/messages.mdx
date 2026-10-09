@@ -9,6 +9,7 @@ Everything that can receive a message has a `send()`: a channel, a user, a membe
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'announce',
   description: 'Posts an announcement in this channel',
   options: {
     text: { type: 'string', description: 'What to announce', required: true },
@@ -133,6 +134,7 @@ The pictures and documents your bot sends live in the `public/` folder of your p
 import { asset, command } from 'chapterjs';
 
 export default command({
+  name: 'chart',
   description: 'Shows the chart of the week',
   async run({ interaction }) {
     await interaction.reply({
@@ -324,13 +326,14 @@ async function lastMessagesOf(channel: TextChannel, authorId: string, count: num
 
 ## Buttons, menus and layout
 
-A message can hold buttons and select menus, which run a file of `src/components/` when they are used, and be built out of texts, sections, galleries and containers instead of a text and embeds:
+A message can hold buttons and select menus, declared with `button()` and `select()`, which run your code when they are used, and be built out of texts, sections, galleries and containers instead of a text and embeds:
 
 ```ts src/commands/vote.ts
 import { command } from 'chapterjs';
-import yes from '../components/buttons/yes';
+import yes from '../components/yes';
 
 export default command({
+  name: 'vote',
   description: 'Starts a vote',
   async run({ interaction }) {
     await interaction.reply({ content: 'Pizza tonight?', components: [yes] });
@@ -338,7 +341,7 @@ export default command({
 });
 ```
 
-```ts src/components/buttons/yes.ts
+```ts src/components/yes.ts
 import { button } from 'chapterjs';
 
 export default button({

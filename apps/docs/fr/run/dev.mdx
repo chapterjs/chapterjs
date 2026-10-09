@@ -102,7 +102,7 @@ Avant de se connecter, `chapterjs dev` s’assure que tout est en place. Quand q
 
     ```text
     ⚠ Your files need an option that is not enabled for your bot:
-      - Message Content Intent, needed by src/events/messageCreate/ping.ts
+      - Message Content Intent, needed by src/events/ping.ts
       Enable it under "Privileged Gateway Intents", then save:
       https://discord.com/developers/applications/123456789012345678/bot
       Waiting for you to enable it...
@@ -130,7 +130,7 @@ Chaque fichier de `src/` est surveillé : vos [commandes](/fr/commands), vos [é
 Un fichier avec une erreur n’arrête jamais votre bot. L’erreur est affichée avec le fichier et la ligne, et **la dernière version qui fonctionnait continue de tourner** jusqu’à ce que vous la corrigiez :
 
 ```text
-✗ src/events/messageCreate/ping.ts:4 Expression expected
+✗ src/events/ping.ts:4 Expression expected
 ⚠ Reloaded with an error: that file keeps running its last working version
 ```
 
@@ -182,7 +182,7 @@ Ce qui ne fonctionne qu’en messages privés ne peut pas être essayé en dev, 
 
 ```text
 ℹ src/commands/settings.ts /settings only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
-ℹ src/events/messageCreate/inbox.ts this messageCreate file only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
+ℹ src/events/inbox.ts this messageCreate file only works in private messages, and chapterjs dev only runs your bot in My Server. Try it with chapterjs start.
 ```
 
 ## Les types de votre projet

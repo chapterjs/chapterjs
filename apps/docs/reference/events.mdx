@@ -7,7 +7,7 @@ description: 'Every event your bot can react to: when it happens, what it needs,
   How to write an event file is in [Events](/events); the events about messages and their options in [Messages](/events/messages); `event()` and its types in [event()](/reference/event).
 </Note>
 
-An event is a folder of `src/events/`. Each section below is one folder: when its files run, the intents Discord needs for it (worked out from your files, never written by you), its options, what the bot remembers for it beyond [the default](/memory), and what your function receives.
+An event is the `name` of an `event()` declaration. Each section below is one event: when its declarations run, the intents Discord needs for it (worked out from your files, never written by you), its options, what the bot remembers for it beyond [the default](/memory), and what your function receives.
 
 Intents are named as `chapterjs dev` prints them. Three are privileged, to enable in the [Developer Portal](/setup/discord-application): `GUILD_MEMBERS` is the Server Members Intent, `GUILD_PRESENCES` the Presence Intent, `MESSAGE_CONTENT` the Message Content Intent.
 
@@ -20,7 +20,7 @@ Intents are named as `chapterjs dev` prints them. Three are privileged, to enabl
 | Options | None |
 | Remembers | The default |
 
-Every event also receives `t`, in the language of the server it happened in, when the project has a language in `src/messages/`: see [`TranslationContext`](/reference/messages#translationcontext).
+Every event also receives `t`, in the language of the server it happened in, when the project has a language: see [`TranslationContext`](/reference/messages#translationcontext).
 
 <ResponseField name="user" type="User" required>
   The bot itself.

@@ -13,6 +13,7 @@ Ajoutez `options` à la commande. Chaque clé est le nom d’une option, chaque 
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'dice',
   description: 'Lance un dé',
   options: {
     sides: { type: 'integer', description: 'Combien de faces', min: 2, max: 100 },
@@ -59,6 +60,7 @@ Une option de type `user` vous donne la personne sous forme d’objet, pas de te
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'whois',
   description: 'Vous parle de quelqu’un',
   options: {
     who: { type: 'user', description: 'Qui regarder', required: true },
@@ -81,6 +83,7 @@ Quand les valeurs possibles sont connues à l’avance, `choices` transforme l�
 import { command } from 'chapterjs';
 
 export default command({
+  name: 'dice',
   description: 'Lance un dé',
   options: {
     sides: {
@@ -110,6 +113,7 @@ import { command } from 'chapterjs';
 const GAMES = ['Catan', 'Monopoly', 'Risk', 'Yahtzee'];
 
 export default command({
+  name: 'dice-game',
   description: 'Lance le dé d’un jeu',
   options: {
     game: { type: 'string', description: 'Quel jeu', required: true },

@@ -7,9 +7,9 @@ A select menu is a dropdown under a message. It is a component like a button, so
 
 ## A menu with your options
 
-Create `src/components/selects/pet.ts`:
+Create `src/components/pet.ts` (a menu is declared with `select()` and exported, from any file of `src/`):
 
-```ts src/components/selects/pet.ts
+```ts src/components/pet.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -28,9 +28,10 @@ And a command that shows it:
 
 ```ts src/commands/pet.ts
 import { command } from 'chapterjs';
-import pet from '../components/selects/pet';
+import pet from '../components/pet';
 
 export default command({
+  name: 'pet',
   description: 'Asks for your favorite pet',
   async run({ interaction }) {
     await interaction.reply({ content: 'Which one?', components: [pet] });
@@ -56,7 +57,7 @@ Up to 25 options. `min` and `max` say how many can be picked (1 by default): wit
 
 With a `type`, you declare no option: Discord fills the menu with the server. `'user'`, `'role'`, `'mentionable'` (users and roles) or `'channel'`. `values` is then a list of `User`, `Role`, `User | Role` or `Channel`:
 
-```ts src/components/selects/helper-role.ts
+```ts src/components/helper-role.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -79,9 +80,10 @@ Where you put the menu in a message, a second argument changes what is shown: `p
 
 ```ts src/commands/pet-default.ts
 import { command } from 'chapterjs';
-import pet from '../components/selects/pet';
+import pet from '../components/pet';
 
 export default command({
+  name: 'pet-default',
   description: 'Asks for your favorite pet, cat preselected',
   async run({ interaction }) {
     await interaction.reply({
@@ -102,7 +104,7 @@ A menu with `data` takes it first: `menu({ page: 2 }, { defaults: ['cat'] })`.
 
 ## Recap
 
-- A menu is a file of `src/components/selects/`, with `options` or a `type`.
+- A menu is `select({ ... })`, exported, with `options` or a `type`.
 - `value` and `values` are typed from the options, or are structures for a `type`.
 - `defaults`, `placeholder` and `disabled` are set where the menu is put in a message.
 

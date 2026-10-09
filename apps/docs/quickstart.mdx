@@ -89,7 +89,7 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
     ✓ Commands updated on My Server
     ```
 
-    The fourth line is printed by the `ready` event of the template, `src/events/ready/online.ts`.
+    The fourth line is printed by the `ready` event of the template, `src/events/online.ts`.
 
     If the bot is not in your test server yet, the command prints a link that adds it there and waits for you. If one of your files needs an option that is not enabled for your bot, it says which one and where to enable it, and waits too. Every message says what to do: see [chapterjs dev](/run/dev).
 
@@ -101,6 +101,7 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
     import { command } from 'chapterjs';
 
     export default command({
+      name: 'ping',
       description: 'Replies with Pong!',
       async run({ interaction }) {
         await interaction.reply('Pong!');
@@ -119,9 +120,9 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
   </Step>
 </Steps>
 
-That is all. The path of the file is the name of the command: `src/commands/ping.ts` is `/ping`, and nothing registers it. ChapterJS reads the file, tells Discord about the command and runs `run` when someone uses it. The folder of an event works the same way: every file of `src/events/ready/` runs when the bot is connected.
+That is all. `name` is the name of the command, `'ping'` is `/ping`, and nothing registers it. ChapterJS finds the declaration in your files, tells Discord about the command and runs `run` when someone uses it.
 
-To add a command, add a file in `src/commands/`. To react to something that happens on Discord, add a folder named after it in `src/events/` and a file inside. What goes where is in [Project structure](/setup/project-structure).
+To add a command, declare one with `command()` and export it, in any file of `src/`. To react to something that happens on Discord, declare an `event()` the same way. How the framework finds them is in [Project structure](/setup/project-structure).
 
 When your bot is ready for everyone, put it on a machine that stays on: see [Deploy](/run/deploy).
 
@@ -132,6 +133,6 @@ When your bot is ready for everyone, put it on a machine that stays on: see [Dep
     What each folder and file of your project is for.
   </Card>
   <Card title="Commands" icon="terminal" href="/commands">
-    One file per slash command, options typed for you.
+    A slash command, options typed for you.
   </Card>
 </CardGroup>

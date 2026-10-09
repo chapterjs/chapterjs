@@ -7,9 +7,9 @@ Un menu déroulant est une liste sous un message. C’est un composant comme un 
 
 ## Un menu avec vos options
 
-Créez `src/components/selects/pet.ts` :
+Créez `src/components/pet.ts` (un menu se déclare avec `select()` et s’exporte, depuis n’importe quel fichier de `src/`) :
 
-```ts src/components/selects/pet.ts
+```ts src/components/pet.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -25,9 +25,10 @@ Et une commande qui l’affiche :
 
 ```ts src/commands/pet.ts
 import { command } from 'chapterjs';
-import pet from '../components/selects/pet';
+import pet from '../components/pet';
 
 export default command({
+  name: 'pet',
   description: 'Demande votre animal préféré',
   async run({ interaction }) {
     await interaction.reply({ content: 'Lequel ?', components: [pet] });
@@ -53,7 +54,7 @@ Jusqu’à 25 options. `min` et `max` disent combien peuvent être choisies (1 p
 
 Avec un `type`, vous ne déclarez aucune option : Discord remplit le menu avec le serveur. `'user'`, `'role'`, `'mentionable'` (utilisateurs et rôles) ou `'channel'`. `values` est alors une liste de `User`, `Role`, `User | Role` ou `Channel` :
 
-```ts src/components/selects/helper-role.ts
+```ts src/components/helper-role.ts
 import { select } from 'chapterjs';
 
 export default select({
@@ -73,9 +74,10 @@ Là où vous mettez le menu dans un message, un second argument change ce qui es
 
 ```ts src/commands/pet-default.ts
 import { command } from 'chapterjs';
-import pet from '../components/selects/pet';
+import pet from '../components/pet';
 
 export default command({
+  name: 'pet-default',
   description: 'Demande votre animal préféré, chat présélectionné',
   async run({ interaction }) {
     await interaction.reply({ content: 'Lequel ?', components: [pet({ defaults: ['cat'] })] });
@@ -93,7 +95,7 @@ Un menu avec des `data` les prend en premier : `menu({ page: 2 }, { defaults: ['
 
 ## Récapitulatif
 
-- Un menu est un fichier de `src/components/selects/`, avec des `options` ou un `type`.
+- Un menu est `select({ ... })`, exporté, avec des `options` ou un `type`.
 - `value` et `values` sont typés d’après les options, ou sont des structures pour un `type`.
 - `defaults`, `placeholder` et `disabled` se règlent là où le menu est mis dans un message.
 

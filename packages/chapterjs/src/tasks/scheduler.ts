@@ -3,12 +3,14 @@
 // share one through another implementation, with no change to the files.
 
 import type { TaskContext } from './task.js';
-import type { LoadedTask } from './convention.js';
+import type { LoadedTask } from './declaration.js';
 import { describeSchedule, nextRun, scheduleKey } from './schedule.js';
 
 /** A task, with the file it comes from (to report its errors). */
 export interface TaskEntry {
   file: string;
+  /** The export it is: its name is the name of the task. */
+  export: string;
   task: LoadedTask;
 }
 
@@ -58,12 +60,12 @@ export class TimerScheduler implements Scheduler {
     const started: Scheduled[] = [];
     for (const entry of entries) {
       const key = scheduleKey(entry.task.schedule);
-      const previous = this.#tasks.get(entry.file);
+      const previous = this.#tasks.get(entry.task.name);
       if (previous && previous.key === key) {
         // Same timing: the next time stays, only the code changes.
         previous.entry = entry;
-        kept.set(entry.file, previous);
-        this.#tasks.delete(entry.file);
+        kept.set(entry.task.name, previous);
+        this.#tasks.delete(entry.task.name);
         continue;
       }
       const scheduled: Scheduled = {
@@ -73,7 +75,7 @@ export class TimerScheduler implements Scheduler {
         timer: null,
         running: false,
       };
-      kept.set(entry.file, scheduled);
+      kept.set(entry.task.name, scheduled);
       started.push(scheduled);
     }
     // What is left was removed, or changed timing: it starts over.

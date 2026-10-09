@@ -3,14 +3,17 @@ title: 'Vocal'
 description: 'Réagir aux personnes qui rejoignent, quittent ou changent de salon vocal, coupent leur micro ou lancent un stream'
 ---
 
-Quand quelqu’un rejoint un salon vocal, les fichiers de `src/events/voiceJoin/` tournent :
+Quand quelqu’un rejoint un salon vocal, les événements `voiceJoin` tournent :
 
-```ts src/events/voiceJoin/hello.ts
+```ts src/events/hello.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, channel }) => {
-  // Un salon vocal a son propre chat écrit : le bot y écrit.
-  await channel.send(`${member.displayName} a rejoint ${channel.name}.`);
+export default event({
+  name: 'voiceJoin',
+  async run({ member, channel }) {
+    // Un salon vocal a son propre chat écrit : le bot y écrit.
+    await channel.send(`${member.displayName} a rejoint ${channel.name}.`);
+  },
 });
 ```
 
@@ -33,13 +36,16 @@ Discord envoie une seule sorte de changement pour le vocal ; ChapterJS vous dit 
 
 Un changement de salon n’est qu’un `voiceMove` : pas un `voiceLeave` suivi d’un `voiceJoin`. Et `voiceUpdate` ne tourne jamais pour une arrivée, un départ ou un changement de salon.
 
-```ts src/events/voiceUpdate/live.ts
+```ts src/events/live.ts
 import { event } from 'chapterjs';
 
-export default event(async ({ member, channel, voice, before }) => {
-  if (voice.selfStream && !before.selfStream) {
-    await channel.send(`${member.displayName} est en direct !`);
-  }
+export default event({
+  name: 'voiceUpdate',
+  async run({ member, channel, voice, before }) {
+    if (voice.selfStream && !before.selfStream) {
+      await channel.send(`${member.displayName} est en direct !`);
+    }
+  },
 });
 ```
 
@@ -47,11 +53,14 @@ export default event(async ({ member, channel, voice, before }) => {
 
 `voiceLeave` donne toujours le salon, même quand il a été supprimé avec des personnes dedans : le bot garde le salon de chaque personne tant qu’elle est en vocal.
 
-```ts src/events/voiceLeave/empty.ts
+```ts src/events/empty.ts
 import { event } from 'chapterjs';
 
-export default event(({ member, channel, guild }) => {
-  console.log(`${member.displayName} a quitté ${channel.name} de ${guild.name}`);
+export default event({
+  name: 'voiceLeave',
+  run({ member, channel, guild }) {
+    console.log(`${member.displayName} a quitté ${channel.name} de ${guild.name}`);
+  },
 });
 ```
 

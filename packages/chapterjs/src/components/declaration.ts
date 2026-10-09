@@ -1,11 +1,11 @@
-// `src/components/`: the folder is the kind of component, the path of the
-// file is its id. Everything a file declares is checked when it loads,
-// against the limits of Discord, so a mistake is explained before Discord
-// refuses it; the file is then bound to its path, which is what makes its
+// What a file declares with `button()`, `select()`, `modal()` and
+// `embed()`, checked when it loads against the limits of Discord, so a
+// mistake is explained before Discord refuses it; the component is then
+// bound to the name of its export, which is its id and what makes its
 // instances.
 
 import { Limits } from '../discord/api.js';
-import type { Convention } from '../loader/loader.js';
+import type { Declaration, ExportSite } from '../loader/loader.js';
 import { checkEmbed, type Embed } from '../structures/payload.js';
 import { isDynamic } from './component.js';
 import {
@@ -16,13 +16,12 @@ import {
 } from './button.js';
 import type { ComponentWhere, ComponentWho } from './component.js';
 import { DATA_KINDS, type DataShape } from './custom-id.js';
-import { isEmbedFile } from './embed.js';
+import { isEmbedDeclaration } from './embed.js';
 import {
-  bindFile,
-  COMPONENT_FOLDERS,
-  fileStateOf,
+  bindComponent,
+  componentStateOf,
   type ComponentKind,
-} from './file.js';
+} from './declared.js';
 import { readField, renderModal, type LoadedModal } from './modal.js';
 import { readOptions } from './options.js';
 import {
@@ -34,13 +33,14 @@ import {
   type LoadedSelect,
 } from './select.js';
 
-/** An embed file, checked (when it is static). */
+/** An embed, checked (when it is static). */
 export interface LoadedEmbed {
   readonly kind: 'embed';
-  readonly path: string;
+  /** The name of the export that declares it. */
+  readonly name: string;
 }
 
-/** A component file, checked: what the router works with. */
+/** A component, checked: what the router works with. */
 export type LoadedComponent =
   LoadedButton | LoadedSelect | LoadedModal | LoadedEmbed;
 
@@ -51,10 +51,12 @@ const fail = (message: string): never => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** The names of the folders and files: what a path and an id can hold. */
-const NAME = /^[A-Za-z0-9_-]+$/;
-
-const FOLDERS = Object.keys(COMPONENT_FOLDERS);
+/**
+ * What the name of a component can hold: the name of an export (or of a
+ * file, for a default export), as long as a custom_id can carry it beside
+ * the data: no `:` (what separates the data), and room left for the data.
+ */
+const NAME = /^[^:\s]+$/;
 
 function checkKeys(
   what: string,
@@ -156,7 +158,7 @@ function checkRun(what: string, value: unknown, example: string): void {
   }
 }
 
-function readButton(path: string, config: unknown): LoadedButton {
+function readButton(name: string, config: unknown): LoadedButton {
   if (!isRecord(config)) {
     return fail(
       `button() needs an object: button({ label: '...', run({ interaction }) { ... } })`
@@ -190,7 +192,7 @@ function readButton(path: string, config: unknown): LoadedButton {
   );
   return Object.freeze({
     kind: 'button',
-    path,
+    name,
     look: {
       style: look.style ?? ('primary' as const),
       disabled: look.disabled ?? false,
@@ -205,7 +207,7 @@ function readButton(path: string, config: unknown): LoadedButton {
   });
 }
 
-function readSelect(path: string, config: unknown): LoadedSelect {
+function readSelect(name: string, config: unknown): LoadedSelect {
   if (!isRecord(config)) {
     return fail(
       `select() needs an object: select({ options: ['a', 'b'], run({ interaction, value }) { ... } })`
@@ -247,7 +249,7 @@ function readSelect(path: string, config: unknown): LoadedSelect {
   checkRun(what, config.run, `async run({ interaction, values }) { ... }`);
   return Object.freeze({
     kind: 'select',
-    path,
+    name,
     type: type as LoadedSelect['type'],
     options: Object.freeze(options),
     channelTypes: readChannelTypes(what, config.channelTypes),
@@ -266,7 +268,7 @@ function readSelect(path: string, config: unknown): LoadedSelect {
   });
 }
 
-function readModal(path: string, config: unknown): LoadedModal {
+function readModal(name: string, config: unknown): LoadedModal {
   if (!isRecord(config)) {
     return fail(
       `modal() needs an object: modal({ title: '...', fields: { ... }, run({ interaction, fields }) { ... } })`
@@ -313,7 +315,7 @@ function readModal(path: string, config: unknown): LoadedModal {
   checkRun(what, config.run, `async run({ interaction, fields }) { ... }`);
   return Object.freeze({
     kind: 'modal',
-    path,
+    name,
     title: config.title as string,
     fields: Object.freeze(fields),
     data: checkDataShape(what, config.data),
@@ -323,42 +325,46 @@ function readModal(path: string, config: unknown): LoadedModal {
   });
 }
 
-/** A file of `src/components/`, by the kind its folder says. */
+/** One component, by the kind it was declared with. */
 function readOne(
-  kind: ComponentKind,
-  path: string,
-  exports: Record<string, unknown>
+  state: ReturnType<typeof componentStateOf> & object,
+  declared: unknown,
+  { name, file, export: exported }: ExportSite
 ): LoadedComponent {
-  const file = exports.default;
-  const state = fileStateOf(file);
-  const example = `import { ${kind} } from 'chapterjs'; export default ${kind}({ ... })`;
-  if (!state) {
-    return fail(
-      'default' in exports
-        ? `The default export of this file must be what ${kind}() returns: ${example}`
-        : `This file has no default export. It should look like: ${example}`
+  const what = `the ${WHAT[state.kind]} ${name}`;
+  if (!NAME.test(name)) {
+    fail(
+      `"${name}" can't be the name of a ${WHAT[state.kind]}: the name of the export is its id, and an id has no space and no ":". Rename the export.`
     );
   }
-  if (state.kind !== kind) {
-    const folder = FOLDERS.find(one => COMPONENT_FOLDERS[one] === state.kind)!;
-    return fail(
-      `This file exports a ${state.kind}, but it is in src/components/${FOLDERS.find(one => COMPONENT_FOLDERS[one] === kind)}/. Move it to src/components/${folder}/.`
+  if (name.length > Limits.CustomId - 20) {
+    fail(
+      `The name of ${what} is ${name.length} characters long: Discord gives ${Limits.CustomId} characters to the id of a component and its data together. Rename the export${exported === 'default' ? ` or the file ${file}` : ''} with something shorter.`
     );
   }
-  switch (kind) {
+  switch (state.kind) {
     case 'button': {
-      const loaded = readButton(path, state.config);
-      bindFile(file, { path, render: args => renderButton(loaded, args) });
+      const loaded = readButton(name, state.config);
+      bindComponent(declared, {
+        name,
+        render: args => renderButton(loaded, args),
+      });
       return loaded;
     }
     case 'select': {
-      const loaded = readSelect(path, state.config);
-      bindFile(file, { path, render: args => renderSelect(loaded, args) });
+      const loaded = readSelect(name, state.config);
+      bindComponent(declared, {
+        name,
+        render: args => renderSelect(loaded, args),
+      });
       return loaded;
     }
     case 'modal': {
-      const loaded = readModal(path, state.config);
-      bindFile(file, { path, render: args => renderModal(loaded, args) });
+      const loaded = readModal(name, state.config);
+      bindComponent(declared, {
+        name,
+        render: args => renderModal(loaded, args),
+      });
       return loaded;
     }
     default: {
@@ -371,94 +377,90 @@ function readOne(
         }
         checkEmbed(config as Embed, 'this embed');
       }
-      bindFile(file, {
-        path,
+      bindComponent(declared, {
+        name,
         render: args => {
           if (typeof config === 'function')
             return (config as (...given: unknown[]) => Embed)(...args);
           if (args.length > 0)
-            fail(
-              `${path.split('/').pop()} always looks the same: it takes no arguments.`
-            );
+            fail(`${name} always looks the same: it takes no arguments.`);
           return config as Embed;
         },
       });
-      return Object.freeze({ kind: 'embed', path });
+      return Object.freeze({ kind: 'embed', name });
     }
   }
 }
 
+/** What each kind is called in messages. */
+export const WHAT: Record<ComponentKind, string> = {
+  button: 'button',
+  select: 'select menu',
+  modal: 'form',
+  embed: 'embed',
+};
+
 /**
- * `src/components/`: one folder per kind of component (`buttons/`,
- * `selects/`, `modals/`, `embeds/`), and in it one file per component,
- * whose path is its id. The file exports by default what `button()`,
- * `select()`, `modal()` or `embed()` returns.
+ * A component (a button, a select menu, a form or an embed), declared
+ * anywhere in `src/` with `button()`, `select()`, `modal()` or `embed()`,
+ * and exported: the name of the export is its id, so a file may declare
+ * several, each under its own export.
  */
-export const componentsConvention: Convention<LoadedComponent> = {
-  folder: 'components',
+export const componentDeclaration: Declaration<LoadedComponent> = {
   one: 'component',
   many: 'components',
-  check(path) {
-    const parts = path.replace(/\.[^./]+$/, '').split('/');
-    if (parts.length < 2) {
-      fail(
-        `This file is directly in src/components/. Put it in the folder of its kind: ${FOLDERS.map(one => `src/components/${one}/`).join(', ')}.`
-      );
-    }
-    const folder = parts[0]!;
-    if (!Object.hasOwn(COMPONENT_FOLDERS, folder)) {
-      fail(
-        `The folder src/components/${folder} is not a kind of component. Kinds are: ${FOLDERS.join(', ')}.`
-      );
-    }
-    for (const part of parts) {
-      if (!NAME.test(part)) {
-        fail(
-          `"${part}" can't be in the path of a component: use letters, digits, - and _ only. The path of the file is the id of the component.`
-        );
-      }
-    }
-    if (path.replace(/\.[^./]+$/, '').length > Limits.CustomId - 20) {
-      fail(
-        `The path of this file is ${path.length} characters long: Discord gives ${Limits.CustomId} characters to the id of a component and its data together. Shorten the names.`
-      );
-    }
-  },
-  read(exports, path) {
-    const id = path.replace(/\.[^./]+$/, '');
-    const kind = COMPONENT_FOLDERS[id.split('/')[0]!]!;
-    return readOne(kind, id, exports);
+  is: value => componentStateOf(value) !== undefined,
+  list: false,
+  read(value, site) {
+    return readOne(componentStateOf(value)!, value, site);
   },
 };
 
-/** The files that are the same component (through `(group)` folders): the later one is left out. */
+/** Two components of the same kind with the same name: the later one is left out. */
 export function findDuplicates<
-  T extends { file: string; component: { path: string } },
+  T extends {
+    file: string;
+    export: string;
+    component: { kind: ComponentKind; name: string };
+  },
 >(
   entries: readonly T[]
-): { valid: T[]; conflicts: { file: string; message: string }[] } {
+): {
+  valid: T[];
+  conflicts: { file: string; export: string; message: string }[];
+} {
   const seen = new Map<string, T>();
-  const conflicts: { file: string; message: string }[] = [];
+  const conflicts: { file: string; export: string; message: string }[] = [];
   const valid = [...entries]
-    .sort((a, b) => (a.file < b.file ? -1 : 1))
+    .sort((a, b) =>
+      a.file === b.file
+        ? a.export < b.export
+          ? -1
+          : 1
+        : a.file < b.file
+          ? -1
+          : 1
+    )
     .filter(entry => {
-      const first = seen.get(entry.component.path);
+      const key = `${entry.component.kind}:${entry.component.name}`;
+      const first = seen.get(key);
       if (!first) {
-        seen.set(entry.component.path, entry);
+        seen.set(key, entry);
         return true;
       }
       conflicts.push({
         file: entry.file,
-        message: `${entry.component.path} is already ${first.file}: two files can't be the same component. A folder in parentheses only groups files, it is not part of the id.`,
+        export: entry.export,
+        message: `There is already a ${WHAT[entry.component.kind]} named ${entry.component.name}, in ${first.file}: the name of the export is what tells a ${WHAT[entry.component.kind]} apart, so rename one of them.`,
       });
       return false;
     });
   return { valid, conflicts };
 }
 
-/** Whether a file holds an embed: nothing to route. */
+/** Whether a declaration is an embed: nothing to route. */
 export const isEmbedLoaded = (
   component: LoadedComponent
 ): component is LoadedEmbed => component.kind === 'embed';
 
-export { isEmbedFile };
+export { isEmbedDeclaration };

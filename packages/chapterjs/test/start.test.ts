@@ -23,6 +23,7 @@ import {
 
 const PING = `import { command } from 'chapterjs';
 export default command({
+  name: 'ping',
   description: 'Replies with Pong!',
   async run({ interaction }) {
     await interaction.reply('Pong!');
@@ -30,13 +31,19 @@ export default command({
 });
 `;
 const LOG = `import { event } from 'chapterjs';
-export default event(({ message }) => {
-  console.log(\`said: \${message.content} in \${message.guild.name}\`);
+export default event({
+  name: 'messageCreate',
+  run({ message }) {
+    console.log(\`said: \${message.content} in \${message.guild.name}\`);
+  },
 });
 `;
 const READY = `import { event } from 'chapterjs';
-export default event(({ user, guilds }) => {
-  console.log(\`ready: \${user.username} pid \${process.pid} in \${[...guilds.values()].map(guild => guild.name).sort().join('+')}\`);
+export default event({
+  name: 'ready',
+  run({ user, guilds }) {
+    console.log(\`ready: \${user.username} pid \${process.pid} in \${[...guilds.values()].map(guild => guild.name).sort().join('+')}\`);
+  },
 });
 `;
 const files = {
@@ -276,8 +283,11 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
         'src/events/messageCreate/log.ts': `import { event } from 'chapterjs';
 import { risky } from '../../lib/risky';
 
-export default event(({ message }) => {
-  console.log('said: ' + risky(message.content));
+export default event({
+  name: 'messageCreate',
+  run({ message }) {
+    console.log('said: ' + risky(message.content));
+  },
 });
 `,
       },
@@ -660,7 +670,7 @@ describe.skipIf(process.platform === 'win32')(
         project(
           {
             'src/events/messageCreate/private.ts': `import { event } from 'chapterjs';
-export default event(({ message }) => console.log('private: ' + message.content), { where: 'dm' });
+export default event({ name: 'messageCreate', where: 'dm', run: ({ message }) => console.log('private: ' + message.content) });
 `,
           },
           'BOT_TOKEN=test-token\n'
@@ -692,7 +702,7 @@ describe.skipIf(process.platform === 'win32')(
       const fake = await world();
       const cwd = project({
         'src/events/messageCreate/log.ts': `import { event } from 'chapterjs';
-export default event(({ message }) => console.log('said: ' + message.content), { where: 'both' });
+export default event({ name: 'messageCreate', where: 'both', run: ({ message }) => console.log('said: ' + message.content) });
 `,
       });
       const production = runStart(cwd, fake);

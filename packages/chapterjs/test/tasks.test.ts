@@ -2,7 +2,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { tasksConvention } from '../src/tasks/convention.js';
+import { taskDeclaration } from '../src/tasks/declaration.js';
 import {
   describeSchedule,
   nextCron,
@@ -19,6 +19,7 @@ import {
   runDev,
   runStart,
   shardOf,
+  site,
   world,
 } from './dev-helpers.js';
 
@@ -193,30 +194,18 @@ describe('cron', () => {
   });
 });
 
-describe('the files of src/tasks/', () => {
-  const load = (path: string, exports: Record<string, unknown>) => {
-    tasksConvention.check?.(path);
-    return tasksConvention.read(exports, path);
-  };
+describe('task()', () => {
+  const load = (path: string, exports: Record<string, unknown>) =>
+    taskDeclaration.read(exports.default, site(`src/tasks/${path}`));
 
-  it.each([
-    [
-      'my task.ts',
-      '"my task" can\'t be in the name of a task: use letters, digits, - and _ only. The path of the file is the name of the task.',
-    ],
-  ])('refuses a file named %s', (path, message) => {
-    expect(() => tasksConvention.check!(path)).toThrow(message);
+  it('is recognised among the exports of a file, one per export', () => {
+    expect(taskDeclaration.is(task({ every: '1m', run() {} }))).toBe(true);
+    expect(taskDeclaration.is({ every: '1m', run() {} })).toBe(false);
+    // A list has no name to give each task.
+    expect(taskDeclaration.list).toBe(false);
   });
 
   it.each([
-    [
-      {},
-      "This file has no default export. It should look like: import { task } from 'chapterjs'; export default task({ every: '10m', run() { ... } })",
-    ],
-    [
-      { default: {} },
-      'The default export of this file must be what task() returns',
-    ],
     [
       { default: task('x' as never) },
       "task() needs an object: task({ every: '10m', run() { ... } })",
@@ -253,14 +242,14 @@ describe('the files of src/tasks/', () => {
       { default: task({ cron: 'daily', run() {} }) },
       '"cron" is "daily", which has 1 fields',
     ],
-  ])('refuse a wrong file (%#)', (exports, message) => {
+  ])('refuse a wrong task (%#)', (exports, message) => {
     expect(() => load('report.ts', exports)).toThrow(message);
   });
 
-  it('reads a task', () => {
+  it('reads a task, named after its export (or its file for a default export)', () => {
     const run = () => {};
     expect(
-      load('(daily)/report.ts'.replace('(daily)/', ''), {
+      load('daily/report.ts', {
         default: task({
           cron: '0 9 * * *',
           timezone: 'UTC',
@@ -275,9 +264,12 @@ describe('the files of src/tasks/', () => {
       run,
     });
     expect(
-      load('cleanup/old-messages.ts', { default: task({ every: '1h', run }) })
+      taskDeclaration.read(
+        task({ every: '1h', run }),
+        site('src/cleanup.ts', 'oldMessages')
+      )
     ).toEqual({
-      name: 'cleanup/old-messages',
+      name: 'oldMessages',
       schedule: { kind: 'every', text: '1h', ms: 3_600_000 },
       onStart: false,
       run,
@@ -289,11 +281,8 @@ describe('the scheduler', () => {
   afterEach(() => vi.useRealTimers());
 
   const entry = (file: string, config: Parameters<typeof task>[0]) => ({
-    file,
-    task: tasksConvention.read(
-      { default: task(config) },
-      file.replace('src/tasks/', '')
-    ),
+    ...site(file),
+    task: taskDeclaration.read(task(config), site(file)),
   });
 
   it('runs tasks when they are due, with the bot of the moment', async () => {

@@ -1,17 +1,16 @@
-// `src/presence.ts`: the one file that says what the bot shows under its
-// name. What it declares is checked when it loads and turned into what the
-// gateway sends, so a wrong status or type is explained before the bot
-// connects.
+// What a file declares with `presence()`: what the bot shows under its
+// name. It is checked when it loads and turned into what the gateway
+// sends, so a wrong status or type is explained before the bot connects.
 
-import type { Convention } from '../loader/loader.js';
+import type { Declaration } from '../loader/loader.js';
 import {
   ActivityType,
   type RawBotActivity,
   type RawGatewayPresenceUpdate,
 } from '../discord/types/gateway-events.js';
-import { isPresenceFile, type PresenceConfig } from './presence.js';
+import { isPresenceDeclaration, type PresenceConfig } from './presence.js';
 
-/** The presence file, checked: what the gateway sends. */
+/** The presence, checked: what the gateway sends. */
 export interface LoadedPresence {
   /** The Update Presence payload (also sent with Identify). */
   readonly raw: RawGatewayPresenceUpdate;
@@ -61,8 +60,8 @@ const list = (words: readonly string[]): string =>
 const EXAMPLE = `presence({ status: 'online', activity: { type: 'watching', name: 'over the server' } })`;
 
 /**
- * What a bot without a presence file shows: online, doing nothing. Sent
- * when the file is removed while the bot runs.
+ * What a bot without a presence shows: online, doing nothing. Sent when
+ * the declaration is removed while the bot runs.
  */
 export const DEFAULT_PRESENCE: RawGatewayPresenceUpdate = Object.freeze({
   since: null,
@@ -94,32 +93,16 @@ function toRaw(config: PresenceConfig): RawGatewayPresenceUpdate {
 }
 
 /**
- * `src/presence.ts`: the status of the bot and what it is doing. The file
- * exports by default what `presence()` returns:
- *
- * ```ts
- * // src/presence.ts
- * import { presence } from 'chapterjs';
- *
- * export default presence({ activity: { type: 'playing', name: '/help' } });
- * ```
+ * The presence of the bot, declared once anywhere in `src/` with
+ * `presence()` and exported.
  */
-export const presenceConvention: Convention<LoadedPresence> = {
-  folder: 'presence',
-  single: true,
+export const presenceDeclaration: Declaration<LoadedPresence> = {
   one: 'presence',
   many: 'presences',
-  read(exports) {
-    const file = exports.default;
-    const example = `import { presence } from 'chapterjs'; export default ${EXAMPLE}`;
-    if (!isPresenceFile(file)) {
-      return fail(
-        'default' in exports
-          ? `The default export of this file must be what presence() returns: ${example}`
-          : `This file has no default export. It should look like: ${example}`
-      );
-    }
-    const config = file.config;
+  is: isPresenceDeclaration,
+  list: false,
+  read(value) {
+    const config = (value as { config: unknown }).config;
     if (!isRecord(config)) {
       return fail(`presence() needs an object: ${EXAMPLE}`);
     }

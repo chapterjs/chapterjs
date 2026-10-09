@@ -478,16 +478,6 @@ export interface EventContexts {
 export type EventName = keyof EventContexts;
 
 /**
- * What `event()` returns: the default export of an event file.
- */
-export interface EventFile {
-  /** The function to run when the event happens. */
-  readonly handler: (context: never) => unknown;
-  /** What the file passed as second argument, not checked yet. */
-  readonly options: unknown;
-}
-
-/**
  * Where something happens: in servers (`'guild'`), in private messages with
  * the bot (`'dm'`), or in both.
  */
@@ -736,7 +726,7 @@ export type ContextOf<
 /** The options of an event; nothing for an event without options. */
 export type OptionsOf<Name extends EventName> = Name extends keyof EventOptions
   ? EventOptions[Name]
-  : Record<string, never>;
+  : {};
 
 /** One gateway event an event comes from. */
 interface Source<Name extends EventName, E extends GatewayDispatchEventName> {

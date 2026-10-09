@@ -1,6 +1,6 @@
 // Runs the component someone used: reads the id the framework wrote in it,
-// finds its file, turns what Discord sent into what `run` receives, and
-// makes sure the person always gets an answer.
+// finds its declaration, turns what Discord sent into what `run` receives,
+// and makes sure the person always gets an answer.
 
 import type { RawChannel } from '../discord/types/channel.js';
 import {
@@ -34,26 +34,26 @@ import {
 } from '../structures/interaction.js';
 import { remember } from '../structures/known.js';
 import { toCamelCase } from '../util/case.js';
-import type { LoadedComponent } from './convention.js';
+import type { LoadedComponent } from './declaration.js';
 import { decodeCustomId, readData } from './custom-id.js';
 import type { LoadedField } from './modal.js';
 import { SELECT_TYPES } from './select.js';
 
-/** A component, with the file it comes from (to report its errors). */
+/** A component, with the file and the export it comes from (to report its errors). */
 export interface ComponentEntry {
   file: string;
+  export: string;
   component: LoadedComponent;
 }
 
 export type ComponentRouterOptions = Reporter;
 
 /** What a component is called, for the person and the developer. */
-const WHAT = {
+const WHAT_OF = {
   button: 'button',
   select: 'menu',
   modal: 'form',
-  embed: 'embed',
-} as const;
+} as const satisfies Record<string, What>;
 
 export class ComponentRouter {
   #components = new Map<string, ComponentEntry>();
@@ -68,7 +68,10 @@ export class ComponentRouter {
     const components = new Map<string, ComponentEntry>();
     for (const entry of entries) {
       if (entry.component.kind !== 'embed') {
-        components.set(entry.component.path, entry);
+        components.set(
+          `${entry.component.kind}:${entry.component.name}`,
+          entry
+        );
       }
     }
     this.#components = components;
@@ -100,14 +103,17 @@ export class ComponentRouter {
     const ephemeralOf = (component: LoadedComponent) =>
       isPrivate || ('ephemeral' in component && component.ephemeral);
 
-    const { path, parts } = decodeCustomId(data.custom_id);
-    const entry = this.#components.get(path);
-    const what: What = isModal
-      ? 'form'
+    const { name, parts } = decodeCustomId(data.custom_id);
+    // A button, a menu and a form may share a name: what was used says
+    // which one is meant.
+    const kind = isModal
+      ? 'modal'
       : (data as RawMessageComponentData).component_type ===
           ComponentType.Button
         ? 'button'
-        : 'menu';
+        : 'select';
+    const entry = this.#components.get(`${kind}:${name}`);
+    const what: What = WHAT_OF[kind];
     const interaction: Interaction = isModal
       ? new ModalInteraction(ctx, rest, user, {
           ephemeral: entry ? ephemeralOf(entry.component) : isPrivate,
@@ -122,28 +128,21 @@ export class ComponentRouter {
     if (
       !entry ||
       entry.component.kind === 'embed' ||
-      (isModal
-        ? entry.component.kind !== 'modal'
-        : entry.component.kind === 'modal') ||
-      (entry.component.kind === 'button' &&
-        (data as RawMessageComponentData).component_type !==
-          ComponentType.Button) ||
       (entry.component.kind === 'select' &&
         SELECT_TYPES[entry.component.type] !==
           (data as RawMessageComponentData).component_type)
     ) {
-      // Sent before the file was renamed, removed or changed of kind.
+      // Sent before the export was renamed, removed or changed of kind.
       refuse(interaction, 'gone', { what });
       return;
     }
     const { component, file } = entry;
     const values = readData(component.data, parts);
     if (!values) {
-      // The data of the file changed since the message was sent.
+      // The data of the component changed since the message was sent.
       refuse(interaction, 'outdated', { what });
       return;
     }
-    const name = component.path;
     const placed = resolvePlace(
       ctx,
       raw,
