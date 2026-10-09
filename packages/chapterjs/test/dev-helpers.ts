@@ -120,6 +120,12 @@ export const rawMessage = (
 export interface FakeWorld {
   discord: FakeDiscord;
   gateway: FakeGateway;
+  /**
+   * The npm registry `chapterjs dev` asks for the latest version: the same
+   * programmable server as Discord's, answering 404 (no version) until a
+   * test says otherwise with `on('GET', '/chapterjs/latest', ...)`.
+   */
+  registry: FakeDiscord;
   /** The environment that points the CLI at the fakes. */
   env: Record<string, string>;
 }
@@ -144,6 +150,7 @@ export async function world(
 ): Promise<FakeWorld> {
   const discord = await fakeDiscord();
   const gateway = await fakeGateway();
+  const registry = await fakeDiscord();
   discord.on('GET', '/applications/@me', {
     body: { id: BOT, name: 'Test Bot', flags: options.flags ?? ALL_PRIVILEGED },
   });
@@ -201,7 +208,15 @@ export async function world(
       });
     }
   };
-  return { discord, gateway, env: { CHAPTERJS_API_URL: discord.url } };
+  return {
+    discord,
+    gateway,
+    registry,
+    env: {
+      CHAPTERJS_API_URL: discord.url,
+      CHAPTERJS_REGISTRY_URL: registry.url,
+    },
+  };
 }
 
 /** Runs `chapterjs build` in a project, and waits for it. */

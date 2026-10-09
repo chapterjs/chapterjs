@@ -3,7 +3,7 @@ title: 'Changelog'
 description: 'What changed in each version of ChapterJS'
 ---
 
-Every version of `chapterjs`, `create-chapter` and `create-chapterjs` has the same number. Update all of them at once:
+Every version of `chapterjs`, `create-chapter` and `create-chapterjs` has the same number. Only `chapterjs` lives in your project; `chapterjs dev` tells you when a newer one is out. To update it:
 
 <CodeGroup>
 
@@ -34,6 +34,8 @@ Nothing is tied to a folder any more. Every file of `src/` is loaded, and what i
 - **[Components](/components)** and **[tasks](/tasks)** are named by their export: `export const again = button(...)` is the button `again`. Moving a file changes nothing; renaming the export does, as renaming the file did.
 - **[Languages](/translated-messages)** say their `locale`: `language({ locale: 'fr', ... })`, and a second `default: true` is underlined in both files. A language may be declared in several places: the texts of a feature live next to it, and `t` offers them all. A text the default language does not have is taken from the language that has it, so a module written in other languages than yours still works.
 - `.chapterjs/` is one TypeScript project for the whole of `src/`, and holds only what the project adds: the files of `public/`, the languages and the commands. The folders in parentheses and the `_` files are not needed any more: a folder is only a folder, and a file that declares nothing is yours.
+
+`chapterjs dev` now tells you, once the bot is online, when a newer version of `chapterjs` is out, with the command that installs it. See [A new version of ChapterJS](/run/dev#a-new-version-of-chapterjs).
 
 The types `EventFile`, `CommandFile`, `ButtonFile`, `SelectFile`, `ModalFile`, `EmbedFile`, `TaskFile`, `PresenceFile` and `LanguageFile` are now `EventDeclaration`, `CommandDeclaration`, `ButtonDeclaration`, `SelectDeclaration`, `ModalDeclaration`, `EmbedDeclaration`, `TaskDeclaration`, `PresenceDeclaration` and `LanguageDeclaration`.
 

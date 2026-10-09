@@ -671,7 +671,7 @@ describe.skipIf(process.platform === 'win32')(
         bin,
         args: ['dev'],
         cwd: project(files),
-        env: { CHAPTERJS_API_URL: 'http://127.0.0.1:1' },
+        env: { ...fake.env, CHAPTERJS_API_URL: 'http://127.0.0.1:1' },
         timeout: 20_000,
       });
       const { code, output } = await cli.exited;
