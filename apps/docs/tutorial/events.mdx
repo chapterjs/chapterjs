@@ -85,9 +85,9 @@ Why one declaration per thing, rather than one big function? Because one that fa
 
 ## The ready event
 
-`ready` is special: it is not something that happens on Discord, but the moment your bot is connected and knows every server it is in. It runs **once per start**, never on a reload. The template uses it to print a line:
+`ready` is special: it is not something that happens on Discord, but the moment your bot is connected and knows every server it is in. It runs **once per start**, never on a reload. The template is that one file:
 
-```ts src/events/online.ts
+```ts src/events/ready.ts
 import { event } from 'chapterjs';
 
 export default event({

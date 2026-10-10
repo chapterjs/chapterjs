@@ -59,16 +59,19 @@ describe.skipIf(process.platform === 'win32')('create-chapter CLI', () => {
       const dir = join(cwd, 'my-bot');
       expect(readPackage(dir)).toMatchObject({
         name: 'my-bot',
-        dependencies: { chapterjs: `^${version}` },
+        // Exactly the version of the scaffolder, never a range.
+        dependencies: { chapterjs: version },
       });
       expect(readPackage(dir)).not.toHaveProperty('description');
       expect(existsSync(join(dir, '.gitignore'))).toBe(true);
       expect(existsSync(join(dir, '_gitignore'))).toBe(false);
       expect(installedBy(dir)).toBe('pnpm');
-      expect(output).toContain('Using the default template');
-      // Its first example files are there.
-      expect(existsSync(join(dir, 'src/commands/ping.ts'))).toBe(true);
+      // The template question offers every template, the default one first
+      // and preselected: Enter takes it (the helper presses it).
+      expect(output).toContain('Which template do you want to start from?');
+      expect(output.indexOf('default')).toBeLessThan(output.indexOf('tickets'));
       expect(existsSync(join(dir, 'src/events/ready.ts'))).toBe(true);
+      expect(existsSync(join(dir, 'src/tickets'))).toBe(false);
       expect(output).toContain(`Project created in ${dir}`);
       expect(output).toContain('Dependencies installed with pnpm');
       expect(nextSteps(output)).toEqual([

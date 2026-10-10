@@ -1,0 +1,23 @@
+{
+  "name": "community-bot",
+  "description": "Welcome messages, roles people pick, and weekly server stats",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "chapterjs dev",
+    "start": "chapterjs start",
+    "build": "chapterjs build",
+    "typecheck": "tsc -b",
+    "postinstall": "chapterjs sync"
+  },
+  "dependencies": {
+    "chapterjs": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

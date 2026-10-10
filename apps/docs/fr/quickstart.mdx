@@ -31,9 +31,9 @@ Il vous faut [Node.js](https://nodejs.org) 24 ou plus récent, une application D
 
     1. **Où créer le projet** : un nom de dossier comme `my-bot`, ou `.` pour le dossier courant. Le dossier doit être nouveau ou vide.
     2. **Quel gestionnaire de paquets utiliser** : seuls ceux installés sur votre ordinateur peuvent être choisis, et celui avec lequel vous avez lancé la commande est sélectionné par défaut.
-    3. **Quel modèle utiliser**.
+    3. **Quel modèle utiliser** : `default`, un événement et rien d’autre, est présélectionné. Les autres sont des bots complets : voir [Modèles](/fr/setup/project-structure#modèles).
 
-    Une question qui n’a qu’une réponse possible est sautée : avec un seul gestionnaire de paquets installé, il est utilisé et on vous le dit ; de même pour le modèle tant qu’il n’y en a qu’un.
+    Une question qui n’a qu’une réponse possible est sautée : avec un seul gestionnaire de paquets installé, il est utilisé et on vous le dit.
 
     Le modèle est copié, les dépendances sont installées, et la suite est affichée.
 
@@ -84,18 +84,17 @@ Il vous faut [Node.js](https://nodejs.org) 24 ou plus récent, une application D
     ```text
     ✓ Connected to My Server as my-bot
     ℹ Intents computed from your files: GUILDS
-    ✓ 1 command, 1 event loaded
+    ✓ 1 event loaded
     my-bot is online in 1 server(s)
-    ✓ Commands updated on My Server
     ```
 
-    La quatrième ligne est affichée par l’événement `ready` du modèle, `src/events/online.ts`.
+    La troisième ligne est affichée par l’événement `ready` du modèle, `src/events/ready.ts` : le seul fichier qu’il a.
 
     Si le bot n’est pas encore dans votre serveur de test, la commande affiche un lien qui l’y ajoute et vous attend. Si un de vos fichiers a besoin d’une option qui n’est pas activée pour votre bot, elle dit laquelle et où l’activer, et attend aussi. Chaque message dit quoi faire : voir [chapterjs dev](/fr/run/dev).
 
   </Step>
   <Step title="Essayer votre première commande">
-    Le modèle est fourni avec une commande, `/ping` :
+    Créez un fichier pour votre première commande, `src/commands/ping.ts` :
 
     ```ts src/commands/ping.ts
     import { command } from 'chapterjs';
@@ -109,13 +108,14 @@ Il vous faut [Node.js](https://nodejs.org) 24 ou plus récent, une application D
     });
     ```
 
-    Tapez `/ping` sur votre serveur de test : le bot répond « Pong ! ». Changez maintenant la réponse et enregistrez le fichier :
+    Enregistrez-le : le fichier est chargé, et la commande envoyée à votre serveur de test :
 
     ```text
     ↻ Reloaded in 12 ms, 1 command, 1 event loaded
+    ↻ Commands updated on Discord
     ```
 
-    Utilisez à nouveau `/ping` : elle répond avec le nouveau texte.
+    Tapez `/ping` sur votre serveur de test : le bot répond « Pong ! ». Changez la réponse, enregistrez, et utilisez à nouveau `/ping` : elle répond avec le nouveau texte.
 
   </Step>
 </Steps>

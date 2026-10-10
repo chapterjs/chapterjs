@@ -4,6 +4,7 @@
 // answer and the developer always gets the error. Written once here;
 // `commands/router.ts` and `components/router.ts` add what is theirs.
 
+import { withGuild } from '../store/scope.js';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { RawChannel } from '../discord/types/channel.js';
 import type { RawGuildMember } from '../discord/types/guild.js';
@@ -155,6 +156,8 @@ export interface RunOptions {
   defer: () => Promise<void>;
   /** What to tell the developer when `run` finishes without answering. */
   unanswered: string;
+  /** The server the function runs for: what a store per server reads. */
+  guildId: string | null;
   run: () => unknown;
 }
 
@@ -171,7 +174,7 @@ export function runInteraction(options: RunOptions): void {
     .then(() => options.defer())
     .catch(() => {});
 
-  new Promise(resolve => resolve(options.run()))
+  new Promise(resolve => resolve(withGuild(options.guildId, options.run)))
     .then(() => {
       if (!interaction.answered) {
         reporter.onWarning(file, `${name} ${options.unanswered}`);

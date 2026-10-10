@@ -1,6 +1,6 @@
 # Documentation site instructions
 
-This is the user-facing documentation of ChapterJS, built on [Mintlify](https://mintlify.com): MDX pages with YAML frontmatter, navigation in `docs.json`. Preview with `mint dev` (install the CLI with `npm i -g mint`). Read the root `CLAUDE.md` first: it describes the framework, and what the docs must stay in sync with.
+This is the user-facing documentation of ChapterJS, built on [Mintlify](https://mintlify.com): MDX pages with YAML frontmatter, navigation in `docs.json`. Preview with `mint dev` (install the CLI with `npm i -g mint`). Read the root `CLAUDE.md` first (the rules of the repo and what the docs must stay in sync with), then the `CLAUDE.md` of the package or module you document: `packages/chapterjs/CLAUDE.md` for the core, `packages/chapterjs/src/<feature>/CLAUDE.md` for a feature.
 
 ## Who reads this
 

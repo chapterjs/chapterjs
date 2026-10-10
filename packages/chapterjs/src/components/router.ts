@@ -219,6 +219,7 @@ export class ComponentRouter {
       name,
       what,
       reporter: this.#options,
+      guildId: place.guild?.id ?? null,
       // Nothing changes on screen while a component is answered; a form
       // sent is like a command used.
       defer: () =>

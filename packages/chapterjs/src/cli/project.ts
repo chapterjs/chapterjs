@@ -19,6 +19,9 @@ import {
 } from '../components/declaration.js';
 import { ComponentRouter, type ComponentEntry } from '../components/router.js';
 import { taskDeclaration } from '../tasks/declaration.js';
+import { storeDeclaration, type LoadedStore } from '../store/declaration.js';
+import { setStoreBackend, type StoreBackend } from '../store/backend.js';
+import { DATA_FOLDER, FileStoreBackend } from '../store/file-backend.js';
 import {
   DEFAULT_PRESENCE,
   presenceDeclaration,
@@ -91,6 +94,12 @@ export interface ProjectOptions {
    * Without it, the files of `src` are read on every load.
    */
   joinsVoice?: boolean;
+  /**
+   * Where the stores of the project keep their data. A file per store in
+   * the `data/` folder of the project by default; the first process of a
+   * cluster, through IPC, for the other processes.
+   */
+  stores?: StoreBackend;
   /** Only tests change this. */
   deferAfter?: number;
 }
@@ -148,9 +157,17 @@ export const DECLARATIONS: readonly Declaration<unknown>[] = [
   commandDeclaration,
   componentDeclaration,
   taskDeclaration,
+  storeDeclaration,
   presenceDeclaration,
   languageDeclaration,
 ];
+
+/** A store, with where it is declared. */
+export interface StoreEntry {
+  file: string;
+  export: string;
+  store: LoadedStore;
+}
 
 /** What a bot of the project is connected with. */
 export interface ConnectOptions {
@@ -180,6 +197,9 @@ export interface Project {
   readonly commands: ReadonlyMap<string, CommandEntry>;
   readonly components: ReadonlyMap<string, ComponentEntry>;
   readonly tasks: ReadonlyMap<string, TaskEntry>;
+  readonly stores: ReadonlyMap<string, StoreEntry>;
+  /** Where the stores keep their data: what a cluster serves to its other processes. */
+  readonly storeBackend: StoreBackend;
   /** The presence declared, or `null` without one. */
   readonly presence: LoadedPresence | null;
   /** The languages of the project, assembled, or `null` without any. */
@@ -223,6 +243,8 @@ export interface Project {
   stopTasks(): void;
   /** Looks after the memory of the bot `current` returns. */
   watchMemory(current: () => Bot | null): { stop(): void };
+  /** Writes what the stores still have to write. Nothing is kept after this. */
+  closeStores(): Promise<void>;
 }
 
 /** Whether the folder is a project: it has a `src` folder. */
@@ -294,6 +316,10 @@ export function createProject(options: ProjectOptions): Project {
   const { cwd, log } = options;
   // Where `asset()` reads the files of the project from.
   setPublicDir(cwd);
+  // Where the stores keep their data, for every store of the process.
+  const storeBackend =
+    options.stores ?? new FileStoreBackend(join(cwd, DATA_FOLDER));
+  setStoreBackend(storeBackend);
   const report = (failure: FailedFile): void => {
     const where = locate(failure.error, cwd);
     log.error(
@@ -328,6 +354,7 @@ export function createProject(options: ProjectOptions): Project {
   let commands = new Map<string, CommandEntry>();
   let components = new Map<string, ComponentEntry>();
   let tasks = new Map<string, TaskEntry>();
+  let stores = new Map<string, StoreEntry>();
   let presence: LoadedPresence | null = null;
   /** The files the presence was declared in, to keep it when they break. */
   let presenceFiles = new Set<string>();
@@ -360,6 +387,10 @@ export function createProject(options: ProjectOptions): Project {
     get tasks() {
       return tasks;
     },
+    get stores() {
+      return stores;
+    },
+    storeBackend,
     get presence() {
       return presence;
     },
@@ -399,6 +430,7 @@ export function createProject(options: ProjectOptions): Project {
         commandItems,
         componentItems,
         taskItems,
+        storeItems,
         presenceItems,
         languageItems,
       ] = [
@@ -406,6 +438,7 @@ export function createProject(options: ProjectOptions): Project {
         read(commandDeclaration),
         read(componentDeclaration),
         read(taskDeclaration),
+        read(storeDeclaration),
         read(presenceDeclaration),
         read(languageDeclaration),
       ];
@@ -474,6 +507,20 @@ export function createProject(options: ProjectOptions): Project {
       );
       tasks = new Map(sameTask.valid.map(entry => [keyOf(entry), entry]));
       scheduler.set(tasks.values());
+
+      // Two stores with one name would share one file: the later is left out.
+      const sameStore = sameNames(
+        [
+          ...next(stores, storeItems, item => ({
+            file: item.file,
+            export: item.export,
+            store: item.value,
+          })).values(),
+        ],
+        entry => entry.store.name,
+        'store'
+      );
+      stores = new Map(sameStore.valid.map(entry => [keyOf(entry), entry]));
 
       // One presence. A second one is left out.
       const [first, ...extra] = presenceItems.loaded;
@@ -574,17 +621,21 @@ export function createProject(options: ProjectOptions): Project {
         ...commandItems.failed,
         ...componentItems.failed,
         ...taskItems.failed,
+        ...storeItems.failed,
         ...presenceItems.failed,
         ...languageItems.failed,
         ...badTexts,
         ...twice,
-        ...[...conflicts, ...unique.conflicts, ...sameTask.conflicts].map(
-          ({ file, export: exported, message }) => ({
-            file,
-            export: exported,
-            error: new TypeError(message),
-          })
-        ),
+        ...[
+          ...conflicts,
+          ...unique.conflicts,
+          ...sameTask.conflicts,
+          ...sameStore.conflicts,
+        ].map(({ file, export: exported, message }) => ({
+          file,
+          export: exported,
+          error: new TypeError(message),
+        })),
       ];
     },
     summary() {
@@ -607,6 +658,7 @@ export function createProject(options: ProjectOptions): Project {
           ? [count(components.size, 'component', 'components')]
           : []),
         ...(tasks.size > 0 ? [count(tasks.size, 'task', 'tasks')] : []),
+        ...(stores.size > 0 ? [count(stores.size, 'store', 'stores')] : []),
         ...(presence ? ['a presence'] : []),
         ...(messages
           ? [
@@ -620,6 +672,7 @@ export function createProject(options: ProjectOptions): Project {
       commands.size === 0 &&
       components.size === 0 &&
       tasks.size === 0 &&
+      stores.size === 0 &&
       presence === null &&
       messages === null,
     filesNeeding: intent =>
@@ -724,6 +777,7 @@ export function createProject(options: ProjectOptions): Project {
     stopTasks: () => scheduler.stop(),
     // The bot looks after its own memory: it remembers less before memory
     // is full, and only speaks up when it can't give up anything more.
+    closeStores: () => storeBackend.close(),
     watchMemory: current =>
       watchMemory({
         cache: () => current()?.ctx.cache,

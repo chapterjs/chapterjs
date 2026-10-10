@@ -21,7 +21,7 @@ That is all. `chapterjs dev` finds the declaration and runs your function every 
 ## The name is the event
 
 - **`name` is the event.** It is one of the [events](/reference/events), and your editor offers them as you type; another word is underlined, and reported with the closest event name when the file loads.
-- **A declaration is one reaction.** Where the file is and what it is called are yours to choose: `src/events/welcome.ts`, as the template does, or `src/welcome.ts`, or next to the command it goes with. Declare as many as you want, in one file or several: they all run.
+- **A declaration is one reaction.** Where the file is and what it is called are yours to choose: `src/events/welcome.ts`, or `src/welcome/welcome.ts` as the `community` template does, or `src/welcome.ts`, or next to the command it goes with. Declare as many as you want, in one file or several: they all run.
 - **The import is the same everywhere.** `name` is what tells `event` what your function receives: a member for `'memberJoin'`, a role for `'roleDelete'`. The same line, `import { event } from 'chapterjs'`, works in every file.
 
 ## Several reactions to one event

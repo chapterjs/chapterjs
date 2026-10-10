@@ -1,0 +1,17 @@
+name: An idea
+description: Something the framework should do, or do differently.
+labels: [idea]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are trying to do
+      description: The bot you want to write, and what gets in the way today. The need first, a solution if you have one.
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: How it could look in a file
+      description: If you can picture it, the `src/` file you would like to write.
+      render: ts

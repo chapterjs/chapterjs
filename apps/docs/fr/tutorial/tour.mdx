@@ -9,31 +9,11 @@ Votre projet tourne. Avant de le modifier, faites-en le tour : un projet Chapter
   <Tree.Folder name="buddy" defaultOpen>
     <Tree.Folder name=".chapterjs" />
     <Tree.Folder name="node_modules" />
-    <Tree.Folder name="public" defaultOpen>
-      <Tree.File name="hello.ogg" />
-    </Tree.Folder>
+    <Tree.Folder name="public" />
     <Tree.Folder name="src" defaultOpen>
-      <Tree.Folder name="(moderation)" defaultOpen>
-        <Tree.File name="ban.ts" />
-        <Tree.File name="checks.ts" />
-        <Tree.File name="kick.ts" />
-        <Tree.File name="messages.ts" />
-        <Tree.File name="warn.ts" />
-      </Tree.Folder>
-      <Tree.Folder name="commands" defaultOpen>
-        <Tree.File name="hello.ts" />
-        <Tree.File name="ping.ts" />
-        <Tree.File name="play.ts" />
-      </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
         <Tree.File name="ready.ts" />
-        <Tree.File name="wave.ts" />
       </Tree.Folder>
-      <Tree.Folder name="messages" defaultOpen>
-        <Tree.File name="en-US.ts" />
-        <Tree.File name="fr.ts" />
-      </Tree.Folder>
-      <Tree.File name="presence.ts" />
     </Tree.Folder>
     <Tree.File name=".env" />
     <Tree.File name=".env.example" />
@@ -45,7 +25,7 @@ Votre projet tourne. Avant de le modifier, faites-en le tour : un projet Chapter
 
 ## La règle unique : ce qu’un fichier exporte dit ce qu’il est
 
-Tout ce que fait votre bot vit dans `src/`. ChapterJS ne vous demande jamais d’enregistrer quoi que ce soit : il charge chaque fichier de `src/`, et ce que les fichiers **exportent**, fabriqué avec l’une de ses fonctions, est ce que le bot fait tourner. Ouvrez `src/commands/ping.ts` :
+Tout ce que fait votre bot vit dans `src/`. ChapterJS ne vous demande jamais d’enregistrer quoi que ce soit : il charge chaque fichier de `src/`, et ce que les fichiers **exportent**, fabriqué avec l’une de ses fonctions, est ce que le bot fait tourner. Le modèle a un fichier, `src/events/ready.ts` : l’événement qui a affiché la ligne dans votre terminal. Ajoutez-en un second, une commande, dans `src/commands/ping.ts` :
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
@@ -59,7 +39,7 @@ export default command({
 });
 ```
 
-Rien d’autre ne dit « ceci est une commande » : `command()` le dit. Son `name` est ce que les gens tapent après le `/`, et le fichier dit seulement ce que la commande *fait*. Changez `name` en `'hello'`, et la commande devient `/hello` ; déplacez le fichier vers `src/fun/ping.ts`, et rien ne change.
+Enregistrez : le terminal dit `↻ Reloaded in 12 ms, 1 command, 1 event loaded`, puis `↻ Commands updated on Discord`, et `/ping` est sur votre serveur de test. Rien d’autre ne dit « ceci est une commande » : `command()` le dit. Son `name` est ce que les gens tapent après le `/`, et le fichier dit seulement ce que la commande *fait*. Changez `name` en `'hello'`, et la commande devient `/hello` ; déplacez le fichier vers `src/fun/ping.ts`, et rien ne change.
 
 C’est la règle pour tout ce que le framework fait tourner :
 
@@ -72,7 +52,7 @@ C’est la règle pour tout ce que le framework fait tourner :
 | `language({ locale, ... })` | Une langue du bot : `locale: 'fr'` est le français                                                                                |
 | `presence({ ... })`         | Ce que le bot affiche sous son nom, déclaré une fois                                                                              |
 
-Un fichier peut en déclarer plusieurs, et un fichier qui n’en déclare aucun est juste du code : `src/lib/`, `src/db/`, tout ce que vous importez depuis les autres. Le modèle fait les deux : un dossier par sorte (`src/commands/`, `src/events/`), et `src/(moderation)/`, où tout ce qui touche à la modération vit ensemble : les commandes `/ban`, `/kick` et `/warn`, le bouton qu’affiche `/ban`, l’événement qui enregistre un bannissement, leurs textes dans les deux langues, et le code qu’ils partagent. Les parenthèses sont une habitude, pas une règle : un dossier n’est qu’un dossier.
+Un fichier peut en déclarer plusieurs, et un fichier qui n’en déclare aucun est juste du code : `src/lib/`, `src/db/`, tout ce que vous importez depuis les autres. Les modèles de `create chapter` font les deux : `default` garde un dossier par sorte (`src/events/`, et maintenant `src/commands/`), et `tickets` met tout ce qui touche aux tickets dans `src/tickets/` : la commande, le formulaire, les boutons, et leurs textes dans les deux langues. Un dossier n’est qu’un dossier.
 
 Pourquoi ce choix ? Parce que l’alternative, une liste quelque part qui dit « la commande `/ping` est dans ce fichier, l’événement de bienvenue dans celui-là », est une liste que vous devez tenir à jour à la main. Ici, il n’y a pas de liste. Ajouter une commande, c’est ajouter une déclaration ; en retirer une, c’est la supprimer.
 
@@ -115,7 +95,7 @@ export default command({
 Enregistrez. Le terminal dit :
 
 ```text
-↻ Reloaded in 12 ms, 1 command, 1 event, 1 component, a presence, messages in 2 languages loaded
+↻ Reloaded in 12 ms, 1 command, 1 event loaded
 ```
 
 Utilisez à nouveau `/ping` dans Discord : la nouvelle réponse. Vous ne redémarrez jamais le bot pendant que vous l’écrivez : chaque fichier de `src/` est surveillé, et un enregistrement le recharge, avec chaque fichier qui l’importe.

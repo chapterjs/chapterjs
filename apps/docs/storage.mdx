@@ -1,0 +1,133 @@
+---
+title: 'Storage'
+description: 'Keep what your bot learns from one restart to the next, per server, with a store() declaration'
+---
+
+A store is declared with `store()`, in any file of `src/`, and exported. It keeps data from one restart to the next, typed by what it holds, and per server unless you say otherwise.
+
+```ts src/commands/warn.ts
+import { command, store } from 'chapterjs';
+
+interface Warning {
+  reason: string;
+  by: string;
+  at: number;
+}
+
+export const warnings = store<Warning[]>();
+
+export default command({
+  name: 'warn',
+  description: 'Warns a member',
+  options: {
+    who: { type: 'user', description: 'Who', required: true },
+    reason: { type: 'string', description: 'Why', required: true },
+  },
+  async run({ interaction, options, user }) {
+    const list = await warnings.update(options.who.id, (list = []) => [
+      ...list,
+      { reason: options.reason, by: user.id, at: Date.now() },
+    ]);
+    await interaction.reply(`${options.who} now has ${list.length} warning(s).`);
+  },
+});
+```
+
+That is all. The name of the export is the name of the store (`warnings`), and its data lives in `data/warnings.json`, at the root of your project. The command runs in a server, so the store reads and writes the warnings of that server: the key is `options.who.id`, nothing more.
+
+<Note>
+  Everything a store declares and does is in the [reference](/reference/store).
+</Note>
+
+## Per server, without saying so
+
+A store is per server by default. In a function that runs in a server (a command, a button, a form, an event that has a `guild`), the framework knows which server, and the store works on its data: `warnings.get(member.id)` in server A and in server B read two different things, with the same line.
+
+Outside a server (a task, which runs for every server; an event of a private message; code that looks at another server), say which one with `in()`:
+
+```ts src/tasks/digest.ts
+import { task } from 'chapterjs';
+import { warnings } from '../commands/warn';
+
+export default task({
+  cron: '0 9 * * 1',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const entries = await warnings.in(guild).entries();
+      console.log(`${guild.name}: ${entries.length} member(s) with warnings`);
+    }
+  },
+});
+```
+
+A store per server used where no server is known stops with a message saying to use `in()`. For data that is the same everywhere, declare the store with `scope: 'global'`: it then takes no server at all.
+
+```ts src/settings.ts
+import { store } from 'chapterjs';
+
+export const settings = store<{ maintenance: boolean }>({ scope: 'global' });
+```
+
+## What a store does
+
+| Call | What it does |
+| --- | --- |
+| `get(key)` | The value, or `undefined` when there is none, or it expired |
+| `set(key, value, options?)` | Keeps a value |
+| `update(key, change, options?)` | Reads, changes and keeps in one go: `change` receives the value, or `undefined`, and returns the new one |
+| `delete(key)` | Forgets a value; `true` when there was one |
+| `entries(prefix?)` | Every entry (`key`, `value`, `expires`), or the ones whose key starts with `prefix` |
+| `ttl(key)` | How long the value is still kept, in milliseconds: `null` for forever, `undefined` for none |
+| `in(guild)` | The same store, for one server |
+
+A key is a text, or a list of texts for a key made of several parts: `[channel.id, message.id]`. `entries(channel.id)` then lists what that channel has.
+
+A value is JSON: texts, numbers, booleans, lists and plain objects. A `Date`, a `Map` or a class instance would not come back the same, so `set()` refuses them and says what to keep instead (an id, a text, a number). Every call returns a promise.
+
+## Expiration
+
+`expires` says how long a value is kept: on the store, for every value, or on one `set()` or `update()`. A duration is a number and a unit, `s`, `m`, `h` or `d`, like `'10m'` or `'30d'`.
+
+```ts src/commands/verify.ts
+import { command, store } from 'chapterjs';
+
+export const codes = store<string>({ expires: '10m' });
+
+export default command({
+  name: 'verify',
+  description: 'Sends you a code that lasts ten minutes',
+  async run({ interaction, user }) {
+    const code = Math.random().toString(36).slice(2, 8);
+    await codes.set(user.id, code);
+    await codes.set(['last', user.id], code, { expires: '1d' });
+    await interaction.reply({ content: `Your code: ${code}`, ephemeral: true });
+  },
+});
+```
+
+An expired value is gone: `get()` answers `undefined`, `entries()` leaves it out, and the file forgets it. `{ expires: null }` keeps one value forever in a store that expires; a `Date` sets the moment itself. `update()` keeps the expiration the value had, unless you give another.
+
+## Where the data is
+
+One file per store, `data/<name>.json`, in the folder of your project. It is written shortly after each change, in one piece, so a crash never leaves a half-written file; what is pending when the bot stops is written then. The folder is in the `.gitignore` of a new project: it is your data, not your code.
+
+The bot keeps the data in memory and the file is its copy, so a store is for what fits in memory: settings, scores, warnings, who opened what. For millions of rows, use a database.
+
+In production on [several processes](/run/start#large-bots), the data has one home, the process you started: the others ask it, so a command on any shard reads what the others wrote. Nothing to set up.
+
+<Warning>
+  `chapterjs dev` and `chapterjs start` in the same folder share the same `data/`. With two bots in one folder, what you try in dev is what production reads.
+</Warning>
+
+## In development
+
+Saving a file keeps the data: a store is tied to its name, not to the file. Two stores with the same name in two files are reported, and the later one is left out: they would share a file. Delete `data/<name>.json` to start a store empty.
+
+<CardGroup cols={2}>
+  <Card title="store() reference" icon="database" href="/reference/store">
+    Every field of a store, and what each call returns.
+  </Card>
+  <Card title="Tasks" icon="clock" href="/tasks">
+    Something to do with what the bot keeps, every so often.
+  </Card>
+</CardGroup>

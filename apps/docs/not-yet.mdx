@@ -29,12 +29,6 @@ Asking a question with a message, then waiting for the next message, reaction or
 
 Meanwhile: a button or a menu of `src/components/` that carries what it needs in its `data`. Its file runs when the person clicks, however long after, even after a restart: see [Components](/components).
 
-## Storing data
-
-Somewhere to keep what your bot learns: scores, settings, warnings. Not available: nothing survives a restart except the `data` of a [component](/components), which lives in the message itself.
-
-Meanwhile: a JSON file written with `node:fs`, or any database made for Node.
-
 ## Other events
 
 The [events](/reference/events) your files can react to are the ones listed there: messages, reactions, polls, typing, members, servers, channels, threads, roles, voice, presences, bans, the audit log, emojis, invites and scheduled events. What auto-moderation does, stickers, soundboard sounds, pinned messages, webhooks, integrations, stage instances and the status of a voice channel are not there yet.

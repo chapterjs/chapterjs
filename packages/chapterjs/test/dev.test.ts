@@ -1,4 +1,9 @@
-import { fakeDiscord, fakeVoice, startCli } from '@chapterjs/test-utils';
+import {
+  fakeDiscord,
+  fakeVoice,
+  startCli,
+  type FakeGatewayConnection,
+} from '@chapterjs/test-utils';
 import { ogg } from './voice-helpers.js';
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
@@ -40,6 +45,7 @@ import {
   rawMessage,
   runDev,
   world,
+  type FakeWorld,
   runProduction,
 } from './dev-helpers.js';
 
@@ -918,6 +924,487 @@ describe.skipIf(process.platform === 'win32')(
   'the templates of the scaffolder',
   () => {
     const templates = join(packageDir, '../create-chapter/templates');
+    const WELCOME = '100000000000000022';
+    const THREAD = '100000000000000023';
+    const VOICE = '100000000000000501';
+    /** A member who may do everything: the person trying the template. */
+    const admin = {
+      user: { id: ALICE, username: 'alice', discriminator: '0' },
+      roles: [],
+      permissions: '8',
+      joined_at: '2024-01-01T00:00:00Z',
+      deaf: false,
+      mute: false,
+      flags: 0,
+    };
+    const base = (id: string) => ({
+      id,
+      application_id: BOT,
+      token: `token-${id}`,
+      version: 1,
+      guild_id: GUILD,
+      channel_id: GENERAL,
+      locale: 'en-US',
+      member: admin,
+      app_permissions: '8',
+      entitlements: [],
+      authorizing_integration_owners: {},
+      attachment_size_limit: 1,
+    });
+    /** Someone uses a slash command (`/ticket panel` is `['ticket', 'panel']`). */
+    const slash = (
+      id: string,
+      path: string[],
+      options: { name: string; type: number; value: unknown }[] = [],
+      resolved?: Record<string, unknown>
+    ) => {
+      const [name, ...rest] = path;
+      const data: Record<string, unknown> = { id: `${id}0`, name, type: 1 };
+      let cursor = data;
+      for (const word of rest) {
+        const sub = { name: word, type: 1 };
+        cursor.options = [sub];
+        cursor = sub;
+      }
+      cursor.options = options;
+      if (resolved) data.resolved = resolved;
+      return { ...base(id), type: 2, data };
+    };
+    const callback = (id: string) => `/interactions/${id}/token-${id}/callback`;
+    /** Sends an interaction to the bot, with Discord ready to take its answer. */
+    const ask = (
+      fake: FakeWorld,
+      connection: FakeGatewayConnection,
+      payload: { id: string; type: number; [key: string]: unknown }
+    ) => {
+      fake.discord.on('POST', callback(payload.id), {
+        body: {
+          interaction: { id: payload.id, type: payload.type },
+          resource: { type: 4, message: rawMessage(`${payload.id}9`, '') },
+        },
+      });
+      connection.dispatch('INTERACTION_CREATE', payload);
+    };
+    const answerOf = (fake: FakeWorld, id: string) =>
+      fake.discord.requestsTo('POST', callback(id))[0]?.body as
+        { type: number; data: Record<string, unknown> } | undefined;
+    const waitForAnswer = async (fake: FakeWorld, id: string) => {
+      const deadline = Date.now() + 5000;
+      while (!answerOf(fake, id) && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      return answerOf(fake, id)!;
+    };
+    const waitForRequest = async (
+      fake: FakeWorld,
+      method: string,
+      path: string
+    ) => {
+      const deadline = Date.now() + 5000;
+      while (
+        fake.discord.requestsTo(method, path).length === 0 &&
+        Date.now() < deadline
+      ) {
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      return fake.discord.requestsTo(method, path)[0]!;
+    };
+
+    /** What each template is put through, once the bot is online. */
+    const flows: Record<
+      string,
+      (
+        fake: FakeWorld,
+        connection: FakeGatewayConnection,
+        cwd: string
+      ) => Promise<void>
+    > = {
+      async default() {},
+
+      async tickets(fake, connection) {
+        // /ticket panel posts the embed and its button.
+        fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+          body: rawMessage('100000000000000090', ''),
+        });
+        ask(fake, connection, slash('1', ['ticket', 'panel']));
+        const panel = await waitForRequest(
+          fake,
+          'POST',
+          `/channels/${GENERAL}/messages`
+        );
+        expect(panel.body).toMatchObject({
+          embeds: [{ title: 'Need help?' }],
+          components: [
+            {
+              type: 1,
+              components: [
+                { type: 2, custom_id: 'open', label: 'Open a ticket' },
+              ],
+            },
+          ],
+        });
+        expect(await waitForAnswer(fake, '1')).toEqual({
+          type: 4,
+          data: { content: 'The panel is posted.', flags: 64 },
+        });
+        // Clicking the button opens the form.
+        ask(fake, connection, {
+          ...base('2'),
+          type: 3,
+          message: rawMessage('100000000000000090', ''),
+          data: { custom_id: 'open', component_type: 2 },
+        });
+        const form = await waitForAnswer(fake, '2');
+        expect(form.type).toBe(9);
+        expect(form.data).toMatchObject({
+          custom_id: 'openTicket',
+          title: 'New ticket',
+        });
+        // Sending the form opens a private thread with the person in it.
+        fake.discord.on('POST', `/channels/${GENERAL}/threads`, {
+          body: {
+            id: THREAD,
+            type: 12,
+            name: 'bug-alice',
+            guild_id: GUILD,
+            parent_id: GENERAL,
+            owner_id: BOT,
+            thread_metadata: { archived: false, locked: false },
+          },
+        });
+        fake.discord.on('PUT', `/channels/${THREAD}/thread-members/${ALICE}`, {
+          status: 204,
+        });
+        fake.discord.on('POST', `/channels/${THREAD}/messages`, {
+          body: rawMessage('100000000000000091', 'ticket'),
+        });
+        ask(fake, connection, {
+          ...base('3'),
+          type: 5,
+          data: {
+            custom_id: 'openTicket',
+            components: [
+              {
+                type: 18,
+                id: 1,
+                component: {
+                  type: 4,
+                  custom_id: 'subject',
+                  value: 'It does not start',
+                },
+              },
+              {
+                type: 18,
+                id: 2,
+                component: { type: 21, custom_id: 'category', value: 'bug' },
+              },
+              {
+                type: 18,
+                id: 3,
+                component: {
+                  type: 4,
+                  custom_id: 'details',
+                  value: 'When I click, nothing happens at all.',
+                },
+              },
+            ],
+          },
+        });
+        const thread = await waitForRequest(
+          fake,
+          'POST',
+          `/channels/${GENERAL}/threads`
+        );
+        expect(thread.body).toEqual({
+          name: 'bug-alice',
+          type: 12,
+          invitable: false,
+        });
+        await waitForRequest(
+          fake,
+          'PUT',
+          `/channels/${THREAD}/thread-members/${ALICE}`
+        );
+        const first = await waitForRequest(
+          fake,
+          'POST',
+          `/channels/${THREAD}/messages`
+        );
+        expect(first.body).toMatchObject({
+          content: `Thanks <@${ALICE}>, the staff will be with you shortly.`,
+          embeds: [
+            {
+              title: 'It does not start',
+              description: 'When I click, nothing happens at all.',
+            },
+          ],
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 2,
+                  custom_id: `close:${ALICE}`,
+                  label: 'Close the ticket',
+                },
+              ],
+            },
+          ],
+        });
+        expect(await waitForAnswer(fake, '3')).toEqual({
+          type: 4,
+          data: { content: `Your ticket is open: <#${THREAD}>`, flags: 64 },
+        });
+        // One ticket at a time: the store remembers it.
+        ask(fake, connection, {
+          ...base('4'),
+          type: 5,
+          data: {
+            custom_id: 'openTicket',
+            components: [
+              {
+                type: 18,
+                id: 1,
+                component: {
+                  type: 4,
+                  custom_id: 'subject',
+                  value: 'Another one',
+                },
+              },
+              {
+                type: 18,
+                id: 2,
+                component: { type: 21, custom_id: 'category', value: 'other' },
+              },
+              {
+                type: 18,
+                id: 3,
+                component: {
+                  type: 4,
+                  custom_id: 'details',
+                  value: 'Something else is wrong, I think.',
+                },
+              },
+            ],
+          },
+        });
+        expect(await waitForAnswer(fake, '4')).toEqual({
+          type: 4,
+          data: {
+            content: `You already have a ticket open: <#${THREAD}>. Close it first.`,
+            flags: 64,
+          },
+        });
+        expect(
+          fake.discord.requestsTo('POST', `/channels/${GENERAL}/threads`)
+        ).toHaveLength(1);
+      },
+
+      async music(fake, connection) {
+        // Nothing plays yet, and /play needs the person in a voice channel.
+        ask(fake, connection, slash('1', ['queue']));
+        expect(await waitForAnswer(fake, '1')).toEqual({
+          type: 4,
+          data: { content: 'Nothing is playing.', flags: 64 },
+        });
+        ask(
+          fake,
+          connection,
+          slash(
+            '2',
+            ['play'],
+            [{ name: 'url', type: 3, value: 'https://example.com/song.ogg' }]
+          )
+        );
+        expect(await waitForAnswer(fake, '2')).toEqual({
+          type: 4,
+          data: {
+            content: 'Join a voice channel first, then ask again.',
+            flags: 64,
+          },
+        });
+        ask(fake, connection, slash('3', ['leave']));
+        expect(await waitForAnswer(fake, '3')).toEqual({
+          type: 4,
+          data: { content: 'I am not in a voice channel.', flags: 64 },
+        });
+      },
+
+      async community(fake, connection) {
+        // Someone joins: the welcome channel gets the card.
+        fake.discord.on('POST', `/channels/${WELCOME}/messages`, {
+          body: rawMessage('100000000000000092', 'welcome'),
+        });
+        connection.dispatch('GUILD_MEMBER_ADD', {
+          guild_id: GUILD,
+          user: {
+            id: '100000000000000004',
+            username: 'bob',
+            discriminator: '0',
+          },
+          roles: [],
+          joined_at: '2024-01-02T00:00:00Z',
+          deaf: false,
+          mute: false,
+          flags: 0,
+        });
+        const welcome = await waitForRequest(
+          fake,
+          'POST',
+          `/channels/${WELCOME}/messages`
+        );
+        expect(welcome.body).toMatchObject({
+          content: 'Welcome to Dev Server, <@100000000000000004>!',
+          embeds: [{ title: 'bob' }],
+        });
+        // /roles shows the menu, with nothing picked yet.
+        ask(fake, connection, slash('1', ['roles']));
+        const roles = await waitForAnswer(fake, '1');
+        expect(roles.data).toMatchObject({
+          content: 'Pick the roles you want:',
+          flags: 64,
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 3,
+                  custom_id: 'pick',
+                  min_values: 0,
+                  max_values: 3,
+                  options: [
+                    { label: 'Announcements', value: 'Announcements' },
+                    { label: 'Events', value: 'Events' },
+                    { label: 'Gaming', value: 'Gaming' },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      },
+
+      async moderation(fake, connection, cwd) {
+        // /slowmode changes the channel and says so.
+        fake.discord.on('PATCH', `/channels/${GENERAL}`, {
+          body: {
+            id: GENERAL,
+            type: 0,
+            name: 'general',
+            rate_limit_per_user: 10,
+          },
+        });
+        ask(
+          fake,
+          connection,
+          slash('1', ['slowmode'], [{ name: 'seconds', type: 4, value: 10 }])
+        );
+        const edit = await waitForRequest(
+          fake,
+          'PATCH',
+          `/channels/${GENERAL}`
+        );
+        expect(edit.body).toEqual({ rate_limit_per_user: 10 });
+        expect(await waitForAnswer(fake, '1')).toEqual({
+          type: 4,
+          data: {
+            content: 'Slowmode: one message every 10 seconds.',
+            flags: 0,
+          },
+        });
+        // /lock denies writing to @everyone on the channel.
+        fake.discord.on('PUT', `/channels/${GENERAL}/permissions/${GUILD}`, {
+          status: 204,
+        });
+        ask(
+          fake,
+          connection,
+          slash('2', ['lock'], [{ name: 'reason', type: 3, value: 'Raid' }])
+        );
+        const lock = await waitForRequest(
+          fake,
+          'PUT',
+          `/channels/${GENERAL}/permissions/${GUILD}`
+        );
+        expect(lock.body).toMatchObject({ type: 0, allow: '0' });
+        expect(BigInt((lock.body as { deny: string }).deny) & (1n << 11n)).toBe(
+          1n << 11n
+        );
+        expect(await waitForAnswer(fake, '2')).toEqual({
+          type: 4,
+          data: {
+            content: '🔒 This channel is locked. Reason: Raid',
+            flags: 0,
+          },
+        });
+        // /warn add keeps the warnings in a store, /warn list reads them.
+        const bob = '100000000000000004';
+        const resolved = {
+          users: { [bob]: { id: bob, username: 'bob', discriminator: '0' } },
+        };
+        for (const [id, reason] of [
+          ['3', 'Spam'],
+          ['4', 'Again'],
+        ] as const) {
+          ask(
+            fake,
+            connection,
+            slash(
+              id,
+              ['warn', 'add'],
+              [
+                { name: 'user', type: 6, value: bob },
+                { name: 'reason', type: 3, value: reason },
+              ],
+              resolved
+            )
+          );
+          await waitForAnswer(fake, id);
+        }
+        expect(answerOf(fake, '3')).toEqual({
+          type: 4,
+          data: {
+            content: `<@${bob}> was warned. They have 1 warning.`,
+            flags: 0,
+          },
+        });
+        expect(answerOf(fake, '4')).toEqual({
+          type: 4,
+          data: {
+            content: `<@${bob}> was warned. They have 2 warnings.`,
+            flags: 0,
+          },
+        });
+        ask(
+          fake,
+          connection,
+          slash(
+            '5',
+            ['warn', 'list'],
+            [{ name: 'user', type: 6, value: bob }],
+            resolved
+          )
+        );
+        const listed = await waitForAnswer(fake, '5');
+        expect(listed.data.flags).toBe(64);
+        expect(listed.data.content).toMatch(
+          new RegExp(
+            `^<@${bob}> has 2 warnings:\n• <t:\\d+:R> <@${ALICE}>: Spam\n• <t:\\d+:R> <@${ALICE}>: Again$`
+          )
+        );
+        // Written shortly after: the data survives a restart.
+        const file = join(cwd, 'data', 'warnings.json');
+        const deadline = Date.now() + 2000;
+        while (!existsSync(file) && Date.now() < deadline) {
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        expect(existsSync(file)).toBe(true);
+      },
+    };
+
+    it('has a flow for every template', () => {
+      expect(Object.keys(flows).sort()).toEqual(readdirSync(templates).sort());
+    });
 
     it.each(readdirSync(templates))(
       '%s type-checks and runs without error',
@@ -948,10 +1435,10 @@ describe.skipIf(process.platform === 'win32')(
           stdio: 'pipe',
         });
 
-        // Only non-privileged intents: a template must run on a brand new bot.
-        const VOICE = '100000000000000501';
+        // A template runs on a brand new bot: no privileged intent, except
+        // the community one, which welcomes members and says it needs one.
         const fake = await world({
-          flags: 0,
+          flags: name === 'community' ? ALL_PRIVILEGED : 0,
           devGuild: {
             // View Channel, Connect, Speak, Send Messages.
             roles: [
@@ -966,294 +1453,18 @@ describe.skipIf(process.platform === 'win32')(
             ],
             channels: [
               { id: GENERAL, type: 0, name: 'general' },
+              { id: WELCOME, type: 0, name: 'welcome' },
               { id: VOICE, type: 2, name: 'Lounge' },
             ],
           },
         });
         const cli = runDev(cwd, fake);
         await cli.waitFor('✓ Connected to Dev Server as test-bot');
-        await cli.waitFor('test-bot is online in 1 server(s)');
+        await cli.waitFor(/✓ .* loaded/);
         if (name === 'default') {
-          // A 👋 is waved back, once: the reaction of the bot is left out.
-          const message = '100000000000000075';
-          const path = `/channels/${GENERAL}/messages/${message}`;
-          fake.discord.on('GET', path, { body: rawMessage(message, 'hi') });
-          fake.discord.on(
-            'PUT',
-            `${path}/reactions/${encodeURIComponent('👋')}/@me`,
-            { status: 204 }
-          );
-          const connection = await connected(fake);
-          const reaction = (userId: string, bot: boolean) => ({
-            user_id: userId,
-            channel_id: GENERAL,
-            message_id: message,
-            guild_id: GUILD,
-            member: {
-              user: { id: userId, username: 'u', discriminator: '0', bot },
-              roles: [],
-              joined_at: null,
-              deaf: false,
-              mute: false,
-              flags: 0,
-            },
-            emoji: { id: null, name: '👋' },
-            burst: false,
-            type: 0,
-          });
-          connection.dispatch('MESSAGE_REACTION_ADD', reaction(ALICE, false));
-          const deadline = Date.now() + 5000;
-          const waved = () =>
-            fake.discord.requests.filter(
-              request =>
-                request.method === 'PUT' &&
-                request.path.startsWith(`${path}/reactions/`)
-            );
-          while (waved().length === 0 && Date.now() < deadline) {
-            await new Promise(resolve => setTimeout(resolve, 20));
-          }
-          expect(
-            waved().map(request => decodeURIComponent(request.path))
-          ).toEqual([`${path}/reactions/👋/@me`]);
-          connection.dispatch('MESSAGE_REACTION_ADD', reaction(BOT, true));
-          await new Promise(resolve => setTimeout(resolve, 100));
-          expect(waved()).toHaveLength(1);
-
-          // /hello: Alice is in voice, the bot comes and plays hello.ogg.
-          const voice = await fakeVoice();
-          const voiceState = (userId: string, sessionId: string) => ({
-            guild_id: GUILD,
-            channel_id: VOICE,
-            user_id: userId,
-            session_id: sessionId,
-            deaf: false,
-            mute: false,
-            self_deaf: false,
-            self_mute: false,
-            self_video: false,
-            suppress: false,
-            request_to_speak_timestamp: null,
-          });
-          connection.dispatch('VOICE_STATE_UPDATE', voiceState(ALICE, 'alice'));
-          const id = '100000000000000502';
-          const callback = `/interactions/${id}/token-${id}/callback`;
-          fake.discord.on('POST', callback, {
-            body: {
-              interaction: { id, type: 2 },
-              resource: {
-                type: 4,
-                message: rawMessage(id, 'Coming to Lounge!'),
-              },
-            },
-          });
-          connection.dispatch('INTERACTION_CREATE', {
-            id,
-            application_id: BOT,
-            type: 2,
-            token: `token-${id}`,
-            version: 1,
-            guild_id: GUILD,
-            channel_id: GENERAL,
-            locale: 'en-US',
-            member: {
-              user: { id: ALICE, username: 'alice', discriminator: '0' },
-              roles: [],
-              permissions: '1024',
-              joined_at: '2024-01-01T00:00:00Z',
-              deaf: false,
-              mute: false,
-              flags: 0,
-            },
-            app_permissions: '0',
-            entitlements: [],
-            authorizing_integration_owners: {},
-            attachment_size_limit: 1,
-            data: { id: '100000000000000503', name: 'hello', type: 1 },
-          });
-          const join = await connection.waitFor(
-            payload => payload.op === 4,
-            5000
-          );
-          expect(join.d).toMatchObject({ guild_id: GUILD, channel_id: VOICE });
-          expect(fake.discord.requestsTo('POST', callback)[0]!.body).toEqual({
-            type: 4,
-            data: { content: 'Coming to Lounge!', flags: 0 },
-          });
-          connection.dispatch('VOICE_STATE_UPDATE', voiceState(BOT, 'bot'));
-          connection.dispatch('VOICE_SERVER_UPDATE', {
-            guild_id: GUILD,
-            token: 'voice-token',
-            endpoint: voice.endpoint,
-          });
-          // 173 packets of 20 ms, then five frames of silence.
-          const played = await voice.waitForPackets(178, 8000);
-          expect(played.at(-1)!.payload).toEqual(
-            Buffer.from([0xf8, 0xff, 0xfe])
-          );
-          await connection.waitFor(
-            payload =>
-              payload.op === 4 &&
-              (payload.d as { channel_id: unknown }).channel_id === null,
-            3000
-          );
-
-          // /play: a song sent with the command, downloaded and played.
-          const song = ogg(
-            Array.from({ length: 10 }, (_, n) => Buffer.from([0xfc, n]))
-          );
-          const { createServer } = await import('node:http');
-          const files = createServer((_, response) =>
-            response.writeHead(200).end(song)
-          );
-          await new Promise<void>(resolve =>
-            files.listen(0, '127.0.0.1', resolve)
-          );
-          const { port } = files.address() as { port: number };
-          const playId = '100000000000000504';
-          const playCallback = `/interactions/${playId}/token-${playId}/callback`;
-          fake.discord.on('POST', playCallback, {
-            body: {
-              interaction: { id: playId, type: 2 },
-              resource: { type: 4, message: rawMessage(playId, 'Playing') },
-            },
-          });
-          const before = connection.received.length;
-          connection.dispatch('INTERACTION_CREATE', {
-            id: playId,
-            application_id: BOT,
-            type: 2,
-            token: `token-${playId}`,
-            version: 1,
-            guild_id: GUILD,
-            channel_id: GENERAL,
-            locale: 'fr',
-            member: {
-              user: { id: ALICE, username: 'alice', discriminator: '0' },
-              roles: [],
-              permissions: '1024',
-              joined_at: '2024-01-01T00:00:00Z',
-              deaf: false,
-              mute: false,
-              flags: 0,
-            },
-            app_permissions: '0',
-            entitlements: [],
-            authorizing_integration_owners: {},
-            attachment_size_limit: 1,
-            data: {
-              id: '100000000000000505',
-              name: 'play',
-              type: 1,
-              options: [
-                { name: 'file', type: 11, value: '100000000000000506' },
-              ],
-              resolved: {
-                attachments: {
-                  '100000000000000506': {
-                    id: '100000000000000506',
-                    filename: 'song.ogg',
-                    size: song.length,
-                    url: `http://127.0.0.1:${port}/song.ogg`,
-                    proxy_url: `http://127.0.0.1:${port}/song.ogg`,
-                    content_type: 'audio/ogg',
-                  },
-                },
-              },
-            },
-          });
-          await connection.waitFor(
-            payload =>
-              connection.received.indexOf(payload) >= before &&
-              payload.op === 4 &&
-              (payload.d as { channel_id: unknown }).channel_id === VOICE,
-            5000
-          );
-          // Answered in the language of the server (not Community: the
-          // default one), with the name of the file.
-          expect(
-            fake.discord.requestsTo('POST', playCallback)[0]!.body
-          ).toEqual({
-            type: 4,
-            data: { content: 'Playing song.ogg in Lounge.', flags: 0 },
-          });
-          connection.dispatch('VOICE_STATE_UPDATE', voiceState(BOT, 'bot-2'));
-          connection.dispatch('VOICE_SERVER_UPDATE', {
-            guild_id: GUILD,
-            token: 'voice-token-2',
-            endpoint: voice.endpoint,
-          });
-          const all = await voice.waitForPackets(178 + 15, 8000);
-          expect(all.slice(178, 188).map(packet => packet.payload)).toEqual(
-            Array.from({ length: 10 }, (_, n) => Buffer.from([0xfc, n]))
-          );
-
-          // /play with a link: downloaded and played the same way.
-          const linkId = '100000000000000507';
-          const linkCallback = `/interactions/${linkId}/token-${linkId}/callback`;
-          fake.discord.on('POST', linkCallback, {
-            body: {
-              interaction: { id: linkId, type: 2 },
-              resource: { type: 4, message: rawMessage(linkId, 'Playing') },
-            },
-          });
-          const link = `http://127.0.0.1:${port}/radio`;
-          const beforeLink = connection.received.length;
-          connection.dispatch('INTERACTION_CREATE', {
-            id: linkId,
-            application_id: BOT,
-            type: 2,
-            token: `token-${linkId}`,
-            version: 1,
-            guild_id: GUILD,
-            channel_id: GENERAL,
-            locale: 'fr',
-            member: {
-              user: { id: ALICE, username: 'alice', discriminator: '0' },
-              roles: [],
-              permissions: '1024',
-              joined_at: '2024-01-01T00:00:00Z',
-              deaf: false,
-              mute: false,
-              flags: 0,
-            },
-            app_permissions: '0',
-            entitlements: [],
-            authorizing_integration_owners: {},
-            attachment_size_limit: 1,
-            data: {
-              id: '100000000000000505',
-              name: 'play',
-              type: 1,
-              options: [{ name: 'url', type: 3, value: link }],
-            },
-          });
-          await connection.waitFor(
-            payload =>
-              connection.received.indexOf(payload) >= beforeLink &&
-              payload.op === 4 &&
-              (payload.d as { channel_id: unknown }).channel_id === VOICE,
-            8000
-          );
-          expect(
-            fake.discord.requestsTo('POST', linkCallback)[0]!.body
-          ).toEqual({
-            type: 4,
-            data: { content: `Playing ${link} in Lounge.`, flags: 0 },
-          });
-          connection.dispatch('VOICE_STATE_UPDATE', voiceState(BOT, 'bot-3'));
-          connection.dispatch('VOICE_SERVER_UPDATE', {
-            guild_id: GUILD,
-            token: 'voice-token-3',
-            endpoint: voice.endpoint,
-          });
-          const withLink = await voice.waitForPackets(178 + 15 + 15, 8000);
-          expect(
-            withLink.slice(193, 203).map(packet => packet.payload)
-          ).toEqual(
-            Array.from({ length: 10 }, (_, n) => Buffer.from([0xfc, n]))
-          );
-          files.close();
+          await cli.waitFor('test-bot is online in 1 server(s)');
         }
+        await flows[name]!(fake, await connected(fake), cwd);
         cli.signal('SIGINT');
         const { code, output } = await cli.exited;
         expect(code).toBe(0);

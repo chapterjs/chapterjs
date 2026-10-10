@@ -3,7 +3,7 @@ title: 'La présence'
 description: 'Choisir le statut de votre bot et ce qu’il affiche sous son nom, avec un seul fichier'
 ---
 
-Dans la liste des membres, un bot a une pastille de couleur et parfois une ligne sous son nom : « Joue à with ChapterJS », dans le modèle. C’est sa **présence**. C’est un seul fichier, `src/presence.ts`, et cette page est courte parce que le fichier l’est.
+Dans la liste des membres, un bot a une pastille de couleur et parfois une ligne sous son nom : « Regarde over the server », par exemple. C’est sa **présence**. C’est un seul fichier, `src/presence.ts`, que vous créez maintenant, et cette page est courte parce que le fichier l’est.
 
 ## Le fichier
 
@@ -16,7 +16,7 @@ export default presence({
 });
 ```
 
-Enregistrez-le pendant que le bot tourne :
+Enregistrez-le pendant que le bot tourne, puis changez le `name` et enregistrez à nouveau :
 
 ```text
 ↻ Presence updated
@@ -59,7 +59,7 @@ Un usage courant est un indice : `{ type: 'playing', name: '/help' }` dit aux ge
 
 ## Récapitulatif
 
-- `presence({ status, activity })` se déclare une fois, dans `src/presence.ts` dans le modèle ; l’enregistrer s’applique immédiatement.
+- `presence({ status, activity })` se déclare une fois, dans `src/presence.ts` ; l’enregistrer s’applique immédiatement.
 - `status` est la pastille ; `activity` est la ligne sous le nom, avec un `type` et un `name`.
 - Une seule présence pour tout le bot, dans chaque serveur.
 
