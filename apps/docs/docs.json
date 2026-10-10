@@ -60,100 +60,6 @@
             ]
           },
           {
-            "tab": "Tutorial",
-            "icon": "graduation-cap",
-            "groups": [
-              {
-                "group": "Start here",
-                "icon": "flag",
-                "pages": [
-                  "tutorial/index",
-                  "tutorial/how-a-bot-works",
-                  "tutorial/tools"
-                ]
-              },
-              {
-                "group": "Your first bot",
-                "icon": "play",
-                "pages": [
-                  "tutorial/discord-application",
-                  "tutorial/create-project",
-                  "tutorial/tour"
-                ]
-              },
-              {
-                "group": "Commands",
-                "icon": "terminal",
-                "pages": [
-                  "tutorial/first-command",
-                  "tutorial/options",
-                  "tutorial/answering",
-                  "tutorial/what-you-receive",
-                  "tutorial/sending-messages"
-                ]
-              },
-              {
-                "group": "Events",
-                "icon": "zap",
-                "pages": [
-                  "tutorial/events",
-                  "tutorial/message-events",
-                  "tutorial/reactions-and-voice"
-                ]
-              },
-              {
-                "group": "Voice",
-                "icon": "volume-2",
-                "pages": [
-                  "tutorial/voice"
-                ]
-              },
-              {
-                "group": "Components",
-                "icon": "mouse-pointer-click",
-                "pages": [
-                  "tutorial/buttons",
-                  "tutorial/selects",
-                  "tutorial/forms",
-                  "tutorial/embeds-and-layout"
-                ]
-              },
-              {
-                "group": "By itself",
-                "icon": "clock",
-                "pages": [
-                  "tutorial/tasks",
-                  "tutorial/presence"
-                ]
-              },
-              {
-                "group": "Languages",
-                "icon": "languages",
-                "pages": [
-                  "tutorial/translations"
-                ]
-              },
-              {
-                "group": "Growing",
-                "icon": "sprout",
-                "pages": [
-                  "tutorial/storage",
-                  "tutorial/organising",
-                  "tutorial/memory-and-limits"
-                ]
-              },
-              {
-                "group": "Going online",
-                "icon": "rocket",
-                "pages": [
-                  "tutorial/build",
-                  "tutorial/deploy",
-                  "tutorial/next-steps"
-                ]
-              }
-            ]
-          },
-          {
             "tab": "Guide",
             "icon": "book-open",
             "groups": [
@@ -256,6 +162,100 @@
                 "icon": "compass",
                 "pages": [
                   "not-yet"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Tutorial",
+            "icon": "graduation-cap",
+            "groups": [
+              {
+                "group": "Start here",
+                "icon": "flag",
+                "pages": [
+                  "tutorial/index",
+                  "tutorial/how-a-bot-works",
+                  "tutorial/tools"
+                ]
+              },
+              {
+                "group": "Your first bot",
+                "icon": "play",
+                "pages": [
+                  "tutorial/discord-application",
+                  "tutorial/create-project",
+                  "tutorial/tour"
+                ]
+              },
+              {
+                "group": "Commands",
+                "icon": "terminal",
+                "pages": [
+                  "tutorial/first-command",
+                  "tutorial/options",
+                  "tutorial/answering",
+                  "tutorial/what-you-receive",
+                  "tutorial/sending-messages"
+                ]
+              },
+              {
+                "group": "Events",
+                "icon": "zap",
+                "pages": [
+                  "tutorial/events",
+                  "tutorial/message-events",
+                  "tutorial/reactions-and-voice"
+                ]
+              },
+              {
+                "group": "Voice",
+                "icon": "volume-2",
+                "pages": [
+                  "tutorial/voice"
+                ]
+              },
+              {
+                "group": "Components",
+                "icon": "mouse-pointer-click",
+                "pages": [
+                  "tutorial/buttons",
+                  "tutorial/selects",
+                  "tutorial/forms",
+                  "tutorial/embeds-and-layout"
+                ]
+              },
+              {
+                "group": "By itself",
+                "icon": "clock",
+                "pages": [
+                  "tutorial/tasks",
+                  "tutorial/presence"
+                ]
+              },
+              {
+                "group": "Languages",
+                "icon": "languages",
+                "pages": [
+                  "tutorial/translations"
+                ]
+              },
+              {
+                "group": "Growing",
+                "icon": "sprout",
+                "pages": [
+                  "tutorial/storage",
+                  "tutorial/organising",
+                  "tutorial/memory-and-limits"
+                ]
+              },
+              {
+                "group": "Going online",
+                "icon": "rocket",
+                "pages": [
+                  "tutorial/build",
+                  "tutorial/deploy",
+                  "tutorial/next-steps"
                 ]
               }
             ]
@@ -367,100 +367,6 @@
             ]
           },
           {
-            "tab": "Tutoriel",
-            "icon": "graduation-cap",
-            "groups": [
-              {
-                "group": "Pour commencer",
-                "icon": "flag",
-                "pages": [
-                  "fr/tutorial/index",
-                  "fr/tutorial/how-a-bot-works",
-                  "fr/tutorial/tools"
-                ]
-              },
-              {
-                "group": "Votre premier bot",
-                "icon": "play",
-                "pages": [
-                  "fr/tutorial/discord-application",
-                  "fr/tutorial/create-project",
-                  "fr/tutorial/tour"
-                ]
-              },
-              {
-                "group": "Commandes",
-                "icon": "terminal",
-                "pages": [
-                  "fr/tutorial/first-command",
-                  "fr/tutorial/options",
-                  "fr/tutorial/answering",
-                  "fr/tutorial/what-you-receive",
-                  "fr/tutorial/sending-messages"
-                ]
-              },
-              {
-                "group": "Événements",
-                "icon": "zap",
-                "pages": [
-                  "fr/tutorial/events",
-                  "fr/tutorial/message-events",
-                  "fr/tutorial/reactions-and-voice"
-                ]
-              },
-              {
-                "group": "Vocal",
-                "icon": "volume-2",
-                "pages": [
-                  "fr/tutorial/voice"
-                ]
-              },
-              {
-                "group": "Composants",
-                "icon": "mouse-pointer-click",
-                "pages": [
-                  "fr/tutorial/buttons",
-                  "fr/tutorial/selects",
-                  "fr/tutorial/forms",
-                  "fr/tutorial/embeds-and-layout"
-                ]
-              },
-              {
-                "group": "Tout seul",
-                "icon": "clock",
-                "pages": [
-                  "fr/tutorial/tasks",
-                  "fr/tutorial/presence"
-                ]
-              },
-              {
-                "group": "Langues",
-                "icon": "languages",
-                "pages": [
-                  "fr/tutorial/translations"
-                ]
-              },
-              {
-                "group": "Grandir",
-                "icon": "sprout",
-                "pages": [
-                  "fr/tutorial/storage",
-                  "fr/tutorial/organising",
-                  "fr/tutorial/memory-and-limits"
-                ]
-              },
-              {
-                "group": "Mise en ligne",
-                "icon": "rocket",
-                "pages": [
-                  "fr/tutorial/build",
-                  "fr/tutorial/deploy",
-                  "fr/tutorial/next-steps"
-                ]
-              }
-            ]
-          },
-          {
             "tab": "Guide",
             "icon": "book-open",
             "groups": [
@@ -563,6 +469,100 @@
                 "icon": "compass",
                 "pages": [
                   "fr/not-yet"
+                ]
+              }
+            ]
+          },
+          {
+            "tab": "Tutoriel",
+            "icon": "graduation-cap",
+            "groups": [
+              {
+                "group": "Pour commencer",
+                "icon": "flag",
+                "pages": [
+                  "fr/tutorial/index",
+                  "fr/tutorial/how-a-bot-works",
+                  "fr/tutorial/tools"
+                ]
+              },
+              {
+                "group": "Votre premier bot",
+                "icon": "play",
+                "pages": [
+                  "fr/tutorial/discord-application",
+                  "fr/tutorial/create-project",
+                  "fr/tutorial/tour"
+                ]
+              },
+              {
+                "group": "Commandes",
+                "icon": "terminal",
+                "pages": [
+                  "fr/tutorial/first-command",
+                  "fr/tutorial/options",
+                  "fr/tutorial/answering",
+                  "fr/tutorial/what-you-receive",
+                  "fr/tutorial/sending-messages"
+                ]
+              },
+              {
+                "group": "Événements",
+                "icon": "zap",
+                "pages": [
+                  "fr/tutorial/events",
+                  "fr/tutorial/message-events",
+                  "fr/tutorial/reactions-and-voice"
+                ]
+              },
+              {
+                "group": "Vocal",
+                "icon": "volume-2",
+                "pages": [
+                  "fr/tutorial/voice"
+                ]
+              },
+              {
+                "group": "Composants",
+                "icon": "mouse-pointer-click",
+                "pages": [
+                  "fr/tutorial/buttons",
+                  "fr/tutorial/selects",
+                  "fr/tutorial/forms",
+                  "fr/tutorial/embeds-and-layout"
+                ]
+              },
+              {
+                "group": "Tout seul",
+                "icon": "clock",
+                "pages": [
+                  "fr/tutorial/tasks",
+                  "fr/tutorial/presence"
+                ]
+              },
+              {
+                "group": "Langues",
+                "icon": "languages",
+                "pages": [
+                  "fr/tutorial/translations"
+                ]
+              },
+              {
+                "group": "Grandir",
+                "icon": "sprout",
+                "pages": [
+                  "fr/tutorial/storage",
+                  "fr/tutorial/organising",
+                  "fr/tutorial/memory-and-limits"
+                ]
+              },
+              {
+                "group": "Mise en ligne",
+                "icon": "rocket",
+                "pages": [
+                  "fr/tutorial/build",
+                  "fr/tutorial/deploy",
+                  "fr/tutorial/next-steps"
                 ]
               }
             ]

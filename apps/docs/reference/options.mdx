@@ -93,7 +93,7 @@ Only `name` is needed: without a `type`, Discord creates a text channel. The oth
     <ResponseField name="emojiName" type="string | null">A standard emoji, as its character.</ResponseField>
   </Expandable>
 </ResponseField>
-<ResponseField name="availableTags" type="ForumTag[] | null">The tags the posts of a forum or media channel can have: see [`ForumTag`](/reference/data#forumtag).</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[] | null">The tags the posts of a forum or media channel can have: see [`ForumTag`](/reference/data#forumtag). A new tag has no `id` yet: Discord gives it one.</ResponseField>
 <ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">How the posts of a forum or media channel are ordered: a value of [`ForumSortOrderType`](/reference/enums#forumsortordertype).</ResponseField>
 <ResponseField name="defaultForumLayout" type="ForumLayoutType | null">How the posts of a forum are displayed: a value of [`ForumLayoutType`](/reference/enums#forumlayouttype).</ResponseField>
 <ResponseField name="defaultThreadRateLimitPerUser" type="number | null">The slowmode given to new threads of the channel. It is copied when the thread is created and does not follow later changes.</ResponseField>
@@ -125,7 +125,7 @@ It works on every channel of a server that is not a thread: text, voice, categor
 <ResponseField name="videoQualityMode" type="VideoQualityMode | null">The camera quality of a voice channel: a value of [`VideoQualityMode`](/reference/enums#videoqualitymode).</ResponseField>
 <ResponseField name="defaultAutoArchiveDuration" type="number | null">After how many minutes without activity the Discord app suggests archiving a new thread of the channel.</ResponseField>
 <ResponseField name="flags" type="number">The flags of the channel, as a bit field.</ResponseField>
-<ResponseField name="availableTags" type="ForumTag[]">The tags the posts of a forum or media channel can have, 20 at most: see [`ForumTag`](/reference/data#forumtag).</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[]">The tags the posts of a forum or media channel can have, 20 at most: see [`ForumTag`](/reference/data#forumtag). A tag without `id` is a new one; the others keep theirs.</ResponseField>
 <ResponseField name="defaultReactionEmoji" type="object | null">The emoji of the "add reaction" button on the posts of a forum or media channel: `{ emojiId, emojiName }`, as in [`ChannelCreateOptions`](#channelcreateoptions).</ResponseField>
 <ResponseField name="defaultThreadRateLimitPerUser" type="number">The slowmode given to new threads of the channel. It is copied when the thread is created and does not follow later changes.</ResponseField>
 <ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">How the posts of a forum or media channel are ordered: a value of [`ForumSortOrderType`](/reference/enums#forumsortordertype).</ResponseField>
@@ -206,8 +206,8 @@ Every field can be left out: `guild.createRole()` creates a role with the defaul
   The colors of the role.
   <Expandable title="fields">
     <ResponseField name="primaryColor" type="number" required>The main color, as a number (`0xff0000` for red).</ResponseField>
-    <ResponseField name="secondaryColor" type="number | null" required>A second color: the role is then shown as a gradient between the two.</ResponseField>
-    <ResponseField name="tertiaryColor" type="number | null" required>A third color: the gradient then becomes holographic.</ResponseField>
+    <ResponseField name="secondaryColor" type="number | null">A second color: the role is then shown as a gradient between the two.</ResponseField>
+    <ResponseField name="tertiaryColor" type="number | null">A third color: the gradient then becomes holographic.</ResponseField>
   </Expandable>
 </ResponseField>
 <ResponseField name="hoist" type="boolean">Whether members with the role are shown apart in the member list.</ResponseField>

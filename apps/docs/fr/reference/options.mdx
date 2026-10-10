@@ -93,7 +93,7 @@ Seul `name` est nécessaire : sans `type`, Discord crée un salon textuel. Les a
     <ResponseField name="emojiName" type="string | null">Un emoji standard, sous forme de son caractère.</ResponseField>
   </Expandable>
 </ResponseField>
-<ResponseField name="availableTags" type="ForumTag[] | null">Les étiquettes que peuvent avoir les publications d’un salon forum ou média : voir [`ForumTag`](/fr/reference/data#forumtag).</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[] | null">Les étiquettes que peuvent avoir les publications d’un salon forum ou média : voir [`ForumTag`](/fr/reference/data#forumtag). Une nouvelle étiquette n’a pas encore d’`id` : Discord lui en donne un.</ResponseField>
 <ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">Comment sont triées les publications d’un salon forum ou média : une valeur de [`ForumSortOrderType`](/fr/reference/enums#forumsortordertype).</ResponseField>
 <ResponseField name="defaultForumLayout" type="ForumLayoutType | null">Comment sont affichées les publications d’un forum : une valeur de [`ForumLayoutType`](/fr/reference/enums#forumlayouttype).</ResponseField>
 <ResponseField name="defaultThreadRateLimitPerUser" type="number | null">Le mode lent donné aux nouveaux fils du salon. Il est copié à la création du fil et ne suit pas les changements ultérieurs.</ResponseField>
@@ -125,7 +125,7 @@ Cela fonctionne sur chaque salon d’un serveur qui n’est pas un fil : salons 
 <ResponseField name="videoQualityMode" type="VideoQualityMode | null">La qualité des caméras d’un salon vocal : une valeur de [`VideoQualityMode`](/fr/reference/enums#videoqualitymode).</ResponseField>
 <ResponseField name="defaultAutoArchiveDuration" type="number | null">Au bout de combien de minutes sans activité l’app Discord propose d’archiver un nouveau fil du salon.</ResponseField>
 <ResponseField name="flags" type="number">Les drapeaux du salon, sous forme de champ de bits.</ResponseField>
-<ResponseField name="availableTags" type="ForumTag[]">Les étiquettes que peuvent avoir les publications d’un salon forum ou média, 20 au plus : voir [`ForumTag`](/fr/reference/data#forumtag).</ResponseField>
+<ResponseField name="availableTags" type="ForumTag[]">Les étiquettes que peuvent avoir les publications d’un salon forum ou média, 20 au plus : voir [`ForumTag`](/fr/reference/data#forumtag). Une étiquette sans `id` est nouvelle ; les autres gardent le leur.</ResponseField>
 <ResponseField name="defaultReactionEmoji" type="object | null">L’emoji du bouton « ajouter une réaction » sur les publications d’un salon forum ou média : `{ emojiId, emojiName }`, comme dans [`ChannelCreateOptions`](#channelcreateoptions).</ResponseField>
 <ResponseField name="defaultThreadRateLimitPerUser" type="number">Le mode lent donné aux nouveaux fils du salon. Il est copié à la création du fil et ne suit pas les changements ultérieurs.</ResponseField>
 <ResponseField name="defaultSortOrder" type="ForumSortOrderType | null">Comment sont triées les publications d’un salon forum ou média : une valeur de [`ForumSortOrderType`](/fr/reference/enums#forumsortordertype).</ResponseField>
@@ -206,8 +206,8 @@ Chaque champ peut être laissé de côté : `guild.createRole()` crée un rôle 
   Les couleurs du rôle.
   <Expandable title="champs">
     <ResponseField name="primaryColor" type="number" required>La couleur principale, sous forme de nombre (`0xff0000` pour le rouge).</ResponseField>
-    <ResponseField name="secondaryColor" type="number | null" required>Une deuxième couleur : le rôle est alors affiché en dégradé entre les deux.</ResponseField>
-    <ResponseField name="tertiaryColor" type="number | null" required>Une troisième couleur : le dégradé devient alors holographique.</ResponseField>
+    <ResponseField name="secondaryColor" type="number | null">Une deuxième couleur : le rôle est alors affiché en dégradé entre les deux.</ResponseField>
+    <ResponseField name="tertiaryColor" type="number | null">Une troisième couleur : le dégradé devient alors holographique.</ResponseField>
   </Expandable>
 </ResponseField>
 <ResponseField name="hoist" type="boolean">Si les membres qui ont le rôle sont affichés à part dans la liste des membres.</ResponseField>

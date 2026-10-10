@@ -736,6 +736,20 @@ describe.skipIf(process.platform === 'win32')(
       expect(output).not.toContain('Message Content Intent');
     });
 
+    it('names a file once, however many of its events need the option', async () => {
+      const fake = await world({ flags: 1 << 19 });
+      const output = await failing(
+        project({
+          ...files,
+          'src/events/members.ts': `import { event } from 'chapterjs';\nexport const joined = event({ name: 'memberJoin', run() {} });\nexport const left = event({ name: 'memberLeave', run() {} });\nexport const changed = event({ name: 'memberUpdate', run() {} });\n`,
+        }),
+        fake
+      );
+      expect(output).toContain(
+        '  - Server Members Intent, needed by src/events/members.ts\n'
+      );
+    });
+
     it.each([
       [
         ['start', '--processes'],
@@ -2791,7 +2805,21 @@ export default event({ name: 'ready', run: () => console.log('nested ran') });
       fake
     );
     await cli.waitFor(
-      /✗ src\/events\/ready\/broken\.ts Cannot find module '.*\/src\/lib\/nope' imported from .*\/src\/events\/ready\/broken\.ts/
+      "✗ src/events/ready/broken.ts '../../lib/nope' does not exist. No nope.ts, nope.js or nope/index.ts is there. Check the path and the name of the file."
+    );
+    await cli.waitFor('ℹ Nothing to run yet');
+  });
+
+  it('says which file is missing when the import has its extension', async () => {
+    const fake = await world();
+    const cli = runDev(
+      project({
+        'src/events/ready/broken.ts': `import { event } from 'chapterjs';\nimport { nope } from '../../lib/nope.ts';\nexport default event({ name: 'ready', run: () => nope });\n`,
+      }),
+      fake
+    );
+    await cli.waitFor(
+      "✗ src/events/ready/broken.ts '../../lib/nope.ts' does not exist. Check the path and the name of the file."
     );
     await cli.waitFor('ℹ Nothing to run yet');
   });

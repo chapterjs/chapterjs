@@ -675,10 +675,16 @@ export function createProject(options: ProjectOptions): Project {
       stores.size === 0 &&
       presence === null &&
       messages === null,
-    filesNeeding: intent =>
-      [...events.values()]
-        .filter(({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0)
-        .map(({ file }) => file),
+    // A file declaring several events that need the intent is named once.
+    filesNeeding: intent => [
+      ...new Set(
+        [...events.values()]
+          .filter(
+            ({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0
+          )
+          .map(({ file }) => file)
+      ),
+    ],
     intents: (privateEvents = true) =>
       neededIntents() & (privateEvents ? ~0 : ~PRIVATE_INTENTS),
     async connect(connection) {

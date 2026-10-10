@@ -200,6 +200,8 @@ describe('a store', () => {
 
   it.each([
     [[], 'at least one'],
+    ['', 'a text that is not empty'],
+    [['a', ''], 'a text that is not empty'],
     [[1], 'made of texts, got 1'],
     [['a', null], 'made of texts, got null'],
   ])('refuses the key %j', async (key, message) => {

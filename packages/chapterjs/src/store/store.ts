@@ -136,13 +136,18 @@ const parts = (key: StoreKey): string[] => {
   const list = typeof key === 'string' ? [key] : [...key];
   if (list.length === 0) {
     throw new TypeError(
-      'A key of a store is a text, or a list of texts with at least one.'
+      'A key of a store is a text that is not empty, or a list of such texts with at least one.'
     );
   }
   for (const part of list) {
     if (typeof part !== 'string') {
       throw new TypeError(
         `A key of a store is made of texts, got ${JSON.stringify(part) ?? typeof part}. Write an id as a text: member.id, not a number.`
+      );
+    }
+    if (part === '') {
+      throw new TypeError(
+        'A key of a store is a text that is not empty, or a list of such texts with at least one.'
       );
     }
   }

@@ -6,6 +6,7 @@ import type {
   RawChannel,
   RawDefaultReaction,
   RawForumTag,
+  RawForumTagInput,
   RawPermissionOverwrite,
   RawThreadMember,
   VideoQualityMode,
@@ -18,7 +19,11 @@ import type {
 } from './common.js';
 import type { RawEmoji } from './emoji.js';
 import type { OAuth2Scope } from './oauth2.js';
-import type { RawRole, RawRoleColors } from './permissions.js';
+import type {
+  RawRole,
+  RawRoleColors,
+  RawRoleColorsInput,
+} from './permissions.js';
 import type { RawSticker } from './sticker.js';
 import type {
   RawAvatarDecorationData,
@@ -662,7 +667,7 @@ export interface CreateGuildChannelJSONParams {
   /** emoji to show in the add reaction button on a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel */
   default_reaction_emoji?: RawDefaultReaction | null;
   /** set of tags that can be used in a `GUILD_FORUM` or a `GUILD_MEDIA` channel */
-  available_tags?: RawForumTag[] | null;
+  available_tags?: RawForumTagInput[] | null;
   /** the default sort order type used to order posts in `GUILD_FORUM` and `GUILD_MEDIA` channels */
   default_sort_order?: ForumSortOrderType | null;
   /** the default forum layout view used to display posts in `GUILD_FORUM` channels */
@@ -843,7 +848,7 @@ export interface CreateGuildRoleJSONParams {
   /** **Deprecated** RGB color value */
   color?: number;
   /** the role's colors */
-  colors?: RawRoleColors;
+  colors?: RawRoleColorsInput;
   /** whether the role should be displayed separately in the sidebar */
   hoist?: boolean;
   /** the role's icon image (if the guild has the `ROLE_ICONS` feature) */
@@ -877,7 +882,7 @@ export interface ModifyGuildRoleJSONParams {
   /** **Deprecated** RGB color value */
   color?: number;
   /** the role's colors */
-  colors?: RawRoleColors;
+  colors?: RawRoleColorsInput;
   /** whether the role should be displayed separately in the sidebar */
   hoist?: boolean;
   /** the role's icon image (if the guild has the `ROLE_ICONS` feature) */

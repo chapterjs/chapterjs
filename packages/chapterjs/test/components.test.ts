@@ -1614,7 +1614,7 @@ export default command({
   name: 'ping',
   description: 'Pong',
   async run({ interaction }) {
-    await interaction.reply({ content: 'Pong! x1', components: [again({ count: 1 }), linkButton({ label: 'Docs', url: 'https://chapterjs.dev' }), confirm] });
+    await interaction.reply({ content: 'Pong! x1', components: [again({ count: 1 }), linkButton({ label: 'Docs', url: 'https://www.chapterjs.org' }), confirm] });
   },
 });
 `,
@@ -1660,7 +1660,7 @@ export default button({
                 type: 2,
                 style: 5,
                 label: 'Docs',
-                url: 'https://chapterjs.dev',
+                url: 'https://www.chapterjs.org',
               },
               {
                 type: 2,

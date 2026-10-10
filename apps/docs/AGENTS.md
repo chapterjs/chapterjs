@@ -8,7 +8,7 @@ Amateur developers writing their first Discord bot. They know JavaScript, maybe 
 
 ## The three tabs
 
-The landing page (`index.mdx`, mode `custom`, and `fr/index.mdx`) is in a hidden `Home` tab of `docs.json` (`searchable: true`, so it stays in search and sitemaps): it belongs to no visible tab, and the Guide tab opens on `quickstart`. Mintlify still marks the first tab as current on it, so `style.css` shows the tabs of a custom page as plain (`#navbar.is-custom`).
+The landing page (`index.mdx`, mode `custom`, and `fr/index.mdx`) is in a hidden `Home` tab of `docs.json` (`searchable: true`, so it stays in search and sitemaps): it belongs to no visible tab, and the Guide tab, the first one, opens on `quickstart`. The order of the navbar is Guide, Tutorial, Reference, Changelog. Mintlify still marks the first tab as current on it, so `style.css` shows the tabs of a custom page as plain (`#navbar.is-custom`).
 
 - **Tutorial** (`/tutorial/…`) is a course, read once from start to finish by someone who has never written a bot. It explains _why_ things are the way they are (what a token is, why intents exist, why `t` speaks the language of the readers) before showing how, builds one bot page after page, and never assumes a word is known. Every page has the same shape: what you are about to do and why, a complete file to copy, "Points of attention", a "Recap", then two cards (the next page, and its counterpart in the Guide). It repeats what the Guide says, on purpose, in more words; it never documents a behavior the Guide does not have.
 - **Guide** (`/…`) is read in order and teaches. A guide page shows how to do one thing, with a complete file that works as is, and never lists an API: it links to the reference for that.
