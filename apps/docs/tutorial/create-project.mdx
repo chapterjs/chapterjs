@@ -11,19 +11,19 @@ Open a terminal in the folder where you keep your projects, and run the command 
 
 <CodeGroup>
 ```bash pnpm
-pnpm create chapter
+pnpm create chapterjs
 ```
 
 ```bash npm
-npm create chapter@latest
+npm create chapterjs@latest
 ```
 
 ```bash yarn
-yarn create chapter
+yarn create chapterjs
 ```
 
 ```bash bun
-bun create chapter
+bun create chapterjs
 ```
 
 </CodeGroup>
@@ -37,7 +37,7 @@ It asks up to three questions:
 Then it copies the template, installs the dependencies (this is the part that takes a moment) and prints what to do next. A question with only one possible answer is never asked: the framework takes the answer and says so with `ℹ`. You will see that habit everywhere.
 
 <Tip>
-  Pass the folder name to skip the first question: `pnpm create chapter buddy`.
+  Pass the folder name to skip the first question: `pnpm create chapterjs buddy`.
 </Tip>
 
 Move into the folder and open it in your editor:
@@ -162,7 +162,7 @@ That usually means the token was reset since you copied it. Reset it again, copy
 
 ## Recap
 
-- `pnpm create chapter` (or the command of your package manager) creates the project and installs it.
+- `pnpm create chapterjs` (or the command of your package manager) creates the project and installs it.
 - `.env` holds `BOT_TOKEN` and `DEV_GUILD_ID`, and git ignores it.
 - `pnpm dev` runs the bot on your test server; the first time, a link adds the bot there.
 - The symbol of each line says what kind of message it is; `✗` always comes with what to do.

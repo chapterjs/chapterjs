@@ -11,19 +11,19 @@ Ouvrez un terminal dans le dossier où vous rangez vos projets, et lancez la com
 
 <CodeGroup>
 ```bash pnpm
-pnpm create chapter
+pnpm create chapterjs
 ```
 
 ```bash npm
-npm create chapter@latest
+npm create chapterjs@latest
 ```
 
 ```bash yarn
-yarn create chapter
+yarn create chapterjs
 ```
 
 ```bash bun
-bun create chapter
+bun create chapterjs
 ```
 </CodeGroup>
 
@@ -36,7 +36,7 @@ Elle pose jusqu’à trois questions :
 Ensuite, elle copie le modèle, installe les dépendances (c’est l’étape qui prend un moment) et affiche la suite. Une question avec une seule réponse possible n’est jamais posée : le framework prend la réponse et le dit avec `ℹ`. Vous verrez cette habitude partout.
 
 <Tip>
-  Passez le nom du dossier pour sauter la première question : `pnpm create chapter buddy`.
+  Passez le nom du dossier pour sauter la première question : `pnpm create chapterjs buddy`.
 </Tip>
 
 Entrez dans le dossier et ouvrez-le dans votre éditeur :
@@ -160,7 +160,7 @@ Cela veut généralement dire que le token a été réinitialisé depuis que vou
 
 ## Récapitulatif
 
-- `pnpm create chapter` (ou la commande de votre gestionnaire de paquets) crée le projet et l’installe.
+- `pnpm create chapterjs` (ou la commande de votre gestionnaire de paquets) crée le projet et l’installe.
 - `.env` contient `BOT_TOKEN` et `DEV_GUILD_ID`, et git l’ignore.
 - `pnpm dev` fait tourner le bot sur votre serveur de test ; la première fois, un lien l’y ajoute.
 - Le symbole de chaque ligne dit de quel type de message il s’agit ; `✗` vient toujours avec quoi faire.

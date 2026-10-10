@@ -52,7 +52,7 @@ C’est la règle pour tout ce que le framework fait tourner :
 | `language({ locale, ... })` | Une langue du bot : `locale: 'fr'` est le français                                                                                |
 | `presence({ ... })`         | Ce que le bot affiche sous son nom, déclaré une fois                                                                              |
 
-Un fichier peut en déclarer plusieurs, et un fichier qui n’en déclare aucun est juste du code : `src/lib/`, `src/db/`, tout ce que vous importez depuis les autres. Les modèles de `create chapter` font les deux : `default` garde un dossier par sorte (`src/events/`, et maintenant `src/commands/`), et `tickets` met tout ce qui touche aux tickets dans `src/tickets/` : la commande, le formulaire, les boutons, et leurs textes dans les deux langues. Un dossier n’est qu’un dossier.
+Un fichier peut en déclarer plusieurs, et un fichier qui n’en déclare aucun est juste du code : `src/lib/`, `src/db/`, tout ce que vous importez depuis les autres. Les modèles de `create chapterjs` font les deux : `default` garde un dossier par sorte (`src/events/`, et maintenant `src/commands/`), et `tickets` met tout ce qui touche aux tickets dans `src/tickets/` : la commande, le formulaire, les boutons, et leurs textes dans les deux langues. Un dossier n’est qu’un dossier.
 
 Pourquoi ce choix ? Parce que l’alternative, une liste quelque part qui dit « la commande `/ping` est dans ce fichier, l’événement de bienvenue dans celui-là », est une liste que vous devez tenir à jour à la main. Ici, il n’y a pas de liste. Ajouter une commande, c’est ajouter une déclaration ; en retirer une, c’est la supprimer.
 

@@ -42,7 +42,7 @@ function nextSteps(output: string): string[] {
     .filter(line => line && !line.includes('Happy building'));
 }
 
-describe.skipIf(process.platform === 'win32')('create-chapter CLI', () => {
+describe.skipIf(process.platform === 'win32')('create-chapterjs CLI', () => {
   describe('the whole flow', () => {
     it('creates, installs and explains the next steps with the defaults', async () => {
       const cwd = tempDir();

@@ -89,7 +89,7 @@ describe('the published package', () => {
   });
 
   it('is released with the same version as the scaffolders', () => {
-    for (const name of ['create-chapter', 'create-chapterjs']) {
+    for (const name of ['create-chapterjs', 'create-chapter']) {
       const other = JSON.parse(
         readFileSync(
           new URL(`../../${name}/package.json`, import.meta.url),
@@ -108,7 +108,7 @@ describe('the npm page', () => {
     const readme = readFileSync(join(root, 'README.md'), 'utf8');
     expect(readme).toMatch(/^# ChapterJS\n/);
     expect(readme).toContain('https://www.chapterjs.org');
-    expect(readme).toContain('pnpm create chapter');
+    expect(readme).toContain('pnpm create chapterjs');
   });
 
   it('links the documentation site as homepage, and the repository', () => {

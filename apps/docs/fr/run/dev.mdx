@@ -60,7 +60,7 @@ Et elle doit tourner dans le dossier de votre bot, celui qui contient `package.j
 
 ```text
 ✗ There is no src folder here.
-  Run this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapter".
+  Run this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapterjs".
 ```
 
 ## Ce qu’elle vérifie pour vous
@@ -189,7 +189,7 @@ Ce qui ne fonctionne qu’en messages privés ne peut pas être essayé en dev, 
 
 Au démarrage, `chapterjs dev` écrit les types de votre projet dans le dossier `.chapterjs/` : c’est ainsi que `event` sait, dans chaque [dossier d’événement](/fr/events), ce que reçoit sa fonction. Le dossier est ignoré par git et supprimable.
 
-[`chapterjs sync`](/fr/reference/cli#chapterjs-sync) les écrit sans lancer le bot. Les projets créés avec `create chapter` le lancent après chaque installation, pour que votre éditeur connaisse les types tout de suite.
+[`chapterjs sync`](/fr/reference/cli#chapterjs-sync) les écrit sans lancer le bot. Les projets créés avec `create chapterjs` le lancent après chaque installation, pour que votre éditeur connaisse les types tout de suite.
 
 Pour vérifier les types de tout votre projet depuis un terminal, utilisez le script `typecheck` de votre projet :
 

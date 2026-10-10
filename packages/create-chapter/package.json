@@ -1,7 +1,7 @@
 {
   "name": "create-chapter",
   "version": "0.2.3",
-  "description": "Creates a ChapterJS Discord bot: pnpm create chapter",
+  "description": "Alias of create-chapterjs: creates a ChapterJS Discord bot with pnpm create chapter",
   "keywords": [
     "discord",
     "discord-bot",
@@ -28,8 +28,7 @@
     "create-chapter": "./dist/index.js"
   },
   "files": [
-    "dist",
-    "templates"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
@@ -47,7 +46,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@clack/prompts": "^1.8.1"
+    "create-chapterjs": "workspace:^"
   },
   "engines": {
     "node": ">=24"

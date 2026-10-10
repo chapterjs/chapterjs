@@ -333,7 +333,7 @@ describe.skipIf(process.platform === 'win32')('the samples', () => {
       }
     }
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(

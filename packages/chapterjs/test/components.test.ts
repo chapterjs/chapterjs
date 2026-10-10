@@ -2464,7 +2464,7 @@ export default command({ name: 'wrong-kind', description: 'd', async run({ inter
 `,
       });
       cpSync(
-        join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+        join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
         join(cwd, 'tsconfig.json')
       );
       symlinkSync(

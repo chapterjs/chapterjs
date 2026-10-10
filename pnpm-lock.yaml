@@ -60,9 +60,9 @@ importers:
 
   packages/create-chapter:
     dependencies:
-      '@clack/prompts':
-        specifier: ^1.8.1
-        version: 1.8.1
+      create-chapterjs:
+        specifier: workspace:^
+        version: link:../create-chapterjs
     devDependencies:
       '@chapterjs/test-utils':
         specifier: workspace:*
@@ -82,9 +82,9 @@ importers:
 
   packages/create-chapterjs:
     dependencies:
-      create-chapter:
-        specifier: workspace:^
-        version: link:../create-chapter
+      '@clack/prompts':
+        specifier: ^1.8.1
+        version: 1.8.1
     devDependencies:
       '@chapterjs/test-utils':
         specifier: workspace:*

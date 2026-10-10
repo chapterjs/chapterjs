@@ -3,7 +3,7 @@ title: 'Changelog'
 description: 'What changed in each version of ChapterJS'
 ---
 
-Every version of `chapterjs`, `create-chapter` and `create-chapterjs` has the same number, and the numbers follow [semantic versioning](https://semver.org): what your files use (the functions of `chapterjs` and their options, what your functions receive, the files and `.env` of a project, the commands of the CLI) only changes in a major version, and the entry of that version says what to change in your project. A minor version adds, a patch fixes: updating to one never asks anything of you.
+Every version of `chapterjs`, `create-chapterjs` and `create-chapter` has the same number, and the numbers follow [semantic versioning](https://semver.org): what your files use (the functions of `chapterjs` and their options, what your functions receive, the files and `.env` of a project, the commands of the CLI) only changes in a major version, and the entry of that version says what to change in your project. A minor version adds, a patch fixes: updating to one never asks anything of you.
 
 Only `chapterjs` lives in your project; `chapterjs dev` tells you when a newer one is out. To update it:
 
@@ -27,19 +27,19 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
-<Update label="0.2.3" description="Storage, five templates, and a new project on the version of create chapter, exactly">
+<Update label="0.2.3" description="Storage, five templates, and a new project on the version of create chapterjs, exactly">
 
 Your bot can keep what it learns: `export const warnings = store<Warning[]>({ expires: '30d' })` declares a [store](/storage), per server unless `scope: 'global'`, typed by what it holds, with an expiration if you want one. In a command or an event, the key is yours and the server is known; elsewhere, `warnings.in(guild)`. One JSON file per store in `data/`, written for you, and shared by every process of a large bot.
 
-`create chapter` now offers five [templates](/setup/project-structure#templates). `default` is one file, the `ready` event, and the tutorial starts from it. The others are complete bots: `tickets` (support tickets in private threads), `music` (a player with a queue and buttons), `community` (welcome cards, roles people pick, weekly stats) and `moderation` (timeouts, purge, slowmode, lock, and a log of every action). The `/ping`, `/hello`, `/play` and moderation examples of the old template are gone: what they showed is in the new ones and in the guide.
+`create chapterjs` now offers five [templates](/setup/project-structure#templates). `default` is one file, the `ready` event, and the tutorial starts from it. The others are complete bots: `tickets` (support tickets in private threads), `music` (a player with a queue and buttons), `community` (welcome cards, roles people pick, weekly stats) and `moderation` (timeouts, purge, slowmode, lock, and a log of every action). The `/ping`, `/hello`, `/play` and moderation examples of the old template are gone: what they showed is in the new ones and in the guide.
 
-`create chapter` also writes the exact version of `chapterjs` in your `package.json` (`"0.2.3"`, no `^`): `pnpm create chapter@0.2.3` gives a project on `chapterjs@0.2.3`, and your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs).
+`create chapterjs` also writes the exact version of `chapterjs` in your `package.json` (`"0.2.3"`, no `^`): `pnpm create chapterjs@0.2.3` gives a project on `chapterjs@0.2.3`, and your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs).
 
 </Update>
 
 <Update label="0.2.2" description="A lighter default template">
 
-The project made by `create chapter` no longer ships the moderation example (`/ban`, `/kick`, `/warn`): it keeps `/ping`, `/hello`, `/play`, the two events, the presence and the two languages.
+The project made by `create chapterjs` no longer ships the moderation example (`/ban`, `/kick`, `/warn`): it keeps `/ping`, `/hello`, `/play`, the two events, the presence and the two languages.
 
 </Update>
 
@@ -76,7 +76,7 @@ A folder of files becomes a Discord bot.
 - **[Translated messages](/translated-messages)**: one file per language in `src/messages/`, and `t` speaks the language of the readers.
 - **[`chapterjs dev`](/run/dev)**: the bot on a test server, every file reloaded when you save it.
 - **[`chapterjs build`](/run/build)** and **[`chapterjs start`](/run/start)**: one compiled file for production, run on several processes when the bot is large.
-- **[`create-chapter`](/quickstart)**: a new project in one command.
-- **[Node.js 24](/quickstart)** or newer: `chapterjs` and `create-chapter` stop at once on an older one and say what to install.
+- **[`create-chapterjs`](/quickstart)**: a new project in one command.
+- **[Node.js 24](/quickstart)** or newer: `chapterjs` and `create-chapterjs` stop at once on an older one and say what to install.
 
 </Update>

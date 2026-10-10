@@ -10,13 +10,13 @@ This file holds the rules of the repo. What a package or a module does is descri
 
 - `packages/chapterjs/CLAUDE.md`: the framework, its layers and every core module (`discord/`, `util/`, `rest/`, `cache/`, `structures/`, `gateway/`, `core/`, `loader/`, `assets/`, `interactions/`, `presence/`, `cli/`).
 - `packages/chapterjs/src/<feature>/CLAUDE.md`, one per feature: `events/`, `commands/`, `components/`, `messages/`, `tasks/`, `voice/`.
-- `packages/create-chapter/CLAUDE.md`: the scaffolder and its templates.
+- `packages/create-chapterjs/CLAUDE.md`: the scaffolder and its templates.
 - `apps/docs/AGENTS.md`: the style guide of the documentation site.
 
 ## Layout
 
 - `packages/chapterjs`: the framework and its `chapterjs` CLI (`dev`, `start`, `build`, `sync`). Public API is re-exported from `src/index.ts` (the types of the package) and `src/main.ts` (what is loaded at runtime: the same, plus `asset()`, typed per project).
-- `packages/create-chapter`: the project scaffolder (`pnpm create chapter [dir]`); `packages/create-chapterjs` is an alias so `pnpm create chapterjs` works too.
+- `packages/create-chapterjs`: the project scaffolder (`pnpm create chapterjs [dir]`); `packages/create-chapter` is an alias so `pnpm create chapter` works too.
 - `packages/test-utils` (`@chapterjs/test-utils`, private, never published, exports its TypeScript sources): the test helpers shared by every package. Any new test helper useful to more than one package goes here.
   - `tempDir()`: a folder deleted when the test ends. `fakeBin()`: fake commands to use as the only `PATH` entry.
   - `startCli()`: runs a CLI as a real process and drives it through stdin (`waitFor`, `type`, `press`, `exited`); a CLI that ends before printing what is waited for is explained: not started (the spawn error), killed by a signal, or its exit code.
@@ -90,7 +90,7 @@ A change is not finished until these are updated, in the same change:
 
 - **The `CLAUDE.md` files**: this one for a rule, a constraint, a convention or an architecture decision of the whole repo; the one of the package or module for everything else (a new or removed module, a new public API, a renamed option or command, a new env var, how a piece works). After every change that makes one inaccurate or incomplete, user-facing or internal. Never add work that was only discussed and not implemented.
 - **Docs** (`apps/docs`, Mintlify: MDX pages, navigation in `docs.json`, every page in English and in `fr/`; read `apps/docs/AGENTS.md` first): after every user-facing change (new or renamed API, option, event, file convention, env var, CLI command or message users will see). New feature → its page, added to `docs.json`; changed API → every page and sample using it. Samples must compile against the current API and match the templates. Commands are shown for every package manager in a `<CodeGroup>`, always in the order pnpm, npm, yarn, bun (pnpm is the preferred one, same order as the scaffolder).
-- **Templates** (`packages/create-chapter/templates/`, described in `packages/create-chapter/CLAUDE.md`): how users discover the framework. Every template must type-check and run without errors; only templates that clearly need a privileged intent may require one, other examples stay commented. Prefer short commented examples over extra files.
+- **Templates** (`packages/create-chapterjs/templates/`, described in `packages/create-chapterjs/CLAUDE.md`): how users discover the framework. Every template must type-check and run without errors; only templates that clearly need a privileged intent may require one, other examples stay commented. Prefer short commented examples over extra files.
 - **Tests**: see below.
 
 ## Tests

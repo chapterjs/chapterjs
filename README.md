@@ -5,7 +5,7 @@
 Drop files into folders, and the `chapterjs` CLI does everything else: the connection, the intents, the registration of commands, hot reload, sharding and several processes for large bots. Everything you write is typed end to end, without a single type to write.
 
 ```bash
-pnpm create chapter my-bot
+pnpm create chapterjs my-bot
 ```
 
 📖 Documentation, in English and in French: **[chapterjs.org](https://www.chapterjs.org)**
@@ -84,13 +84,13 @@ Nothing to install to run a bot: the framework only uses what Node has (Node 24 
 
 This repository is a pnpm and Turborepo monorepo:
 
-| Folder                      | What it is                                                       |
-| --------------------------- | ---------------------------------------------------------------- |
-| `packages/chapterjs`        | The framework and its `chapterjs` CLI                            |
-| `packages/create-chapter`   | `pnpm create chapter`, the project scaffolder, and its templates |
-| `packages/create-chapterjs` | The same, as `pnpm create chapterjs`                             |
-| `packages/test-utils`       | Test helpers: fake Discord REST API, gateway and voice servers   |
-| `apps/docs`                 | The documentation site (Mintlify), in English and in French      |
+| Folder                      | What it is                                                         |
+| --------------------------- | ------------------------------------------------------------------ |
+| `packages/chapterjs`        | The framework and its `chapterjs` CLI                              |
+| `packages/create-chapterjs` | `pnpm create chapterjs`, the project scaffolder, and its templates |
+| `packages/create-chapter`   | The same, as `pnpm create chapter`                                 |
+| `packages/test-utils`       | Test helpers: fake Discord REST API, gateway and voice servers     |
+| `apps/docs`                 | The documentation site (Mintlify), in English and in French        |
 
 ```bash
 pnpm install

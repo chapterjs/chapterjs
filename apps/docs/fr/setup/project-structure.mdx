@@ -3,7 +3,7 @@ title: 'Structure du projet'
 description: 'À quoi sert chaque dossier et fichier de votre projet, et comment le framework trouve ce que vos fichiers déclarent'
 ---
 
-Un projet créé avec `create chapter`, à partir du modèle `default`, ressemble à ceci. Tout ce que fait votre bot vit dans `src/` ; le reste est de la configuration que vous touchez rarement.
+Un projet créé avec `create chapterjs`, à partir du modèle `default`, ressemble à ceci. Tout ce que fait votre bot vit dans `src/` ; le reste est de la configuration que vous touchez rarement.
 
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
@@ -24,7 +24,7 @@ Un projet créé avec `create chapter`, à partir du modèle `default`, ressembl
 
 ## Modèles
 
-`create chapter` propose cinq modèles. `default` est présélectionné : un fichier, et le reste de ce site pour le faire grandir. Les autres sont des bots complets : lisez-les une fois le framework connu, ou partez de l’un d’eux.
+`create chapterjs` propose cinq modèles. `default` est présélectionné : un fichier, et le reste de ce site pour le faire grandir. Les autres sont des bots complets : lisez-les une fois le framework connu, ou partez de l’un d’eux.
 
 | Modèle       | Ce que c’est                                                                                                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -170,7 +170,7 @@ Où les trouver est dans [Votre application Discord](/fr/setup/discord-applicati
 
 <Warning>
   Votre token est un mot de passe : ne le partagez jamais, et ne committez
-  jamais `.env`. Les projets créés avec `create chapter` l’ignorent déjà dans
+  jamais `.env`. Les projets créés avec `create chapterjs` l’ignorent déjà dans
   git.
 </Warning>
 
@@ -186,7 +186,7 @@ Les scripts de votre projet lancent le [CLI](/fr/reference/cli) :
 | `typecheck`   | `tsc -b`          | Pour vérifier les types de tout le projet depuis un terminal    |
 | `postinstall` | `chapterjs sync`  | Tout seul, après chaque installation                            |
 
-`chapterjs` est la seule dépendance de votre bot, à la version exacte qu’avait `create chapter` (`"chapterjs": "0.2.3"`, sans `^`) : votre projet ne change de version que quand vous lancez la commande que [`chapterjs dev` vous donne](/fr/run/dev#une-nouvelle-version-de-chapterjs). TypeScript et `@types/node` sont des dépendances de développement : elles vérifient votre code, et ne servent pas à le faire tourner.
+`chapterjs` est la seule dépendance de votre bot, à la version exacte qu’avait `create chapterjs` (`"chapterjs": "0.2.3"`, sans `^`) : votre projet ne change de version que quand vous lancez la commande que [`chapterjs dev` vous donne](/fr/run/dev#une-nouvelle-version-de-chapterjs). TypeScript et `@types/node` sont des dépendances de développement : elles vérifient votre code, et ne servent pas à le faire tourner.
 
 ## `tsconfig.json`
 
@@ -199,7 +199,7 @@ Il ne contient que des options du compilateur et une référence vers `./.chapte
 
 ## Avec pnpm : un fichier de plus
 
-pnpm refuse d’installer un projet qui a esbuild quelque part dans ses dépendances (ici, à travers `chapterjs`) tant qu’on ne lui a pas dit si le script d’installation d’esbuild peut tourner. Il ne peut pas, et esbuild n’en a pas besoin. `create chapter` écrit la réponse pour vous ; dans un projet créé autrement, créez-le à côté de `package.json` :
+pnpm refuse d’installer un projet qui a esbuild quelque part dans ses dépendances (ici, à travers `chapterjs`) tant qu’on ne lui a pas dit si le script d’installation d’esbuild peut tourner. Il ne peut pas, et esbuild n’en a pas besoin. `create chapterjs` écrit la réponse pour vous ; dans un projet créé autrement, créez-le à côté de `package.json` :
 
 ```yaml pnpm-workspace.yaml
 allowBuilds:

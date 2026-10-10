@@ -31,7 +31,7 @@ describe('the published package', () => {
   });
 
   it('contains the bin, as an executable Node script', () => {
-    const bin = pkg.bin['create-chapter'];
+    const bin = pkg.bin['create-chapterjs'];
     expect(published).toContain(bin.replace(/^\.\//, ''));
     expect(readFileSync(join(root, bin), 'utf8')).toMatch(
       /^#!\/usr\/bin\/env node\n/
@@ -64,8 +64,8 @@ describe('the published package', () => {
   it('shows a README on npm, with the command and the documentation site', () => {
     expect(published).toContain('README.md');
     const readme = readFileSync(join(root, 'README.md'), 'utf8');
-    expect(readme).toMatch(/^# create-chapter\n/);
-    expect(readme).toContain('pnpm create chapter my-bot');
+    expect(readme).toMatch(/^# create-chapterjs\n/);
+    expect(readme).toContain('pnpm create chapterjs my-bot');
     expect(readme).toContain('https://www.chapterjs.org');
   });
 

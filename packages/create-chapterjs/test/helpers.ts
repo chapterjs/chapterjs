@@ -59,7 +59,7 @@ export interface RunOptions {
 
 const TEMPLATE_QUESTION = 'Which template do you want to start from?';
 
-/** Starts the built `create-chapter` CLI. */
+/** Starts the built `create-chapterjs` CLI. */
 export function runCreate({ cwd, args, path, userAgent }: RunOptions) {
   const cli = startCli({
     bin,

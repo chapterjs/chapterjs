@@ -3,7 +3,7 @@ title: 'Project structure'
 description: 'What each folder and file of your project is for, and how the framework finds what your files declare'
 ---
 
-A project made with `create chapter`, from the `default` template, looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
+A project made with `create chapterjs`, from the `default` template, looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
 
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
@@ -24,7 +24,7 @@ A project made with `create chapter`, from the `default` template, looks like th
 
 ## Templates
 
-`create chapter` offers five templates. `default` is preselected: one file, and the rest of this site to grow it. The others are complete bots: read them once you know the framework, or start from one.
+`create chapterjs` offers five templates. `default` is preselected: one file, and the rest of this site to grow it. The others are complete bots: read them once you know the framework, or start from one.
 
 | Template     | What it is                                                                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -170,7 +170,7 @@ Where to find them is in [Your Discord application](/setup/discord-application).
 
 <Warning>
   Your token is a password: never share it, and never commit `.env`. Projects
-  created with `create chapter` already ignore it in git.
+  created with `create chapterjs` already ignore it in git.
 </Warning>
 
 ## `package.json`
@@ -185,7 +185,7 @@ The scripts of your project run the [CLI](/reference/cli):
 | `typecheck`   | `tsc -b`          | To check the types of the whole project from a terminal |
 | `postinstall` | `chapterjs sync`  | By itself, after each install                           |
 
-`chapterjs` is the only dependency of your bot, at the exact version `create chapter` had (`"chapterjs": "0.2.3"`, no `^`): your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs). TypeScript and `@types/node` are development dependencies: they check your code, and are not needed to run it.
+`chapterjs` is the only dependency of your bot, at the exact version `create chapterjs` had (`"chapterjs": "0.2.3"`, no `^`): your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs). TypeScript and `@types/node` are development dependencies: they check your code, and are not needed to run it.
 
 ## `tsconfig.json`
 
@@ -198,7 +198,7 @@ It only holds compiler options and one reference to `./.chapterjs`, which is whe
 
 ## With pnpm: one more file
 
-pnpm refuses to install a project that has esbuild somewhere in its dependencies (here, through `chapterjs`) until it is told whether esbuild's install script may run. It may not, and esbuild does not need it. `create chapter` writes the answer for you; in a project made another way, create it next to `package.json`:
+pnpm refuses to install a project that has esbuild somewhere in its dependencies (here, through `chapterjs`) until it is told whether esbuild's install script may run. It may not, and esbuild does not need it. `create chapterjs` writes the answer for you; in a project made another way, create it next to `package.json`:
 
 ```yaml pnpm-workspace.yaml
 allowBuilds:

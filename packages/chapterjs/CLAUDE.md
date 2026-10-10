@@ -192,7 +192,7 @@ Written once for commands and components. A new kind of interaction (context men
 
 ## Tests of this package
 
-- `test/dev-helpers.ts` builds a scratch project (`project()`, with the package linked in `node_modules`), a fake Discord where the bot exists (`world()`) and runs the CLI in it (`runDev()`); every template of `create-chapter` is type-checked and run this way.
+- `test/dev-helpers.ts` builds a scratch project (`project()`, with the package linked in `node_modules`), a fake Discord where the bot exists (`world()`) and runs the CLI in it (`runDev()`); every template of `create-chapterjs` is type-checked and run this way.
 - `test/editor.test.ts` asks the real TypeScript language server over LSP what the editor shows (auto-imports, the languages `t.in()` offers, a second `default: true` underlined): an editor behavior is never assumed.
 - `test/docs.test.ts` checks the documentation site against the package: every page exists in both languages, every export has a page, every structure member is documented in both languages and no documented method is a ghost, every sample of both languages compiles. A change to the API fails the tests until the docs follow.
 - `vendor/dave/` is rebuilt only by `scripts/build-dave.sh` (`pnpm --filter chapterjs build:dave`): Docker, libdave and Emscripten at fixed versions, exceptions compiled in, licenses gathered.
