@@ -1,7 +1,20 @@
 {
   "name": "chapterjs",
   "version": "0.2.3",
-  "description": "The Discord framework",
+  "description": "The Discord framework: ultra simple, but ultra customizable. Your files become a bot, typed end to end, with nothing to register.",
+  "keywords": [
+    "discord",
+    "discord-bot",
+    "bot",
+    "framework",
+    "typescript",
+    "slash-commands",
+    "esm",
+    "gateway",
+    "voice",
+    "cli",
+    "hot-reload"
+  ],
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -9,7 +22,7 @@
     "url": "git+https://github.com/chapterjs/chapterjs.git",
     "directory": "packages/chapterjs"
   },
-  "homepage": "https://chapterjs.dev",
+  "homepage": "https://www.chapterjs.org",
   "bugs": "https://github.com/chapterjs/chapterjs/issues",
   "types": "./dist/index.d.ts",
   "bin": {

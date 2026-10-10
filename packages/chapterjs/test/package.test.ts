@@ -100,3 +100,29 @@ describe('the published package', () => {
     }
   });
 });
+
+describe('the npm page', () => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+
+  it('shows a README of the package, with the documentation site', () => {
+    const readme = readFileSync(join(root, 'README.md'), 'utf8');
+    expect(readme).toMatch(/^# ChapterJS\n/);
+    expect(readme).toContain('https://www.chapterjs.org');
+    expect(readme).toContain('pnpm create chapter');
+  });
+
+  it('links the documentation site as homepage, and the repository', () => {
+    expect(pkg.homepage).toBe('https://www.chapterjs.org');
+    expect(pkg.repository.url).toBe(
+      'git+https://github.com/chapterjs/chapterjs.git'
+    );
+    expect(pkg.bugs).toBe('https://github.com/chapterjs/chapterjs/issues');
+  });
+
+  it('is found with the words people search npm with', () => {
+    expect(pkg.description).toBeTruthy();
+    expect(pkg.keywords).toEqual(
+      expect.arrayContaining(['discord', 'discord-bot', 'framework'])
+    );
+  });
+});

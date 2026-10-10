@@ -101,6 +101,8 @@ pnpm test           # run every test suite
 
 Branches: features and fixes are merged into `develop` through pull requests, and `develop` into `master` for a release, then deployed to npm by running the Deploy workflow, with the version written in the three `package.json` (always the same in all three).
 
+[CONTRIBUTING.md](CONTRIBUTING.md) says what a change includes; a vulnerability is reported privately, see [SECURITY.md](SECURITY.md).
+
 ## License
 
 [MIT](LICENSE)

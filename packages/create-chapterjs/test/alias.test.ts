@@ -15,6 +15,23 @@ describe.skipIf(process.platform === 'win32')('create-chapterjs', () => {
     );
   });
 
+  it('has its own README, description, keywords and homepage on npm', () => {
+    const pkg = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+    );
+    expect(pkg.description).toContain('create-chapter');
+    expect(pkg.keywords).toEqual(
+      expect.arrayContaining(['discord', 'discord-bot', 'chapterjs'])
+    );
+    expect(pkg.homepage).toBe('https://www.chapterjs.org');
+    const readme = readFileSync(
+      new URL('../README.md', import.meta.url),
+      'utf8'
+    );
+    expect(readme).toMatch(/^# create-chapterjs\n/);
+    expect(readme).toContain('pnpm create chapterjs my-bot');
+  });
+
   it('runs the create-chapter CLI, arguments included', async () => {
     const cwd = tempDir();
     const cli = startCli({
