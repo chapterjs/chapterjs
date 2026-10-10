@@ -32,7 +32,7 @@ It asks up to three questions:
 
 1. **Where to create the project.** A folder name, like `buddy`. The folder must not exist yet, or be empty. (`.` means "right here", for a folder you already created.)
 2. **Which package manager to use.** Only the ones installed on your computer can be picked, and the one you ran the command with is preselected: press Enter.
-3. **Which template to start from.** There is one today, so the question is skipped and you are told so.
+3. **Which template to start from.** Take `default`, preselected: one file, enough to see the bot online, and this tutorial adds the rest. The others (`tickets`, `music`, `community`, `moderation`) are complete bots to read once you know the framework: see [Templates](/setup/project-structure#templates).
 
 Then it copies the template, installs the dependencies (this is the part that takes a moment) and prints what to do next. A question with only one possible answer is never asked: the framework takes the answer and says so with `ℹ`. You will see that habit everywhere.
 
@@ -106,12 +106,11 @@ Back in the terminal, the command goes on by itself:
 ✓ The bot joined My Server
 ✓ Connected to My Server as buddy
 ℹ Intents computed from your files: GUILDS
-✓ 1 command, 1 event, 1 component, a presence, messages in 2 languages loaded
+✓ 1 event loaded
 buddy is online in 1 server(s)
-✓ Commands updated on My Server
 ```
 
-Look at your test server: the bot is online, "Playing with ChapterJS". Type `/` in a channel: `/ping` is in the list. Use it: the bot answers "Pong!" with a button that counts your clicks.
+Look at your test server: the bot is online. It does nothing yet: the template is one file, and the next pages add everything else.
 
 ## Reading the terminal
 
@@ -128,10 +127,9 @@ Each line of that output tells you something, and the symbol in front says what 
 Now the lines, one by one:
 
 - **`✓ Connected to My Server as buddy`**: the program logged in with your token, and found your test server. "My Server" is the name of the server of `DEV_GUILD_ID`.
-- **`ℹ Intents computed from your files: GUILDS`**: the intents of the previous chapter. The framework read your folders and asked Discord for what they need. `GUILDS` is the one every bot needs to know its servers; nothing in the template needs more.
-- **`✓ 1 command, 1 event, 1 component, a presence, messages in 2 languages loaded`**: the files of `src/` were read. One command (`/ping`), one event (`ready`), one component (the button), the presence file, and two language files. Each of these is a chapter of this tutorial.
-- **`buddy is online in 1 server(s)`**: this line is not from the framework. It is printed by a file of the template, `src/events/online.ts`, which runs once when the bot is connected. Your first look at an event.
-- **`✓ Commands updated on My Server`**: the framework sent the list of your commands to Discord, for your test server. That is why `/ping` appears.
+- **`ℹ Intents computed from your files: GUILDS`**: the intents of the previous chapter. The framework read your files and asked Discord for what they need. `GUILDS` is the one every bot needs to know its servers; nothing in the template needs more.
+- **`✓ 1 event loaded`**: the files of `src/` were read: one event, `ready`, and nothing else yet. Commands, buttons, presence, languages: each is a chapter of this tutorial.
+- **`buddy is online in 1 server(s)`**: this line is not from the framework. It is printed by the one file of the template, `src/events/ready.ts`, which runs once when the bot is connected. Your first look at an event.
 
 ## Stopping
 

@@ -2,6 +2,7 @@
 // Nothing is reloaded, commands are registered for every server, and a
 // large bot is spread over several processes by itself.
 
+import { IpcStoreBackend } from '../store/ipc-backend.js';
 import { registerCommands } from '../commands/register.js';
 import { buildCommands } from '../commands/tree.js';
 import type { Bot } from '../core/bot.js';
@@ -93,6 +94,18 @@ export async function start(options: StartOptions): Promise<number> {
     log,
     built: files,
     joinsVoice: built.info.voice === true,
+    // A process started by another keeps no data: the first one does, for
+    // all of them.
+    ...(assignment
+      ? {
+          stores: new IpcStoreBackend({
+            send: message => {
+              if (process.connected) process.send?.(message);
+            },
+            on: listener => process.on('message', listener),
+          }),
+        }
+      : {}),
     ...(options.deferAfter === undefined
       ? {}
       : { deferAfter: options.deferAfter }),
@@ -191,15 +204,18 @@ export async function start(options: StartOptions): Promise<number> {
       signal,
       identifyInterval,
       write: options.write,
+      stores: project.storeBackend,
       onReady: ({ user, guilds }) => online(user, guilds),
       onRestart: (index, why) =>
         log.warn(
           `Process ${index + 1} of ${processes} stopped by itself (${why}): starting it again. Its servers are back in a moment.`
         ),
     });
+    await project.closeStores();
     if (code === 0) log.success('Disconnected');
     return code;
   } catch (error) {
+    await project.closeStores();
     if (signal.aborted) return 0;
     explain(error, log);
     return assignment ? REFUSED : 1;
@@ -236,6 +252,7 @@ async function run(
     project.stopTasks();
     memory.stop();
     await bot?.close();
+    await project.closeStores();
   }
 }
 

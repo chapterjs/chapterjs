@@ -8,34 +8,29 @@ Drop files into folders, and the `chapterjs` CLI does everything else: the conne
 pnpm create chapter my-bot
 ```
 
-📖 Documentation, in English and in French: **[chapterjs.dev](https://chapterjs.dev)**
+📖 Documentation, in English and in French: **[chapterjs.org](https://www.chapterjs.org)**
 
 ## Your files become a bot
 
 ```
 src/
-├── (moderation)/            → a folder is only a folder: everything about moderation, together
-│   ├── ban.ts               → command({ name: 'ban' }), and the button it shows
-│   ├── kick.ts              → command({ name: 'kick' })
-│   ├── warn.ts              → command({ name: 'warn add' }), command({ name: 'warn list' }), event({ name: 'banAdd' })
-│   ├── messages.ts          → language({ locale: 'en-US' }), language({ locale: 'fr' }): the texts of moderation
-│   └── checks.ts            → shared code, declares nothing
-├── commands/
-│   ├── ping.ts              → command({ name: 'ping' }), and the button it shows
-│   ├── hello.ts             → command({ name: 'hello' })
-│   └── play.ts              → command({ name: 'play' })
-├── events/
-│   ├── ready.ts             → event({ name: 'ready' })
-│   └── wave.ts              → event({ name: 'reactionAdd' })
-├── tasks/
-│   └── report.ts            → export const report = task(...)
-├── messages/
-│   ├── en-US.ts             → language({ locale: 'en-US' })
-│   └── fr.ts                → language({ locale: 'fr' })
+└── events/
+    └── ready.ts             → event({ name: 'ready' }): the one file of a new project
+```
+
+That is the `default` template. The others are complete bots to start from or to read: `tickets` (support tickets in private threads), `music` (a player with a queue and buttons), `community` (welcome cards, roles people pick, weekly stats) and `moderation` (timeouts, purge, slowmode, lock, and a log of every action). Every file of `src/` exports what it declares:
+
+```
+src/
+├── tickets/
+│   ├── panel.ts             → command({ name: 'ticket panel' }), and the button it posts
+│   ├── open.ts              → modal({ ... }): the form a ticket starts with
+│   ├── close.ts             → button({ ... }): the close button of every ticket
+│   └── messages.ts          → language({ locale: 'en-US' }), language({ locale: 'fr' })
 └── presence.ts              → what the bot shows under its name
 ```
 
-What a file exports says what it is: the framework loads every file of `src/` and runs what they declare, wherever they are. A command and an event have a name; a button is named by its export; what your function receives is inferred.
+What a file exports says what it is: the framework loads every file of `src/` and runs what they declare, wherever they are. The folders are a choice, not a rule: a folder is only a folder. A command and an event have a name; a button is named by its export; what your function receives is inferred.
 
 ```ts
 // src/events/wave.ts
@@ -75,6 +70,7 @@ export default command({
 - **Events**: the intents follow from the files you write, privileged ones included, with a direct link when one must be enabled.
 - **Components**: buttons, select menus, forms and embeds, with typed `data` carried in the message and no id to write.
 - **Tasks**: every so often or with a cron, in the timezone you choose.
+- **Storage**: `store<Warning[]>({ expires: '30d' })` keeps data from one restart to the next, per server, typed, in a JSON file written for you.
 - **Translated messages**: `t('welcome', { name })` speaks the language of who will read it.
 - **Voice**: join a channel and play a file, an attachment or a link, end-to-end encrypted (DAVE).
 - **Three commands**:
@@ -107,4 +103,4 @@ Branches: features and fixes are merged into `develop` through pull requests, an
 
 ## License
 
-MIT
+[MIT](LICENSE)

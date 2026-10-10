@@ -3,11 +3,11 @@ title: 'Translated messages'
 description: 'Answer each person in their language with one declaration per language, understand which language a message speaks, and translate what the bot says by itself'
 ---
 
-The template has two files in `src/messages/`, `en-US.ts` and `fr.ts`, and `/ping` answers with `t('pong')` instead of a text. This page explains that mechanism, which is how a bot speaks several languages without an `if` on the language in every file.
+A bot that speaks several languages does not put an `if` on the language in every file: it declares its texts once per language, and every function receives `t`, which picks the right one. This page gives your bot two languages, and makes `/ping` answer with `t('pong')`.
 
 ## One declaration per language
 
-A language is declared with `language()`: `locale` says which one, `texts` holds the texts of the bot by key. The template keeps one file per language in `src/messages/`:
+A language is declared with `language()`: `locale` says which one, `texts` holds the texts of the bot by key. Create one file per language in `src/messages/`:
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';
@@ -178,14 +178,14 @@ export default language({
 });
 ```
 
-The default language gives the description everyone sees; the other languages give their translations (`name` too, when the command should have another name in that language). A command has its texts in one place: with `description` in its file, a language file that mentions it is an error; without it, the file must not have `locales`. This is why the `/ping` of the template has no description in its file: it is in `en-US.ts` and `fr.ts`.
+The default language gives the description everyone sees; the other languages give their translations (`name` too, when the command should have another name in that language). A command has its texts in one place: with `description` in its file, a language file that mentions it is an error; without it, the file must not have `locales`. Move the description of `/ping` there too, and remove it from its file: the `tickets`, `music`, `community` and `moderation` templates do that for every command.
 
 ## Points of attention
 
 - **Keys are typed from the default file.** Add a text there first, then in the others; the editor and the loader both check it.
 - **Braces written as is are doubled**: `'{{name}}'` shows `{name}`.
 - **The language of a server is `en-US` unless it is a Community server.** Do not be surprised when a public message in a French server comes out in the default language.
-- **Without a language, there is no `t`**: it does not exist, in the types nor at runtime. Delete the two language files of the template if your bot speaks one language and you prefer plain texts.
+- **Without a language, there is no `t`**: it does not exist, in the types nor at runtime. Skip the language files if your bot speaks one language and you prefer plain texts.
 
 ## Recap
 

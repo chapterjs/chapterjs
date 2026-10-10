@@ -94,10 +94,13 @@ if (template === undefined) {
   process.exit(1);
 }
 
+// The exact version, not a range: `create chapter@X` makes a project on
+// `chapterjs@X`, and the project only changes version when its developer
+// runs the command `chapterjs dev` gives them.
 await createProject({
   dir,
   template,
-  chapterjsVersion: `^${version}`,
+  chapterjsVersion: version,
   packageManager: pm,
 });
 p.log.success(`Project created in ${resolve(dir)}`);

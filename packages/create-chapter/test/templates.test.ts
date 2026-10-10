@@ -1,5 +1,11 @@
 import { tempDir } from '@chapterjs/test-utils';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  readdirSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { listTemplates, templatesDir } from '../src/templates.js';
@@ -132,9 +138,14 @@ describe('shipped templates', async () => {
       }
     });
 
-    it('has the conventional folders', () => {
-      expect(existsSync(join(dir, 'src', 'events'))).toBe(true);
-      expect(existsSync(join(dir, 'src', 'commands'))).toBe(true);
+    it('has files in src/, and nothing the framework would not load', () => {
+      const files = readdirSync(join(dir, 'src'), { recursive: true }).map(
+        String
+      );
+      expect(files.some(file => file.endsWith('.ts'))).toBe(true);
+      for (const file of files) {
+        expect(file).toMatch(/\.ts$|^[^.]+$/);
+      }
     });
 
     it('type-checks files the way chapterjs runs them', () => {

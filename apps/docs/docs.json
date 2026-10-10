@@ -129,6 +129,7 @@
                 "group": "Growing",
                 "icon": "sprout",
                 "pages": [
+                  "tutorial/storage",
                   "tutorial/organising",
                   "tutorial/memory-and-limits"
                 ]
@@ -211,6 +212,13 @@
                 ]
               },
               {
+                "group": "Storage",
+                "icon": "database",
+                "pages": [
+                  "storage"
+                ]
+              },
+              {
                 "group": "Translations",
                 "icon": "languages",
                 "pages": [
@@ -269,6 +277,7 @@
                   "reference/embed",
                   "reference/layout",
                   "reference/task",
+                  "reference/store",
                   "reference/presence",
                   "reference/messages"
                 ]
@@ -420,6 +429,7 @@
                 "group": "Grandir",
                 "icon": "sprout",
                 "pages": [
+                  "fr/tutorial/storage",
                   "fr/tutorial/organising",
                   "fr/tutorial/memory-and-limits"
                 ]
@@ -502,6 +512,13 @@
                 ]
               },
               {
+                "group": "Stockage",
+                "icon": "database",
+                "pages": [
+                  "fr/storage"
+                ]
+              },
+              {
                 "group": "Traductions",
                 "icon": "languages",
                 "pages": [
@@ -560,6 +577,7 @@
                   "fr/reference/embed",
                   "fr/reference/layout",
                   "fr/reference/task",
+                  "fr/reference/store",
                   "fr/reference/presence",
                   "fr/reference/messages"
                 ]

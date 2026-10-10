@@ -1,8 +1,9 @@
 import { event } from 'chapterjs';
 
-// An event is declared with event() and exported: `name` is the event, and
-// it types what `run` receives. This one runs once, when your bot is
-// connected. A file may declare several events, commands or buttons.
+// Your bot is made of the files of src/: each one exports what it declares
+// with a function of 'chapterjs' (event, command, button, task...), and
+// chapterjs dev runs it. This one is an event: `name` says which, and types
+// what `run` receives. `ready` runs once, when the bot is connected.
 export default event({
   name: 'ready',
   run({ user, guilds }) {
@@ -10,25 +11,18 @@ export default event({
   },
 });
 
-// Something to do by itself, every so often or at given times, is a task:
-// the name of its export is the name of the task.
+// A command is a file like this one, anywhere in src/, with command():
 //
-// import { task } from 'chapterjs';
+// import { command } from 'chapterjs';
 //
-// export const report = task({
-//   cron: '0 9 * * 1', // every Monday at 9:00
-//   async run({ guilds }) {
-//     console.log(`A new week in ${guilds.size} server(s)`);
+// export default command({
+//   name: 'ping',
+//   description: 'Replies with Pong!',
+//   async run({ interaction }) {
+//     await interaction.reply('Pong!');
 //   },
 // });
 //
-// To react to something else, declare another event. For example, one that
-// answers "Pong!" to "!ping" (reading messages needs the Message Content
-// intent: `chapterjs dev` tells you how to enable it):
-//
-// export const pong = event({
-//   name: 'messageCreate',
-//   async run({ message }) {
-//     if (message.content === '!ping') await message.reply('Pong!');
-//   },
-// });
+// Save it, and /ping shows up in your test server. The other templates of
+// `pnpm create chapter` show tickets, music, moderation and a community
+// bot; the docs at https://www.chapterjs.org walk through everything.

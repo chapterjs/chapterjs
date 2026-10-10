@@ -1,0 +1,133 @@
+---
+title: 'Stockage'
+description: 'Garder ce que votre bot apprend d’un redémarrage à l’autre, par serveur, avec une déclaration store()'
+---
+
+Un store se déclare avec `store()`, dans n’importe quel fichier de `src/`, et s’exporte. Il garde des données d’un redémarrage à l’autre, typées par ce qu’il contient, et par serveur sauf si vous dites autrement.
+
+```ts src/commands/warn.ts
+import { command, store } from 'chapterjs';
+
+interface Warning {
+  reason: string;
+  by: string;
+  at: number;
+}
+
+export const warnings = store<Warning[]>();
+
+export default command({
+  name: 'warn',
+  description: 'Avertit un membre',
+  options: {
+    who: { type: 'user', description: 'Qui', required: true },
+    reason: { type: 'string', description: 'Pourquoi', required: true },
+  },
+  async run({ interaction, options, user }) {
+    const list = await warnings.update(options.who.id, (list = []) => [
+      ...list,
+      { reason: options.reason, by: user.id, at: Date.now() },
+    ]);
+    await interaction.reply(`${options.who} a maintenant ${list.length} avertissement(s).`);
+  },
+});
+```
+
+C’est tout. Le nom de l’export est le nom du store (`warnings`), et ses données vivent dans `data/warnings.json`, à la racine de votre projet. La commande tourne dans un serveur, donc le store lit et écrit les avertissements de ce serveur : la clé est `options.who.id`, rien de plus.
+
+<Note>
+  Tout ce qu’un store déclare et fait est dans la [référence](/fr/reference/store).
+</Note>
+
+## Par serveur, sans le dire
+
+Un store est par serveur par défaut. Dans une fonction qui tourne dans un serveur (une commande, un bouton, un formulaire, un événement qui a un `guild`), le framework sait lequel, et le store travaille sur ses données : `warnings.get(member.id)` dans le serveur A et dans le serveur B lisent deux choses différentes, avec la même ligne.
+
+Hors d’un serveur (une tâche, qui tourne pour tous les serveurs ; un événement de message privé ; du code qui regarde un autre serveur), dites lequel avec `in()` :
+
+```ts src/tasks/digest.ts
+import { task } from 'chapterjs';
+import { warnings } from '../commands/warn';
+
+export default task({
+  cron: '0 9 * * 1',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const entries = await warnings.in(guild).entries();
+      console.log(`${guild.name} : ${entries.length} membre(s) avec des avertissements`);
+    }
+  },
+});
+```
+
+Un store par serveur utilisé là où aucun serveur n’est connu s’arrête avec un message qui dit d’utiliser `in()`. Pour des données identiques partout, déclarez le store avec `scope: 'global'` : il ne prend alors aucun serveur.
+
+```ts src/settings.ts
+import { store } from 'chapterjs';
+
+export const settings = store<{ maintenance: boolean }>({ scope: 'global' });
+```
+
+## Ce que fait un store
+
+| Appel | Ce qu’il fait |
+| --- | --- |
+| `get(key)` | La valeur, ou `undefined` quand il n’y en a pas, ou qu’elle a expiré |
+| `set(key, value, options?)` | Garde une valeur |
+| `update(key, change, options?)` | Lit, change et garde d’un trait : `change` reçoit la valeur, ou `undefined`, et renvoie la nouvelle |
+| `delete(key)` | Oublie une valeur ; `true` quand il y en avait une |
+| `entries(prefix?)` | Chaque entrée (`key`, `value`, `expires`), ou celles dont la clé commence par `prefix` |
+| `ttl(key)` | Combien de temps la valeur est encore gardée, en millisecondes : `null` pour toujours, `undefined` pour aucune |
+| `in(guild)` | Le même store, pour un serveur |
+
+Une clé est un texte, ou une liste de textes pour une clé en plusieurs parties : `[channel.id, message.id]`. `entries(channel.id)` liste alors ce que ce salon a.
+
+Une valeur est du JSON : textes, nombres, booléens, listes et objets simples. Une `Date`, une `Map` ou l’instance d’une classe ne reviendrait pas pareille, donc `set()` les refuse et dit quoi garder à la place (un id, un texte, un nombre). Chaque appel renvoie une promesse.
+
+## Expiration
+
+`expires` dit combien de temps une valeur est gardée : sur le store, pour chaque valeur, ou sur un `set()` ou un `update()`. Une durée est un nombre et une unité, `s`, `m`, `h` ou `d`, comme `'10m'` ou `'30d'`.
+
+```ts src/commands/verify.ts
+import { command, store } from 'chapterjs';
+
+export const codes = store<string>({ expires: '10m' });
+
+export default command({
+  name: 'verify',
+  description: 'Vous envoie un code qui dure dix minutes',
+  async run({ interaction, user }) {
+    const code = Math.random().toString(36).slice(2, 8);
+    await codes.set(user.id, code);
+    await codes.set(['last', user.id], code, { expires: '1d' });
+    await interaction.reply({ content: `Votre code : ${code}`, ephemeral: true });
+  },
+});
+```
+
+Une valeur expirée a disparu : `get()` répond `undefined`, `entries()` la laisse de côté, et le fichier l’oublie. `{ expires: null }` garde une valeur pour toujours dans un store qui expire ; une `Date` fixe le moment lui-même. `update()` garde l’expiration que la valeur avait, sauf si vous en donnez une autre.
+
+## Où sont les données
+
+Un fichier par store, `data/<nom>.json`, dans le dossier de votre projet. Il est écrit peu après chaque changement, d’un seul bloc, pour qu’un plantage ne laisse jamais un fichier à moitié écrit ; ce qui est en attente quand le bot s’arrête est écrit à ce moment-là. Le dossier est dans le `.gitignore` d’un nouveau projet : ce sont vos données, pas votre code.
+
+Le bot garde les données en mémoire et le fichier en est la copie, donc un store est pour ce qui tient en mémoire : réglages, scores, avertissements, qui a ouvert quoi. Pour des millions de lignes, utilisez une base de données.
+
+En production sur [plusieurs processus](/fr/run/start#gros-bots), les données ont un seul foyer, le processus que vous avez lancé : les autres le lui demandent, donc une commande sur n’importe quel shard lit ce que les autres ont écrit. Rien à configurer.
+
+<Warning>
+  `chapterjs dev` et `chapterjs start` dans le même dossier partagent le même `data/`. Avec deux bots dans un dossier, ce que vous essayez en dev est ce que la production lit.
+</Warning>
+
+## En développement
+
+Enregistrer un fichier garde les données : un store est lié à son nom, pas au fichier. Deux stores du même nom dans deux fichiers sont signalés, et le second est mis de côté : ils partageraient un fichier. Supprimez `data/<nom>.json` pour repartir d’un store vide.
+
+<CardGroup cols={2}>
+  <Card title="Référence de store()" icon="database" href="/fr/reference/store">
+    Chaque champ d’un store, et ce que chaque appel renvoie.
+  </Card>
+  <Card title="Tâches" icon="clock" href="/fr/tasks">
+    Quelque chose à faire avec ce que le bot garde, régulièrement.
+  </Card>
+</CardGroup>

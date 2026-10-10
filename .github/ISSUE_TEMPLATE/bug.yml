@@ -1,0 +1,32 @@
+name: Something does not work
+description: The bot, the CLI or the editor does not do what the documentation says.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Paste the messages of the CLI as they are, with their symbol (✓ ℹ ↻ ⚠ ✗).
+    validations:
+      required: true
+  - type: textarea
+    id: file
+    attributes:
+      label: The file
+      description: The smallest file of `src/` that shows the problem.
+      render: ts
+  - type: input
+    id: version
+    attributes:
+      label: Version of chapterjs
+      description: The output of `pnpm chapterjs --version` in your project.
+      placeholder: 0.2.3
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Version of Node and system
+      placeholder: Node 24.3.0, macOS 15
+    validations:
+      required: true

@@ -194,6 +194,7 @@ export class CommandRouter {
       name,
       what: 'command',
       reporter: this.#options,
+      guildId: place.guild?.id ?? null,
       defer: () => interaction.defer(),
       unanswered:
         'finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.',

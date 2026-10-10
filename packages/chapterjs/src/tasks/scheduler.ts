@@ -2,6 +2,7 @@
 // this one keeps timers in the process; a bot on several machines would
 // share one through another implementation, with no change to the files.
 
+import { withGuild } from '../store/scope.js';
 import type { TaskContext } from './task.js';
 import type { LoadedTask } from './declaration.js';
 import { describeSchedule, nextRun, scheduleKey } from './schedule.js';
@@ -147,7 +148,11 @@ export class TimerScheduler implements Scheduler {
     }
     scheduled.running = true;
     new Promise(resolve =>
-      resolve(scheduled.entry.task.run(Object.freeze({ ...context, now })))
+      resolve(
+        withGuild(null, () =>
+          scheduled.entry.task.run(Object.freeze({ ...context, now }))
+        )
+      )
     )
       .catch((error: unknown) => this.#options.onError(file, error))
       .finally(() => {

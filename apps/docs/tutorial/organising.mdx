@@ -55,20 +55,9 @@ A command file should read like a summary: check, do, answer. When `run` grows p
 
 ## Storing data
 
-Here is the important point of this page: **nothing survives a restart**. The `Map` of `warnings.ts` starts empty every time the bot starts, and `chapterjs dev` reloads it on every save. Only the `data` of a component survives, because it lives in the message on Discord.
+The `Map` of `warnings.ts` above is fine for shared code, and wrong for data: it starts empty every time the bot starts, `chapterjs dev` reloads it on every save, and in production each process has its own. What must be remembered goes in a [store](/tutorial/storage), the previous chapter: `export const warnings = store<number>()`, kept in `data/`, per server, and shared by every process.
 
-The framework has no storage of its own today. For anything your bot must remember (warnings, scores, settings per server), use what Node offers:
-
-- **A JSON file**, read at start and written on each change, with `node:fs`. Enough for small bots, and simple.
-- **A database** made for Node (SQLite through a package, or a server like PostgreSQL). For a bot with many servers or many writes.
-
-Whatever you choose, keep it in `src/lib/` behind a few functions (`getSettings(guildId)`, `saveSettings(...)`), so that the commands and events never know how it is stored. Changing from a JSON file to a database then changes one file.
-
-<Info>
-  In production, a large bot runs on several processes, each with its own
-  memory. A `Map` in one process is not seen by the others: a bot that will be
-  large keeps its data outside of the process, in a database, from the start.
-</Info>
+A store is for what fits in memory. A bot with millions of rows uses a database made for Node (SQLite through a package, or a server like PostgreSQL), kept in `src/lib/` behind a few functions (`getSettings(guildId)`, `saveSettings(...)`), so that the commands and events never know how it is stored.
 
 ## A cooldown
 
@@ -92,7 +81,7 @@ Someone who uses `/daily` again too soon gets a private answer saying when they 
 
 ## Grouping files
 
-Where a file is and what it is called mean nothing to the framework: a command is a command because of `command()`, wherever the file sits. So sort your files the way you think: a folder per kind (`src/commands/`, `src/events/`), as the template does, or a folder per feature (`src/moderation/`, with its commands, its buttons and its events together, in one file or several). The [tour](/tutorial/tour#your-files-your-order) shows both.
+Where a file is and what it is called mean nothing to the framework: a command is a command because of `command()`, wherever the file sits. So sort your files the way you think: a folder per kind (`src/commands/`, `src/events/`), or a folder per feature (`src/moderation/`, with its commands, its buttons and its events together, in one file or several), as the `moderation` template does. The [tour](/tutorial/tour#your-files-your-order) shows both.
 
 For commands, prefer **commands** (`/ban`, `/kick`) over **subcommands** (`/mod ban`, `/mod kick`), unless they are variants of one action (`/timeout add`, `/timeout remove`). Discord hides a whole command from people who lack its permissions, never one subcommand: with `/mod ban` and `/mod kick`, someone who may only kick still sees `/mod ban`.
 
@@ -105,7 +94,6 @@ ChapterJS is young, and some things a bot may want are not there. Knowing them s
 | Autocomplete (suggestions while typing an option)          | `choices`, when the values are known in advance         |
 | Context menu commands (right-click on a user or a message) | A slash command with a `user` option                    |
 | Waiting for the next message or click of a person          | A button or a menu that carries what it needs in `data` |
-| Storage                                                    | The pattern above                                       |
 | Reactions, threads, voice, bans and other events           | Not listed in `src/events/` yet                         |
 | Running on several machines                                | Several processes on one machine, by itself             |
 
@@ -114,7 +102,7 @@ The full list, kept up to date, is [What's not there yet](/not-yet).
 ## Recap
 
 - Shared code goes in `src/lib/` (or next to the files that use it), imported without extension, and reloaded with the files that use it.
-- Nothing survives a restart but the `data` of components: store what matters in a JSON file or a database, behind a few functions.
+- A `Map` is for shared code, not for data: what must be remembered goes in a store, and millions of rows in a database behind a few functions.
 - A cooldown is one setting of the command, `cooldown: '1d'`, kept in memory; a growing project sorts its files by feature, since the framework reads what they export, not where they are.
 
 <CardGroup cols={2}>

@@ -27,6 +27,10 @@ describe.skipIf(process.platform === 'win32')('create-chapterjs', () => {
         }),
       },
     });
+    // The folder is given, pnpm is the only manager: the template is the
+    // one question left, and Enter takes the default one.
+    await cli.waitFor('Which template do you want to start from?');
+    cli.press('enter');
     const { code, output } = await cli.exited;
     expect(code).toBe(0);
     expect(output).toContain('Create a ChapterJS bot');

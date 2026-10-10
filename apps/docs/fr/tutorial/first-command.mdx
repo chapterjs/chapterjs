@@ -3,7 +3,7 @@ title: 'Votre première commande'
 description: 'Écrire /dice de zéro, comprendre chaque ligne, et voir ce que le framework et l’éditeur vérifient pour vous'
 ---
 
-Le modèle vous a donné `/ping`. Écrivez maintenant une commande à vous, `/dice`, qui lance un dé. Ce sont quatre lignes de logique, et c’est l’occasion de comprendre chaque partie d’un fichier de commande : ce qu’il déclare, ce que reçoit `run`, et ce qui se passe quand quelque chose ne va pas.
+Vous avez écrit `/ping` pendant la visite. Écrivez maintenant une commande à vous, `/dice`, qui lance un dé. Ce sont quatre lignes de logique, et c’est l’occasion de comprendre chaque partie d’un fichier de commande : ce qu’il déclare, ce que reçoit `run`, et ce qui se passe quand quelque chose ne va pas.
 
 ## Le fichier
 
@@ -37,7 +37,7 @@ Tapez `/dice` sur votre serveur de test. Elle est là, avec sa description sous 
 
 **`export default`.** Le fichier remet sa commande au framework en l’exportant. Le framework charge chaque fichier de `src/` et garde ce qu’ils exportent de fabriqué avec `command()`, `event()`, `button()`... : un export par défaut ou un export nommé (`export const dice = command(...)`), peu importe. Ce qui est exporté et n’est rien de tout ça est simplement à vous.
 
-**`description`.** Le texte que Discord affiche sous le nom dans le menu `/`, de 1 à 100 caractères. En plus de `run`, c’est la seule chose dont une commande a besoin. (Le `/ping` du modèle n’en a pas dans son fichier parce que les fichiers de langue la donnent ; c’est un chapitre plus loin.)
+**`description`.** Le texte que Discord affiche sous le nom dans le menu `/`, de 1 à 100 caractères. En plus de `run`, c’est la seule chose dont une commande a besoin. (Un chapitre plus loin la déplace dans les fichiers de langue.)
 
 **`async run({ interaction, user })`.** La fonction qui tourne quand quelqu’un utilise la commande. Elle reçoit un objet, et vous en sortez ce dont vous avez besoin : ici `interaction`, l’utilisation de la commande, et `user`, la personne qui l’a utilisée. Les pages suivantes passent en revue tout ce que contient cet objet.
 

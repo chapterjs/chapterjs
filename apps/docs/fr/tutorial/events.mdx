@@ -77,9 +77,9 @@ Pourquoi une déclaration par chose, plutôt qu’une grosse fonction ? Parce qu
 
 ## L’événement ready
 
-`ready` est spécial : ce n’est pas quelque chose qui se passe sur Discord, mais le moment où votre bot est connecté et connaît chaque serveur où il se trouve. Il tourne **une fois par démarrage**, jamais lors d’un rechargement. Le modèle s’en sert pour afficher une ligne :
+`ready` est spécial : ce n’est pas quelque chose qui se passe sur Discord, mais le moment où votre bot est connecté et connaît chaque serveur où il se trouve. Il tourne **une fois par démarrage**, jamais lors d’un rechargement. Le modèle est ce seul fichier :
 
-```ts src/events/online.ts
+```ts src/events/ready.ts
 import { event } from 'chapterjs';
 
 export default event({

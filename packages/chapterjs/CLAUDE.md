@@ -1,12 +1,12 @@
 # packages/chapterjs
 
-The framework and its `chapterjs` CLI (`dev`, `start`, `build`, `sync`). The rules of the repo are in the root `CLAUDE.md`; this file says how the package is built and what each core module does. The features have their own file next to their code: `src/events/CLAUDE.md`, `src/commands/CLAUDE.md`, `src/components/CLAUDE.md`, `src/messages/CLAUDE.md`, `src/tasks/CLAUDE.md`, `src/voice/CLAUDE.md`. Read the one of the module you touch.
+The framework and its `chapterjs` CLI (`dev`, `start`, `build`, `sync`). The rules of the repo are in the root `CLAUDE.md`; this file says how the package is built and what each core module does. The features have their own file next to their code: `src/events/CLAUDE.md`, `src/commands/CLAUDE.md`, `src/components/CLAUDE.md`, `src/messages/CLAUDE.md`, `src/tasks/CLAUDE.md`, `src/store/CLAUDE.md`, `src/voice/CLAUDE.md`. Read the one of the module you touch.
 
 ## Public API
 
-- `src/index.ts`: the types of the package. Structure classes are exported **as types only**, plus errors, `Permissions`, enums and formatting helpers, and the user functions typed the same everywhere: `command()`, `button()`, `select()`, `modal()`, `embed()`, `task()`, `presence()`, `language()`.
+- `src/index.ts`: the types of the package. Structure classes are exported **as types only**, plus errors, `Permissions`, enums and formatting helpers, and the user functions typed the same everywhere: `command()`, `button()`, `select()`, `modal()`, `embed()`, `task()`, `store()`, `presence()`, `language()`.
 - `src/main.ts`: what is loaded at runtime: the same, plus `asset()`, typed per project.
-- What exists today: the core, `chapterjs dev`, `chapterjs build`, `chapterjs start` (one process or several, on one machine), slash commands, events, components (buttons, select menus, modals, embeds, the layout of a message), tasks (every so often, or cron), the presence, translated messages (one `language()` per language) and voice (joining a voice channel and playing there). Not written yet: context menu commands, recording voice, a bot spread over several machines.
+- What exists today: the core, `chapterjs dev`, `chapterjs build`, `chapterjs start` (one process or several, on one machine), slash commands, events, components (buttons, select menus, modals, embeds, the layout of a message), tasks (every so often, or cron), stores (data kept from one restart to the next, per server, with an expiration), the presence, translated messages (one `language()` per language) and voice (joining a voice channel and playing there). Not written yet: context menu commands, recording voice, a bot spread over several machines.
 
 ## Layers
 
@@ -20,7 +20,7 @@ Everything lives in `src`, in layers that only depend on the ones above them in 
 6. `gateway/`: the connection that receives events.
 7. `core/`: memory watch and `createBot()`, the assembly.
 8. `loader/`: loading, hot reloading and typing user files.
-9. Features: `events/`, `commands/`, `interactions/`, `components/`, `assets/`, `tasks/`, `presence/`, `messages/`, `voice/`.
+9. Features: `events/`, `commands/`, `interactions/`, `components/`, `assets/`, `tasks/`, `store/`, `presence/`, `messages/`, `voice/`.
 10. `cli/`: the commands, built on one shared piece.
 
 ## `discord/`: what never changes at runtime
@@ -148,7 +148,7 @@ Written once for commands and components. A new kind of interaction (context men
   - `resolvePlace` (server, member, channel from the interaction itself, checked against `where`; returns a key `guildOnly`/`dmOnly`/`notHere` and the routers add `what`, for the plain refusals "can only be used in a server" / "in a private message with me" / "can not be used here").
   - `placeContext` (nothing about a server for `where: 'dm'`).
   - `says(interaction, key, params)` and `refuse(interaction, key, params)`: a framework phrase in the language of the person (`interaction.locale`), `refuse` being a private answer that never fails.
-  - `runInteraction` (defers after 2 s with what the caller gives, turns a thrown error into a plain answer for the person and a located error for the developer, warns when `run` never answers).
+  - `runInteraction` (defers after 2 s with what the caller gives, runs `run` for the server of the place (`guildId`, what a store per server reads: `store/scope.ts`), turns a thrown error into a plain answer for the person and a located error for the developer, warns when `run` never answers).
 - `cooldown.ts`: cooldowns, for every interaction that can have one (commands today). `CooldownLimits` (ms per scope `user`/`channel`/`guild`, `0` for none), the `CooldownStore` interface (`until`, `set`) with `MemoryCooldowns` (a `Map` that sweeps what expired by itself) and `checkCooldown(store, name, limits, ids)` (the time the thing may be used again, or `0` and the use counted for every scope with an id).
 
 ## `presence/`: what the bot shows under its name, declared once
@@ -166,11 +166,11 @@ Written once for commands and components. A new kind of interaction (context men
 - `env.ts`: `.env` reading with `util.parseEnv`, the real environment wins; `readDevEnv` needs `BOT_TOKEN` and `DEV_GUILD_ID`, `readStartEnv` only the token (hosts give it without a file) and takes `DEV_GUILD_ID` when it is there.
 - `preflight.ts`: token, bot in the dev server with an invite link, privileged intents from the application flags; waits by polling when interactive, fails with the explanation otherwise.
 - `project.ts`: **what `dev`, `build` and `start` share**, written once. A new way to run the bot is a new file using this, never a copy.
-  - `DECLARATIONS`: the kinds of declarations (events, commands, components, tasks, the presence, languages).
+  - `DECLARATIONS`: the kinds of declarations (events, commands, components, tasks, stores, the presence, languages).
   - `load` runs every file of `src` (or takes the files a build compiled) and reads each kind from their exports, keyed by file and export (`src/a.ts#ban`) so that a broken export or file keeps its last good version.
   - `summary` ("2 commands, 3 events, 4 components, a presence, messages in 2 languages loaded"), `filesNeeding`, `intents`, `typesInfo()` for `writeTypes`.
   - A bot that runs them (`connect`; every Interaction Create goes to the command router and the component router), the `ready` event, the memory watch, `explain()` for errors.
-  - Tasks: `startTasks(current)` / `stopTasks()`. Presence: `applyPresence(bot)`. Languages: assembled on every load, `Context.messages` set on connect and on every reload. Voice: adds `GUILD_VOICE_STATES` when `sourcesJoinVoice()` finds a join in `src/` (dev) or `build.json` says so (`start`).
+  - Tasks: `startTasks(current)` / `stopTasks()`. Stores: the backend of the process (`options.stores`, else a `FileStoreBackend` on `data/`), given to every store with `setStoreBackend()`, exposed as `storeBackend` and closed by `closeStores()` when `dev` and `start` stop. Presence: `applyPresence(bot)`. Languages: assembled on every load, `Context.messages` set on connect and on every reload. Voice: adds `GUILD_VOICE_STATES` when `sourcesJoinVoice()` finds a join in `src/` (dev) or `build.json` says so (`start`).
 - `dev.ts`: env → write types → load files → checks → connect → watch → register commands → clean stop; on each reload, commands are registered again if they changed, the types are rewritten (`↻ Types updated` when something changed), the presence applied.
   - The dev bot only runs the dev server: `guildFilter` keeps that one server, `privateEvents: false` drops what happens outside servers (and the intents that only serve it are not asked), and a declaration (command, event or component) that only works in private messages is named once with `ℹ`.
   - Once the bot is online it says with `ℹ` when a newer `chapterjs` is published, with the command to run (`update-check.ts`: `checkForUpdate()` asks the npm registry for `chapterjs/latest` at most once a day, the answer kept in `.chapterjs/cache/update.json`, a 5 s timeout and never an error: without network nothing is said; `isNewer()` compares the three numbers only; `updateCommand()` picks the package manager from the lockfile of the project, else `npm_config_user_agent`, else npm). The check starts before the files load and is only printed after the summary, so nobody waits for it; nothing is installed by the framework.
@@ -185,8 +185,8 @@ Written once for commands and components. A new kind of interaction (context men
   - With `DEV_GUILD_ID` it ignores that server, so a dev bot and a production bot with one token never answer the same thing.
 - `cluster.ts`: several processes on one machine.
   - `planProcesses()` (one process per 4 shards, never more than CPUs, or what `--processes` asks), `splitShards()`.
-  - `runCluster()` in the first process: forks the others with their share in `CHAPTERJS_PROCESS`, shows their lines prefixed with `[n]`, gives each shard its turn to identify through one `IdentifyQueue` over IPC, starts again a process that stops by itself with a growing delay, stops them all together, and stops for good when Discord refused one (exit code `REFUSED`).
-  - `connectToPrimary()` in the others: an `IdentifyGate` that asks the first process; a process left alone stops.
+  - `runCluster()` in the first process: forks the others with their share in `CHAPTERJS_PROCESS`, shows their lines prefixed with `[n]`, gives each shard its turn to identify through one `IdentifyQueue` over IPC, keeps the data of the stores for all of them (`stores`, served with `serveStores()` on each worker's messages), starts again a process that stops by itself with a growing delay, stops them all together, and stops for good when Discord refused one (exit code `REFUSED`).
+  - `connectToPrimary()` in the others: an `IdentifyGate` that asks the first process; a process left alone stops. Their stores go through an `IpcStoreBackend` on the same channel.
   - Each process takes its share of the global request limit. Tasks run only in the process whose `assignment.index` is 0. Several machines would be another `IdentifyGate` and nothing else.
 - Test-only environment variables, not documented to users: `CHAPTERJS_API_URL` points the CLI at another REST API (an `http://` one also makes voice servers be reached without TLS, as the fakes of tests are), `CHAPTERJS_REGISTRY_URL` at another npm registry (`world()` in `test/dev-helpers.ts` gives a fake one, `registry`, that has no version until a test says so), `CHAPTERJS_IDENTIFY_INTERVAL` shortens the wait between identifies.
 

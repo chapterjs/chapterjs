@@ -31,9 +31,9 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
 
     1. **Where to create the project**: a folder name like `my-bot`, or `.` for the current folder. The folder must be new or empty.
     2. **Which package manager to use**: only the ones installed on your computer can be picked, and the one you ran the command with is selected by default.
-    3. **Which template to start from**.
+    3. **Which template to start from**: `default`, one event and nothing else, is preselected. The others are complete bots: see [Templates](/setup/project-structure#templates).
 
-    A question with only one possible answer is skipped: with a single package manager installed, it is used and you are told so; the same goes for the template while there is only one.
+    A question with only one possible answer is skipped: with a single package manager installed, it is used and you are told so.
 
     The template is copied, the dependencies are installed, and the next steps are printed.
 
@@ -84,18 +84,17 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
     ```text
     ✓ Connected to My Server as my-bot
     ℹ Intents computed from your files: GUILDS
-    ✓ 1 command, 1 event loaded
+    ✓ 1 event loaded
     my-bot is online in 1 server(s)
-    ✓ Commands updated on My Server
     ```
 
-    The fourth line is printed by the `ready` event of the template, `src/events/online.ts`.
+    The third line is printed by the `ready` event of the template, `src/events/ready.ts`: the one file it has.
 
     If the bot is not in your test server yet, the command prints a link that adds it there and waits for you. If one of your files needs an option that is not enabled for your bot, it says which one and where to enable it, and waits too. Every message says what to do: see [chapterjs dev](/run/dev).
 
   </Step>
   <Step title="Try your first command">
-    The template comes with one command, `/ping`:
+    Create a file for your first command, `src/commands/ping.ts`:
 
     ```ts src/commands/ping.ts
     import { command } from 'chapterjs';
@@ -109,13 +108,14 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
     });
     ```
 
-    Type `/ping` in your test server: the bot answers "Pong!". Now change the answer and save the file:
+    Save it: the file is loaded, and the command sent to your test server:
 
     ```text
     ↻ Reloaded in 12 ms, 1 command, 1 event loaded
+    ↻ Commands updated on Discord
     ```
 
-    Use `/ping` again: it answers with the new text.
+    Type `/ping` in your test server: the bot answers "Pong!". Change the answer, save, and use `/ping` again: it answers with the new text.
 
   </Step>
 </Steps>

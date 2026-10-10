@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: A question
+    url: https://www.chapterjs.org
+    about: The documentation, in English and in French, answers most questions. The Discord server is coming.
