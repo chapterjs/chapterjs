@@ -52,6 +52,14 @@
         "default": true,
         "tabs": [
           {
+            "tab": "Home",
+            "hidden": true,
+            "searchable": true,
+            "pages": [
+              "index"
+            ]
+          },
+          {
             "tab": "Tutorial",
             "icon": "graduation-cap",
             "groups": [
@@ -153,7 +161,6 @@
                 "group": "Get started",
                 "icon": "play",
                 "pages": [
-                  "index",
                   "quickstart",
                   "setup/discord-application",
                   "setup/project-structure"
@@ -352,6 +359,14 @@
         "language": "fr",
         "tabs": [
           {
+            "tab": "Accueil",
+            "hidden": true,
+            "searchable": true,
+            "pages": [
+              "fr/index"
+            ]
+          },
+          {
             "tab": "Tutoriel",
             "icon": "graduation-cap",
             "groups": [
@@ -453,7 +468,6 @@
                 "group": "Bien démarrer",
                 "icon": "play",
                 "pages": [
-                  "fr/index",
                   "fr/quickstart",
                   "fr/setup/discord-application",
                   "fr/setup/project-structure"
