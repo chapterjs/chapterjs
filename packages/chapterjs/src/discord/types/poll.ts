@@ -29,7 +29,7 @@ export interface RawPollCreateRequest {
   /** The question of the poll. Only `text` is supported. */
   question: RawPollMedia;
   /** Each of the answers available in the poll, up to 10 */
-  answers: RawPollAnswer[];
+  answers: RawPollAnswerInput[];
   /** Number of hours the poll should be open for, up to 32 days. Defaults to 24 */
   duration?: number;
   /** Whether a user can select multiple answers. Defaults to false */
@@ -59,6 +59,13 @@ export interface RawPollMedia {
   /** The emoji of the field */
   emoji?: Partial<RawEmoji>;
 }
+
+/**
+ * A poll answer as a request gives it: `answer_id` is only sent as part of
+ * responses from Discord's API/Gateway.
+ * @see https://docs.discord.com/developers/resources/poll#poll-answer-object-poll-answer-object-structure
+ */
+export type RawPollAnswerInput = Omit<RawPollAnswer, 'answer_id'>;
 
 /**
  * Poll Answer Object Structure
