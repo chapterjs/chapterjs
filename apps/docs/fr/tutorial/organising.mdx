@@ -53,18 +53,9 @@ Un fichier de commande devrait se lire comme un résumé : vérifier, faire, ré
 
 ## Stocker des données
 
-Voici le point important de cette page : **rien ne survit à un redémarrage**. La `Map` de `warnings.ts` repart vide à chaque démarrage du bot, et `chapterjs dev` la recharge à chaque enregistrement. Seules les `data` d’un composant survivent, parce qu’elles vivent dans le message sur Discord.
+La `Map` de `warnings.ts` ci-dessus convient pour du code partagé, et pas pour des données : elle repart vide à chaque démarrage du bot, `chapterjs dev` la recharge à chaque enregistrement, et en production chaque processus a la sienne. Ce qui doit être retenu va dans un [store](/fr/tutorial/storage), le chapitre précédent : `export const warnings = store<number>()`, gardé dans `data/`, par serveur, et partagé par tous les processus.
 
-Le framework n’a pas de stockage à lui aujourd’hui. Pour tout ce dont votre bot doit se souvenir (avertissements, scores, réglages par serveur), utilisez ce que Node propose :
-
-- **Un fichier JSON**, lu au démarrage et écrit à chaque changement, avec `node:fs`. Suffisant pour les petits bots, et simple.
-- **Une base de données** faite pour Node (SQLite via un paquet, ou un serveur comme PostgreSQL). Pour un bot avec beaucoup de serveurs ou beaucoup d’écritures.
-
-Quel que soit votre choix, gardez-le dans `src/lib/` derrière quelques fonctions (`getSettings(guildId)`, `saveSettings(...)`), pour que les commandes et les événements ne sachent jamais comment c’est stocké. Passer d’un fichier JSON à une base de données ne change alors qu’un fichier.
-
-<Info>
-  En production, un gros bot tourne sur plusieurs processus, chacun avec sa propre mémoire. Une `Map` dans un processus n’est pas vue par les autres : un bot qui deviendra gros garde ses données hors du processus, dans une base de données, dès le départ.
-</Info>
+Un store est pour ce qui tient en mémoire. Un bot avec des millions de lignes utilise une base de données faite pour Node (SQLite via un paquet, ou un serveur comme PostgreSQL), gardée dans `src/lib/` derrière quelques fonctions (`getSettings(guildId)`, `saveSettings(...)`), pour que les commandes et les événements ne sachent jamais comment c’est stocké.
 
 ## Un délai entre deux utilisations
 
@@ -88,7 +79,7 @@ Quelqu’un qui utilise à nouveau `/daily` trop tôt reçoit une réponse priv�
 
 ## Regrouper les fichiers
 
-L’endroit d’un fichier et son nom ne veulent rien dire pour le framework : une commande est une commande à cause de `command()`, où que soit le fichier. Rangez donc vos fichiers comme vous pensez : un dossier par sorte (`src/commands/`, `src/events/`), comme le fait le modèle, ou un dossier par fonctionnalité (`src/moderation/`, avec ses commandes, ses boutons et ses événements ensemble, dans un fichier ou plusieurs). La [visite](/fr/tutorial/tour#vos-fichiers-votre-ordre) montre les deux.
+L’endroit d’un fichier et son nom ne veulent rien dire pour le framework : une commande est une commande à cause de `command()`, où que soit le fichier. Rangez donc vos fichiers comme vous pensez : un dossier par sorte (`src/commands/`, `src/events/`), ou un dossier par fonctionnalité (`src/moderation/`, avec ses commandes, ses boutons et ses événements ensemble, dans un fichier ou plusieurs), comme le fait le modèle `moderation`. La [visite](/fr/tutorial/tour#vos-fichiers-votre-ordre) montre les deux.
 
 Pour les commandes, préférez des **commandes** (`/ban`, `/kick`) aux **sous-commandes** (`/mod ban`, `/mod kick`), sauf si ce sont des variantes d’une même action (`/timeout add`, `/timeout remove`). Discord cache une commande entière aux personnes qui n’ont pas ses permissions, jamais une seule sous-commande : avec `/mod ban` et `/mod kick`, quelqu’un qui a seulement le droit d’expulser voit quand même `/mod ban`.
 
@@ -101,7 +92,6 @@ ChapterJS est jeune, et certaines choses dont un bot peut avoir envie ne sont pa
 | L’autocomplétion (des suggestions pendant la saisie d’une option) | `choices`, quand les valeurs sont connues à l’avance |
 | Les commandes de menu contextuel (clic droit sur un utilisateur ou un message) | Une commande slash avec une option `user` |
 | Attendre le prochain message ou clic d’une personne | Un bouton ou un menu qui transporte ce qu’il lui faut dans `data` |
-| Le stockage | Le modèle ci-dessus |
 | Les réactions, fils, salons vocaux, bannissements et autres événements | Pas encore listés dans `src/events/` |
 | Tourner sur plusieurs machines | Plusieurs processus sur une machine, tout seul |
 
@@ -110,7 +100,7 @@ La liste complète, tenue à jour, est dans [Ce qui n’est pas encore là](/fr/
 ## Récapitulatif
 
 - Le code partagé va dans `src/lib/` (ou à côté des fichiers qui l’utilisent), importé sans extension, et rechargé avec les fichiers qui l’utilisent.
-- Rien ne survit à un redémarrage sauf les `data` des composants : stockez ce qui compte dans un fichier JSON ou une base de données, derrière quelques fonctions.
+- Une `Map` est pour du code partagé, pas pour des données : ce qui doit être retenu va dans un store, et des millions de lignes dans une base de données derrière quelques fonctions.
 - Un délai entre deux utilisations est un réglage de la commande, `cooldown: '1d'`, gardé en mémoire ; un projet qui grandit range ses fichiers par fonctionnalité, puisque le framework lit ce qu’ils exportent, pas où ils sont.
 
 <CardGroup cols={2}>

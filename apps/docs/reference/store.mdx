@@ -1,0 +1,157 @@
+---
+title: 'store()'
+description: 'Everything store() declares and does: the scope, the expiration, the keys, and each call'
+---
+
+`store()` declares a store, from any file of `src/`, and the name of its export is the name of the store. It takes an object, `StoreConfig`, or nothing.
+
+```ts src/warnings.ts
+import { store } from 'chapterjs';
+
+export const warnings = store<string[]>({ expires: '30d' });
+```
+
+<Note>
+  How to use a store, where its data is and how expiration works is in the [guide](/storage). This page lists what exists.
+</Note>
+
+## store()
+
+```ts
+store<T>(config?: StoreConfig): Store<T>
+```
+
+Declares a store: data the bot keeps from one restart to the next, typed by what it holds. Export the result from any file of `src/`: the name of the export is the name of the store, and its file in `data/`. Per server unless `scope: 'global'` is given, with an expiration if `expires` is.
+
+## StoreConfig
+
+What a file gives to `store()`.
+
+<ResponseField name="scope" type="StoreScope">
+  `'guild'` (the default): the data is kept per server, and a function that runs in a server reads and writes the data of that server, with nothing to say. `'global'`: one set of data for the whole bot.
+</ResponseField>
+
+<ResponseField name="expires" type="Duration">
+  How long a value is kept, unless `set()` says otherwise: a number and a unit, `s`, `m`, `h` or `d`, like `'10m'`, `'1d'` or `'1h30m'`. Kept forever by default.
+</ResponseField>
+
+### StoreScope
+
+```ts
+type StoreScope = 'guild' | 'global';
+```
+
+Where the data of a store is kept apart: per server, or one for the whole bot.
+
+## Store
+
+What `store()` returns: a declaration the framework finds in the exports of a file. It is a `ScopedStore` for the server the code runs in, plus:
+
+### in()
+
+```ts
+in(guild: Guild | string): ScopedStore<T>
+```
+
+The same store, for one server: what a task, or a function that runs outside a server, uses to read and write the data of that server.
+
+## ScopedStore
+
+A store, read and written for one server or for the whole bot.
+
+### get()
+
+```ts
+get(key: StoreKey): Promise<T | undefined>
+```
+
+The value at `key`, or `undefined` when there is none, or it expired.
+
+### set()
+
+```ts
+set(key: StoreKey, value: T, options?: StoreSetOptions): Promise<void>
+```
+
+Keeps `value` at `key`. The value must be JSON: no `Date`, `Map` or class instance.
+
+### update()
+
+```ts
+update(key: StoreKey, change: (current: T | undefined) => T, options?: StoreSetOptions): Promise<T>
+```
+
+Reads the value at `key` and keeps what `change` returns, in one go. `change` receives `undefined` when there is no value yet. The expiration stays what it was, unless `options` say otherwise.
+
+### delete()
+
+```ts
+delete(key: StoreKey): Promise<boolean>
+```
+
+Forgets the value at `key`. `true` when there was one.
+
+### entries()
+
+```ts
+entries(prefix?: StoreKey): Promise<StoreEntry<T>[]>
+```
+
+Every entry, or the ones whose key starts with `prefix`, in no particular order. Expired ones are left out.
+
+### ttl()
+
+```ts
+ttl(key: StoreKey): Promise<number | null | undefined>
+```
+
+How long the value at `key` is still kept, in milliseconds: `null` when it is kept forever, `undefined` when there is no value.
+
+## StoreKey
+
+```ts
+type StoreKey = string | readonly string[];
+```
+
+A key of a store: a text, or a list of texts for a key made of several parts (`[channel.id, message.id]`), which `entries()` can then list by prefix.
+
+## StoreSetOptions
+
+What `set()` and `update()` take besides the value.
+
+<ResponseField name="expires" type="Duration | Date | null">
+  How long the value is kept: a duration like `'10m'`, a `Date`, or `null` to keep it forever. The `expires` of the store by default.
+</ResponseField>
+
+## StoreEntry
+
+One entry of a store, as `entries()` lists them.
+
+<ResponseField name="key" type="readonly string[]" required>
+  The key, every part of it (the server left out for a store per server).
+</ResponseField>
+
+<ResponseField name="value" type="T" required>
+  The value.
+</ResponseField>
+
+<ResponseField name="expires" type="Date | null" required>
+  When the value expires, or `null` when it is kept forever.
+</ResponseField>
+
+## Where the data lives
+
+One file per store, `data/<name>.json` at the root of the project: `{ "version": 1, "entries": [[key, value, expiresAt], ...] }`, with `expiresAt` in milliseconds since the epoch or `null`. Written shortly after a change, in one piece (a temporary file, then a rename), and when the bot stops. Expired entries are dropped when the file is read, when they are asked for, and every minute.
+
+In production on several processes, the process you started keeps the data and answers the others over IPC.
+
+## Errors
+
+| When | Message |
+| --- | --- |
+| A store per server is used where no server is known | `<name> is a store per server, and this code does not run in one: use <name>.in(guild) to say which server, or declare the store with scope: 'global'.` |
+| A store that is not exported is used | `This store was not loaded by ChapterJS: a store is exported from a file of src/ (export const name = store()), and used once the bot started.` |
+| A value is not JSON | `the value.list[0].at is a Date, which JSON can't hold: a store keeps JSON (texts, numbers, booleans, lists and plain objects). Keep what you need of it: an id, a text, a number.` |
+| A key is empty, or not made of texts | `A key of a store is a text, or a list of texts with at least one.` |
+| Two stores have one name | `✗ src/b.ts (hits) There is already a store named hits, in src/a.ts: the name of the export is the name of the store, so rename one of them.` |
+| A file of `data/` was changed by hand | `data/hits.json is not a file ChapterJS wrote: fix it, or delete it to start the store empty.` |

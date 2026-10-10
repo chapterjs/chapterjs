@@ -1,0 +1,157 @@
+---
+title: 'store()'
+description: 'Tout ce que store() déclare et fait : la portée, l’expiration, les clés, et chaque appel'
+---
+
+`store()` déclare un store, depuis n’importe quel fichier de `src/`, et le nom de son export est le nom du store. Il prend un objet, `StoreConfig`, ou rien.
+
+```ts src/warnings.ts
+import { store } from 'chapterjs';
+
+export const warnings = store<string[]>({ expires: '30d' });
+```
+
+<Note>
+  Comment utiliser un store, où sont ses données et comment marche l’expiration est dans le [guide](/fr/storage). Cette page liste ce qui existe.
+</Note>
+
+## store()
+
+```ts
+store<T>(config?: StoreConfig): Store<T>
+```
+
+Déclare un store : des données que le bot garde d’un redémarrage à l’autre, typées par ce qu’il contient. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est le nom du store, et de son fichier dans `data/`. Par serveur sauf si `scope: 'global'` est donné, avec une expiration si `expires` l’est.
+
+## StoreConfig
+
+Ce qu’un fichier donne à `store()`.
+
+<ResponseField name="scope" type="StoreScope">
+  `'guild'` (le défaut) : les données sont gardées par serveur, et une fonction qui tourne dans un serveur lit et écrit les données de ce serveur, sans rien dire. `'global'` : un seul jeu de données pour tout le bot.
+</ResponseField>
+
+<ResponseField name="expires" type="Duration">
+  Combien de temps une valeur est gardée, sauf si `set()` dit autrement : un nombre et une unité, `s`, `m`, `h` ou `d`, comme `'10m'`, `'1d'` ou `'1h30m'`. Gardée pour toujours par défaut.
+</ResponseField>
+
+### StoreScope
+
+```ts
+type StoreScope = 'guild' | 'global';
+```
+
+Où les données d’un store sont gardées à part : par serveur, ou une seule fois pour tout le bot.
+
+## Store
+
+Ce que renvoie `store()` : une déclaration que le framework trouve dans les exports d’un fichier. C’est un `ScopedStore` pour le serveur où le code tourne, plus :
+
+### in()
+
+```ts
+in(guild: Guild | string): ScopedStore<T>
+```
+
+Le même store, pour un serveur : ce qu’une tâche, ou une fonction qui tourne hors d’un serveur, utilise pour lire et écrire les données de ce serveur.
+
+## ScopedStore
+
+Un store, lu et écrit pour un serveur ou pour tout le bot.
+
+### get()
+
+```ts
+get(key: StoreKey): Promise<T | undefined>
+```
+
+La valeur à `key`, ou `undefined` quand il n’y en a pas, ou qu’elle a expiré.
+
+### set()
+
+```ts
+set(key: StoreKey, value: T, options?: StoreSetOptions): Promise<void>
+```
+
+Garde `value` à `key`. La valeur doit être du JSON : pas de `Date`, de `Map` ni d’instance de classe.
+
+### update()
+
+```ts
+update(key: StoreKey, change: (current: T | undefined) => T, options?: StoreSetOptions): Promise<T>
+```
+
+Lit la valeur à `key` et garde ce que renvoie `change`, d’un trait. `change` reçoit `undefined` quand il n’y a pas encore de valeur. L’expiration reste ce qu’elle était, sauf si `options` dit autrement.
+
+### delete()
+
+```ts
+delete(key: StoreKey): Promise<boolean>
+```
+
+Oublie la valeur à `key`. `true` quand il y en avait une.
+
+### entries()
+
+```ts
+entries(prefix?: StoreKey): Promise<StoreEntry<T>[]>
+```
+
+Chaque entrée, ou celles dont la clé commence par `prefix`, sans ordre particulier. Les expirées sont laissées de côté.
+
+### ttl()
+
+```ts
+ttl(key: StoreKey): Promise<number | null | undefined>
+```
+
+Combien de temps la valeur à `key` est encore gardée, en millisecondes : `null` quand elle est gardée pour toujours, `undefined` quand il n’y a pas de valeur.
+
+## StoreKey
+
+```ts
+type StoreKey = string | readonly string[];
+```
+
+Une clé d’un store : un texte, ou une liste de textes pour une clé en plusieurs parties (`[channel.id, message.id]`), qu’`entries()` peut ensuite lister par préfixe.
+
+## StoreSetOptions
+
+Ce que `set()` et `update()` prennent en plus de la valeur.
+
+<ResponseField name="expires" type="Duration | Date | null">
+  Combien de temps la valeur est gardée : une durée comme `'10m'`, une `Date`, ou `null` pour la garder pour toujours. L’`expires` du store par défaut.
+</ResponseField>
+
+## StoreEntry
+
+Une entrée d’un store, comme `entries()` les liste.
+
+<ResponseField name="key" type="readonly string[]" required>
+  La clé, chacune de ses parties (le serveur laissé de côté pour un store par serveur).
+</ResponseField>
+
+<ResponseField name="value" type="T" required>
+  La valeur.
+</ResponseField>
+
+<ResponseField name="expires" type="Date | null" required>
+  Quand la valeur expire, ou `null` quand elle est gardée pour toujours.
+</ResponseField>
+
+## Où vivent les données
+
+Un fichier par store, `data/<nom>.json` à la racine du projet : `{ "version": 1, "entries": [[key, value, expiresAt], ...] }`, avec `expiresAt` en millisecondes depuis l’epoch ou `null`. Écrit peu après un changement, d’un seul bloc (un fichier temporaire, puis un renommage), et quand le bot s’arrête. Les entrées expirées sont retirées quand le fichier est lu, quand on les demande, et chaque minute.
+
+En production sur plusieurs processus, le processus que vous avez lancé garde les données et répond aux autres par IPC.
+
+## Erreurs
+
+| Quand | Message |
+| --- | --- |
+| Un store par serveur est utilisé là où aucun serveur n’est connu | `<name> is a store per server, and this code does not run in one: use <name>.in(guild) to say which server, or declare the store with scope: 'global'.` |
+| Un store qui n’est pas exporté est utilisé | `This store was not loaded by ChapterJS: a store is exported from a file of src/ (export const name = store()), and used once the bot started.` |
+| Une valeur n’est pas du JSON | `the value.list[0].at is a Date, which JSON can't hold: a store keeps JSON (texts, numbers, booleans, lists and plain objects). Keep what you need of it: an id, a text, a number.` |
+| Une clé est vide, ou pas faite de textes | `A key of a store is a text, or a list of texts with at least one.` |
+| Deux stores ont le même nom | `✗ src/b.ts (hits) There is already a store named hits, in src/a.ts: the name of the export is the name of the store, so rename one of them.` |
+| Un fichier de `data/` a été modifié à la main | `data/hits.json is not a file ChapterJS wrote: fix it, or delete it to start the store empty.` |

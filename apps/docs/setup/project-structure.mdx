@@ -3,36 +3,16 @@ title: 'Project structure'
 description: 'What each folder and file of your project is for, and how the framework finds what your files declare'
 ---
 
-A project made with `create chapter` looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
+A project made with `create chapter`, from the `default` template, looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
 
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
     <Tree.Folder name=".chapterjs" />
-    <Tree.Folder name="public" defaultOpen>
-      <Tree.File name="hello.ogg" highlight />
-    </Tree.Folder>
+    <Tree.Folder name="public" />
     <Tree.Folder name="src" defaultOpen>
-      <Tree.Folder name="(moderation)" defaultOpen>
-        <Tree.File name="ban.ts" highlight />
-        <Tree.File name="checks.ts" />
-        <Tree.File name="kick.ts" highlight />
-        <Tree.File name="messages.ts" highlight />
-        <Tree.File name="warn.ts" highlight />
-      </Tree.Folder>
-      <Tree.Folder name="commands" defaultOpen>
-        <Tree.File name="hello.ts" highlight />
-        <Tree.File name="ping.ts" highlight />
-        <Tree.File name="play.ts" highlight />
-      </Tree.Folder>
       <Tree.Folder name="events" defaultOpen>
         <Tree.File name="ready.ts" highlight />
-        <Tree.File name="wave.ts" highlight />
       </Tree.Folder>
-      <Tree.Folder name="messages" defaultOpen>
-        <Tree.File name="en-US.ts" highlight />
-        <Tree.File name="fr.ts" highlight />
-      </Tree.Folder>
-      <Tree.File name="presence.ts" highlight />
     </Tree.Folder>
     <Tree.File name=".env" />
     <Tree.File name=".env.example" />
@@ -41,6 +21,20 @@ A project made with `create chapter` looks like this. Everything your bot does l
     <Tree.File name="tsconfig.json" />
   </Tree.Folder>
 </Tree>
+
+## Templates
+
+`create chapter` offers five templates. `default` is preselected: one file, and the rest of this site to grow it. The others are complete bots: read them once you know the framework, or start from one.
+
+| Template     | What it is                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `default`    | One event, `ready`, which prints a line when the bot is online. Nothing else.                                                                                     |
+| `tickets`    | Support tickets in private threads: `/ticket panel` posts a button, which opens a form, which opens a thread with a close button for the staff or the person.    |
+| `music`      | A music player in voice: `/play` with a file or a link, a queue per server, `/queue`, `/leave`, and pause, skip and stop buttons under "Now playing".            |
+| `community`  | A welcome card when someone joins, a goodbye when they leave, `/roles` to pick roles from a menu, and a weekly task posting the numbers of the server.           |
+| `moderation` | `/timeout` and `/untimeout`, `/purge`, `/slowmode`, `/lock` and `/unlock`, with the permissions each one needs, and a log of every moderation action in `#mod-log`. |
+
+Every template but `default` has its texts in two languages (`en-US` and `fr`) and a presence. `community` needs the Server Members Intent, to know who joins: `chapterjs dev` says where to enable it.
 
 ## `src/`: what a file exports says what it is
 
@@ -55,9 +49,9 @@ ChapterJS never asks you to register anything. It loads every file of `src/`, wh
 | `presence({ ... })`                               | What the bot shows under its name: its status and what it is doing, declared once                                                                  |
 | `language({ locale, ... })`                       | One language of the bot: `locale` says which one; every function then receives `t`                                                                 |
 
-All are imported from the same place, and a file may declare as many as you like. The template does both: a folder per kind (`src/commands/`, `src/events/`), and `src/(moderation)/`, where everything about moderation lives together, commands, button, event, texts and shared code. `ban.ts` is the shape of it:
+All are imported from the same place, and a file may declare as many as you like. The templates do both: `default` keeps a folder per kind (`src/events/`), `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons and their texts. A file that declares several things looks like this:
 
-```ts src/(moderation)/ban.ts
+```ts src/moderation/ban.ts
 import { button, command, event } from 'chapterjs';
 
 export default command({
@@ -149,7 +143,7 @@ Packages from `node_modules` are imported as usual. Every file of `src/` is watc
 
 ## `public/`: the files your bot sends
 
-Pictures, documents, sounds: put them in `public/`, in any folders you like, and send one with `asset('photos/monday.png')` in the `files` of a message. Your editor lists the files of the folder as you type, and `chapterjs dev` keeps that list up to date while you add files. A file is read when the message is sent. See [Files](/messages#files). A sound of `public/` is played in a voice channel the same way, with `voice.play(asset('hello.ogg'))`: the `/hello` command of the template does it, see [Playing in voice](/voice).
+Pictures, documents, sounds: put them in `public/`, in any folders you like, and send one with `asset('photos/monday.png')` in the `files` of a message. Your editor lists the files of the folder as you type, and `chapterjs dev` keeps that list up to date while you add files. A file is read when the message is sent. See [Files](/messages#files). A sound of `public/` is played in a voice channel the same way, with `voice.play(asset('intro.ogg'))`: see [Playing in voice](/voice).
 
 ## `.chapterjs/`: generated, ignored, safe to delete
 
@@ -191,7 +185,7 @@ The scripts of your project run the [CLI](/reference/cli):
 | `typecheck`   | `tsc -b`          | To check the types of the whole project from a terminal |
 | `postinstall` | `chapterjs sync`  | By itself, after each install                           |
 
-`chapterjs` is the only dependency of your bot. TypeScript and `@types/node` are development dependencies: they check your code, and are not needed to run it.
+`chapterjs` is the only dependency of your bot, at the exact version `create chapter` had (`"chapterjs": "0.2.3"`, no `^`): your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs). TypeScript and `@types/node` are development dependencies: they check your code, and are not needed to run it.
 
 ## `tsconfig.json`
 

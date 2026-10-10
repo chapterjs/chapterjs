@@ -3,7 +3,7 @@ title: 'Translated messages'
 description: 'Answer each person in their language, with one language() declaration per language'
 ---
 
-The texts your bot answers with are declared with `language()`, one declaration per language, in the files you like (the template keeps them in `src/messages/`). Every function of your project then receives `t`, which gives a text in the right language.
+The texts your bot answers with are declared with `language()`, one declaration per language, in the files you like (the templates keep them in a `messages.ts` next to what they translate). Every function of your project then receives `t`, which gives a text in the right language.
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';

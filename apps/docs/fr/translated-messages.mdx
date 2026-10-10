@@ -3,7 +3,7 @@ title: 'Messages traduits'
 description: 'Répondre à chaque personne dans sa langue, avec une déclaration language() par langue'
 ---
 
-Les textes avec lesquels votre bot répond se déclarent avec `language()`, une déclaration par langue, dans les fichiers que vous voulez (le modèle les garde dans `src/messages/`). Chaque fonction de votre projet reçoit alors `t`, qui donne un texte dans la bonne langue.
+Les textes avec lesquels votre bot répond se déclarent avec `language()`, une déclaration par langue, dans les fichiers que vous voulez (les modèles les gardent dans un `messages.ts` à côté de ce qu’ils traduisent). Chaque fonction de votre projet reçoit alors `t`, qui donne un texte dans la bonne langue.
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';

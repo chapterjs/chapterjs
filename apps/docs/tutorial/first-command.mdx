@@ -3,7 +3,7 @@ title: 'Your first command'
 description: 'Write /dice from scratch, understand each line, and see what the framework and the editor check for you'
 ---
 
-The template gave you `/ping`. Now write a command of your own, `/dice`, which rolls a die. It is four lines of logic, and it is a chance to understand each part of a command file: what it declares, what `run` receives, and what happens when something is wrong.
+You wrote `/ping` in the tour. Now write a command of your own, `/dice`, which rolls a die. It is four lines of logic, and it is a chance to understand each part of a command file: what it declares, what `run` receives, and what happens when something is wrong.
 
 ## The file
 
@@ -37,7 +37,7 @@ Type `/dice` in your test server. It is there, with its description under its na
 
 **`export default`.** The file hands its command to the framework by exporting it. The framework loads every file of `src/` and keeps what they export made with `command()`, `event()`, `button()`...: a default export, or a named one (`export const dice = command(...)`), it does not matter. What is exported and is none of these is simply yours.
 
-**`description`.** The text Discord shows under the name in the `/` menu, 1 to 100 characters. Besides `run`, it is the only thing a command needs. (The `/ping` of the template has none in its file because the language files give it; that is a later chapter.)
+**`description`.** The text Discord shows under the name in the `/` menu, 1 to 100 characters. Besides `run`, it is the only thing a command needs. (A later chapter moves it to the language files.)
 
 **`async run({ interaction, user })`.** The function that runs when someone uses the command. It receives one object, and you take out of it what you need: here `interaction`, the use of the command, and `user`, the person who used it. The next pages go through everything else that object holds.
 

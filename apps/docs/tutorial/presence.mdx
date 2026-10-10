@@ -3,7 +3,7 @@ title: 'Presence'
 description: 'Choose the status of your bot and what it shows under its name, with one file'
 ---
 
-In the member list, a bot has a colored dot and sometimes a line under its name: "Playing with ChapterJS", in the template. That is its **presence**. It is one file, `src/presence.ts`, and this page is short because the file is.
+In the member list, a bot has a colored dot and sometimes a line under its name: "Watching over the server", say. That is its **presence**. It is one file, `src/presence.ts`, which you create now, and this page is short because the file is.
 
 ## The file
 
@@ -16,7 +16,7 @@ export default presence({
 });
 ```
 
-Save it with the bot running:
+Save it with the bot running, then change the `name` and save again:
 
 ```text
 ↻ Presence updated
@@ -59,7 +59,7 @@ A common use is a hint: `{ type: 'playing', name: '/help' }` tells people where 
 
 ## Recap
 
-- `presence({ status, activity })` is declared once, in `src/presence.ts` in the template; saving it applies at once.
+- `presence({ status, activity })` is declared once, in `src/presence.ts`; saving it applies at once.
 - `status` is the dot; `activity` is the line under the name, with a `type` and a `name`.
 - One presence for the whole bot, in every server.
 

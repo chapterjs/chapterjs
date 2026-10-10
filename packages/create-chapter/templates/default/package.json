@@ -1,6 +1,6 @@
 {
   "name": "chapter-bot",
-  "description": "A minimal bot, ready to grow",
+  "description": "A bot that starts: one event, ready to grow",
   "private": true,
   "type": "module",
   "scripts": {

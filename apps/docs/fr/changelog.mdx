@@ -25,6 +25,16 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
+<Update label="0.2.3" description="Stockage, cinq modèles, et un nouveau projet à la version de create chapter, exactement">
+
+Votre bot peut garder ce qu’il apprend : `export const warnings = store<Warning[]>({ expires: '30d' })` déclare un [store](/fr/storage), par serveur sauf `scope: 'global'`, typé par ce qu’il contient, avec une expiration si vous en voulez une. Dans une commande ou un événement, la clé est à vous et le serveur est connu ; ailleurs, `warnings.in(guild)`. Un fichier JSON par store dans `data/`, écrit pour vous, et partagé par chaque processus d’un gros bot.
+
+`create chapter` propose maintenant cinq [modèles](/fr/setup/project-structure#modèles). `default` est un fichier, l’événement `ready`, et le tutoriel part de lui. Les autres sont des bots complets : `tickets` (des tickets de support dans des fils privés), `music` (un lecteur avec une file d’attente et des boutons), `community` (cartes de bienvenue, rôles à choisir, chiffres hebdomadaires) et `moderation` (exclusions temporaires, purge, mode lent, verrouillage, et un journal de chaque action). Les exemples `/ping`, `/hello`, `/play` et de modération de l’ancien modèle ont disparu : ce qu’ils montraient est dans les nouveaux et dans le guide.
+
+`create chapter` écrit aussi la version exacte de `chapterjs` dans votre `package.json` (`"0.2.3"`, sans `^`) : `pnpm create chapter@0.2.3` donne un projet en `chapterjs@0.2.3`, et votre projet ne change de version que quand vous lancez la commande que [`chapterjs dev` vous donne](/fr/run/dev#une-nouvelle-version-de-chapterjs).
+
+</Update>
+
 <Update label="0.2.2" description="Un template par défaut plus léger">
 
 Le projet créé par `create chapter` n’embarque plus l’exemple de modération (`/ban`, `/kick`, `/warn`) : il garde `/ping`, `/hello`, `/play`, les deux événements, la présence et les deux langues.

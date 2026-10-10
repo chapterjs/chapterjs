@@ -1,5 +1,6 @@
 // Delivers gateway events to the handlers of the project.
 
+import { withGuild } from '../store/scope.js';
 import { DEFAULT_CACHE_LIMITS, type CacheLimits } from '../cache/cache.js';
 import { GatewayIntent } from '../discord/intents.js';
 import type {
@@ -148,10 +149,14 @@ export class EventRouter {
         for (const context of occurrences) {
           // `t` speaks the language of the server the event happened in.
           const guild = guildOf?.(context);
-          this.emit(source.name, {
-            ...context,
-            ...translation(ctx, audienceLocale({ guild })),
-          } as never);
+          this.emit(
+            source.name,
+            {
+              ...context,
+              ...translation(ctx, audienceLocale({ guild })),
+            } as never,
+            guild?.id ?? null
+          );
         }
       };
       const preparing = source.prepare?.(ctx, data as never);
@@ -162,8 +167,15 @@ export class EventRouter {
     });
   }
 
-  /** Runs the handlers of an event with what they receive. */
-  emit<Name extends EventName>(name: Name, context: EventContexts[Name]): void {
+  /**
+   * Runs the handlers of an event with what they receive, for the server
+   * it happened in (what a store per server reads).
+   */
+  emit<Name extends EventName>(
+    name: Name,
+    context: EventContexts[Name],
+    guildId: string | null = null
+  ): void {
     const handlers = this.#handlers.get(name);
     if (!handlers) return;
     // Handlers can't change what the others receive.
@@ -174,7 +186,11 @@ export class EventRouter {
       if (accepts && !accepts(frozen, event.options)) continue;
       // One handler failing never stops the others, nor the bot.
       new Promise(resolve =>
-        resolve((event.handler as (context: object) => unknown)(frozen))
+        resolve(
+          withGuild(guildId, () =>
+            (event.handler as (context: object) => unknown)(frozen)
+          )
+        )
       ).catch((error: unknown) => this.#onError(file, error));
     }
   }

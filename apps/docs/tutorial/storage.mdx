@@ -1,0 +1,133 @@
+---
+title: 'Storage'
+description: 'Give your bot a memory that survives a restart: a store per server, with an expiration when you want one'
+---
+
+Everything your bot knows so far, it knows from Discord: who used a command, what a message says. Stop it, start it again, and nothing of what happened is left. A `/warn` command that counts warnings needs to **remember**. That is a **store**: a file of data the framework keeps for you, per server, typed by what you put in it.
+
+## The file
+
+Create `src/moderation/warn.ts`:
+
+```ts src/moderation/warn.ts
+import { command, store } from 'chapterjs';
+
+interface Warning {
+  reason: string;
+  by: string;
+  at: number;
+}
+
+export const warnings = store<Warning[]>({ expires: '30d' });
+
+export default command({
+  name: 'warn',
+  description: 'Warns a member',
+  permissions: ['ModerateMembers'],
+  options: {
+    who: { type: 'user', description: 'Who', required: true },
+    reason: { type: 'string', description: 'Why', required: true },
+  },
+  async run({ interaction, options, user }) {
+    const list = await warnings.update(options.who.id, (list = []) => [
+      ...list,
+      { reason: options.reason, by: user.id, at: Date.now() },
+    ]);
+    await interaction.reply(
+      `${options.who} now has ${list.length} warning(s). Latest: ${options.reason}`
+    );
+  },
+});
+```
+
+Use `/warn` twice on someone, stop the bot, start it again, use it once more: three warnings. Open `data/warnings.json` at the root of your project: they are there, written for you.
+
+Line by line:
+
+- **`store<Warning[]>()`** declares the store, and the type between `<>` is what each value is: a list of warnings. Your editor then knows that `update()` gives you a `Warning[] | undefined` and wants one back.
+- **`export const warnings`** names it. Like a button, a store is named by its export: that name is the file in `data/`. Nothing to register, no path to write.
+- **`{ expires: '30d' }`** forgets a value thirty days after it was written. Without it, values are kept forever.
+- **`warnings.update(key, change)`** reads the value at `key`, gives it to `change` (or `undefined` the first time: hence `list = []`), and keeps what `change` returns. One call, whatever happens in between.
+
+Notice what is _not_ there: the server. `options.who.id` is the whole key.
+
+## Per server, without saying so
+
+Discord bots live in many servers, and a warning in one of them has nothing to do with the others. So a store is per server: when a function runs in a server (a command, a button, a form, an event with a `guild`), the framework knows which one, and the store works on the data of that server. The same line, `warnings.get(member.id)`, reads two different things in two servers.
+
+When no server is known, you say which one. A task runs for the whole bot, so it goes through `in()`:
+
+```ts src/moderation/digest.ts
+import { task } from 'chapterjs';
+import { warnings } from './warn';
+
+export default task({
+  cron: '0 9 * * 1',
+  async run({ guilds }) {
+    for (const guild of guilds.values()) {
+      const entries = await warnings.in(guild).entries();
+      const total = entries.reduce((sum, entry) => sum + entry.value.length, 0);
+      console.log(`${guild.name}: ${total} warning(s) on ${entries.length} member(s)`);
+    }
+  },
+});
+```
+
+Forget `in()` in a task, and the bot tells you, with the line, instead of mixing the data of every server. And for something that is the same everywhere, a store takes `scope: 'global'`: it then never asks for a server.
+
+## What a store does
+
+`get`, `set`, `update`, `delete`, `entries`, `ttl`: six calls, every one of them returning a promise, so write `await`. A key is a text, or several (`[channel.id, message.id]`), and `entries()` can list by the first ones. A value is JSON: texts, numbers, booleans, lists, plain objects. A `Date` would come back as a text, so the store refuses it and tells you to keep `Date.now()` instead, which is what the file above does.
+
+Add `/warnings` next to `/warn`, to read what was kept:
+
+```ts src/moderation/warnings.ts
+import { command, timestamp } from 'chapterjs';
+import { warnings } from './warn';
+
+export default command({
+  name: 'warnings',
+  description: 'Lists the warnings of a member',
+  permissions: ['ModerateMembers'],
+  options: {
+    who: { type: 'user', description: 'Who', required: true },
+  },
+  async run({ interaction, options }) {
+    const list = (await warnings.get(options.who.id)) ?? [];
+    if (list.length === 0) {
+      await interaction.reply({ content: `${options.who} has no warning.`, ephemeral: true });
+      return;
+    }
+    await interaction.reply({
+      content: list
+        .map(warning => `${timestamp(warning.at, 'R')} by <@${warning.by}>: ${warning.reason}`)
+        .join('\n'),
+      ephemeral: true,
+    });
+  },
+});
+```
+
+## Points of attention
+
+- **A store is for what fits in memory.** The bot keeps the data in memory and the file is its copy. Settings, scores, warnings, who opened what: yes. Millions of rows: a database.
+- **`data/` is yours.** It is in `.gitignore`, like `.env`. Back it up with the rest of your data, and know that `chapterjs dev` and `chapterjs start` run in the same folder share it.
+- **Two stores can't have one name.** They would share a file: the second one is reported when the files load, and left out.
+- **Saving a file keeps the data.** A store is tied to its name: change the code, the data stays. Delete `data/<name>.json` to start empty.
+- **On several processes**, the process you started keeps the data for the others: nothing to set up, and nothing to think about.
+
+## Recap
+
+- `export const name = store<T>({ scope?, expires? })`: per server by default, forever by default.
+- In a server, the key is yours; elsewhere, `name.in(guild)`.
+- `update()` is read, change and keep in one go; `entries()` lists; `expires` on the store or on one value.
+- One JSON file per store in `data/`, written for you.
+
+<CardGroup cols={2}>
+  <Card title="Organising your files" icon="folder-tree" href="/tutorial/organising">
+    Where things go as the bot grows.
+  </Card>
+  <Card title="Guide: Storage" icon="book-open" href="/storage">
+    The same, in short.
+  </Card>
+</CardGroup>

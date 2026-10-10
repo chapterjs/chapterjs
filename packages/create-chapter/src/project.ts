@@ -51,7 +51,7 @@ export function toPackageName(dir: string): string {
 export interface CreateOptions {
   dir: string;
   template: string;
-  /** The `chapterjs` version range the project depends on. */
+  /** The `chapterjs` version the project depends on, written as is. */
   chapterjsVersion: string;
   /** The package manager the project will be installed with. */
   packageManager?: PackageManager;

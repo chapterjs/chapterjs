@@ -306,6 +306,7 @@ export async function dev(options: DevOptions): Promise<number> {
     assets.close();
     memory.stop();
     await bot?.close();
+    await project.closeStores();
     if (code === 0) log.success('Disconnected');
     return code;
   } catch (error) {
@@ -314,6 +315,7 @@ export async function dev(options: DevOptions): Promise<number> {
     assets.close();
     memory.stop();
     await bot?.close();
+    await project.closeStores();
     if (signal.aborted) return 0;
     explain(error, log);
     return 1;

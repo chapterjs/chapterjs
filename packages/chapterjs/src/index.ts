@@ -257,6 +257,16 @@ export type {
   PresenceStatusName,
   StreamingActivity,
 } from './presence/presence.js';
+export { store } from './store/store.js';
+export type {
+  ScopedStore,
+  Store,
+  StoreConfig,
+  StoreEntry,
+  StoreKey,
+  StoreScope,
+  StoreSetOptions,
+} from './store/store.js';
 export { task } from './tasks/task.js';
 export type {
   CronTaskConfig,

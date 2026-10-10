@@ -3,11 +3,11 @@ title: 'Les messages traduits'
 description: 'Répondre à chaque personne dans sa langue avec une déclaration par langue, comprendre quelle langue parle un message, et traduire ce que le bot dit de lui-même'
 ---
 
-Le modèle a deux fichiers dans `src/messages/`, `en-US.ts` et `fr.ts`, et `/ping` répond avec `t('pong')` au lieu d’un texte. Cette page explique ce mécanisme, qui permet à un bot de parler plusieurs langues sans un `if` sur la langue dans chaque fichier.
+Un bot qui parle plusieurs langues ne met pas un `if` sur la langue dans chaque fichier : il déclare ses textes une fois par langue, et chaque fonction reçoit `t`, qui choisit le bon. Cette page donne deux langues à votre bot, et fait répondre `/ping` avec `t('pong')`.
 
 ## Une déclaration par langue
 
-Un fichier de langue porte le nom de la langue, et contient les textes du bot par clé :
+Une langue se déclare avec `language()` : `locale` dit laquelle, `texts` contient les textes du bot par clé. Créez un fichier par langue dans `src/messages/` :
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';
@@ -168,14 +168,14 @@ export default language({
 });
 ```
 
-La langue par défaut donne la description que tout le monde voit ; les autres langues donnent leurs traductions (`name` aussi, quand la commande doit avoir un autre nom dans cette langue). Une commande a ses textes à un seul endroit : avec `description` dans son fichier, un fichier de langue qui la mentionne est une erreur ; sans elle, le fichier ne doit pas avoir de `locales`. C’est pour cela que le `/ping` du modèle n’a pas de description dans son fichier : elle est dans `en-US.ts` et `fr.ts`.
+La langue par défaut donne la description que tout le monde voit ; les autres langues donnent leurs traductions (`name` aussi, quand la commande doit avoir un autre nom dans cette langue). Une commande a ses textes à un seul endroit : avec `description` dans son fichier, un fichier de langue qui la mentionne est une erreur ; sans elle, le fichier ne doit pas avoir de `locales`. Déplacez-y aussi la description de `/ping`, et retirez-la de son fichier : les modèles `tickets`, `music`, `community` et `moderation` le font pour chaque commande.
 
 ## Points d’attention
 
 - **Les clés sont typées d’après le fichier par défaut.** Ajoutez un texte là d’abord, puis dans les autres ; l’éditeur et le chargeur le vérifient tous les deux.
 - **Les accolades écrites telles quelles sont doublées** : `'{{name}}'` affiche `{name}`.
 - **La langue d’un serveur est `en-US` sauf si c’est un serveur Communauté.** Ne soyez pas surpris qu’un message public sur un serveur français sorte dans la langue par défaut.
-- **Sans langue, il n’y a pas de `t`** : il n’existe ni dans les types ni à l’exécution. Supprimez les deux fichiers de langue du modèle si votre bot parle une seule langue et que vous préférez des textes simples.
+- **Sans langue, il n’y a pas de `t`** : il n’existe ni dans les types ni à l’exécution. Passez-vous des fichiers de langue si votre bot parle une seule langue et que vous préférez des textes simples.
 
 ## Récapitulatif
 

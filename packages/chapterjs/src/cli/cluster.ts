@@ -10,6 +10,12 @@
 // `IdentifyGate`, and nothing else here would change.
 // https://docs.discord.com/developers/events/gateway#sharding
 
+import type { StoreBackend } from '../store/backend.js';
+import {
+  serveStores,
+  type StoreReply,
+  type StoreRequest,
+} from '../store/ipc-backend.js';
 import { fork, type ChildProcess } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { createInterface } from 'node:readline';
@@ -39,8 +45,10 @@ export const ASSIGNMENT_VARIABLE = 'CHAPTERJS_PROCESS';
 type FromWorker =
   | { type: 'identify'; shard: number; id: number }
   | { type: 'ready'; guilds: number; user: string }
-  | { type: 'refused' };
-type ToWorker = { type: 'identify'; id: number } | { type: 'stop' };
+  | { type: 'refused' }
+  | StoreRequest;
+type ToWorker =
+  { type: 'identify'; id: number } | { type: 'stop' } | StoreReply;
 
 /**
  * How many processes run a bot of `shards` shards: what was asked, or one
@@ -132,6 +140,8 @@ export interface ClusterOptions {
   signal: AbortSignal;
   /** Shows a line printed by one of the processes. */
   write: (line: string) => void;
+  /** Where the data of the stores is: this process keeps it for the others. */
+  stores: StoreBackend;
   /** Every process is connected, for the first time. */
   onReady: (info: { guilds: number; user: string }) => void;
   /** A process stopped by itself and is started again. */
@@ -200,8 +210,10 @@ export async function runCluster(options: ClusterOptions): Promise<number> {
         options.write(`[${index + 1}] ${line}`)
       );
     }
+    const stores = serveStores(options.stores, reply => tell(child, reply));
     child.on('message', (message: FromWorker) => {
-      if (message.type === 'identify') {
+      stores(message);
+      if (message.type !== 'store' && message.type === 'identify') {
         void gate.wait(message.shard).then(() => {
           tell(child, { type: 'identify', id: message.id });
         });

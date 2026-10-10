@@ -21,7 +21,7 @@ C’est tout. `chapterjs dev` trouve la déclaration et lance votre fonction cha
 ## Le nom est l’événement
 
 - **`name` est l’événement.** C’est l’un des [événements](/fr/reference/events), et votre éditeur les propose pendant que vous tapez ; un autre mot est souligné, et signalé avec le nom d’événement le plus proche quand le fichier se charge.
-- **Une déclaration est une réaction.** L’endroit du fichier et son nom sont à vous : `src/events/welcome.ts`, comme le fait le modèle, ou `src/welcome.ts`, ou à côté de la commande qu’il accompagne. Déclarez-en autant que vous voulez, dans un fichier ou plusieurs : elles tournent toutes.
+- **Une déclaration est une réaction.** L’endroit du fichier et son nom sont à vous : `src/events/welcome.ts`, ou `src/welcome/welcome.ts` comme le fait le modèle `community`, ou `src/welcome.ts`, ou à côté de la commande qu’il accompagne. Déclarez-en autant que vous voulez, dans un fichier ou plusieurs : elles tournent toutes.
 - **L’import est le même partout.** `name` est ce qui dit à `event` ce que reçoit votre fonction : un membre pour `'memberJoin'`, un rôle pour `'roleDelete'`. La même ligne, `import { event } from 'chapterjs'`, fonctionne dans chaque fichier.
 
 ## Plusieurs réactions à un événement

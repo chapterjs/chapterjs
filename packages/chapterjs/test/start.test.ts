@@ -1,8 +1,9 @@
 import { startCli, tempDir } from '@chapterjs/test-utils';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { planProcesses, runCluster, splitShards } from '../src/cli/cluster.js';
+import { FileStoreBackend } from '../src/store/file-backend.js';
 import { GatewayIntent } from '../src/discord/intents.js';
 import {
   ALICE,
@@ -564,6 +565,72 @@ describe.skipIf(process.platform === 'win32')(
       expect(output).not.toMatch(/[✗⚠]/);
     }, 30_000);
 
+    it('shares the stores between the processes', async () => {
+      const fake = await big();
+      const cwd = project(
+        {
+          ...files,
+          'src/events/messageCreate/count.ts': `import { event, store } from 'chapterjs';
+export const hits = store<number>();
+export const total = store<number>({ scope: 'global' });
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content !== 'count') return;
+    const here = await hits.update('all', (n = 0) => n + 1);
+    const everywhere = await total.update('all', (n = 0) => n + 1);
+    console.log(\`counted: \${here} in \${message.guild.name}, \${everywhere} everywhere\`);
+  },
+});
+`,
+        },
+        'BOT_TOKEN=test-token\n'
+      );
+      const cli = runStart(cwd, fake, ['--processes', '2']);
+      await cli.waitFor('✓ 1 command, 3 events, 2 stores loaded');
+      await printed(cli, /\[2\] ready: test-bot pid \d+/);
+      await printed(cli, /\[1\] ready: test-bot pid \d+/);
+      // Two processes count together: what one wrote, the other reads.
+      const order = [0, 2, 1, 3];
+      for (const [n, index] of order.entries()) {
+        const server = servers[index]!;
+        (await shard(fake, index)).dispatch(
+          'MESSAGE_CREATE',
+          rawMessage(`10000000000000009${n}`, 'count', {
+            guild_id: server.id,
+            channel_id: channelOf(fake, server.id),
+          })
+        );
+        await printed(
+          cli,
+          new RegExp(
+            `\\[${index < 2 ? 1 : 2}\\] counted: 1 in ${server.name}, ${n + 1} everywhere`
+          )
+        );
+      }
+      // The same server again, from the same process: its own count.
+      (await shard(fake, 0)).dispatch(
+        'MESSAGE_CREATE',
+        rawMessage('100000000000000099', 'count', {
+          guild_id: servers[0]!.id,
+          channel_id: channelOf(fake, servers[0]!.id),
+        })
+      );
+      await printed(cli, /\[1\] counted: 2 in A, 5 everywhere/);
+      cli.signal('SIGTERM');
+      const { code, output } = await cli.exited;
+      expect(code).toBe(0);
+      expect(output).not.toMatch(/[✗⚠]/);
+      // Written once, by the process that was started.
+      expect(readdirSync(join(cwd, 'data')).sort()).toEqual([
+        'hits.json',
+        'total.json',
+      ]);
+      expect(
+        JSON.parse(readFileSync(join(cwd, 'data', 'total.json'), 'utf8'))
+      ).toEqual({ version: 1, entries: [[['all'], 5, null]] });
+    }, 30_000);
+
     it('uses as many processes as the bot needs when nothing is asked', async () => {
       const fake = await big();
       const cli = runStart(project(files, 'BOT_TOKEN=test-token\n'), fake);
@@ -781,6 +848,7 @@ process.send({ type: 'ready', guilds: 1, user: 'bot' });
       script,
       args: [],
       env: { PATH: process.env.PATH },
+      stores: new FileStoreBackend(join(tempDir(), 'data')),
       shards: 2,
       processes: 2,
       maxConcurrency: 1,

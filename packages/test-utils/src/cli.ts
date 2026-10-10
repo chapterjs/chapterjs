@@ -88,6 +88,16 @@ export function startCli({
 
   let raw = '';
   let cursor = 0;
+  /** Why the process could not be started, when it could not. */
+  let spawnError: Error | null = null;
+  child.on('error', error => (spawnError = error));
+  /** How the process ended, for a message that explains an empty output. */
+  const ending = (code: number | null, signal: NodeJS.Signals | null) =>
+    spawnError
+      ? `The process could not be started: ${spawnError.message}`
+      : signal
+        ? `The process was killed by ${signal}`
+        : `The process exited with code ${code}`;
   const listeners = new Set<() => void>();
   const onData = (chunk: Buffer) => {
     raw += chunk.toString();
@@ -106,10 +116,10 @@ export function startCli({
         ),
       timeout
     );
-    child.on('error', reject);
-    child.on('close', code => {
+    child.on('close', (code, signal) => {
       clearTimeout(timer);
-      resolve({ code, output: stripAnsi(raw) });
+      if (spawnError) reject(new Error(ending(code, signal)));
+      else resolve({ code, output: stripAnsi(raw) });
     });
   });
   // Handled by whoever awaits it; this avoids an unhandled rejection otherwise.
@@ -137,12 +147,12 @@ export function startCli({
             )
           );
         }, timeout);
-        const onExit = () => {
+        const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
           if (check()) return;
           done();
           reject(
             new Error(
-              `The CLI exited before printing "${String(text)}". Output:\n\n${stripAnsi(raw)}`
+              `The CLI exited before printing "${String(text)}". ${ending(code, signal)}. Output:\n\n${stripAnsi(raw)}`
             )
           );
         };
