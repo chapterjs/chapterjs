@@ -1,6 +1,6 @@
-# packages/create-chapter
+# packages/create-chapterjs
 
-The project scaffolder (`pnpm create chapter [dir]`), built on `@clack/prompts`. `packages/create-chapterjs` is an alias so `pnpm create chapterjs` works too. The rules of the repo are in the root `CLAUDE.md`.
+The project scaffolder (`pnpm create chapterjs [dir]`), built on `@clack/prompts`. `packages/create-chapter` is an alias so `pnpm create chapter` works too. The rules of the repo are in the root `CLAUDE.md`.
 
 ## What it asks
 
@@ -23,7 +23,7 @@ Every folder of `templates/` is a template. They are how users discover the fram
 - The menu hint is the template's package.json `description` (removed on copy); `default` is listed first.
 - `_gitignore` is renamed to `.gitignore` (npm strips `.gitignore` when publishing). It ignores `data/`, where the stores of a project keep their files.
 - An empty `public/` is created after the copy (git and npm keep no empty folder, so a template can't ship one; a template may still put files in it).
-- The `chapterjs` dependency is set to the exact `create-chapter` version, no `^`: `create chapter@X` gives a project on `chapterjs@X`, which only changes version when its developer runs the command `chapterjs dev` offers.
+- The `chapterjs` dependency is set to the exact `create-chapterjs` version, no `^`: `create chapterjs@X` gives a project on `chapterjs@X`, which only changes version when its developer runs the command `chapterjs dev` offers.
 - When pnpm is the package manager, `pnpm-workspace.yaml` is written too (`PNPM_WORKSPACE`): pnpm 11 refuses to install a project that has esbuild anywhere in its dependencies (here through `chapterjs`) until it is told whether esbuild's install script may run (it may not, and esbuild does not need it); `allowBuilds` is for pnpm 11, `ignoredBuiltDependencies` for pnpm 10. This repo has the same setting in its own `pnpm-workspace.yaml`.
 - Templates run `chapterjs sync` as `postinstall` and have a `typecheck` script (`tsc -b`).
 

@@ -923,7 +923,7 @@ describe.skipIf(process.platform === 'win32')('the token of the .env', () => {
 describe.skipIf(process.platform === 'win32')(
   'the templates of the scaffolder',
   () => {
-    const templates = join(packageDir, '../create-chapter/templates');
+    const templates = join(packageDir, '../create-chapterjs/templates');
     const WELCOME = '100000000000000022';
     const THREAD = '100000000000000023';
     const VOICE = '100000000000000501';
@@ -1571,7 +1571,7 @@ export default event({ name: 'roleDelete', run: ({ role, guild }) => role.name +
       'src/lib/wrong.ts': `export const count: number = 'three';\n`,
     });
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2018,7 +2018,7 @@ export default event({ name: 'messageDelete', where: 'both', run: ({ guildId }) 
 `,
     });
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2152,7 +2152,7 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       ),
     });
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2682,7 +2682,7 @@ export default event({ name: 'memberJoin', bots: true, run: ({ member }) => memb
 `,
       });
       cpSync(
-        join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+        join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
         join(cwd, 'tsconfig.json')
       );
       symlinkSync(
@@ -2746,7 +2746,7 @@ export default event({ name: 'ready', run: () => console.log('nested ran') });
 
     // What the project type-checks is what runs.
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(

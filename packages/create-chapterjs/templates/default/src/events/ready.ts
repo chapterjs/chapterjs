@@ -24,5 +24,5 @@ export default event({
 // });
 //
 // Save it, and /ping shows up in your test server. The other templates of
-// `pnpm create chapter` show tickets, music, moderation and a community
+// `pnpm create chapterjs` show tickets, music, moderation and a community
 // bot; the docs at https://www.chapterjs.org walk through everything.

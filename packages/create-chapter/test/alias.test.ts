@@ -8,10 +8,10 @@ const bin = fileURLToPath(new URL('../dist/index.js', import.meta.url));
 const version = (url: URL) =>
   JSON.parse(readFileSync(url, 'utf8')).version as string;
 
-describe.skipIf(process.platform === 'win32')('create-chapterjs', () => {
-  it('is always released with the same version as create-chapter', () => {
+describe.skipIf(process.platform === 'win32')('create-chapter', () => {
+  it('is always released with the same version as create-chapterjs', () => {
     expect(version(new URL('../package.json', import.meta.url))).toBe(
-      version(new URL('../../create-chapter/package.json', import.meta.url))
+      version(new URL('../../create-chapterjs/package.json', import.meta.url))
     );
   });
 
@@ -19,7 +19,7 @@ describe.skipIf(process.platform === 'win32')('create-chapterjs', () => {
     const pkg = JSON.parse(
       readFileSync(new URL('../package.json', import.meta.url), 'utf8')
     );
-    expect(pkg.description).toContain('create-chapter');
+    expect(pkg.description).toContain('create-chapterjs');
     expect(pkg.keywords).toEqual(
       expect.arrayContaining(['discord', 'discord-bot', 'chapterjs'])
     );
@@ -28,11 +28,11 @@ describe.skipIf(process.platform === 'win32')('create-chapterjs', () => {
       new URL('../README.md', import.meta.url),
       'utf8'
     );
-    expect(readme).toMatch(/^# create-chapterjs\n/);
-    expect(readme).toContain('pnpm create chapterjs my-bot');
+    expect(readme).toMatch(/^# create-chapter\n/);
+    expect(readme).toContain('pnpm create chapter my-bot');
   });
 
-  it('runs the create-chapter CLI, arguments included', async () => {
+  it('runs the create-chapterjs CLI, arguments included', async () => {
     const cwd = tempDir();
     const cli = startCli({
       bin,

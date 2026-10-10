@@ -6,7 +6,7 @@ export const packageManagers = ['pnpm', 'npm', 'yarn', 'bun'] as const;
 export type PackageManager = (typeof packageManagers)[number];
 
 /**
- * The package manager that launched `create chapter`, read from the user agent
+ * The package manager that launched `create chapterjs`, read from the user agent
  * it sets (e.g. `pnpm/11.0.0 npm/? node/v24.0.0 darwin arm64`).
  */
 export function detectPackageManager(): PackageManager {

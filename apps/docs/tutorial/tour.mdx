@@ -52,7 +52,7 @@ That is the rule for everything the framework runs:
 | `language({ locale, ... })` | One language of the bot: `locale: 'fr'` is French                                                            |
 | `presence({ ... })`         | What the bot shows under its name, declared once                                                             |
 
-A file may declare several of them, and a file that declares none is just code: `src/lib/`, `src/db/`, anything you import from the others. The templates of `create chapter` do both: `default` keeps a folder per kind (`src/events/`, and now `src/commands/`), and `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons, and their texts in both languages. A folder is only a folder.
+A file may declare several of them, and a file that declares none is just code: `src/lib/`, `src/db/`, anything you import from the others. The templates of `create chapterjs` do both: `default` keeps a folder per kind (`src/events/`, and now `src/commands/`), and `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons, and their texts in both languages. A folder is only a folder.
 
 Why this design? Because the alternative, a list somewhere that says "the `/ping` command is in this file, the welcome event is in that one", is a list you have to keep in sync with your files by hand. Here, there is no list. Adding a command is adding a declaration; removing one is deleting it.
 

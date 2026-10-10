@@ -5,7 +5,7 @@
 Drop files into `src/`, and the `chapterjs` CLI does everything else: the connection, the intents, the registration of commands, hot reload, sharding and several processes for large bots. Everything you write is typed end to end, without a single type to write.
 
 ```bash
-pnpm create chapter my-bot
+pnpm create chapterjs my-bot
 ```
 
 📖 Documentation, in English and in French: **[chapterjs.org](https://www.chapterjs.org)**
@@ -52,7 +52,7 @@ Nothing to install to run a bot: the framework only uses what Node has (Node 24 
 
 ## Versions
 
-`chapterjs`, `create-chapter` and `create-chapterjs` are always released with the same version, and follow [semantic versioning](https://semver.org): what a bot's files use (the functions exported by `chapterjs`, their options, what your functions receive, the files and env vars of a project, the CLI commands) only changes in a major version. A new feature comes in a minor one, a fix in a patch. The [changelog](https://www.chapterjs.org/changelog) says what each version brings, and `chapterjs dev` tells you when a new one is out.
+`chapterjs`, `create-chapterjs` and `create-chapter` are always released with the same version, and follow [semantic versioning](https://semver.org): what a bot's files use (the functions exported by `chapterjs`, their options, what your functions receive, the files and env vars of a project, the CLI commands) only changes in a major version. A new feature comes in a minor one, a fix in a patch. The [changelog](https://www.chapterjs.org/changelog) says what each version brings, and `chapterjs dev` tells you when a new one is out.
 
 ## Contributing
 

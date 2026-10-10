@@ -253,7 +253,7 @@ export async function hasSources(cwd: string, log: Log): Promise<boolean> {
     return true;
   }
   log.error(
-    'There is no src folder here.\nRun this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapter".'
+    'There is no src folder here.\nRun this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapterjs".'
   );
   return false;
 }
