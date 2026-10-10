@@ -141,6 +141,26 @@ export default event({
     expect(await connection.waitForClose()).toBe(1000);
   });
 
+  it('stops cleanly when one Ctrl+C reaches it twice, as pnpm dev delivers it', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/events/ready.ts': `import { event } from 'chapterjs';
+export default event({ name: 'ready', run() {} });
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 1 event loaded');
+    const connection = await connected(fake);
+    // The terminal signals the whole foreground group, and the package
+    // manager forwards the signal to its child: the bot gets two at once.
+    cli.signal('SIGINT');
+    cli.signal('SIGINT');
+    const { code, output } = await cli.exited;
+    expect(code).toBe(0);
+    expect(output).toContain('✓ Disconnected');
+    expect(await connection.waitForClose()).toBe(1000);
+  });
+
   it('ignores what happens in other servers', async () => {
     const fake = await world();
     fake.discord.on('POST', `/channels/${GENERAL}/messages`, {

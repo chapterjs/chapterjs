@@ -162,7 +162,7 @@ Written once for commands and components. A new kind of interaction (context men
 
 ## `cli/`: the commands, built on one shared piece
 
-- `cli.ts`: the `chapterjs` binary (`dev`, `build`, `start` with its only option `--processes <n>`, and `sync` which only writes `.chapterjs/`; templates run it as `postinstall`). `log.ts`: the five symbols. `node-version.ts`: `nodeTooOld()`, which refuses a Node older than 24 at once with what to install.
+- `cli.ts`: the `chapterjs` binary (`dev`, `build`, `start` with its only option `--processes <n>`, and `sync` which only writes `.chapterjs/`; templates run it as `postinstall`). `stopSignal()` turns SIGINT and SIGTERM into the `AbortSignal` of `dev` and `start`; a second signal forces `process.exit(1)` only a second after the first, because one Ctrl+C reaches the bot twice under `pnpm dev` (the terminal signals the whole group, and pnpm forwards it). `log.ts`: the five symbols. `node-version.ts`: `nodeTooOld()`, which refuses a Node older than 24 at once with what to install.
 - `env.ts`: `.env` reading with `util.parseEnv`, the real environment wins; `readDevEnv` needs `BOT_TOKEN` and `DEV_GUILD_ID`, `readStartEnv` only the token (hosts give it without a file) and takes `DEV_GUILD_ID` when it is there.
 - `preflight.ts`: token, bot in the dev server with an invite link, privileged intents from the application flags; waits by polling when interactive, fails with the explanation otherwise.
 - `project.ts`: **what `dev`, `build` and `start` share**, written once. A new way to run the bot is a new file using this, never a copy.

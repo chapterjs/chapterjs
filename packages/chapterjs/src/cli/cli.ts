@@ -36,13 +36,25 @@ const [command, ...rest] = process.argv.slice(2);
 
 /**
  * Ctrl+C and a stop asked by the system both end the session cleanly, so
- * the bot goes offline at once. A second one does not wait.
+ * the bot goes offline at once. A second one, pressed while the first is
+ * still being handled, does not wait.
+ *
+ * One Ctrl+C reaches the bot twice when a package manager runs it (`pnpm
+ * dev`): once from the terminal, which signals every process of the
+ * foreground group, and once forwarded by the package manager. Two signals
+ * within a second are that one Ctrl+C, not a second one.
  */
 function stopSignal(): AbortSignal {
   const controller = new AbortController();
+  let askedAt = 0;
   for (const name of ['SIGINT', 'SIGTERM'] as const) {
     process.on(name, () => {
-      if (controller.signal.aborted) process.exit(1);
+      const now = Date.now();
+      if (controller.signal.aborted) {
+        if (now - askedAt >= 1000) process.exit(1);
+        return;
+      }
+      askedAt = now;
       controller.abort();
     });
   }
