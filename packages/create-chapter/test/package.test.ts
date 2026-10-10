@@ -60,4 +60,20 @@ describe('the published package', () => {
   it('has no runtime dependency other than @clack/prompts', () => {
     expect(Object.keys(pkg.dependencies)).toEqual(['@clack/prompts']);
   });
+
+  it('shows a README on npm, with the command and the documentation site', () => {
+    expect(published).toContain('README.md');
+    const readme = readFileSync(join(root, 'README.md'), 'utf8');
+    expect(readme).toMatch(/^# create-chapter\n/);
+    expect(readme).toContain('pnpm create chapter my-bot');
+    expect(readme).toContain('https://www.chapterjs.org');
+  });
+
+  it('has a description, keywords and the documentation site as homepage', () => {
+    expect(pkg.description).toBeTruthy();
+    expect(pkg.keywords).toEqual(
+      expect.arrayContaining(['discord', 'discord-bot', 'chapterjs'])
+    );
+    expect(pkg.homepage).toBe('https://www.chapterjs.org');
+  });
 });

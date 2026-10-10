@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A user creates a project, declares what the bot does in the files of `src/` (`command()`, `event()`, `button()`… exported from any file) and the `chapterjs` CLI does everything else: connection, intents, command registration, hot reload, scaling. pnpm + Turborepo monorepo; read `AGENTS.md` before touching Turborepo config. The root `README.md` presents the project (what it is, a sample, how to contribute): keep it true when a feature or a command changes.
+ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A user creates a project, declares what the bot does in the files of `src/` (`command()`, `event()`, `button()`… exported from any file) and the `chapterjs` CLI does everything else: connection, intents, command registration, hot reload, scaling. pnpm + Turborepo monorepo; read `AGENTS.md` before touching Turborepo config. The root `README.md` presents the project (what it is, a sample, how to contribute): keep it true when a feature or a command changes. Each package has its own `README.md`, the page npm shows (`packages/chapterjs/README.md` repeats the root one in short, the scaffolders describe what they ask): keep them true too. `CONTRIBUTING.md` says what a change includes and `SECURITY.md` how a vulnerability is reported (a private GitHub advisory, latest version only maintained).
 
 ## Where the details live
 
@@ -31,7 +31,7 @@ This file holds the rules of the repo. What a package or a module does is descri
   - `memory.mdx` says what the bot remembers and how it frees memory: keep it in sync with `CacheLimits` and `core/memory.ts`. `not-yet.mdx` is the only place for features that do not exist yet.
   - `packages/chapterjs/test/docs.test.ts` checks the site against the package (every page exists in both languages, every export has a page, every structure member is documented in both languages and no documented method is a ghost, every sample of both languages compiles), so a change to the API fails the tests until the docs follow.
 
-The three packages are always released with the same version.
+The three packages are always released with the same version, and follow semantic versioning from 1.0.0: what a project's files use (the exports of `chapterjs` and their options, what handlers receive, the files and env vars of a project, the CLI commands) only changes in a major version, with the changelog entry saying what to change; a minor adds, a patch fixes. The changelog intro, the package READMEs and `SECURITY.md` say so to users.
 
 ## Constraints
 

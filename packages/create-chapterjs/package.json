@@ -1,14 +1,27 @@
 {
   "name": "create-chapterjs",
   "version": "0.2.3",
-  "description": "Alias of create-chapter: scaffolds a ChapterJS Discord bot",
+  "description": "Alias of create-chapter: creates a ChapterJS Discord bot with pnpm create chapterjs",
+  "keywords": [
+    "discord",
+    "discord-bot",
+    "bot",
+    "framework",
+    "typescript",
+    "slash-commands",
+    "esm",
+    "create",
+    "scaffold",
+    "template",
+    "chapterjs"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/chapterjs/chapterjs.git",
     "directory": "packages/create-chapterjs"
   },
-  "homepage": "https://chapterjs.dev",
+  "homepage": "https://www.chapterjs.org",
   "bugs": "https://github.com/chapterjs/chapterjs/issues",
   "type": "module",
   "bin": {
