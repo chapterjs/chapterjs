@@ -49,7 +49,7 @@ Reading what people write is a **privileged intent**: `messageCreate` and `messa
     ```ts src/events/hello.ts
     import { event } from 'chapterjs';
 
-        export default event({
+    export default event({
       name: 'messageCreate',
       async run({ message }) {
         await message.channel.send(`Hello ${message.member.displayName}!`);
@@ -63,12 +63,12 @@ Reading what people write is a **privileged intent**: `messageCreate` and `messa
     ```ts src/events/support.ts
     import { event } from 'chapterjs';
 
-        export default event({
+    export default event({
       name: 'messageCreate',
       where: 'dm',
       async run({ message }) {
-          await message.reply(`Thanks ${message.author.displayName}! A moderator will answer you soon.`);
-        },
+        await message.reply(`Thanks ${message.author.displayName}! A moderator will answer you soon.`);
+      },
     });
     ```
   </Tab>
@@ -78,16 +78,16 @@ Reading what people write is a **privileged intent**: `messageCreate` and `messa
     ```ts src/events/everywhere.ts
     import { event } from 'chapterjs';
 
-        export default event({
+    export default event({
       name: 'messageCreate',
       where: 'both',
       async run({ message }) {
-          if (message.guild) {
-            await message.channel.send(`Hello ${message.member.displayName}!`);
-          } else {
-            await message.reply('Hello! We are in private here.');
-          }
-        },
+        if (message.guild) {
+          await message.channel.send(`Hello ${message.member.displayName}!`);
+        } else {
+          await message.reply('Hello! We are in private here.');
+        }
+      },
     });
     ```
   </Tab>
@@ -116,9 +116,9 @@ export default event({
   name: 'messageCreate',
   bots: true,
   async run({ message }) {
-      // Also runs for bots and webhooks: make sure it can't answer itself.
-      if (message.webhookId) console.log(`A webhook posted: ${message.content}`);
-    },
+    // Also runs for bots and webhooks: make sure it can't answer itself.
+    if (message.webhookId) console.log(`A webhook posted: ${message.content}`);
+  },
 });
 ```
 

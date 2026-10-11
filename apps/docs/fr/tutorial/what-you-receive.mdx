@@ -55,7 +55,7 @@ Deux sortes de choses se passent ici, et la différence compte :
 La règle à retenir : une propriété n’envoie jamais de requête, et un `fetch…()` en envoie. Tout ce que vous pouvez lire sans `await` est gratuit.
 
 <Info>
-  Pourquoi `fetchMember` pour un membre, alors que `guild.name` est simplement là ? Un serveur peut avoir des millions de membres, donc un bot ne peut pas tous les garder en mémoire : il garde ceux qu’il a vus récemment. Les serveurs, salons et rôles sont peu nombreux, alors il les garde tous. La page [Mémoire et limites](/fr/tutorial/memory-and-limits) dit exactement ce qui est gardé.
+  Pourquoi `fetchMember` pour un membre, alors que `guild.name` est là tout de suite ? Un serveur peut avoir des millions de membres, donc un bot ne peut pas tous les garder en mémoire : il garde ceux qu’il a vus récemment. Les serveurs, salons et rôles sont peu nombreux, alors il les garde tous. La page [Mémoire et limites](/fr/tutorial/memory-and-limits) dit exactement ce qui est gardé.
 </Info>
 
 `member.joinedAt` est `Date | null` parce que Discord ne l’envoie pas toujours : le `?.` et le `??` sont honnêtes. Dans ChapterJS, une valeur n’est nullable que lorsqu’elle peut vraiment manquer ; ce qui ne peut pas manquer ne l’est jamais.

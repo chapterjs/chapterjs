@@ -66,8 +66,8 @@ Discord n’envoie à un bot que ce qu’il a demandé, et trois choses doivent 
 | Option à activer | Nécessaire pour les fichiers de |
 | --- | --- |
 | **Message Content Intent** | `messageCreate`, `messageUpdate` |
-| **Server Members Intent** | `memberJoin`, `memberLeave`, `memberUpdate` |
-| **Presence Intent** | Rien pour l’instant : aucun événement de ChapterJS ne l’utilise |
+| **Server Members Intent** | `memberJoin`, `memberLeave`, `memberUpdate`, `threadMemberJoin`, `threadMemberLeave` |
+| **Presence Intent** | `presenceUpdate` |
 
 Quand un fichier a besoin d’une option qui n’est pas activée, `chapterjs dev` dit quels fichiers et donne le lien vers la page, puis attend :
 

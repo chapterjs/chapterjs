@@ -142,7 +142,7 @@ With several broken files, the message counts them: `⚠ Reloaded with 2 errors:
 
 ### When your files need more from Discord
 
-The intents are given to Discord when the bot connects. When a file you save needs one the connection does not have (a new event folder, a file that now listens to private messages), the bot reconnects by itself:
+The intents are given to Discord when the bot connects. When a file you save needs one the connection does not have (a new event, a file that now listens to private messages), the bot reconnects by itself:
 
 ```text
 ↻ Your files now need more from Discord (GUILD_MEMBERS): reconnecting...
@@ -187,7 +187,7 @@ What only works in private messages can't be tried in dev, and `chapterjs dev` n
 
 ## The types of your project
 
-When it starts, `chapterjs dev` writes the types of your project in the `.chapterjs/` folder: this is how `event` knows, in each [event folder](/events), what its function receives. The folder is ignored by git and safe to delete.
+When it starts, `chapterjs dev` writes the types of your project in the `.chapterjs/` folder: what your project adds to the types of `chapterjs`, the files of `public/` that `asset()` offers, your [languages](/translated-messages), which type `t`, and your commands. The folder is ignored by git and safe to delete.
 
 [`chapterjs sync`](/reference/cli#chapterjs-sync) writes them without starting the bot. Projects created with `create chapterjs` run it after each install, so your editor knows the types right away.
 

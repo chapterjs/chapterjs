@@ -142,7 +142,7 @@ Avec plusieurs fichiers cassés, le message les compte : `⚠ Reloaded with 2 er
 
 ### Quand vos fichiers ont besoin de plus de Discord
 
-Les intents sont donnés à Discord à la connexion du bot. Quand un fichier que vous enregistrez a besoin d’un intent que la connexion n’a pas (un nouveau dossier d’événement, un fichier qui écoute maintenant les messages privés), le bot se reconnecte tout seul :
+Les intents sont donnés à Discord à la connexion du bot. Quand un fichier que vous enregistrez a besoin d’un intent que la connexion n’a pas (un nouvel événement, un fichier qui écoute maintenant les messages privés), le bot se reconnecte tout seul :
 
 ```text
 ↻ Your files now need more from Discord (GUILD_MEMBERS): reconnecting...
@@ -187,7 +187,7 @@ Ce qui ne fonctionne qu’en messages privés ne peut pas être essayé en dev, 
 
 ## Les types de votre projet
 
-Au démarrage, `chapterjs dev` écrit les types de votre projet dans le dossier `.chapterjs/` : c’est ainsi que `event` sait, dans chaque [dossier d’événement](/fr/events), ce que reçoit sa fonction. Le dossier est ignoré par git et supprimable.
+Au démarrage, `chapterjs dev` écrit les types de votre projet dans le dossier `.chapterjs/` : ce que votre projet ajoute aux types de `chapterjs`, les fichiers de `public/` que propose `asset()`, vos [langues](/fr/translated-messages), qui typent `t`, et vos commandes. Le dossier est ignoré par git et supprimable.
 
 [`chapterjs sync`](/fr/reference/cli#chapterjs-sync) les écrit sans lancer le bot. Les projets créés avec `create chapterjs` le lancent après chaque installation, pour que votre éditeur connaisse les types tout de suite.
 

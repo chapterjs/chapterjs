@@ -107,6 +107,7 @@ export default command({
 | `member` | Who used the command, as a [member](/reference/member) of the server. |
 | `guild` | The [server](/reference/guild) the command was used in. |
 | `channel` | The [channel](/reference/channels) the command was used in: always there, without a request, so you can `channel.send()` right away. |
+| `t` | The texts of your bot in the language of who will read the answer, when the project declares a [language](/translated-messages). |
 
 In a server, `member`, `guild` and `channel` are always there: no `?.` to write. The `interaction` knows them too (`interaction.guild`, `interaction.member`, `interaction.channel`), and the language of the person (`interaction.locale`).
 

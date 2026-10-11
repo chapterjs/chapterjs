@@ -52,7 +52,7 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     The message gives you a link: open it and confirm. In a terminal, `chapterjs dev` waits (`Waiting for the bot to be added...`) and goes on by itself with `✓ The bot joined …`. If the link shows another server, `DEV_GUILD_ID` is not the ID of a server you manage. Started by another program, the same message is a `✗` and the command stops.
   </Accordion>
   <Accordion title="⚠ Your files need an option that is not enabled for your bot: …">
-    One of your folders needs a privileged intent: **Message Content Intent** for `messageCreate` and `messageUpdate`, **Server Members Intent** for `memberJoin`, `memberLeave` and `memberUpdate`. The message lists the files that need each one and gives the link to the right page: enable the option under **Privileged Gateway Intents**, then save. In a terminal, `chapterjs dev` waits (`Waiting for you to enable it...`) and goes on with `✓ Privileged intents enabled`. Started by another program, and always with `chapterjs start`, the same message is a `✗` and the command stops. See [Privileged intents](/setup/discord-application#privileged-intents).
+    One of your files needs a privileged intent: **Message Content Intent** for `messageCreate` and `messageUpdate`, **Server Members Intent** for `memberJoin`, `memberLeave`, `memberUpdate`, `threadMemberJoin` and `threadMemberLeave`, **Presence Intent** for `presenceUpdate`. The message lists the files that need each one and gives the link to the right page: enable the option under **Privileged Gateway Intents**, then save. In a terminal, `chapterjs dev` waits (`Waiting for you to enable it...`) and goes on with `✓ Privileged intents enabled`. Started by another program, and always with `chapterjs start`, the same message is a `✗` and the command stops. See [Privileged intents](/setup/discord-application#privileged-intents).
   </Accordion>
   <Accordion title="✗ Discord refused the connection: the bot uses privileged intents (…) that are not enabled.">
     Discord closed the connection because of a privileged intent, although the check before connecting passed: the option was disabled while the bot ran, or the application was changed in the meantime. Enable it in the Developer Portal (your application → **Bot** → **Privileged Gateway Intents**) and start again.
@@ -87,7 +87,7 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     One of your functions threw: the line names the file and the line in your code, and the rest is the error. Nothing else stops. For a command, the person got a short private answer. See [when your function fails](/commands/answering#when-your-function-fails).
   </Accordion>
   <Accordion title="↻ Your files now need more from Discord (…): reconnecting...">
-    A file you added listens to something the connection was not asked for (a new event folder). ChapterJS reconnects by itself with what is needed and says `✓ Reconnected, … loaded`; if that needs a privileged intent, see above.
+    A file you added listens to something the connection was not asked for (a new event, a file that now listens to private messages). ChapterJS reconnects by itself with what is needed and says `✓ Reconnected, … loaded`; if that needs a privileged intent, see above.
   </Accordion>
   <Accordion title="ℹ … only works in private messages, and chapterjs dev only runs your bot in …">
     `chapterjs dev` only runs your bot in your test server, so a command or an event of private messages only can't be tried there. It works with [`chapterjs start`](/run/start).
@@ -176,7 +176,30 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     `chapterjs start` only takes `--processes` with a whole number of 1 or more. With a package manager, put `--` before the option when it needs it: `npm run start -- --processes 4`.
   </Accordion>
   <Accordion title='✗ "…" is not a command.'>
-    The `chapterjs` CLI has four commands: `dev`, `build`, `start` and `sync`. The usage printed below the message lists them.
+    The `chapterjs` CLI has five commands: `dev`, `build`, `start`, `test` and `sync`. The usage printed below the message lists them.
+  </Accordion>
+</AccordionGroup>
+
+## Testing
+
+<AccordionGroup>
+  <Accordion title="✗ This file can't run, so your bot was not tested.">
+    The lines above name each file and what is wrong, as `chapterjs dev` does when you save it. Nothing is tested until every file runs: fix them and test again.
+  </Accordion>
+  <Accordion title="✗ Checked src/…: command /name failed in N of M cases">
+    One of your functions threw, or finished without answering, while it was used by itself with ordinary and hard values. Each line below names the case (a text at its longest, a number at zero, someone who left…) and the file and the line of what threw. See [What is checked by itself](/testing#what-is-checked-by-itself).
+  </Accordion>
+  <Accordion title="ℹ No scenario yet. Write one in a *.test.ts file of src/ with scenario() from 'chapterjs/test' to check what your bot answers.">
+    Every file was checked once, and your project has no scenario to run. Nothing is wrong: write one when you want to check what the bot answers. See [Scenarios](/testing#scenarios).
+  </Accordion>
+  <Accordion title='✗ Tested src/….test.ts: "label" failed'>
+    A check of that scenario failed, or a function of the bot threw while it ran. The line below gives the file and the line of your scenario, what was expected and what came.
+  </Accordion>
+  <Accordion title="⚠ src/….test.ts declares no scenario: export one made with scenario() from 'chapterjs/test'">
+    A `*.test.ts` file exports nothing made with `scenario()`. The bot never loads these files, so what is in it runs nowhere: export a scenario, or rename the file.
+  </Accordion>
+  <Accordion title="… took more than 10 s: is something waiting for an answer that never comes?">
+    A scenario ran out of time. Usually a `bot.use()` or a `bot.click()` waits for a function that never answers, or a `cooldown` refuses the second use: time does not pass in the test server.
   </Accordion>
 </AccordionGroup>
 
@@ -190,7 +213,7 @@ Every message of ChapterJS says what happened, then what to do. This page gather
     Someone clicked a button or a select menu, or sent a form, and its `run` finished without answering. `chapterjs dev` warns you (`⚠ … finished without answering`). Answer with `interaction.update()`, `interaction.reply()`, or `interaction.deferUpdate()` to change nothing: see [Buttons](/components#answering-a-click).
   </Accordion>
   <Accordion title="This button is not available any more. / This menu… / This form…">
-    The message is older than your project: the file of the component was renamed, removed or moved to another kind of folder since the message was sent. Send the message again, or bring the file back.
+    The message is older than your project: the export of the component was renamed or removed since the message was sent (moving its file changes nothing). Send the message again, or bring the export back.
   </Accordion>
   <Accordion title="This button is out of date.">
     The `data` of the component changed shape since the message was sent (a value added, removed or of another kind). Old messages carry the old data: send the message again.

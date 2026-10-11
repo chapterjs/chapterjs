@@ -66,8 +66,8 @@ Discord only sends a bot what it asked for, and three things have to be enabled 
 | Option to enable | Needed by the files of |
 | --- | --- |
 | **Message Content Intent** | `messageCreate`, `messageUpdate` |
-| **Server Members Intent** | `memberJoin`, `memberLeave`, `memberUpdate` |
-| **Presence Intent** | Nothing yet: no event of ChapterJS uses it |
+| **Server Members Intent** | `memberJoin`, `memberLeave`, `memberUpdate`, `threadMemberJoin`, `threadMemberLeave` |
+| **Presence Intent** | `presenceUpdate` |
 
 When a file needs an option that is not enabled, `chapterjs dev` says which files and gives the link to the page, then waits:
 

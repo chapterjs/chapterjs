@@ -1,0 +1,76 @@
+---
+title: 'Roadmap'
+description: 'La roadmap de ChapterJS : ce qu’il ne fait pas encore, pour que vous ne le cherchiez pas, et quoi faire en attendant'
+---
+
+ChapterJS est jeune. Cette page est sa roadmap : tout ce qui suit manque aujourd’hui, domaine par domaine, et une entrée quitte cette page le jour où la fonctionnalité sort. Quand il y a un moyen de faire en attendant, c’est dit.
+
+<Update label="Commandes" description="D’autres sortes de commandes que les commandes slash" tags={['pas encore']}>
+
+**Commandes de menu contextuel.** Des commandes utilisées par un clic droit sur un utilisateur ou un message.
+_En attendant :_ une commande slash avec une option `user`, ou une option `string` qui prend le lien d’un message.
+
+**Applications installées par l’utilisateur.** Un bot qu’une personne ajoute à son propre compte, pour utiliser ses commandes dans chaque serveur et en messages privés. Un bot s’ajoute à un serveur, et c’est là que sont ses commandes.
+
+</Update>
+
+<Update label="Conversations" description="Poursuivre un échange après un message" tags={['pas encore']}>
+
+**Attendre une réponse.** Poser une question par un message, puis attendre le prochain message, la prochaine réaction ou le prochain clic de la même personne.
+_En attendant :_ un bouton ou un menu qui transporte ce qu’il lui faut dans ses `data`, et qui tourne quand la personne clique, aussi longtemps après que ce soit.
+
+**Premium et droits d’accès.** Savoir qui s’est abonné à votre bot, et être prévenu quand quelqu’un le fait.
+
+</Update>
+
+<Update label="Événements" description="Ce que Discord envoie et qu’aucun event() ne reçoit" tags={['pas encore']}>
+
+**Modération automatique, stickers, soundboard, épingles, webhooks, intégrations et conférences.** Aucun `event()` pour ce que fait la modération automatique, pour les stickers et les sons de la soundboard ajoutés ou modifiés, pour un message épinglé ou désépinglé, pour les webhooks et les intégrations modifiés, pour les conférences, et pour le statut d’un salon vocal.
+
+</Update>
+
+<Update label="Vocal et présence" description="Au-delà de jouer un son" tags={['pas encore']}>
+
+<a id="enregistrer-le-vocal" />
+
+**Enregistrer le vocal.** Entendre ce que les gens disent dans un salon vocal, pour l’enregistrer ou le transcrire. Le bot ne fait que jouer, et a le casque coupé par défaut.
+
+**Changer la présence depuis le code.** Une présence qui suit des données en direct (un nombre de membres, le morceau en cours). La présence se déclare une fois et ne change que quand son fichier change.
+
+</Update>
+
+<Update label="Serveurs" description="Des actions sur ce que le bot ne fait que lire aujourd’hui" tags={['pas encore']}>
+
+**Événements programmés.** En modifier ou en supprimer un.
+
+**Stickers et règles de modération automatique.** En créer, en modifier ou en supprimer.
+
+</Update>
+
+<Update label="Faire tourner le bot" description="Comment et où un bot tourne" tags={['pas encore']}>
+
+**Un bot réparti sur plusieurs machines.** Faire tourner un bot sur plusieurs machines à la fois.
+_En attendant :_ un gros bot tourne tout seul sur [plusieurs processus d’une machine](/fr/run/start#gros-bots).
+
+**Choisir ce dont le bot se souvient.** Un réglage du nombre de membres, d’utilisateurs et de messages que le bot garde en mémoire. Il suit [vos fichiers et la mémoire disponible](/fr/memory).
+
+**Un fichier de configuration.** Un `chapterjs.config.ts`. Ce que fait votre bot vient des fichiers de `src/`, et ce dont il a besoin pour tourner vient de [`.env`](/fr/setup/project-structure#env) : un token, un serveur de test.
+
+**Partager des fichiers entre bots.** Publier vos commandes, événements ou composants sous forme de paquet, pour les utiliser dans un autre projet. Un fichier n’est chargé que depuis le `src/` du projet.
+
+</Update>
+
+<Update label="Tester" description="Ce que chapterjs test ne simule pas" tags={['pas encore']}>
+
+**Le temps, le vocal, les sondages, les événements programmés et la modération automatique.** Le temps ne passe pas sur le serveur de test (un `cooldown`, une tâche qui tourne `every` tant), et le vocal, les sondages, les événements programmés et la modération automatique ne sont pas simulés. Un événement que le serveur ne peut pas provoquer est nommé dans le rapport, et une requête pour quelque chose qu’il ne modélise pas répond comme Discord pour quelque chose qui n’existe pas. Voir [Tester](/fr/testing).
+
+</Update>
+
+<CardGroup cols={2}>
+  <Card title="Référence" icon="library" href="/fr/reference">
+    Tout ce qui existe aujourd’hui, structure par structure.
+  </Card>
+  <Card title="Dépannage" icon="bug" href="/fr/run/troubleshooting">
+    Chaque message du CLI, et ce que les gens voient sur Discord.
+  </Card>
+</CardGroup>

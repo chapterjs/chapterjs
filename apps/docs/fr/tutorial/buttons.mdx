@@ -57,16 +57,16 @@ Utilisez `/dice sides:20` : la réponse a un bouton. Cliquez dessus : le message
 
 Quand Discord affiche un bouton, il doit se souvenir duquel il s’agit, pour qu’un clic soit renvoyé au bon bot avec le bon sens. Discord le fait avec un court texte attaché au bouton, que le bot choisit, et qu’il récupère au clic.
 
-Dans ChapterJS, **ce texte est le nom de l’export** : `reroll` (un export par défaut prend le nom de son fichier). Vous ne l’écrivez jamais, vous ne le voyez jamais, et il ne peut pas entrer en collision avec un autre bouton : deux boutons du même nom sont signalés, et le second est mis de côté. Quand le clic revient, le framework lit le chemin, trouve le fichier, et lance son `run`. C’est la même règle que pour les commandes : l’endroit où est le fichier dit ce qu’il est.
+Dans ChapterJS, **ce texte est le nom de l’export** : `reroll` (un export par défaut prend le nom de son fichier). Vous ne l’écrivez jamais, vous ne le voyez jamais, et il ne peut pas entrer en collision avec un autre bouton : deux boutons du même nom sont signalés, et le second est mis de côté. Quand le clic revient, le framework lit le nom, trouve le bouton, et lance son `run`. C’est la même règle que partout : ce qu’un fichier exporte dit ce qu’il est, et l’endroit où est le fichier ne change rien.
 
 ## Les données : ce que transporte un bouton
 
 Le bouton doit savoir combien de faces a le dé, et rien n’est stocké nulle part entre le message et le clic. Alors le bouton le **transporte** : `data: { sides: 'number' }` déclare une valeur, `reroll({ sides })` la donne quand le bouton est mis dans un message, et `run` la reçoit sous la forme `data.sides`, typée comme un nombre.
 
-Où vit-elle ? Dans le bouton lui-même, à côté du chemin, dans le message sur Discord. Cela la rend :
+Où vit-elle ? Dans le bouton lui-même, à côté de son nom, dans le message sur Discord. Cela la rend :
 
 - **Sans état.** Redémarrez le bot, et un clic sur un message vieux d’une semaine transporte toujours `sides`. Rien à stocker, rien à nettoyer.
-- **Limitée.** Discord donne 100 caractères au chemin et aux données ensemble. Transportez des identifiants, pas des noms ; un nombre, pas un objet entier. En transporter trop est une erreur à l’endroit où le bouton est fabriqué, avec la place qu’il reste.
+- **Limitée.** Discord donne 100 caractères au nom et aux données ensemble. Transportez des identifiants, pas des noms ; un nombre, pas un objet entier. En transporter trop est une erreur à l’endroit où le bouton est fabriqué, avec la place qu’il reste.
 - **Typée.** `data` a trois sortes : `'string'`, `'number'` et `'boolean'`. `reroll({ sides: 'six' })` est souligné dans l’éditeur.
 
 Un bouton sans `data` se met dans un message tel quel, sans l’appeler : `components: [close]`.
@@ -116,7 +116,7 @@ Un bouton vit dans les messages où il a été envoyé, bien après que vous ave
 
 | Ce qui a changé | Un clic sur un vieux message répond |
 | --- | --- |
-| Le fichier a été renommé ou supprimé | « This button is not available any more. » |
+| L’export a été renommé ou supprimé | « This button is not available any more. » |
 | Ses `data` ont changé de forme (une valeur ajoutée, retirée ou d’une autre sorte) | « This button is out of date. » |
 | Seul `run` a changé | Lance le nouveau code, avec les anciennes données |
 

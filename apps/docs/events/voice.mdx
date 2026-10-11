@@ -27,7 +27,7 @@ That is all. `member` is who joined, `channel` the [`VoiceChannel`](/reference/c
 
 Discord sends one kind of change for voice; ChapterJS tells you what it was, by comparing with what the person was doing before:
 
-| Folder | Runs when | Your function receives |
+| Event | Runs when | Your function receives |
 | --- | --- | --- |
 | `voiceJoin` | Someone joins a voice channel | `member`, `channel`, `voice`, `guild` |
 | `voiceLeave` | Someone leaves, or is disconnected | `member`, `channel` (the one they left), `voice` (as it was), `guild` |

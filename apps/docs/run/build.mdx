@@ -51,10 +51,10 @@ That is all: [`chapterjs start`](/run/start) runs what was built. The build need
     ```
   </Step>
   <Step title="Runs every file once">
-    Each command and each event is loaded and checked, like `chapterjs dev` does when you save: a file in the wrong folder, an option without a description, two files that are the same command... Each broken file is reported, then the build stops:
+    Every file of `src/` is loaded and what it declares is checked, like `chapterjs dev` does when you save: a name Discord refuses, an option without a description, two declarations of the same command... Each broken file is reported, then the build stops:
 
     ```text
-    ✗ src/commands/poll.ts The default export of this file must be what command() returns: import { command } from 'chapterjs'; export default command({ description: '...', run({ interaction }) { ... } })
+    ✗ src/commands/poll.ts This command has no description: write it in src/messages/en-US.ts (commands: { "poll": { description: '...' } }), or in the file (description: '...').
     ✗ This file can't run, so your bot was not built. Fix it and build again: chapterjs dev shows the same errors while you write.
     ```
 
@@ -63,7 +63,7 @@ That is all: [`chapterjs start`](/run/start) runs what was built. The build need
   <Step title="Compiles your bot">
     Your whole bot becomes **one JavaScript file**, `.chapterjs/build/bot.js`:
 
-    - every command and event, with what they import from your project;
+    - every file of `src/` (commands, events, components, tasks, presence, languages), with what they import from your project;
     - only what is used: code nothing calls is left out;
     - compact, but with the names you wrote, and a map back to your files.
 
@@ -76,7 +76,7 @@ That is all: [`chapterjs start`](/run/start) runs what was built. The build need
 
 A build that fails leaves nothing behind: the previous build is removed before compiling, so there is never a half-built bot to start by mistake.
 
-The build also writes `.chapterjs/build/build.json`: the version of ChapterJS that made it, a fingerprint of `src/` and how many commands and events it holds. `chapterjs start` reads it to know whether the build is the one to run.
+The build also writes `.chapterjs/build/build.json`: the version of ChapterJS that made it, a fingerprint of `src/` and whether your files join voice channels. `chapterjs start` reads it to know whether the build is the one to run.
 
 ## Production runs the build, not your files
 
@@ -107,7 +107,7 @@ The names of your functions and variables are kept too.
 
 | | In the build |
 | --- | --- |
-| Your commands and events | Yes |
+| Your commands, events, components, tasks, presence and languages | Yes |
 | What they import from your project, wherever it is | Yes |
 | Files and folders starting with `_`, when something imports them | Yes |
 | Packages you installed | No: they stay in `node_modules`, which production needs too |

@@ -52,7 +52,7 @@ That is the rule for everything the framework runs:
 | `language({ locale, ... })` | One language of the bot: `locale: 'fr'` is French                                                            |
 | `presence({ ... })`         | What the bot shows under its name, declared once                                                             |
 
-A file may declare several of them, and a file that declares none is just code: `src/lib/`, `src/db/`, anything you import from the others. The templates of `create chapterjs` do both: `default` keeps a folder per kind (`src/events/`, and now `src/commands/`), and `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons, and their texts in both languages. A folder is only a folder.
+A file may declare several of them, and a file that declares none is plain code: `src/lib/`, `src/db/`, anything you import from the others. The templates of `create chapterjs` do both: `default` keeps a folder per kind (`src/events/`, and now `src/commands/`), and `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons, and their texts in both languages. A folder is only a folder.
 
 Why this design? Because the alternative, a list somewhere that says "the `/ping` command is in this file, the welcome event is in that one", is a list you have to keep in sync with your files by hand. Here, there is no list. Adding a command is adding a declaration; removing one is deleting it.
 
@@ -119,7 +119,7 @@ The bot is still online, and `/ping` still answers with the last version that wo
 | `public/`              | The pictures and files your bot sends. Empty for now; a later chapter uses it.                                    |
 | `node_modules/`        | The packages installed by your package manager, `chapterjs` among them. Never edit it, never commit it.           |
 | `.env`, `.env.example` | The values your bot needs (the previous page).                                                                    |
-| `.gitignore`           | What git leaves out: `.env`, `node_modules/`, `.chapterjs/`.                                                      |
+| `.gitignore`           | What git leaves out: `.env`, `node_modules/`, `.chapterjs/` and `data/`, the data of your stores.                  |
 | `package.json`         | The identity of your project: its name, its dependencies, and its scripts (`dev`, `build`, `start`, `typecheck`). |
 | `tsconfig.json`        | The settings of TypeScript. It only points to `.chapterjs/`, where the real settings are; leave it as it is.      |
 

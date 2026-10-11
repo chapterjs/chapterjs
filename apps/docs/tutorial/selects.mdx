@@ -3,7 +3,7 @@ title: 'Select menus'
 description: 'Add a menu to a message with options you declare, or filled with the users, roles and channels of the server, and receive what was picked typed'
 ---
 
-A select menu is a dropdown under a message. It is a component like a button, so everything from the previous page applies: a file, a path, `data`, `who`, `update()`. What is new is the **options**, and what `run` receives from them.
+A select menu is a dropdown under a message. It is a component like a button, so everything from the previous page applies: a declaration named by its export, `data`, `who`, `update()`. What is new is the **options**, and what `run` receives from them.
 
 ## A menu with your options
 
@@ -100,7 +100,7 @@ A menu with `data` takes it first: `menu({ page: 2 }, { defaults: ['cat'] })`.
 
 - **A menu answers like a button**: `update()` to change its message, `reply()` for a new one, within 3 seconds (the framework defers after 2).
 - **`value` is the first pick**, `values` all of them. With `max: 1`, they say the same thing.
-- **An old message with a renamed file** answers "This menu is not available any more.", like a button.
+- **An old message with a renamed export** answers "This menu is not available any more.", like a button.
 
 ## Recap
 

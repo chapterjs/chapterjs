@@ -3,7 +3,7 @@ title: 'command()'
 description: 'Everything a command file declares, every kind of option, and what the run function receives'
 ---
 
-`command()` is what a file of `src/commands/` exports by default. It takes one object, `CommandConfig`, and types `run` from it.
+`command()` declares a slash command, from any file of `src/`; its `name` is what people type after the `/`. It takes one object, `CommandConfig`, and types `run` from it.
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
@@ -467,7 +467,7 @@ What a file declares is checked when it loads, against the limits of Discord, wi
 | --- | --- |
 | A name (command, option, translated name) | Lowercase letters, digits, `-` and `_`, 32 characters at most |
 | A description (command, option, translated description) | 1 to 100 characters |
-| Depth of a command | A command, a group and a subcommand: 2 folders at most |
+| Depth of a command | A command, a group and a subcommand: 3 words at most in `name` |
 | Options of a command | 25 at most |
 | Choices of an option | 1 to 25, each shown as 1 to 100 characters, none twice |
 | `minLength`, `maxLength` | Whole numbers between 0 and 6000, `minLength` not above `maxLength` |

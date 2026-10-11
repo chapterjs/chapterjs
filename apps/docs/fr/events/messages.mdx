@@ -49,7 +49,7 @@ Lire ce qu’écrivent les gens est un **intent privilégié** : `messageCreate`
     ```ts src/events/hello.ts
     import { event } from 'chapterjs';
 
-        export default event({
+    export default event({
       name: 'messageCreate',
       async run({ message }) {
         await message.channel.send(`Bonjour ${message.member.displayName} !`);
@@ -63,12 +63,12 @@ Lire ce qu’écrivent les gens est un **intent privilégié** : `messageCreate`
     ```ts src/events/support.ts
     import { event } from 'chapterjs';
 
-        export default event({
+    export default event({
       name: 'messageCreate',
       where: 'dm',
       async run({ message }) {
-          await message.reply(`Merci ${message.author.displayName} ! Un modérateur va vous répondre bientôt.`);
-        },
+        await message.reply(`Merci ${message.author.displayName} ! Un modérateur va vous répondre bientôt.`);
+      },
     });
     ```
   </Tab>
@@ -78,16 +78,16 @@ Lire ce qu’écrivent les gens est un **intent privilégié** : `messageCreate`
     ```ts src/events/everywhere.ts
     import { event } from 'chapterjs';
 
-        export default event({
+    export default event({
       name: 'messageCreate',
       where: 'both',
       async run({ message }) {
-          if (message.guild) {
-            await message.channel.send(`Bonjour ${message.member.displayName} !`);
-          } else {
-            await message.reply('Bonjour ! Nous sommes en privé ici.');
-          }
-        },
+        if (message.guild) {
+          await message.channel.send(`Bonjour ${message.member.displayName} !`);
+        } else {
+          await message.reply('Bonjour ! Nous sommes en privé ici.');
+        }
+      },
     });
     ```
   </Tab>
@@ -116,9 +116,9 @@ export default event({
   name: 'messageCreate',
   bots: true,
   async run({ message }) {
-      // Tourne aussi pour les bots et les webhooks : assurez-vous qu’il ne peut pas se répondre.
-      if (message.webhookId) console.log(`Un webhook a publié : ${message.content}`);
-    },
+    // Tourne aussi pour les bots et les webhooks : assurez-vous qu’il ne peut pas se répondre.
+    if (message.webhookId) console.log(`Un webhook a publié : ${message.content}`);
+  },
 });
 ```
 
