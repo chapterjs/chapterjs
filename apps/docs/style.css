@@ -135,7 +135,23 @@
   background: #a78bfa;
 }
 
-/* The product shot: an editor, a terminal and Discord, always dark. */
+/* The pill above the title: the latest release, linked to its page. */
+.cj-pill {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(192, 38, 211, 0.25);
+  backdrop-filter: blur(8px);
+}
+.dark .cj-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(232, 121, 249, 0.25);
+}
+.cj-pill:hover {
+  border-color: rgba(192, 38, 211, 0.6);
+}
+
+/* The product shot: the file, the terminal and Discord, always dark.
+ * Its columns live here: Mintlify does not build Tailwind's arbitrary
+ * grid-cols for a custom page. */
 .cj-shot {
   background: #121114;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -148,8 +164,32 @@
 .cj-shot-pane {
   border-color: rgba(255, 255, 255, 0.08);
 }
+.cj-shot-grid > * {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .cj-shot-grid {
+    grid-template-columns: 200px 1fr 1.1fr;
+  }
+}
+/* On a phone the edited line must fit: the file is set a little smaller. */
+@media (max-width: 639px) {
+  .cj-editor {
+    font-size: 10px;
+  }
+}
 .cj-explorer {
   background: #16151a;
+}
+/* The file in the editor: keywords, strings and function names. */
+.cj-kw {
+  color: #c4b5fd;
+}
+.cj-str {
+  color: #f0abfc;
+}
+.cj-fn {
+  color: #7dd3fc;
 }
 .cj-tree-active {
   background: rgba(192, 38, 211, 0.18);
@@ -182,6 +222,188 @@
 }
 .cj-badge-app {
   background: #5865f2;
+}
+
+/* The product shot plays one edit in a loop of 10 s: ten letters typed in
+ * the reply (an unsaved dot on the tab), the file saved, chapterjs dev
+ * reloading it, then someone uses /ping again and reads the new text.
+ * Every element's resting style is the last frame: without motion (or
+ * before the animation starts) the shot shows the edit done. */
+.cj-play {
+  animation-duration: 10s;
+  animation-iteration-count: infinite;
+}
+.cj-typed {
+  display: inline-block;
+  max-width: 10ch;
+  overflow: hidden;
+  vertical-align: top;
+  white-space: pre;
+  animation-name: cj-type;
+  animation-timing-function: steps(10, end);
+}
+@keyframes cj-type {
+  0%,
+  15% {
+    max-width: 0;
+  }
+  35%,
+  90% {
+    max-width: 10ch;
+  }
+  96%,
+  100% {
+    max-width: 0;
+  }
+}
+.cj-emoji {
+  display: inline-block;
+  max-width: 3ch;
+  overflow: hidden;
+  vertical-align: top;
+  white-space: pre;
+  animation-name: cj-emoji;
+  animation-timing-function: steps(1, end);
+}
+@keyframes cj-emoji {
+  0%,
+  36% {
+    max-width: 0;
+  }
+  37%,
+  89% {
+    max-width: 3ch;
+  }
+  90%,
+  100% {
+    max-width: 0;
+  }
+}
+/* The caret takes no room: it is drawn by ::after, over the next letter. */
+.cj-caret {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  vertical-align: text-bottom;
+  opacity: 0;
+  animation-name: cj-caret;
+  animation-timing-function: steps(1, end);
+}
+.cj-caret::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: 1.15em;
+  background: #e879f9;
+}
+@keyframes cj-caret {
+  0%,
+  14% {
+    opacity: 0;
+  }
+  15%,
+  42% {
+    opacity: 1;
+  }
+  43%,
+  89% {
+    opacity: 0;
+  }
+  90%,
+  96% {
+    opacity: 1;
+  }
+  97%,
+  100% {
+    opacity: 0;
+  }
+}
+.cj-dirty {
+  margin-left: 2px;
+  background: #e879f9;
+  opacity: 0;
+  animation-name: cj-dirty;
+}
+@keyframes cj-dirty {
+  0%,
+  16% {
+    opacity: 0;
+  }
+  17%,
+  42% {
+    opacity: 1;
+  }
+  43%,
+  100% {
+    opacity: 0;
+  }
+}
+/* What follows the save, one after the other: the reload line, the /ping,
+ * the answer. They leave together before the edit is undone. */
+.cj-in-1 {
+  animation-name: cj-in-1;
+}
+.cj-in-2 {
+  animation-name: cj-in-2;
+}
+.cj-in-3 {
+  animation-name: cj-in-3;
+}
+@keyframes cj-in-1 {
+  0%,
+  46% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  49%,
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  89%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes cj-in-2 {
+  0%,
+  56% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  59%,
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  89%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes cj-in-3 {
+  0%,
+  64% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  67%,
+  86% {
+    opacity: 1;
+    transform: none;
+  }
+  89%,
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cj-play {
+    animation: none;
+  }
 }
 
 /* Terminal colors, matching the CLI: green ✓, blue ℹ ↻, yellow ⚠, red ✗. */
