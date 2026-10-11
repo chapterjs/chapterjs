@@ -15,6 +15,26 @@
   --cj-paper: #fafafa;
 }
 
+/* The landing page belongs to no tab (a hidden "Home" tab in docs.json),
+ * but Mintlify still marks the first tab of the navbar as the current one
+ * there. `is-custom` is set on the navbar of a page in mode "custom", and
+ * only the landing page uses that mode: show the tab like the others. */
+#navbar.is-custom a[aria-current='location'] {
+  background: transparent;
+  color: rgb(var(--gray-600));
+}
+.dark #navbar.is-custom a[aria-current='location'] {
+  color: rgb(var(--gray-400));
+}
+#navbar.is-custom a[aria-current='location']:hover {
+  color: rgb(var(--gray-900));
+  background: rgb(3 7 18 / 0.03);
+}
+.dark #navbar.is-custom a[aria-current='location']:hover {
+  color: rgb(var(--gray-200));
+  background: rgb(255 255 255 / 0.03);
+}
+
 /* The accent, which is a little brighter on ink than on paper. */
 .cj-accent {
   color: var(--cj-orchid);

@@ -47,10 +47,12 @@ export function suggest(
   given: readonly RawApplicationCommandInteractionDataOption[],
   reporter: Reporter,
   warnedOnce: Set<string>
-): void {
+): Promise<void> {
   const focused = given.find(option => option.focused);
   const started = Date.now();
-  const answer = (choices: RawApplicationCommandOptionChoice[]): void => {
+  const answer = (
+    choices: RawApplicationCommandOptionChoice[]
+  ): Promise<void> =>
     ctx.rest
       .request(CreateInteractionResponse, [raw.id, raw.token], {
         body: {
@@ -59,29 +61,31 @@ export function suggest(
         },
         auth: false,
       })
-      .catch((error: unknown) => {
-        if (!entry || !focused) return;
-        const name = `${commandName(entry.command.path)} ${focused.name}`;
-        if (
-          error instanceof DiscordApiError &&
-          error.code === UNKNOWN_INTERACTION
-        ) {
-          // Too late, or the person typed on and Discord dropped this one.
-          if (Date.now() - started < DEADLINE) return;
-          reporter.onWarning(
-            entry.file,
-            `The suggestions for ${name} took ${((Date.now() - started) / 1000).toFixed(1)} s: Discord waits 3 seconds, then shows none. Make the autocomplete function faster.`
-          );
-          return;
+      .then(
+        () => {},
+        (error: unknown) => {
+          if (!entry || !focused) return;
+          const name = `${commandName(entry.command.path)} ${focused.name}`;
+          if (
+            error instanceof DiscordApiError &&
+            error.code === UNKNOWN_INTERACTION
+          ) {
+            // Too late, or the person typed on and Discord dropped this one.
+            if (Date.now() - started < DEADLINE) return;
+            reporter.onWarning(
+              entry.file,
+              `The suggestions for ${name} took ${((Date.now() - started) / 1000).toFixed(1)} s: Discord waits 3 seconds, then shows none. Make the autocomplete function faster.`
+            );
+            return;
+          }
+          reporter.onError(entry.file, error);
         }
-        reporter.onError(entry.file, error);
-      });
-  };
+      );
 
   // The command, the option or its function is gone: nothing to suggest.
   const fn = focused && entry?.command.autocomplete[focused.name];
   if (!entry || !focused || !fn) {
-    answer([]);
+    const sent = answer([]);
     if (entry && focused) {
       // Still registered with suggestions, but the file has no function.
       reporter.onWarning(
@@ -89,7 +93,7 @@ export function suggest(
         `Discord asked suggestions for ${commandName(entry.command.path)} ${focused.name}, which has none in "autocomplete": the command was registered with an older version of this file.`
       );
     }
-    return;
+    return sent;
   }
   const { command, file } = entry;
   const name = `${commandName(command.path)} ${focused.name}`;
@@ -134,8 +138,8 @@ export function suggest(
     ...translation(ctx, raw.locale ?? null),
   }) as unknown as AutocompleteContext;
 
-  new Promise<readonly Suggestion[]>(resolve => resolve(fn(context)))
-    .then(suggestions => {
+  return new Promise<readonly Suggestion[]>(resolve => resolve(fn(context)))
+    .then(suggestions =>
       answer(
         toChoices(suggestions, {
           name,
@@ -148,11 +152,11 @@ export function suggest(
             reporter.onWarning(file, `${name}: ${message}`);
           },
         })
-      );
-    })
+      )
+    )
     .catch((error: unknown) => {
       reporter.onError(file, error);
-      answer([]);
+      return answer([]);
     });
 }
 

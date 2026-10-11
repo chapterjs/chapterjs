@@ -116,7 +116,7 @@ Translations are checked when the file loads, like the rest of the command:
 
 ## Answering in their language
 
-Translations change what Discord **shows**. To **answer** in the language of the person, read `interaction.locale` in your function: it is the language of their Discord.
+Translations change what Discord **shows**. To **answer** in the language of the person, declare the texts of your bot with `language()`, one declaration per language, and use the `t` your function receives: it already speaks the language of who will read the answer. See [Translated messages](/translated-messages).
 
 ```ts src/commands/hello.ts
 import { command } from 'chapterjs';
@@ -124,15 +124,17 @@ import { command } from 'chapterjs';
 export default command({
   name: 'hello',
   description: 'Says hello in your language',
+  ephemeral: true,
   locales: {
     fr: { name: 'bonjour', description: 'Dit bonjour dans votre langue' },
   },
-  async run({ interaction }) {
-    const hello = interaction.locale === 'fr' ? 'Bonjour !' : 'Hello!';
-    await interaction.reply(hello);
+  async run({ interaction, t }) {
+    await interaction.reply(t('pong'));
   },
 });
 ```
+
+`interaction.locale` is the language of the Discord of the person, as Discord writes it (`'fr'`, `'en-US'`…), for the rare case where you need it yourself.
 
 <CardGroup cols={2}>
   <Card title="Events" icon="zap" href="/events">

@@ -155,7 +155,7 @@ A phrase is answered in the language of the person; one a file does not translat
 
 ## The descriptions of commands
 
-What Discord shows of a command before it is used (its name, its description, its options) is registered, not sent by the bot, so it can't go through `t`. It is the one thing translated by data. A command can leave `description` out of its file and have it in the language files instead, by the path of the command:
+What Discord shows of a command before it is used (its name, its description, its options) is registered, not sent by the bot, so it can't go through `t`. It is the one thing translated by data. A command can leave `description` out of its file and have it in the language files instead, by the name of the command:
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';

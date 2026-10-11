@@ -64,7 +64,7 @@ That is all: a person whose Discord is in French reads "Bienvenue…", anyone el
 - **A brace written as is** is doubled: `'{{name}}'` shows `{name}`.
 - **A language may be declared in several places.** The texts of a feature can live next to it, in a second `language({ locale: 'en-US', ... })`: its `texts`, `commands` and `framework` are added to the others of that language, `t` offers them all, and `default: true` in any of them decides for the whole language. The same key in two places is reported on the later one, with the first:
 
-```ts src/(moderation)/messages.ts
+```ts src/moderation/messages.ts
 import { language } from 'chapterjs';
 
 export const en = language({
@@ -81,7 +81,7 @@ export const fr = language({
 ```
 
 ```text
-✗ src/(moderation)/messages.ts (en) The message "pong" is already in src/messages/en-US.ts: the en-US language has it twice.
+✗ src/moderation/messages.ts (en) The message "pong" is already in src/messages/en-US.ts: the en-US language has it twice.
 ```
 
 ## Plurals
@@ -114,7 +114,7 @@ A message is sent once, and everyone in the channel reads the same text: Discord
 | A public message in a server                                                                                | The one of the server, when Discord knows it |
 | The `ready` event, a task                                                                                   | The default one                              |
 
-Discord only knows the language of a **Community** server. Elsewhere it says `en-US` whatever the server speaks, so a public message there uses the default language of your file: a French bot with `default: 'fr'` speaks French in every server, and a bot in many languages follows the big servers that set theirs.
+Discord only knows the language of a **Community** server. Elsewhere it says `en-US` whatever the server speaks, so a public message there uses your default language: a French bot whose `fr` declaration says `default: true` speaks French in every server, and a bot in many languages follows the big servers that set theirs.
 
 When that language is not in the file, `t` takes one of the same language in another region (`en-GB` reads the `'en-US'` texts, `es-419` the `'es-ES'` ones, `zh-TW` the `'zh-CN'` ones: add the file when that is not what you want), and the default one otherwise. `t.locale` says which one was taken, and `t.in(locale, key, params)` gives a text in another language, to write to someone else:
 
@@ -197,7 +197,7 @@ The phrases, with their English text, are listed in [`FrameworkTexts`](/referenc
 
 ## The names and descriptions of commands
 
-What Discord shows of a command before it is used (its name, its description, its options and their choices) is registered once, in every language: Discord picks the language. Give them in the `commands` of each language file, by the path of the command file:
+What Discord shows of a command before it is used (its name, its description, its options and their choices) is registered once, in every language: Discord picks the language. Give them in the `commands` of each language file, by the name of the command:
 
 ```ts src/messages/fr.ts
 import { language } from 'chapterjs';

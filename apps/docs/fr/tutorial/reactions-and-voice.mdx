@@ -34,7 +34,7 @@ Les réactions ne sont pas privilégiées : Discord ne les considère pas comme 
 
 ## Sûr par défaut, encore
 
-Les règles de la [page précédente](/fr/tutorial/message-events) valent ici : par défaut, un fichier de réactions tourne **pour les personnes, sur les serveurs**. Les réactions des bots sont laissées de côté, le vôtre compris, donc le fichier ne réagit jamais à ce qu’il fait lui-même ; `{ bots: true }` les laisse entrer. Et comme le fichier écoute sur les serveurs, `guild`, `channel` et `member` sont toujours là, sans `?.` à écrire. `{ where: 'dm' }` ou `{ where: 'both' }` changent cela exactement comme pour les messages.
+Les règles de la [page précédente](/fr/tutorial/message-events) valent ici : par défaut, un fichier de réactions tourne **pour les personnes, sur les serveurs**. Les réactions des bots sont laissées de côté, le vôtre compris, donc le fichier ne réagit jamais à ce qu’il fait lui-même ; `bots: true` les laisse entrer. Et comme le fichier écoute sur les serveurs, `guild`, `channel` et `member` sont toujours là, sans `?.` à écrire. `where: 'dm'` ou `where: 'both'` changent cela exactement comme pour les messages.
 
 ## Seulement un identifiant pour le message
 
@@ -63,7 +63,7 @@ Rejoignez un salon vocal de votre serveur de test : le bot écrit dans le chat d
 
 Discord dit seulement à un bot que « l’état vocal de quelqu’un a changé ». ChapterJS se souvient de qui est dans quel salon, compare, et vous donne quatre événements au lieu d’un :
 
-| Dossier | Tourne quand |
+| `name` | Tourne quand |
 | --- | --- |
 | `voiceJoin` | Quelqu’un rejoint un salon vocal |
 | `voiceLeave` | Quelqu’un part, ou est déconnecté |

@@ -179,6 +179,14 @@ export interface RawRoleColors {
 }
 
 /**
+ * The colors of a role as a request gives them: only the primary color is
+ * needed, the two others make a gradient when given.
+ * @see https://docs.discord.com/developers/topics/permissions#role-object-role-colors-object
+ */
+export type RawRoleColorsInput = Pick<RawRoleColors, 'primary_color'> &
+  Partial<Omit<RawRoleColors, 'primary_color'>>;
+
+/**
  * Role Flags
  * @see https://docs.discord.com/developers/topics/permissions#role-object-role-flags
  */

@@ -57,16 +57,16 @@ Use `/dice sides:20`: the answer has a button. Click it: the message changes to 
 
 When Discord shows a button, it has to remember which one it is, so that a click can be sent back to the right bot with the right meaning. Discord does that with a short text attached to the button, which the bot chooses, and gets back on click.
 
-In ChapterJS, **that text is the name of the export**: `reroll` (a default export takes the name of its file). You never write it, you never see it, and it can't collide with another button: two buttons with the same name are reported, and the second one is left out. When the click comes back, the framework reads the path, finds the file, and runs its `run`. This is the same rule as for commands: where the file is says what it is.
+In ChapterJS, **that text is the name of the export**: `reroll` (a default export takes the name of its file). You never write it, you never see it, and it can't collide with another button: two buttons with the same name are reported, and the second one is left out. When the click comes back, the framework reads the name, finds the button, and runs its `run`. This is the same rule as everywhere: what a file exports says what it is, and where the file sits changes nothing.
 
 ## Data: what a button carries
 
 The button needs to know how many sides the die has, and nothing is stored anywhere between the message and the click. So the button **carries** it: `data: { sides: 'number' }` declares a value, `reroll({ sides })` gives it when the button is put in a message, and `run` receives it as `data.sides`, typed as a number.
 
-Where does it live? In the button itself, next to the path, inside the message on Discord. That makes it:
+Where does it live? In the button itself, next to its name, inside the message on Discord. That makes it:
 
 - **Stateless.** Restart the bot, and a click on a week-old message still carries `sides`. Nothing to store, nothing to clean.
-- **Limited.** Discord gives 100 characters to the path and the data together. Carry ids, not names; a number, not a whole object. Carrying too much is an error where the button is made, with how much room there is.
+- **Limited.** Discord gives 100 characters to the name and the data together. Carry ids, not names; a number, not a whole object. Carrying too much is an error where the button is made, with how much room there is.
 - **Typed.** `data` has three kinds: `'string'`, `'number'` and `'boolean'`. `reroll({ sides: 'six' })` is underlined in the editor.
 
 A button without `data` is put in a message as is, without calling it: `components: [close]`.
@@ -116,7 +116,7 @@ A button lives on in the messages it was sent in, long after you changed your co
 
 | What changed                                                         | A click on an old message answers        |
 | -------------------------------------------------------------------- | ---------------------------------------- |
-| The file was renamed or deleted                                      | "This button is not available any more." |
+| The export was renamed or removed                                    | "This button is not available any more." |
 | Its `data` changed shape (a value added, removed or of another kind) | "This button is out of date."            |
 | Only `run` changed                                                   | Runs the new code, with the old data     |
 

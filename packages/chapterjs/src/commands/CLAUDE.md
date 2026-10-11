@@ -36,7 +36,7 @@ Interaction Create → the command of that path → the context (`interaction`, 
 - The command's permissions against the member's (a private refusal otherwise).
 - Its cooldown (`interactions/cooldown.ts`: `checkCooldown()` against a `CooldownStore`, `MemoryCooldowns` by default, kept by the router so a reload keeps the last uses and a restart starts empty; one key per command, scope and id). A refused use counts for nothing, and the person is told the scope that ends last, in the `cooldown` phrase, as a relative Discord timestamp whose refusal deletes itself when the cooldown ends (an unref'd timer: a relative time would keep counting into "52 seconds ago"), or as a date and time when it ends after the 15 minutes an interaction can be edited (`DELETE_WITHIN`). A store shared between processes is another implementation, given through `CommandRouterOptions.cooldowns`.
 
-Then `runInteraction`: it defers by itself after 2 s without an answer (Discord gives 3), tells the person something plain when `run` throws (privately, in the pending answer if there is one) and reports the error with its file and line; a `run` that never answers is a warning.
+Then `runInteraction`: it defers by itself after 2 s without an answer (Discord gives 3), tells the person something plain when `run` throws (privately, in the pending answer if there is one) and reports the error with its file and line; a `run` that never answers is a warning. `dispatch()` returns a promise of all that being done (`null` for an interaction that is not a command), which `chapterjs test` waits for.
 
 ## `autocomplete.ts`: suggestions while the person types
 

@@ -160,7 +160,7 @@ const exe = languageServer();
 describe.skipIf(exe === null || process.platform === 'win32')(
   'in the editor',
   () => {
-    const template = join(packageDir, '../create-chapter/templates/default');
+    const template = join(packageDir, '../create-chapterjs/templates/default');
 
     /** A project as the scaffolder makes it, with two event folders in use. */
     async function scaffolded() {

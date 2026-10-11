@@ -152,6 +152,6 @@ In production on several processes, the process you started keeps the data and a
 | A store per server is used where no server is known | `<name> is a store per server, and this code does not run in one: use <name>.in(guild) to say which server, or declare the store with scope: 'global'.` |
 | A store that is not exported is used | `This store was not loaded by ChapterJS: a store is exported from a file of src/ (export const name = store()), and used once the bot started.` |
 | A value is not JSON | `the value.list[0].at is a Date, which JSON can't hold: a store keeps JSON (texts, numbers, booleans, lists and plain objects). Keep what you need of it: an id, a text, a number.` |
-| A key is empty, or not made of texts | `A key of a store is a text, or a list of texts with at least one.` |
+| A key is empty, or not made of texts | `A key of a store is a text that is not empty, or a list of such texts with at least one.` |
 | Two stores have one name | `✗ src/b.ts (hits) There is already a store named hits, in src/a.ts: the name of the export is the name of the store, so rename one of them.` |
 | A file of `data/` was changed by hand | `data/hits.json is not a file ChapterJS wrote: fix it, or delete it to start the store empty.` |

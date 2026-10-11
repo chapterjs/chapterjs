@@ -1,0 +1,125 @@
+---
+title: 'Tester'
+description: 'Vérifier votre bot sans Discord, à chaque changement, avec une commande et quelques scénarios'
+---
+
+Jusqu’ici, vérifier que quelque chose fonctionne voulait dire le taper sur votre serveur de test et lire la réponse. Pour une commande, ça va. Avec vingt fichiers, un changement dans l’un peut en casser un autre sans que vous le remarquiez, et vous ne pouvez pas tout essayer à la main à chaque fois. Un **test** est ce qui l’essaie pour vous.
+
+## Pourquoi un Discord en mémoire
+
+Un test a besoin d’un Discord contre lequel tourner, et le vrai s’y prête mal : il lui faut un token, un serveur, des gens qui cliquent, et il montre chaque essai à tout le monde. Alors `chapterjs test` joue Discord lui-même : un serveur qui vit en mémoire, avec un salon `#general`, un propriétaire, le bot en admin, et les personnes que vous nommez. Vos fichiers tournent exactement comme ils le feraient en ligne, contre le même framework ; seul l’autre bout est joué. Rien à quoi se connecter, rien à configurer, et ça tourne en une seconde.
+
+## Lancez-le
+
+<CodeGroup>
+```bash pnpm
+pnpm test
+```
+
+```bash npm
+npm test
+```
+
+```bash yarn
+yarn test
+```
+
+```bash bun
+bun test
+```
+</CodeGroup>
+
+```text
+✓ 8 commands, 6 events, 7 components, 2 tasks, a presence, messages in 2 languages loaded
+✓ Checked every file once: 23 checks in 20 files
+ℹ No scenario yet. Write one in a *.test.ts file of src/ with scenario() from 'chapterjs/test' to check what your bot answers.
+✓ 23 checks passed
+```
+
+Vous n’avez rien écrit, et beaucoup a été vérifié, en une ligne. Chaque commande de votre bot a été utilisée, avec toutes ses options remplies, avec les obligatoires seulement, et une fois par valeur difficile : un texte au plus long, un nombre au plus haut, chaque choix, une personne qui a quitté le serveur. Chaque bouton a été cliqué, avec des données difficiles aussi. Chaque événement s’est produit une fois, chaque tâche a tourné une fois. Une vérification réussit quand le bot a répondu et qu’aucune fonction n’a lancé d’erreur ; elle échoue avec le fichier et la ligne, comme le terminal de `chapterjs dev` le ferait :
+
+```text
+✗ Checked src/commands/dice.ts: command /dice failed in 1 of 6 cases
+  with sides at its highest (100): src/commands/dice.ts:12 Cannot read properties of undefined (reading 'name')
+```
+
+C’est un **smoke test** : il ne sait pas ce que `/dice` doit répondre, seulement qu’elle doit répondre sans casser. La plupart des bugs sont attrapés là. Ce que vos fichiers impriment pendant ce temps (le `console.log` de `heartbeat`, par exemple) reste hors du rapport, et s’affiche sous une vérification qui a échoué.
+
+## Un scénario
+
+Pour ce que le bot doit dire, vous écrivez un **scénario** : un fichier qui finit en `.test.ts`, n’importe où dans `src/`, que le bot ne charge jamais. Créez `src/commands/dice.test.ts` :
+
+```ts src/commands/dice.test.ts
+import { scenario } from 'chapterjs/test';
+import dice from './dice';
+import whois from './whois';
+
+export default [
+  scenario('le dé roule, et roule encore', async bot => {
+    const reply = await bot.use(dice, { sides: 20 });
+    reply.isPublic().says('a fait').says('sur un d20').hasButton('Relancer');
+
+    const again = await bot.click(reply.button('Relancer'), { on: reply });
+    again.updatesMessage().says('sur un d20');
+  }),
+
+  scenario('whois parle de quelqu’un', async bot => {
+    const alice = bot.member('alice');
+    const reply = await bot.use(whois, { who: alice });
+    reply.says('Alice (alice) a rejoint Discord le');
+  }),
+];
+```
+
+Relancez les tests :
+
+```text
+✓ Tested src/commands/dice.test.ts
+✓ 23 checks and 2 scenarios passed
+```
+
+## Ligne par ligne
+
+- `scenario('…', async bot => { … })` est un test : un libellé, affiché dans le rapport, et une fonction. Un fichier peut en exporter plusieurs, dans une liste.
+- `bot` est votre bot dans son serveur de test. `bot.use(dice, { sides: 20 })` utilise `/dice` comme une personne le ferait : les options sont typées depuis le fichier, donc `sides` doit être un nombre entier et `who` une personne. Survolez-les, votre éditeur sait.
+- Ce qui revient est la réponse. `says('a fait')` vérifie que le texte le contient, `isPublic()` que tout le monde le voit, `hasButton('Relancer')` que le bouton est là. Chaque vérification lance une phrase en clair quand elle échoue, et renvoie la réponse sinon, pour enchaîner.
+- `bot.click(reply.button('Relancer'), { on: reply })` appuie sur le bouton de cette réponse. `updatesMessage()` vérifie que le bot a changé le message au lieu d’en envoyer un nouveau : c’est ce que fait `interaction.update()`.
+- `bot.member('alice')` est une personne du serveur, créée la première fois que le nom est donné. Son nom affiché est `Alice`, ce que `/whois` montre.
+
+Chaque scénario démarre sur un serveur neuf, avec des stores vides : ce que l’un fait n’atteint jamais le suivant.
+
+## Quand ça échoue
+
+Changez le scénario pour attendre `'a fait un'` et relancez :
+
+```text
+✗ Tested src/commands/dice.test.ts: "le dé roule, et roule encore" failed
+  src/commands/dice.test.ts:8 The answer should say "a fait un", it says "Someone a fait 7 sur un d20.".
+✗ 1 of 2 scenarios failed
+```
+
+Le fichier, la ligne, ce qui était attendu et ce qui est venu : de la même façon que `chapterjs dev` signale une erreur dans une commande. Un scénario échoue aussi quand une fonction du bot lance une erreur pendant qu’il tourne, même si chaque vérification est passée : une personne aurait vu « Something went wrong », et ce n’est jamais ce que vous voulez.
+
+## Points d’attention
+
+- **Qui fait les choses.** Quand personne n’est nommé, c’est `bot.someone` : une personne sans droit particulier. Une commande avec des `permissions` la refuse, comme Discord le ferait. Nommez quelqu’un avec ce qu’il lui faut : `bot.member('mod', { permissions: ['ModerateMembers'] })`, puis `{ by: mod }` en dernier argument.
+- **Ce que Discord refuserait est refusé avant le bot.** Une option obligatoire omise, un nombre hors de sa plage, un texte trop long : le scénario échoue avec la raison, parce que l’application Discord n’aurait jamais envoyé cela.
+- **Le serveur garde ce que le bot a fait.** `bot.channel('general').last` est le message le plus récent là-bas, `member.banned` dit si quelqu’un a été banni, `member.timedOut` s’il est exclu temporairement, `channel.threads` liste les fils. Pour tout le reste, `node:assert` fonctionne comme dans n’importe quel test.
+- **Le temps ne passe pas.** Un `cooldown`, ou une tâche qui tourne `every` heure, ne se teste pas en attendant. `bot.run(task)` lance une tâche maintenant, comme si son heure était venue.
+- **Tout n’est pas encore là.** Le vocal, les sondages et les événements planifiés ne sont pas simulés : un événement que le serveur ne sait pas provoquer est nommé dans le rapport avec `ℹ`, et le reste est vérifié.
+
+## Récapitulatif
+
+- `chapterjs test` fait tourner votre bot contre un Discord en mémoire : pas de token, pas de serveur, personne qui regarde.
+- Sans une ligne écrite, chaque commande, composant, événement et tâche est utilisé une fois avec des valeurs ordinaires et difficiles, et doit répondre sans lancer d’erreur.
+- Un scénario est `scenario('libellé', async bot => { … })` dans un fichier `*.test.ts` de `src/` : `bot.use()`, `bot.click()`, `bot.say()`, `bot.join()`…, et la réponse dit ce que le bot a fait.
+- Un échec nomme le fichier et la ligne, comme toute autre erreur.
+
+<CardGroup cols={2}>
+  <Card title="Compiler" icon="wrench" href="/fr/tutorial/build">
+    Vérifier tout le bot et le compiler pour la production.
+  </Card>
+  <Card title="Guide : Tester" icon="book-open" href="/fr/testing">
+    La même chose, en court, avec tout ce qu’un scénario peut faire.
+  </Card>
+</CardGroup>

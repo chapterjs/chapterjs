@@ -52,6 +52,134 @@
         "default": true,
         "tabs": [
           {
+            "tab": "Home",
+            "hidden": true,
+            "searchable": true,
+            "pages": [
+              "index"
+            ]
+          },
+          {
+            "tab": "Guide",
+            "icon": "book-open",
+            "groups": [
+              {
+                "group": "Get started",
+                "icon": "play",
+                "pages": [
+                  "quickstart",
+                  "setup/discord-application",
+                  "setup/project-structure"
+                ]
+              },
+              {
+                "group": "Commands",
+                "icon": "terminal",
+                "pages": [
+                  "commands/index",
+                  "commands/options",
+                  "commands/answering",
+                  "commands/translations"
+                ]
+              },
+              {
+                "group": "Messages",
+                "icon": "mail",
+                "pages": [
+                  "messages"
+                ]
+              },
+              {
+                "group": "Events",
+                "icon": "zap",
+                "pages": [
+                  "events/index",
+                  "events/messages",
+                  "events/reactions",
+                  "events/voice",
+                  "events/server"
+                ]
+              },
+              {
+                "group": "Voice",
+                "icon": "volume-2",
+                "pages": [
+                  "voice"
+                ]
+              },
+              {
+                "group": "Components",
+                "icon": "mouse-pointer-click",
+                "pages": [
+                  "components/index",
+                  "components/selects",
+                  "components/modals",
+                  "components/embeds"
+                ]
+              },
+              {
+                "group": "Tasks",
+                "icon": "clock",
+                "pages": [
+                  "tasks/index"
+                ]
+              },
+              {
+                "group": "Presence",
+                "icon": "activity",
+                "pages": [
+                  "presence"
+                ]
+              },
+              {
+                "group": "Storage",
+                "icon": "database",
+                "pages": [
+                  "storage"
+                ]
+              },
+              {
+                "group": "Translations",
+                "icon": "languages",
+                "pages": [
+                  "translated-messages"
+                ]
+              },
+              {
+                "group": "Memory",
+                "icon": "brain",
+                "pages": [
+                  "memory"
+                ]
+              },
+              {
+                "group": "Testing",
+                "icon": "flask-conical",
+                "pages": [
+                  "testing"
+                ]
+              },
+              {
+                "group": "Run your bot",
+                "icon": "rocket",
+                "pages": [
+                  "run/dev",
+                  "run/build",
+                  "run/start",
+                  "run/deploy",
+                  "run/troubleshooting"
+                ]
+              },
+              {
+                "group": "Roadmap",
+                "icon": "map",
+                "pages": [
+                  "roadmap"
+                ]
+              }
+            ]
+          },
+          {
             "tab": "Tutorial",
             "icon": "graduation-cap",
             "groups": [
@@ -135,120 +263,19 @@
                 ]
               },
               {
+                "group": "Testing",
+                "icon": "flask-conical",
+                "pages": [
+                  "tutorial/testing"
+                ]
+              },
+              {
                 "group": "Going online",
                 "icon": "rocket",
                 "pages": [
                   "tutorial/build",
                   "tutorial/deploy",
                   "tutorial/next-steps"
-                ]
-              }
-            ]
-          },
-          {
-            "tab": "Guide",
-            "icon": "book-open",
-            "groups": [
-              {
-                "group": "Get started",
-                "icon": "play",
-                "pages": [
-                  "index",
-                  "quickstart",
-                  "setup/discord-application",
-                  "setup/project-structure"
-                ]
-              },
-              {
-                "group": "Commands",
-                "icon": "terminal",
-                "pages": [
-                  "commands/index",
-                  "commands/options",
-                  "commands/answering",
-                  "commands/translations"
-                ]
-              },
-              {
-                "group": "Events",
-                "icon": "zap",
-                "pages": [
-                  "events/index",
-                  "events/messages",
-                  "events/reactions",
-                  "events/voice",
-                  "events/server"
-                ]
-              },
-              {
-                "group": "Voice",
-                "icon": "volume-2",
-                "pages": [
-                  "voice"
-                ]
-              },
-              {
-                "group": "Components",
-                "icon": "mouse-pointer-click",
-                "pages": [
-                  "components/index",
-                  "components/selects",
-                  "components/modals",
-                  "components/embeds"
-                ]
-              },
-              {
-                "group": "Tasks",
-                "icon": "clock",
-                "pages": [
-                  "tasks/index"
-                ]
-              },
-              {
-                "group": "Presence",
-                "icon": "activity",
-                "pages": [
-                  "presence"
-                ]
-              },
-              {
-                "group": "Storage",
-                "icon": "database",
-                "pages": [
-                  "storage"
-                ]
-              },
-              {
-                "group": "Translations",
-                "icon": "languages",
-                "pages": [
-                  "translated-messages"
-                ]
-              },
-              {
-                "group": "Messages and memory",
-                "icon": "message-square",
-                "pages": [
-                  "messages",
-                  "memory"
-                ]
-              },
-              {
-                "group": "Run your bot",
-                "icon": "rocket",
-                "pages": [
-                  "run/dev",
-                  "run/build",
-                  "run/start",
-                  "run/deploy",
-                  "run/troubleshooting"
-                ]
-              },
-              {
-                "group": "More",
-                "icon": "compass",
-                "pages": [
-                  "not-yet"
                 ]
               }
             ]
@@ -279,7 +306,8 @@
                   "reference/task",
                   "reference/store",
                   "reference/presence",
-                  "reference/messages"
+                  "reference/messages",
+                  "reference/testing"
                 ]
               },
               {
@@ -351,6 +379,134 @@
       {
         "language": "fr",
         "tabs": [
+          {
+            "tab": "Accueil",
+            "hidden": true,
+            "searchable": true,
+            "pages": [
+              "fr/index"
+            ]
+          },
+          {
+            "tab": "Guide",
+            "icon": "book-open",
+            "groups": [
+              {
+                "group": "Bien démarrer",
+                "icon": "play",
+                "pages": [
+                  "fr/quickstart",
+                  "fr/setup/discord-application",
+                  "fr/setup/project-structure"
+                ]
+              },
+              {
+                "group": "Commandes",
+                "icon": "terminal",
+                "pages": [
+                  "fr/commands/index",
+                  "fr/commands/options",
+                  "fr/commands/answering",
+                  "fr/commands/translations"
+                ]
+              },
+              {
+                "group": "Messages",
+                "icon": "mail",
+                "pages": [
+                  "fr/messages"
+                ]
+              },
+              {
+                "group": "Événements",
+                "icon": "zap",
+                "pages": [
+                  "fr/events/index",
+                  "fr/events/messages",
+                  "fr/events/reactions",
+                  "fr/events/voice",
+                  "fr/events/server"
+                ]
+              },
+              {
+                "group": "Vocal",
+                "icon": "volume-2",
+                "pages": [
+                  "fr/voice"
+                ]
+              },
+              {
+                "group": "Composants",
+                "icon": "mouse-pointer-click",
+                "pages": [
+                  "fr/components/index",
+                  "fr/components/selects",
+                  "fr/components/modals",
+                  "fr/components/embeds"
+                ]
+              },
+              {
+                "group": "Tâches",
+                "icon": "clock",
+                "pages": [
+                  "fr/tasks/index"
+                ]
+              },
+              {
+                "group": "Présence",
+                "icon": "activity",
+                "pages": [
+                  "fr/presence"
+                ]
+              },
+              {
+                "group": "Stockage",
+                "icon": "database",
+                "pages": [
+                  "fr/storage"
+                ]
+              },
+              {
+                "group": "Traductions",
+                "icon": "languages",
+                "pages": [
+                  "fr/translated-messages"
+                ]
+              },
+              {
+                "group": "Mémoire",
+                "icon": "brain",
+                "pages": [
+                  "fr/memory"
+                ]
+              },
+              {
+                "group": "Tests",
+                "icon": "flask-conical",
+                "pages": [
+                  "fr/testing"
+                ]
+              },
+              {
+                "group": "Faire tourner votre bot",
+                "icon": "rocket",
+                "pages": [
+                  "fr/run/dev",
+                  "fr/run/build",
+                  "fr/run/start",
+                  "fr/run/deploy",
+                  "fr/run/troubleshooting"
+                ]
+              },
+              {
+                "group": "Roadmap",
+                "icon": "map",
+                "pages": [
+                  "fr/roadmap"
+                ]
+              }
+            ]
+          },
           {
             "tab": "Tutoriel",
             "icon": "graduation-cap",
@@ -435,120 +591,19 @@
                 ]
               },
               {
+                "group": "Tests",
+                "icon": "flask-conical",
+                "pages": [
+                  "fr/tutorial/testing"
+                ]
+              },
+              {
                 "group": "Mise en ligne",
                 "icon": "rocket",
                 "pages": [
                   "fr/tutorial/build",
                   "fr/tutorial/deploy",
                   "fr/tutorial/next-steps"
-                ]
-              }
-            ]
-          },
-          {
-            "tab": "Guide",
-            "icon": "book-open",
-            "groups": [
-              {
-                "group": "Bien démarrer",
-                "icon": "play",
-                "pages": [
-                  "fr/index",
-                  "fr/quickstart",
-                  "fr/setup/discord-application",
-                  "fr/setup/project-structure"
-                ]
-              },
-              {
-                "group": "Commandes",
-                "icon": "terminal",
-                "pages": [
-                  "fr/commands/index",
-                  "fr/commands/options",
-                  "fr/commands/answering",
-                  "fr/commands/translations"
-                ]
-              },
-              {
-                "group": "Événements",
-                "icon": "zap",
-                "pages": [
-                  "fr/events/index",
-                  "fr/events/messages",
-                  "fr/events/reactions",
-                  "fr/events/voice",
-                  "fr/events/server"
-                ]
-              },
-              {
-                "group": "Vocal",
-                "icon": "volume-2",
-                "pages": [
-                  "fr/voice"
-                ]
-              },
-              {
-                "group": "Composants",
-                "icon": "mouse-pointer-click",
-                "pages": [
-                  "fr/components/index",
-                  "fr/components/selects",
-                  "fr/components/modals",
-                  "fr/components/embeds"
-                ]
-              },
-              {
-                "group": "Tâches",
-                "icon": "clock",
-                "pages": [
-                  "fr/tasks/index"
-                ]
-              },
-              {
-                "group": "Présence",
-                "icon": "activity",
-                "pages": [
-                  "fr/presence"
-                ]
-              },
-              {
-                "group": "Stockage",
-                "icon": "database",
-                "pages": [
-                  "fr/storage"
-                ]
-              },
-              {
-                "group": "Traductions",
-                "icon": "languages",
-                "pages": [
-                  "fr/translated-messages"
-                ]
-              },
-              {
-                "group": "Messages et mémoire",
-                "icon": "message-square",
-                "pages": [
-                  "fr/messages",
-                  "fr/memory"
-                ]
-              },
-              {
-                "group": "Faire tourner votre bot",
-                "icon": "rocket",
-                "pages": [
-                  "fr/run/dev",
-                  "fr/run/build",
-                  "fr/run/start",
-                  "fr/run/deploy",
-                  "fr/run/troubleshooting"
-                ]
-              },
-              {
-                "group": "Plus",
-                "icon": "compass",
-                "pages": [
-                  "fr/not-yet"
                 ]
               }
             ]
@@ -579,7 +634,8 @@
                   "fr/reference/task",
                   "fr/reference/store",
                   "fr/reference/presence",
-                  "fr/reference/messages"
+                  "fr/reference/messages",
+                  "fr/reference/testing"
                 ]
               },
               {

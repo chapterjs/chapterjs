@@ -77,15 +77,18 @@ export class CommandRouter {
   /**
    * Handles an Interaction Create event, if it is a slash command being
    * used, or someone typing in one of its options with suggestions.
+   * Returns a promise of everything being done (the function run, the
+   * person answered), or `null` when the interaction is not for this
+   * router. Nothing of the bot waits for it: `chapterjs test` does.
    */
-  dispatch(ctx: Context, raw: RawInteraction): void {
+  dispatch(ctx: Context, raw: RawInteraction): Promise<void> | null {
     const autocomplete =
       raw.type === InteractionType.ApplicationCommandAutocomplete;
     if (raw.type !== InteractionType.ApplicationCommand && !autocomplete) {
-      return;
+      return null;
     }
     const data = raw.data as RawApplicationCommandData | undefined;
-    if (!data || data.type !== ApplicationCommandType.ChatInput) return;
+    if (!data || data.type !== ApplicationCommandType.ChatInput) return null;
 
     // `/mod roles add` comes as a command with nested options.
     const path = [data.name];
@@ -96,13 +99,12 @@ export class CommandRouter {
     }
     const entry = this.#commands.get(path.join(' '));
     if (autocomplete) {
-      suggest(ctx, raw, entry, given, this.#options, this.#warnedOnce);
-      return;
+      return suggest(ctx, raw, entry, given, this.#options, this.#warnedOnce);
     }
     const name = commandName(path);
 
     const author = authorOf(raw);
-    if (!author) return;
+    if (!author) return null;
     const { user: _user, member: _member, message: _message, ...rest } = raw;
     const user = ctx.entities.user(author.user);
     const interaction = new CommandInteraction(ctx, rest, user, {
@@ -111,8 +113,7 @@ export class CommandRouter {
     });
     if (!entry) {
       // Still registered on Discord, but its file is gone or broken.
-      refuse(interaction, 'unavailable');
-      return;
+      return refuse(interaction, 'unavailable');
     }
     const { command, file } = entry;
     const placed = resolvePlace(
@@ -124,8 +125,7 @@ export class CommandRouter {
       message => this.#options.onWarning(file, `${name} ${message}`)
     );
     if (!placed.place) {
-      refuse(interaction, placed.refusal, { what: 'command' });
-      return;
+      return refuse(interaction, placed.refusal, { what: 'command' });
     }
     const { place } = placed;
     // What the member can do where the command was used, overwrites
@@ -135,11 +135,10 @@ export class CommandRouter {
         command.permissions
       );
       if (missing.length > 0) {
-        refuse(interaction, 'needsPermissions', {
+        return refuse(interaction, 'needsPermissions', {
           permissions: missing.join(', '),
           count: missing.length,
         });
-        return;
       }
     }
 
@@ -155,8 +154,7 @@ export class CommandRouter {
       }
     );
     if (again > 0) {
-      this.#refuseUntil(interaction, again);
-      return;
+      return this.#refuseUntil(interaction, again);
     }
 
     let options: Record<string, unknown>;
@@ -164,8 +162,7 @@ export class CommandRouter {
       options = this.#readOptions(ctx, raw, data, given, entry);
     } catch (error) {
       this.#options.onError(file, error);
-      refuse(interaction, 'failed', { what: 'command' });
-      return;
+      return refuse(interaction, 'failed', { what: 'command' });
     }
     remember(interaction, {
       guild: place.guild ?? undefined,
@@ -188,7 +185,7 @@ export class CommandRouter {
       ),
     }) as unknown as CommandContext;
 
-    runInteraction({
+    return runInteraction({
       interaction,
       file,
       name,
@@ -209,7 +206,7 @@ export class CommandRouter {
    * cooldown ends, as long as the interaction can still be edited (15
    * minutes); beyond that, the date and time are shown instead.
    */
-  #refuseUntil(interaction: CommandInteraction, until: number): void {
+  #refuseUntil(interaction: CommandInteraction, until: number): Promise<void> {
     const at = Math.ceil(until / 1000) * 1000;
     const wait = at - Date.now();
     const deletable = wait <= DELETE_WITHIN;
@@ -218,12 +215,13 @@ export class CommandRouter {
       deletable ? TimestampStyle.Relative : TimestampStyle.LongDateShortTime
     );
     const refused = refuse(interaction, 'cooldown', { what: 'command', when });
-    if (!deletable) return;
+    if (!deletable) return refused;
     const timer = setTimeout(() => {
       refused.then(() => interaction.delete()).catch(() => {});
     }, wait);
     // Nothing of the bot waits for it: the process may stop meanwhile.
     timer.unref();
+    return refused;
   }
 
   /** The value of each declared option, as structures where it applies. */

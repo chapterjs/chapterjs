@@ -34,7 +34,7 @@ Reactions are not privileged: Discord does not consider them personal, unlike wh
 
 ## Safe by default, again
 
-The rules of the [previous page](/tutorial/message-events) hold here: by default a reaction file runs **for people, in servers**. The reactions of bots are left out, yours included, so the file never reacts to what it does itself; `{ bots: true }` lets them in. And because the file listens in servers, `guild`, `channel` and `member` are always there, with no `?.` to write. `{ where: 'dm' }` or `{ where: 'both' }` change that exactly like for messages.
+The rules of the [previous page](/tutorial/message-events) hold here: by default a reaction file runs **for people, in servers**. The reactions of bots are left out, yours included, so the file never reacts to what it does itself; `bots: true` lets them in. And because the file listens in servers, `guild`, `channel` and `member` are always there, with no `?.` to write. `where: 'dm'` or `where: 'both'` change that exactly like for messages.
 
 ## Only an id for the message
 
@@ -63,7 +63,7 @@ Join a voice channel of your test server: the bot writes in the chat of that cha
 
 Discord tells a bot only that "someone's voice state changed". ChapterJS remembers who is in which channel, compares, and gives you four events instead of one:
 
-| Folder | Runs when |
+| `name` | Runs when |
 | --- | --- |
 | `voiceJoin` | Someone joins a voice channel |
 | `voiceLeave` | Someone leaves, or is disconnected |
@@ -72,7 +72,7 @@ Discord tells a bot only that "someone's voice state changed". ChapterJS remembe
 
 ## And the others
 
-Polls (`pollVoteAdd`), typing (`typingStart`), bans (`banAdd`), the audit log, invites, emojis, scheduled events, threads and presences all work the same way: an `event()` with the name of the event, and what your function receives typed for that folder. The [Guide](/events) has a page for each family.
+Polls (`pollVoteAdd`), typing (`typingStart`), bans (`banAdd`), the audit log, invites, emojis, scheduled events, threads and presences all work the same way: an `event()` with the name of the event, and what your function receives typed from that name. The [Guide](/events) has a page for each family.
 
 ## Points of attention
 

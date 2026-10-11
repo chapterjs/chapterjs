@@ -36,7 +36,7 @@ Sur la page **Bot** de l’application **dev**, cliquez sur **Reset Token**, con
 Gardez-le quelque part une minute : la page suivante le met dans votre projet. Ensuite, oubliez où vous l’aviez gardé et effacez-le de là.
 
 <Warning>
-  Le token est le mot de passe de votre bot. Ne le mettez jamais dans votre code, ne le commitez jamais, ne le collez jamais dans une discussion ou une capture d’écran. Un projet créé avec `create chapter` le garde dans un fichier `.env` que git ignore.
+  Le token est le mot de passe de votre bot. Ne le mettez jamais dans votre code, ne le commitez jamais, ne le collez jamais dans une discussion ou une capture d’écran. Un projet créé avec `create chapterjs` le garde dans un fichier `.env` que git ignore.
 </Warning>
 
 ## Copier l’identifiant de votre serveur de test
@@ -61,9 +61,9 @@ Laissez-les désactivés pour l’instant. ChapterJS vous prévient quand un de 
 
 | Option | Nécessaire quand votre bot |
 | --- | --- |
-| **Server Members Intent** | Réagit aux membres qui arrivent, partent ou changent (`memberJoin`, `memberLeave`, `memberUpdate`) |
+| **Server Members Intent** | Réagit aux membres qui arrivent, partent ou changent (`memberJoin`, `memberLeave`, `memberUpdate`), ou à qui rejoint un fil |
 | **Message Content Intent** | Lit le texte des messages que les gens écrivent (`messageCreate`, `messageUpdate`) |
-| **Presence Intent** | Rien dans ChapterJS ne l’utilise aujourd’hui |
+| **Presence Intent** | Réagit au statut et à l’activité des personnes (`presenceUpdate`) |
 
 ## Récapitulatif
 

@@ -141,6 +141,26 @@ export default event({
     expect(await connection.waitForClose()).toBe(1000);
   });
 
+  it('stops cleanly when one Ctrl+C reaches it twice, as pnpm dev delivers it', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/events/ready.ts': `import { event } from 'chapterjs';
+export default event({ name: 'ready', run() {} });
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 1 event loaded');
+    const connection = await connected(fake);
+    // The terminal signals the whole foreground group, and the package
+    // manager forwards the signal to its child: the bot gets two at once.
+    cli.signal('SIGINT');
+    cli.signal('SIGINT');
+    const { code, output } = await cli.exited;
+    expect(code).toBe(0);
+    expect(output).toContain('✓ Disconnected');
+    expect(await connection.waitForClose()).toBe(1000);
+  });
+
   it('ignores what happens in other servers', async () => {
     const fake = await world();
     fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
@@ -716,6 +736,20 @@ describe.skipIf(process.platform === 'win32')(
       expect(output).not.toContain('Message Content Intent');
     });
 
+    it('names a file once, however many of its events need the option', async () => {
+      const fake = await world({ flags: 1 << 19 });
+      const output = await failing(
+        project({
+          ...files,
+          'src/events/members.ts': `import { event } from 'chapterjs';\nexport const joined = event({ name: 'memberJoin', run() {} });\nexport const left = event({ name: 'memberLeave', run() {} });\nexport const changed = event({ name: 'memberUpdate', run() {} });\n`,
+        }),
+        fake
+      );
+      expect(output).toContain(
+        '  - Server Members Intent, needed by src/events/members.ts\n'
+      );
+    });
+
     it.each([
       [
         ['start', '--processes'],
@@ -733,7 +767,7 @@ describe.skipIf(process.platform === 'win32')(
       ],
       [
         [],
-        /^Usage: chapterjs <command>\n\nCommands:\n  dev .+\n  build .+\n  start .+\n  sync .+\n\nOptions of start:\n  --processes <n> /,
+        /^Usage: chapterjs <command>\n\nCommands:\n  dev .+\n  build .+\n  start .+\n  test .+\n  sync .+\n\nOptions of start:\n  --processes <n> /,
         0,
       ],
       [['--help'], /^Usage: chapterjs <command>/, 0],
@@ -923,7 +957,7 @@ describe.skipIf(process.platform === 'win32')('the token of the .env', () => {
 describe.skipIf(process.platform === 'win32')(
   'the templates of the scaffolder',
   () => {
-    const templates = join(packageDir, '../create-chapter/templates');
+    const templates = join(packageDir, '../create-chapterjs/templates');
     const WELCOME = '100000000000000022';
     const THREAD = '100000000000000023';
     const VOICE = '100000000000000501';
@@ -1571,7 +1605,7 @@ export default event({ name: 'roleDelete', run: ({ role, guild }) => role.name +
       'src/lib/wrong.ts': `export const count: number = 'three';\n`,
     });
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2018,7 +2052,7 @@ export default event({ name: 'messageDelete', where: 'both', run: ({ guildId }) 
 `,
     });
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2152,7 +2186,7 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       ),
     });
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2682,7 +2716,7 @@ export default event({ name: 'memberJoin', bots: true, run: ({ member }) => memb
 `,
       });
       cpSync(
-        join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+        join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
         join(cwd, 'tsconfig.json')
       );
       symlinkSync(
@@ -2746,7 +2780,7 @@ export default event({ name: 'ready', run: () => console.log('nested ran') });
 
     // What the project type-checks is what runs.
     cpSync(
-      join(packageDir, '../create-chapter/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2771,7 +2805,21 @@ export default event({ name: 'ready', run: () => console.log('nested ran') });
       fake
     );
     await cli.waitFor(
-      /✗ src\/events\/ready\/broken\.ts Cannot find module '.*\/src\/lib\/nope' imported from .*\/src\/events\/ready\/broken\.ts/
+      "✗ src/events/ready/broken.ts '../../lib/nope' does not exist. No nope.ts, nope.js or nope/index.ts is there. Check the path and the name of the file."
+    );
+    await cli.waitFor('ℹ Nothing to run yet');
+  });
+
+  it('says which file is missing when the import has its extension', async () => {
+    const fake = await world();
+    const cli = runDev(
+      project({
+        'src/events/ready/broken.ts': `import { event } from 'chapterjs';\nimport { nope } from '../../lib/nope.ts';\nexport default event({ name: 'ready', run: () => nope });\n`,
+      }),
+      fake
+    );
+    await cli.waitFor(
+      "✗ src/events/ready/broken.ts '../../lib/nope.ts' does not exist. Check the path and the name of the file."
     );
     await cli.waitFor('ℹ Nothing to run yet');
   });

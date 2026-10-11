@@ -272,6 +272,13 @@ export interface RawForumTag {
 }
 
 /**
+ * A forum tag as a request gives it: a new tag has no `id` yet, an existing
+ * one keeps its own.
+ * @see https://docs.discord.com/developers/resources/channel#forum-tag-object
+ */
+export type RawForumTagInput = Omit<RawForumTag, 'id'> & { id?: Snowflake };
+
+/**
  * JSON Params (Group DM)
  * @see https://docs.discord.com/developers/resources/channel#modify-channel-json-params-group-dm
  */
@@ -314,7 +321,7 @@ export interface ModifyGuildChannelJSONParams {
   /** channel flags combined as a bitfield. */
   flags?: number;
   /** the set of tags that can be used in a `GUILD_FORUM` or a `GUILD_MEDIA` channel; limited to 20 */
-  available_tags?: RawForumTag[];
+  available_tags?: RawForumTagInput[];
   /** the emoji to show in the add reaction button on a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel */
   default_reaction_emoji?: RawDefaultReaction | null;
   /** the initial `rate_limit_per_user` to set on newly created threads in a channel. this field is copied to the thread at creation time and does not live update. */

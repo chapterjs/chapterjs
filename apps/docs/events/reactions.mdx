@@ -93,8 +93,8 @@ export default event({
   name: 'reactionAdd',
   where: 'both',
   run({ user, emoji, guild }) {
-      console.log(`${user.username} reacted ${emoji.name} ${guild ? `in ${guild.name}` : 'in private'}`);
-    },
+    console.log(`${user.username} reacted ${emoji.name} ${guild ? `in ${guild.name}` : 'in private'}`);
+  },
 });
 ```
 

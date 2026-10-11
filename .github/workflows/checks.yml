@@ -75,6 +75,6 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm build
       - run: |
-          for name in chapterjs create-chapter create-chapterjs; do
+          for name in chapterjs create-chapterjs create-chapter; do
             (cd "packages/$name" && pnpm pack --pack-destination "$RUNNER_TEMP")
           done

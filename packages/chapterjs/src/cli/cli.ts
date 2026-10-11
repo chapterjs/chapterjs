@@ -8,6 +8,7 @@ import { writeTypes } from './project.js';
 import { createLog } from './log.js';
 import { nodeTooOld } from './node-version.js';
 import { start } from './start.js';
+import { test } from './test.js';
 
 const { version } = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
@@ -19,6 +20,7 @@ Commands:
   dev     Run your bot on your dev server and reload it when you save a file
   build   Check your bot and prepare it for production
   start   Run for everyone the bot that was built
+  test    Check your bot without Discord: every file once, then your scenarios
   sync    Write the types of your project (dev does it too)
 
 Options of start:
@@ -36,17 +38,39 @@ const [command, ...rest] = process.argv.slice(2);
 
 /**
  * Ctrl+C and a stop asked by the system both end the session cleanly, so
- * the bot goes offline at once. A second one does not wait.
+ * the bot goes offline at once. A second one, pressed while the first is
+ * still being handled, does not wait.
+ *
+ * One Ctrl+C reaches the bot twice when a package manager runs it (`pnpm
+ * dev`): once from the terminal, which signals every process of the
+ * foreground group, and once forwarded by the package manager. Two signals
+ * within a second are that one Ctrl+C, not a second one.
  */
 function stopSignal(): AbortSignal {
   const controller = new AbortController();
+  let askedAt = 0;
   for (const name of ['SIGINT', 'SIGTERM'] as const) {
     process.on(name, () => {
-      if (controller.signal.aborted) process.exit(1);
+      const now = Date.now();
+      if (controller.signal.aborted) {
+        if (now - askedAt >= 1000) process.exit(1);
+        return;
+      }
+      askedAt = now;
       controller.abort();
     });
   }
   return controller.signal;
+}
+
+/**
+ * Ends the process once everything printed has reached the terminal. When
+ * the output is a pipe (`pnpm test` puts one between itself and the
+ * command), writes are asynchronous on macOS and Windows: `process.exit()`
+ * right after the last line would cut it.
+ */
+function exit(): void {
+  process.stdout.write('', () => process.exit());
 }
 
 /** `--processes 4` or `--processes=4`; `null` when it is not a count. */
@@ -75,7 +99,7 @@ if (command === 'dev') {
     signal: controller.signal,
   });
   // Nothing may keep the process alive once the bot is disconnected.
-  process.exit();
+  exit();
 } else if (command === 'start') {
   const processes = readProcesses(rest);
   if (processes === null) {
@@ -103,7 +127,7 @@ if (command === 'dev') {
       script: process.argv[1]!,
       args: ['start'],
     });
-    process.exit();
+    exit();
   }
 } else if (command === 'sync') {
   // Run after installing, so the editor knows the types before the first
@@ -116,7 +140,18 @@ if (command === 'dev') {
   console.log(USAGE);
 } else if (command === 'build') {
   process.exitCode = await build({ cwd: process.cwd(), version, log });
-  process.exit();
+  exit();
+} else if (command === 'test') {
+  // How long a scenario may take: only tests shorten it.
+  const scenarioTimeout = Number(process.env.CHAPTERJS_SCENARIO_TIMEOUT);
+  process.exitCode = await test({
+    cwd: process.cwd(),
+    version,
+    log,
+    ...(scenarioTimeout > 0 ? { scenarioTimeout } : {}),
+    progress: process.stdout.isTTY === true,
+  });
+  exit();
 } else {
   log.error(`"${command}" is not a command.\n${USAGE}`);
   process.exitCode = 1;

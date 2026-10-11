@@ -55,7 +55,7 @@ Une **commande slash**, c’est ce que les gens tapent après `/` dans Discord :
 
 Pour que ce menu existe, le bot doit d’abord **enregistrer** ses commandes auprès de Discord : envoyer la liste des noms, descriptions et options. Ensuite, chaque fois que quelqu’un en utilise une, Discord envoie au bot un événement appelé *interaction*, et le bot a quelques secondes pour répondre.
 
-ChapterJS enregistre vos commandes pour vous : un fichier dans `src/commands/` est une commande, et le framework envoie la liste à Discord quand elle a changé. Vous n’écrivez que ce que fait la commande.
+ChapterJS enregistre vos commandes pour vous : chaque `command()` que vos fichiers exportent est une commande, et le framework envoie la liste à Discord quand elle a changé. Vous n’écrivez que ce que fait la commande.
 
 ## L’endroit où tourne votre bot compte
 
@@ -74,7 +74,7 @@ Vous utiliserez la première pendant la plus grande partie de ce tutoriel, et la
 
 Un bot doit garder sa connexion en vie, demander les bons intents, enregistrer les commandes, répondre aux interactions à temps, respecter les limites que Discord fixe au nombre de requêtes qu’un bot peut envoyer, se souvenir de ce qu’on lui a dit pour ne pas le redemander, et se rétablir quand le réseau tombe. Tout cela est identique pour chaque bot, alors le framework s’en charge, et vous ne le voyez jamais.
 
-Ce qui reste pour vous, c’est la partie qui vous appartient : ce que le bot dit et fait. Elle prend la forme de fichiers dans des dossiers conventionnels. L’endroit où se trouve un fichier dit ce qu’il est : il n’y a donc rien à enregistrer, rien à lister, et aucun type à écrire.
+Ce qui reste pour vous, c’est la partie qui vous appartient : ce que le bot dit et fait. Elle prend la forme de fichiers dans `src/`, rangés comme vous voulez. Ce qu’un fichier exporte dit ce qu’il est : il n’y a donc rien à enregistrer, rien à lister, et aucun type à écrire.
 
 ## Récapitulatif
 
