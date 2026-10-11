@@ -121,24 +121,29 @@ export class EventRouter {
     );
   }
 
-  /** Runs the handlers of a gateway event, once the cache reflects it. */
+  /**
+   * Runs the handlers of a gateway event, once the cache reflects it.
+   * Resolves once every handler is done (what was asked to Discord first
+   * included). Nothing of the bot waits for it: `chapterjs test` does.
+   */
   dispatch<E extends GatewayDispatchEventName>(
     ctx: Context,
     event: E,
     data: GatewayDispatchEvents[E],
     extra: { joined: boolean; before: unknown[] | undefined }
-  ): void {
+  ): Promise<void> {
     const sources = BY_GATEWAY_EVENT.get(event);
-    if (!sources) return;
+    if (!sources) return Promise.resolve();
+    const pending: Promise<void>[] = [];
     sources.forEach((source, index) => {
       if (!this.#handlers.has(source.name)) return;
-      const deliver = (prepared?: unknown): void => {
+      const deliver = (prepared?: unknown): Promise<void> => {
         const built = source.build(ctx, data as never, {
           joined: extra.joined,
           before: extra.before?.[index],
           prepared,
         });
-        if (!built) return;
+        if (!built) return Promise.resolve();
         // One gateway event can be several occurrences (messages deleted
         // together, emojis changed at once): each is delivered.
         const occurrences: readonly object[] = Array.isArray(built)
@@ -146,52 +151,70 @@ export class EventRouter {
           : [built];
         const guildOf = EVENTS[source.name].guildOf as
           ((context: object) => Guild | null) | undefined;
+        const emitted: Promise<void>[] = [];
         for (const context of occurrences) {
           // `t` speaks the language of the server the event happened in.
           const guild = guildOf?.(context);
-          this.emit(
-            source.name,
-            {
-              ...context,
-              ...translation(ctx, audienceLocale({ guild })),
-            } as never,
-            guild?.id ?? null
+          emitted.push(
+            this.emit(
+              source.name,
+              {
+                ...context,
+                ...translation(ctx, audienceLocale({ guild })),
+              } as never,
+              guild?.id ?? null
+            )
           );
         }
+        return Promise.all(emitted).then(() => {});
       };
       const preparing = source.prepare?.(ctx, data as never);
-      if (!preparing) return deliver();
-      preparing.then(deliver, (error: unknown) =>
-        this.#onSkipped(source.name, error)
+      if (!preparing) {
+        pending.push(deliver());
+        return;
+      }
+      pending.push(
+        preparing.then(deliver, (error: unknown) =>
+          this.#onSkipped(source.name, error)
+        )
       );
     });
+    return Promise.all(pending).then(() => {});
   }
 
   /**
    * Runs the handlers of an event with what they receive, for the server
-   * it happened in (what a store per server reads).
+   * it happened in (what a store per server reads). Resolves once every
+   * handler is done.
    */
   emit<Name extends EventName>(
     name: Name,
     context: EventContexts[Name],
     guildId: string | null = null
-  ): void {
+  ): Promise<void> {
     const handlers = this.#handlers.get(name);
-    if (!handlers) return;
+    if (!handlers) return Promise.resolve();
     // Handlers can't change what the others receive.
     const frozen = Object.freeze({ ...context });
     const accepts = EVENTS[name].accepts as
       ((context: object, options: object) => boolean) | undefined;
+    const running: Promise<void>[] = [];
     for (const { file, event } of handlers) {
       if (accepts && !accepts(frozen, event.options)) continue;
       // One handler failing never stops the others, nor the bot.
-      new Promise(resolve =>
-        resolve(
-          withGuild(guildId, () =>
-            (event.handler as (context: object) => unknown)(frozen)
+      running.push(
+        new Promise(resolve =>
+          resolve(
+            withGuild(guildId, () =>
+              (event.handler as (context: object) => unknown)(frozen)
+            )
           )
+        ).then(
+          () => {},
+          (error: unknown) => this.#onError(file, error)
         )
-      ).catch((error: unknown) => this.#onError(file, error));
+      );
     }
+    return Promise.all(running).then(() => {});
   }
 }

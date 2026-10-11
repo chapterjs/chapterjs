@@ -3,7 +3,7 @@ title: 'CLI'
 description: 'Chaque commande de chapterjs, ce qu’elle lit dans l’environnement, ses codes de sortie et les symboles de ses messages'
 ---
 
-La commande `chapterjs` est fournie avec le paquet `chapterjs`. Les projets créés avec `create chapterjs` la lancent par leurs scripts (`dev`, `build`, `start`, `postinstall`).
+La commande `chapterjs` est fournie avec le paquet `chapterjs`. Les projets créés avec `create chapterjs` la lancent par leurs scripts (`dev`, `build`, `start`, `test`, `postinstall`).
 
 ```text
 Usage: chapterjs <command>
@@ -12,6 +12,7 @@ Commands:
   dev     Run your bot on your dev server and reload it when you save a file
   build   Check your bot and prepare it for production
   start   Run for everyone the bot that was built
+  test    Check your bot without Discord: every file once, then your scenarios
   sync    Write the types of your project (dev does it too)
 
 Options of start:
@@ -20,12 +21,12 @@ Options of start:
 ```
 
 <Note>
-  Comment utiliser chaque commande est dans le guide : [chapterjs dev](/fr/run/dev), [chapterjs build](/fr/run/build), [chapterjs start](/fr/run/start), [Déployer](/fr/run/deploy). Ce que veut dire chaque message est dans [Dépannage](/fr/run/troubleshooting).
+  Comment utiliser chaque commande est dans le guide : [chapterjs dev](/fr/run/dev), [chapterjs build](/fr/run/build), [chapterjs start](/fr/run/start), [chapterjs test](/fr/testing), [Déployer](/fr/run/deploy). Ce que veut dire chaque message est dans [Dépannage](/fr/run/troubleshooting).
 </Note>
 
 ## Commandes
 
-Chaque commande tourne dans le dossier du projet : celui qui contient `package.json` et `src/`. Sans `src/`, `dev` et `build` s’arrêtent avec `✗ There is no src folder here.`
+Chaque commande tourne dans le dossier du projet : celui qui contient `package.json` et `src/`. Sans `src/`, `dev`, `build` et `test` s’arrêtent avec `✗ There is no src folder here.`
 
 ### `chapterjs dev`
 
@@ -85,6 +86,20 @@ chapterjs start [--processes <n>]
   Combien de processus font tourner le bot : un nombre entier de 1 ou plus, écrit `--processes 4` ou `--processes=4`. Plafonné au nombre de shards. Toute autre chose après `start` arrête la commande avec `✗ chapterjs start takes one option: ...`.
 </ResponseField>
 
+### `chapterjs test`
+
+Vérifie le bot contre un Discord en mémoire. N’a pas besoin de token et n’envoie rien à Discord.
+
+| Étape | Ce qui se passe |
+| --- | --- |
+| Types | `.chapterjs/` est écrit, comme `chapterjs sync`. Les types ne sont pas vérifiés : `chapterjs build` et le script `typecheck` le font. |
+| Fichiers | Chaque fichier de `src/` est chargé, et ce qu’il déclare est lu. Un fichier ou une déclaration cassés arrêtent la commande : `✗ This file can't run, so your bot was not tested.` Un projet qui ne déclare rien s’arrête avec `ℹ Nothing to run yet`. |
+| Vérifications | Dans un serveur en mémoire où le bot est admin : chaque commande est utilisée avec toutes ses options, avec les obligatoires seulement, et une fois par valeur difficile ; chaque bouton, menu et formulaire avec ses données et des données difficiles ; chaque événement une fois ; chaque tâche une fois. Pour chaque chose d’un fichier qui a échoué, `✗ Checked src/ping.ts: command /ping failed in 1 of 8 cases` suivi d’une ligne par cas raté, avec le fichier et la ligne de ce qui a lancé une erreur, puis ce que les fichiers ont imprimé pendant ce temps. Les fichiers qui ont réussi tiennent sur une ligne à la fin : `✓ Checked every file once: 7 checks in 2 files` (ou `✓ Checked the other 2 files once: 7 checks` quand l’un a échoué) ; ce qui a été vérifié dedans n’est pas listé, ni ce qu’ils ont imprimé. Dans un terminal, le fichier en cours s’affiche d’abord (`↻ Checking src/ping.ts`, puis une ligne `→` par chose et cas essayés), et s’efface une fois fini. Un événement que le serveur ne sait pas encore provoquer est listé dans un `ℹ`. |
+| Scénarios | Chaque fichier `*.test.ts` et `*.spec.ts` de `src/` est chargé (jamais par le bot), et ce qu’il exporte fait avec `scenario()` tourne, chacun sur un serveur neuf avec des stores vides. Une ligne par fichier de test : `✓ Tested src/file.test.ts`, ou, pour chaque scénario qui a échoué, `✗ Tested src/file.test.ts: "label" failed` suivi du fichier, de la ligne et de la raison, puis ce que les fichiers ont imprimé pendant ce temps. Un scénario qui prend plus de 10 secondes échoue. Un fichier de test qui ne déclare aucun scénario est un `⚠`. |
+| Bilan | `✓ 7 checks and 2 scenarios passed`, ou `✗ 1 of 7 checks and 1 of 2 scenarios failed`. |
+
+Ne prend aucune option. Les stores gardent leurs données en mémoire : le dossier `data/` du projet n’est jamais touché.
+
 ### `chapterjs sync`
 
 Écrit le dossier `.chapterjs/` du projet : ce que le projet ajoute aux types de `chapterjs` (les fichiers de `public/`, ses langues et ses commandes, trouvés en lisant les fichiers sans les exécuter) et le `tsconfig.json` du seul projet TypeScript qui couvre `src/`. Affiche `✓ Types written to .chapterjs/`. N’a pas besoin de token. `dev` et `build` le font aussi au démarrage ; les modèles le lancent en `postinstall`.
@@ -131,9 +146,10 @@ Le fait qu’une personne regarde (`dev` attend une correction au lieu de s’ar
 
 | Code | Commande | Quand |
 | --- | --- | --- |
-| `0` | toutes | Arrêtée par `Ctrl+C` ou `SIGTERM`, ou terminée : une compilation réussie, `sync`, `--version`, `--help`. |
+| `0` | toutes | Arrêtée par `Ctrl+C` ou `SIGTERM`, ou terminée : une compilation réussie, un test qui a réussi, `sync`, `--version`, `--help`. |
 | `1` | `dev`, `start` | Un problème avant la connexion (une valeur de `.env`, le token, le serveur de test ou un intent quand elle n’attend pas, pas de compilation, pas assez de sessions), ou Discord a refusé le bot pour de bon pendant qu’il tournait. Aussi un second `Ctrl+C`. |
 | `1` | `build` | Des erreurs de type, un fichier qui ne peut pas tourner, pas être compilé ou pas tourner une fois compilé. |
+| `1` | `test` | Un fichier qui ne peut pas tourner, une vérification ou un scénario qui a échoué. |
 | `1` | toutes | Une commande inconnue, ou `start` avec autre chose que `--processes <n>`. |
 | `78` | un processus démarré par `start` | Discord a refusé le bot dans ce processus : celui que vous avez lancé arrête alors chaque processus et sort avec `1`. |
 

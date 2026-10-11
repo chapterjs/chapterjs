@@ -27,6 +27,16 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
+<Update label="0.3.0" description="chapterjs test : votre bot vérifié sans Discord, et des scénarios pour dire ce qu’il doit répondre">
+
+`chapterjs test` fait tourner votre bot contre un Discord en mémoire : un serveur, quelques personnes, pas de token et rien à quoi se connecter. Sans rien écrire, chaque commande, bouton, menu, formulaire, événement et tâche de votre projet est utilisé une fois, avec des valeurs ordinaires et des valeurs difficiles (un texte au plus long, chaque choix, quelqu’un qui est parti…), et doit répondre sans lancer d’erreur : une fonction qui en lance une est signalée avec son fichier et sa ligne, comme dans `chapterjs dev`. Voir [Tester](/fr/testing).
+
+Puis vos scénarios : `scenario('ping answers Pong', async bot => { ... })` dans un fichier `*.test.ts` de `src/`, importé depuis `chapterjs/test`. `bot.use(ping, { who: alice })` utilise une commande comme une personne le ferait, avec des options typées depuis votre fichier ; `bot.click()`, `bot.select()`, `bot.submit()`, `bot.say()`, `bot.join()` et `bot.run()` font le reste, et ce qui revient dit ce que le bot a répondu : `reply.says('Pong').isPublic().hasButton('Confirm')`. Chaque scénario tourne sur un serveur neuf avec des stores vides, et un échec nomme la ligne de votre scénario. Tout ce qu’un scénario peut faire est dans la [référence](/fr/reference/testing).
+
+Chaque modèle a maintenant un script `test` et un fichier de scénarios pour démarrer. Le tutoriel a un chapitre [Tester](/fr/tutorial/testing), avant la compilation.
+
+</Update>
+
 <Update label="0.2.3" description="Stockage, cinq modèles, et un nouveau projet à la version de create chapterjs, exactement">
 
 Votre bot peut garder ce qu’il apprend : `export const warnings = store<Warning[]>({ expires: '30d' })` déclare un [store](/fr/storage), par serveur sauf `scope: 'global'`, typé par ce qu’il contient, avec une expiration si vous en voulez une. Dans une commande ou un événement, la clé est à vous et le serveur est connu ; ailleurs, `warnings.in(guild)`. Un fichier JSON par store dans `data/`, écrit pour vous, et partagé par chaque processus d’un gros bot.

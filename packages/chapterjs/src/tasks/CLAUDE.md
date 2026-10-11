@@ -14,6 +14,7 @@
 - The `Scheduler` interface (`set`, `start(context)`, `stop`) and `TimerScheduler`, its default on Node timers (chained for waits over 24 days). Another implementation (shared between machines) plugs in here, with no change to the files.
 - `set()` keeps the next time of a task whose key did not change and only swaps its `run` (a save in dev does not reset an hourly task), counts a new or changed one from now, and runs `onStart` tasks added while started.
 - A run still going when the next time comes is skipped with a `⚠`; so is one due while `context()` has no bot (reconnecting). An error is reported with its file and line and the task goes on.
+- `runTask(entry, context, now, onError)` is one run, written once: what the scheduler does when a time comes, and what `project.runTask()` does for `chapterjs test` (`bot.run(task)`).
 
 ## `declaration.ts` and the wiring
 

@@ -7,6 +7,7 @@
     "dev": "chapterjs dev",
     "start": "chapterjs start",
     "build": "chapterjs build",
+    "test": "chapterjs test",
     "typecheck": "tsc -b",
     "postinstall": "chapterjs sync"
   },

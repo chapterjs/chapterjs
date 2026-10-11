@@ -139,7 +139,7 @@ export const db = { visits: 0 };
 
 Écrire l’extension fonctionne aussi : `'../lib/greet.ts'`.
 
-Les paquets de `node_modules` s’importent comme d’habitude. Chaque fichier de `src/` est surveillé : dans [`chapterjs dev`](/fr/run/dev), enregistrer `src/lib/greet.ts` recharge chaque fichier qui l’utilise. Un test à côté de votre code (`greet.test.ts`, `greet.spec.ts`) est laissé à votre lanceur de tests, et jamais chargé par le bot.
+Les paquets de `node_modules` s’importent comme d’habitude. Chaque fichier de `src/` est surveillé : dans [`chapterjs dev`](/fr/run/dev), enregistrer `src/lib/greet.ts` recharge chaque fichier qui l’utilise. Un test à côté de votre code (`greet.test.ts`, `greet.spec.ts`) n’est jamais chargé par le bot : [`chapterjs test`](/fr/testing) le lance.
 
 ## `public/` : les fichiers que votre bot envoie
 
@@ -183,10 +183,11 @@ Les scripts de votre projet lancent le [CLI](/fr/reference/cli) :
 | `dev`         | `chapterjs dev`   | Pendant que vous écrivez votre bot                              |
 | `build`       | `chapterjs build` | Avant de le mettre en ligne                                     |
 | `start`       | `chapterjs start` | Sur la machine qui l’héberge                                    |
+| `test`        | `chapterjs test`  | Pour vérifier chaque fichier, et vos scénarios, sans Discord    |
 | `typecheck`   | `tsc -b`          | Pour vérifier les types de tout le projet depuis un terminal    |
 | `postinstall` | `chapterjs sync`  | Tout seul, après chaque installation                            |
 
-`chapterjs` est la seule dépendance de votre bot, à la version exacte qu’avait `create chapterjs` (`"chapterjs": "0.2.3"`, sans `^`) : votre projet ne change de version que quand vous lancez la commande que [`chapterjs dev` vous donne](/fr/run/dev#une-nouvelle-version-de-chapterjs). TypeScript et `@types/node` sont des dépendances de développement : elles vérifient votre code, et ne servent pas à le faire tourner.
+`chapterjs` est la seule dépendance de votre bot, à la version exacte qu’avait `create chapterjs` (`"chapterjs": "0.3.0"`, sans `^`) : votre projet ne change de version que quand vous lancez la commande que [`chapterjs dev` vous donne](/fr/run/dev#une-nouvelle-version-de-chapterjs). TypeScript et `@types/node` sont des dépendances de développement : elles vérifient votre code, et ne servent pas à le faire tourner.
 
 ## `tsconfig.json`
 

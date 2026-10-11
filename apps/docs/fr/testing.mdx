@@ -1,0 +1,181 @@
+---
+title: 'Tester'
+description: 'Vérifier votre bot sans Discord : chaque fichier utilisé une fois tout seul, puis les scénarios que vous écrivez'
+---
+
+`chapterjs test` fait tourner votre bot dans un Discord qui vit en mémoire : un serveur, quelques personnes, et rien à quoi se connecter. Pas de token, pas de serveur de test, rien de montré à personne. C’est ce que lance le script `test` de votre projet :
+
+<CodeGroup>
+```bash pnpm
+pnpm test
+```
+
+```bash npm
+npm test
+```
+
+```bash yarn
+yarn test
+```
+
+```bash bun
+bun test
+```
+</CodeGroup>
+
+```text
+✓ 2 commands, 2 events, 2 components, 1 task, 1 store loaded
+✓ Checked every file once: 7 checks in 2 files
+ℹ No scenario yet. Write one in a *.test.ts file of src/ with scenario() from 'chapterjs/test' to check what your bot answers.
+✓ 7 checks passed
+```
+
+C’est tout : sans rien écrire, chaque commande, bouton, menu, formulaire, événement et tâche de votre projet est utilisé une fois, avec des valeurs ordinaires et des valeurs difficiles, et doit répondre sans lancer d’erreur. Viennent ensuite vos scénarios, quand vous en avez : des fichiers qui disent ce que le bot doit répondre.
+
+<Note>Ce qu’un scénario peut faire est dans la [référence](/fr/reference/testing) ; les codes de sortie de la commande sont dans la [référence du CLI](/fr/reference/cli#chapterjs-test).</Note>
+
+## Ce qui est vérifié tout seul
+
+Chaque fichier de `src/` est chargé, comme `chapterjs dev` le fait. Un fichier qui ne peut pas tourner arrête tout, avec sa ligne : rien n’est testé tant qu’il n’est pas corrigé. Puis, dans un serveur où le bot est admin :
+
+- **Chaque commande** est utilisée avec toutes ses options remplies, puis avec les obligatoires seulement, puis une fois par valeur difficile : un texte au plus long et en unicode, un nombre au plus bas, au plus haut et à zéro, chacun de ses `choices`, une personne qui a quitté le serveur, le bot lui-même, le propriétaire. Une commande qui ne fonctionne qu’en message privé y est utilisée ; une qui fonctionne aux deux endroits est utilisée aux deux. Quelqu’un qui a les `permissions` que la commande demande l’utilise.
+- **Chaque bouton, menu et formulaire** est utilisé avec ses `data`, puis une fois par valeur difficile de ces données : un texte vide, un `:` dedans, un nombre énorme. Un formulaire est aussi envoyé avec ses champs obligatoires seulement.
+- **Chaque événement** se produit une fois : un message, quelqu’un qui arrive ou qui part, une réaction, un nouveau salon… Un événement que le serveur de test ne sait pas encore provoquer est nommé avec `ℹ`, et son fichier est laissé tranquille.
+- **Chaque tâche** tourne une fois, comme si son heure était venue.
+
+Les fichiers qui passent tiennent sur une ligne à la fin de ces vérifications : ce qui a été vérifié dedans n’est pas listé, puisque rien n’y est à lire pour vous. Pendant qu’un fichier est vérifié, le terminal l’affiche avec la chose et le cas en cours (`↻ Checking src/tickets/close.ts`, puis `→ button close(), with userId = ""`…), et l’efface une fois fini. Une vérification réussit quand le bot a répondu et que rien n’a lancé d’erreur. Elle échoue quand une fonction en a lancé une, avec le fichier et la ligne, ou quand une commande a fini sans répondre ; c’est seulement là qu’un fichier a ses propres lignes, avec la chose nommée :
+
+```text
+✗ Checked src/bugs.ts: command /crash failed in 1 of 3 cases
+  with text at its longest (10 characters): src/bugs.ts:8 too long for me
+✗ Checked src/bugs.ts: command /silent failed
+  src/bugs.ts /silent finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.
+✗ 2 of 5 checks failed
+```
+
+Ce que vos fichiers impriment pendant qu’ils sont testés (un `console.log` dans un événement, par exemple) reste hors du rapport : une ligne qui dirait « online » s’y lirait comme le bot en ligne, et il ne l’est pas. Ce qui a été imprimé est montré sous une vérification qui a échoué, là où ça peut aider.
+
+Ce que le bot répond n’est pas jugé ici : c’est à ça que servent les scénarios.
+
+## Scénarios
+
+Un scénario est un test que vous écrivez, dans un fichier `*.test.ts` n’importe où dans `src/`, avec `scenario()` de `chapterjs/test`. Le bot ne charge jamais ces fichiers ; `chapterjs test` les lance, chacun sur un serveur neuf avec des stores vides.
+
+```ts src/checks/pong.ts
+import { button, command } from 'chapterjs';
+
+export const confirmPong = button({
+  label: 'Confirmer',
+  style: 'success',
+  data: { count: 'number' },
+  who: 'author',
+  async run({ interaction, data }) {
+    await interaction.update(`Confirmé ${data.count}`);
+  },
+});
+
+export const pong = command({
+  name: 'pong',
+  description: 'Répond Pong',
+  options: {
+    count: { type: 'integer', description: 'Combien', min: 1, max: 5 },
+    who: { type: 'user', description: 'Pour qui', required: true },
+  },
+  async run({ interaction, options }) {
+    await interaction.reply({
+      content: `Pong ${options.count ?? 1} pour ${options.who.username}`,
+      components: [confirmPong({ count: options.count ?? 1 })],
+    });
+  },
+});
+```
+
+```ts src/checks/pong.test.ts
+import { scenario } from 'chapterjs/test';
+import { pong } from './pong';
+
+export default scenario('pong répond, et seul l’auteur confirme', async bot => {
+  const alice = bot.member('alice');
+  const reply = await bot.use(pong, { who: alice, count: 3 });
+  reply.says('Pong 3 pour alice').isPublic().hasButton('Confirmer');
+
+  const clicked = await bot.click(reply.button('Confirmer'), { on: reply });
+  clicked.updatesMessage().says('Confirmé 3');
+
+  const bob = bot.member('bob');
+  const refused = await bot.click(reply.button('Confirmer'), { on: reply, by: bob });
+  refused.isEphemeral().says('Only the person who used the command');
+});
+```
+
+`bot` est votre bot dans son serveur de test. `bot.use()` utilise une commande comme une personne le ferait, avec ses options typées depuis le fichier : une personne pour une option `user`, un nombre pour une option `integer`, l’un des `choices`. `bot.click()` appuie sur un bouton, `bot.select()` choisit dans un menu, `bot.submit()` envoie un formulaire, `bot.say()` écrit un message, `bot.join()` et `bot.leave()` font venir et partir quelqu’un, `bot.run()` lance une tâche. Chacun se résout une fois que le bot en a fini.
+
+Ce qui revient dit ce que le bot a répondu : `says()`, `isEphemeral()`, `hasButton()`, `opensForm()`, `updatesMessage()`… Chaque vérification lance une phrase en clair quand elle échoue. Le rapport a une ligne par fichier de test, et ne nomme un scénario que quand il a échoué, avec la ligne de votre scénario :
+
+```text
+✓ Tested src/checks/pong.test.ts
+✗ Tested src/ping.test.ts: "celui-ci échoue" failed
+  src/checks/pong.test.ts:37 The answer should say "Nope", it says "Pong 1 pour someone".
+✗ 1 of 2 scenarios failed
+```
+
+Pour tout le reste, `node:assert` fonctionne comme dans n’importe quel test :
+
+```ts src/checks/strikes.ts
+import { command, store } from 'chapterjs';
+
+export const strikes = store<number>();
+
+export const strike = command({
+  name: 'strike',
+  description: 'Donne un avertissement à quelqu’un',
+  permissions: ['ModerateMembers'],
+  options: {
+    target: { type: 'user', description: 'Qui', required: true },
+  },
+  async run({ interaction, options, guild }) {
+    const count = await strikes.update(options.target.id, (count = 0) => count + 1);
+    if (count >= 3) await guild.ban(options.target, { reason: 'Trois avertissements' });
+    await interaction.reply(`${options.target.username} a ${count} avertissement(s)`);
+  },
+});
+```
+
+```ts src/checks/strikes.test.ts
+import assert from 'node:assert/strict';
+import { scenario } from 'chapterjs/test';
+import { strike } from './strikes';
+
+export default scenario('au troisième avertissement, dehors', async bot => {
+  const mod = bot.member('mod', { permissions: ['ModerateMembers'] });
+  const alice = bot.member('alice');
+  const by = { by: mod };
+  (await bot.use(strike, { target: alice }, by)).says('alice a 1 avertissement(s)');
+  (await bot.use(strike, { target: alice }, by)).says('alice a 2 avertissement(s)');
+  assert.equal(alice.banned, false);
+  (await bot.use(strike, { target: alice }, by)).says('alice a 3 avertissement(s)');
+  assert.equal(alice.banned, true);
+  assert.equal(alice.inServer, false);
+});
+```
+
+Un scénario échoue aussi quand une fonction du bot a lancé une erreur pendant qu’il tournait, même si chaque vérification est passée : une personne aurait vu « Something went wrong ».
+
+## Le serveur de test
+
+Il a un salon, `#general`, son propriétaire (`bot.owner`), le bot en admin (`bot.me`), et `bot.someone` : une personne sans droit particulier, qui fait tout quand personne n’est nommé. `bot.member('alice')` crée une personne la première fois que le nom est donné (avec des `permissions` ou des `roles` quand il lui en faut), `bot.role()` un rôle et `bot.channel()` un salon.
+
+Tout ce que fait le bot est gardé là où le scénario peut le lire : `channel.messages` et `channel.last`, `member.banned`, `member.timedOut`, `member.roles`, `member.privateMessages`, `channel.threads`, `thread.archived`… Et le serveur refuse ce que Discord refuserait : une seconde réponse à la même interaction, un membre qui n’est pas là, un salon supprimé. Un formulaire envoyé sans un champ obligatoire, ou une commande utilisée sans une option obligatoire, est refusé avant d’atteindre le bot, comme l’application Discord le ferait.
+
+## Ce qu’il ne fait pas encore
+
+Le temps ne passe pas : un `cooldown`, ou une tâche qui tourne `every` tant de temps, ne se teste pas par l’horloge. Le vocal n’est pas là, ni les sondages, les événements planifiés et l’auto-modération : un événement que le serveur ne sait pas provoquer est nommé dans le rapport, et une requête pour quelque chose qu’il ne modélise pas répond comme Discord le fait pour ce qui n’existe pas, donc votre fonction voit la même erreur qu’en ligne.
+
+<CardGroup cols={2}>
+  <Card title="Référence des tests" icon="flask-conical" href="/fr/reference/testing">
+    Tout ce qu’un scénario peut faire, et ce qu’une réponse peut vérifier.
+  </Card>
+  <Card title="chapterjs build" icon="package" href="/fr/run/build">
+    Vérifier les types et compiler le bot pour la production.
+  </Card>
+</CardGroup>

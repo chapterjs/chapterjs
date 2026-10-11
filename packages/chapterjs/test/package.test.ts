@@ -25,7 +25,8 @@ describe('the published package', () => {
       const file = join(entry.parentPath, entry.name);
       const code = readFileSync(file, 'utf8');
       // Every import of something that is neither a file nor part of Node.
-      // The package's own name only appears in examples for developers.
+      // The package's own name (and its `chapterjs/test` entry) only
+      // appears in examples and messages for developers.
       const packages = [
         ...code.matchAll(/(?:from|import)\s*\(?\s*['"]([^'".][^'"]*)['"]/g),
       ]
@@ -35,6 +36,7 @@ describe('the published package', () => {
             !name.startsWith('node:') &&
             !name.startsWith('#') &&
             name !== 'chapterjs' &&
+            !name.startsWith('chapterjs/') &&
             // Code the framework writes for a project, not an import.
             !name.includes('${')
         );
