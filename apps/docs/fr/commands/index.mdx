@@ -3,7 +3,7 @@ title: 'Commandes'
 description: 'Écrire une commande slash en un fichier, choisir où elle fonctionne et qui peut l’utiliser, et la voir apparaître sur votre serveur de test'
 ---
 
-Une commande slash, c’est ce que les gens tapent après `/` dans Discord. Pour en créer une, ajoutez un fichier dans `src/commands/` :
+Une commande slash, c’est ce que les gens tapent après `/` dans Discord. Pour en créer une, déclarez-la avec `command()` dans n’importe quel fichier de `src/`, et exportez-la :
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
@@ -107,6 +107,7 @@ export default command({
 | `member` | Qui a utilisé la commande, en tant que [membre](/fr/reference/member) du serveur. |
 | `guild` | Le [serveur](/fr/reference/guild) où la commande a été utilisée. |
 | `channel` | Le [salon](/fr/reference/channels) où la commande a été utilisée : toujours là, sans requête, donc vous pouvez faire `channel.send()` tout de suite. |
+| `t` | Les textes de votre bot dans la langue de qui lira la réponse, quand le projet déclare une [langue](/fr/translated-messages). |
 
 Sur un serveur, `member`, `guild` et `channel` sont toujours là : aucun `?.` à écrire. L’`interaction` les connaît aussi (`interaction.guild`, `interaction.member`, `interaction.channel`), ainsi que la langue de la personne (`interaction.locale`).
 

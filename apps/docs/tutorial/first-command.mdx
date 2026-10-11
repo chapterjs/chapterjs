@@ -25,7 +25,7 @@ export default command({
 Save it with the bot running. The terminal says:
 
 ```text
-↻ Reloaded in 15 ms, 2 commands, 1 event, 1 component, a presence, messages in 2 languages loaded
+↻ Reloaded in 15 ms, 2 commands, 1 event loaded
 ↻ Commands updated on Discord
 ```
 
@@ -35,7 +35,7 @@ Type `/dice` in your test server. It is there, with its description under its na
 
 **`import { command } from 'chapterjs'`.** The function that makes a command. It takes an object describing the command and returns something the framework recognises as one.
 
-**`export default`.** The file hands its command to the framework by exporting it. The framework loads every file of `src/` and keeps what they export made with `command()`, `event()`, `button()`...: a default export, or a named one (`export const dice = command(...)`), it does not matter. What is exported and is none of these is simply yours.
+**`export default`.** The file hands its command to the framework by exporting it. The framework loads every file of `src/` and keeps what they export made with `command()`, `event()`, `button()`...: a default export, or a named one (`export const dice = command(...)`), it does not matter. What is exported and is none of these is yours.
 
 **`description`.** The text Discord shows under the name in the `/` menu, 1 to 100 characters. Besides `run`, it is the only thing a command needs. (A later chapter moves it to the language files.)
 
@@ -59,13 +59,13 @@ The framework can't answer for you (it does not know what to say), but it tells 
 
 Discord has rules for commands: a name is lowercase, with letters, digits, `-` and `_` only, 32 characters at most; a description is 1 to 100 characters; and so on. Breaking one would make Discord refuse the whole list of your commands. So the framework checks each file when it loads, and explains in your terms.
 
-Rename the file to `Dice.ts` and save:
+Change `name` to `'Dice'` and save:
 
 ```text
 ✗ src/commands/dice.ts "Dice" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most.
 ```
 
-Rename it back. Now remove `description` and save:
+Put the name back. Now remove `description` and save:
 
 ```text
 ✗ src/commands/dice.ts This command has no description: write it in src/messages/en-US.ts (commands: { "dice": { description: '...' } }), or in the file (description: '...').

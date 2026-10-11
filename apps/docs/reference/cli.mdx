@@ -3,7 +3,7 @@ title: 'CLI'
 description: 'Every command of chapterjs, what it reads from the environment, its exit codes and the symbols of its messages'
 ---
 
-The `chapterjs` command comes with the `chapterjs` package. Projects made with `create chapter` run it through their scripts (`dev`, `build`, `start`, `postinstall`).
+The `chapterjs` command comes with the `chapterjs` package. Projects made with `create chapterjs` run it through their scripts (`dev`, `build`, `start`, `test`, `postinstall`).
 
 ```text
 Usage: chapterjs <command>
@@ -12,6 +12,7 @@ Commands:
   dev     Run your bot on your dev server and reload it when you save a file
   build   Check your bot and prepare it for production
   start   Run for everyone the bot that was built
+  test    Check your bot without Discord: every file once, then your scenarios
   sync    Write the types of your project (dev does it too)
 
 Options of start:
@@ -20,12 +21,12 @@ Options of start:
 ```
 
 <Note>
-  How to use each command is in the guide: [chapterjs dev](/run/dev), [chapterjs build](/run/build), [chapterjs start](/run/start), [Deploy](/run/deploy). What every message means is in [Troubleshooting](/run/troubleshooting).
+  How to use each command is in the guide: [chapterjs dev](/run/dev), [chapterjs build](/run/build), [chapterjs start](/run/start), [chapterjs test](/testing), [Deploy](/run/deploy). What every message means is in [Troubleshooting](/run/troubleshooting).
 </Note>
 
 ## Commands
 
-Every command runs in the folder of the project: the one with `package.json` and `src/`. Without `src/`, `dev` and `build` stop with `✗ There is no src folder here.`
+Every command runs in the folder of the project: the one with `package.json` and `src/`. Without `src/`, `dev`, `build` and `test` stop with `✗ There is no src folder here.`
 
 ### `chapterjs dev`
 
@@ -57,7 +58,7 @@ Checks the project and compiles it into `.chapterjs/build/`. Needs no token and 
 | Files | The previous build is removed. Every file of `src/` is loaded, and what it declares is read. One broken file or declaration stops the build. |
 | Compile | Every file of `src/`, with what it imports, is bundled into `.chapterjs/build/bot.js` (ESM, Node 24, packages left in `node_modules`, whitespace and syntax minified, names kept) with `bot.js.map` next to it (no sources inside). |
 | Check | The compiled file is loaded once and every file is checked again. |
-| Record | `.chapterjs/build/build.json`: the version of `chapterjs`, a fingerprint of `src/`, the number of commands and events. |
+| Record | `.chapterjs/build/build.json`: the version of `chapterjs`, a fingerprint of `src/`, whether the files join voice channels. |
 
 A build that fails leaves no `.chapterjs/build/` behind. Takes no option.
 
@@ -84,6 +85,20 @@ chapterjs start [--processes <n>]
 <ResponseField name="--processes" type="integer">
   How many processes run the bot: a whole number of 1 or more, written `--processes 4` or `--processes=4`. Capped at the number of shards. Anything else after `start` stops the command with `✗ chapterjs start takes one option: ...`.
 </ResponseField>
+
+### `chapterjs test`
+
+Checks the bot against a Discord in memory. Needs no token and sends nothing to Discord.
+
+| Step | What happens |
+| --- | --- |
+| Types | `.chapterjs/` is written, like `chapterjs sync`. The types are not checked: `chapterjs build` and the `typecheck` script do. |
+| Files | Every file of `src/` is loaded, and what it declares is read. One broken file or declaration stops the command: `✗ This file can't run, so your bot was not tested.` A project that declares nothing stops with `ℹ Nothing to run yet`. |
+| Checks | In a server in memory where the bot is an admin: every command is used with every option, with the required ones only, and once per hard value; every button, menu and form with its data and hard data; every event once; every task once. For each thing of a file that failed, `✗ Checked src/ping.ts: command /ping failed in 1 of 8 cases` followed by one line per failed case, with the file and the line of what threw, then what the files printed meanwhile. The files that passed are one line at the end: `✓ Checked every file once: 7 checks in 2 files` (or `✓ Checked the other 2 files once: 7 checks` when one failed); what was checked in them is not listed, nor what they printed. In a terminal, the file in progress is shown first (`↻ Checking src/ping.ts`, then one `→` line per thing and case tried), and erased once done. An event the server can not make happen is listed in an `ℹ`. |
+| Scenarios | Every `*.test.ts` and `*.spec.ts` file of `src/` is loaded (never by the bot), and what it exports made with `scenario()` runs, each on a fresh server with empty stores. One line per test file: `✓ Tested src/file.test.ts`, or, for each scenario that failed, `✗ Tested src/file.test.ts: "label" failed` followed by the file, the line and the reason, then what the files printed meanwhile. A scenario that takes more than 10 seconds fails. A test file that declares no scenario is a `⚠`. |
+| Bottom line | `✓ 7 checks and 2 scenarios passed`, or `✗ 1 of 7 checks and 1 of 2 scenarios failed`. |
+
+Takes no option. Stores keep their data in memory: the `data/` folder of the project is never touched.
 
 ### `chapterjs sync`
 
@@ -131,9 +146,10 @@ Whether a person is watching (`dev` waits for a fix instead of stopping) is deci
 
 | Code | Command | When |
 | --- | --- | --- |
-| `0` | all | Stopped by `Ctrl+C` or `SIGTERM`, or finished: a build that succeeded, `sync`, `--version`, `--help`. |
+| `0` | all | Stopped by `Ctrl+C` or `SIGTERM`, or finished: a build that succeeded, a test that passed, `sync`, `--version`, `--help`. |
 | `1` | `dev`, `start` | A problem before connecting (a value of `.env`, the token, the test server or an intent when not waiting, no build, not enough sessions), or Discord refused the bot for good while it ran. Also a second `Ctrl+C`. |
 | `1` | `build` | Type errors, a file that can't run, can't be compiled or can't run once compiled. |
+| `1` | `test` | A file that can't run, a check or a scenario that failed. |
 | `1` | any | An unknown command, or `start` with anything other than `--processes <n>`. |
 | `78` | a process started by `start` | Discord refused the bot in that process: the one you started then stops every process and exits with `1`. |
 

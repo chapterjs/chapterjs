@@ -1,0 +1,710 @@
+---
+title: 'Testing'
+description: 'Everything a scenario can do: the bot under test, the people and channels of its server, and what an answer can be checked for'
+---
+
+`scenario()` declares a test of your bot, from a `*.test.ts` file of `src/`, and `chapterjs test` runs it against a Discord in memory. Everything on this page is imported from `chapterjs/test`.
+
+```ts src/checks/hello.test.ts
+import { scenario } from 'chapterjs/test';
+import { hello } from './hello';
+
+export default scenario('hello greets', async bot => {
+  const reply = await bot.use(hello, { who: bot.member('alice') });
+  reply.says('Hello alice').isPublic();
+});
+```
+
+```ts src/checks/hello.ts
+import { command } from 'chapterjs';
+
+export const hello = command({
+  name: 'hello',
+  description: 'Says hello',
+  options: { who: { type: 'user', description: 'Who', required: true } },
+  async run({ interaction, options }) {
+    await interaction.reply(`Hello ${options.who.username}!`);
+  },
+});
+```
+
+<Note>
+  How to test a bot, what is checked without a scenario and what the test server has is in the [guide](/testing). This page lists what exists.
+</Note>
+
+## scenario()
+
+```ts
+scenario(label: string, run: (bot: TestBot) => unknown): ScenarioDeclaration
+```
+
+Declares a test of your bot. Export the result from a `*.test.ts` file of `src/`: `chapterjs test` runs it against a Discord in memory, where the bot is in a server with a few people in it.
+
+`bot` is the bot in its test server: `bot.use()` runs a command, `bot.click()` presses a button, `bot.say()` sends a message as someone, and what comes back says what the bot answered.
+
+A file may export several scenarios, in a list too. The label is what the report shows: it can not be empty, and 120 characters is the most.
+
+### ScenarioDeclaration
+
+What `scenario()` returns: a declaration the runner finds in the exports of a file.
+
+<ResponseField name="config" type="{ label: string; run: (bot: TestBot) => unknown }">
+  What the file gave to `scenario()`, not checked yet.
+</ResponseField>
+
+## TestBot
+
+The bot of the project, running in a Discord in memory: one server, a few people, and everything the bot does kept where the test can read it.
+
+<ResponseField name="guild" type="{ id: string; name: string }" required>
+  The test server.
+</ResponseField>
+
+<ResponseField name="me" type="TestMember" required>
+  The bot itself, as a member of the server.
+</ResponseField>
+
+<ResponseField name="owner" type="TestMember" required>
+  The owner of the server.
+</ResponseField>
+
+<ResponseField name="someone" type="TestMember" required>
+  A person with no special rights: who does things when nobody is named.
+</ResponseField>
+
+<ResponseField name="requests" type="{ method: string; path: string; body: unknown }[]" required>
+  Every request the bot sent to Discord so far.
+</ResponseField>
+
+### member()
+
+```ts
+member(name: string, options?: TestMemberOptions): TestMember
+```
+
+A person of the server, made the first time the name is given. The options only count the first time.
+
+### role()
+
+```ts
+role(name: string, options?: TestRoleOptions): TestRole
+```
+
+A role of the server, made the first time the name is given.
+
+### channel()
+
+```ts
+channel(name: string, options?: TestChannelOptions): TestChannel
+```
+
+A channel of the server, made the first time the name is given. `#general` exists.
+
+### use()
+
+```ts
+use(command: CommandDeclaration, options?: OptionInputsOf<Options>, where?: TestWhere): Promise<TestReply>
+```
+
+Uses a slash command, as a person would. Resolves once the bot answered.
+
+`options` is typed from the options of the command (`OptionInputsOf`): a text, a number, `true` or `false`, one of the `choices`, a `TestMember` for a `user` option, a `TestRole` for a `role` one, a `TestChannel` for a `channel` one, a `TestFile` for an `attachment` one. It may be left out when the command requires none. What Discord would not let a person send (a required option missing, a number out of its range, a text too long, a value that is not one of the choices) fails the scenario before the bot hears of it.
+
+### click()
+
+```ts
+click(button: ButtonTarget, where?: TestWhere): Promise<TestReply>
+```
+
+Clicks a button. Resolves once the bot answered.
+
+### select()
+
+```ts
+select(menu: SelectTarget, values: readonly SelectInput[], where?: TestWhere): Promise<TestReply>
+```
+
+Picks values in a select menu. Resolves once the bot answered. `values` are texts for a menu of texts (its option values), people, roles or channels for the others; the `min` and `max` of the menu are enforced.
+
+### submit()
+
+```ts
+submit(form: FormTarget<Fields>, fields?: FieldInputsOf<Fields>, where?: TestWhere): Promise<TestReply>
+```
+
+Fills in and sends a form. Resolves once the bot answered. `fields` is typed from the fields of the form (`FieldInputsOf`): a text for a `text` field, a list of option values for a `select` or `checkboxes` one, one option value for a `radio` one, `true` or `false` for a `checkbox`, people, roles or channels for the others, files for a `files` field. A field left out stays empty; a required one left out fails the scenario, as the Discord app would refuse to send the form.
+
+### suggest()
+
+```ts
+suggest(command: CommandDeclaration, option: string, typed: string, where?: TestWhere): Promise<TestSuggestion[]>
+```
+
+Types in an option with suggestions, and gets what the bot suggests.
+
+### say()
+
+```ts
+say(content: string, where?: TestWhere): Promise<TestMessage>
+```
+
+Sends a message as a person. Resolves once the bot handled it.
+
+### react()
+
+```ts
+react(message: TestMessage, emoji: string, where?: { by?: TestMember }): Promise<void>
+```
+
+Reacts to a message as a person. Resolves once the bot handled it.
+
+### join()
+
+```ts
+join(member: string | TestMember, options?: TestMemberOptions): Promise<TestMember>
+```
+
+Makes a person join the server. Resolves once the bot handled it.
+
+### leave()
+
+```ts
+leave(member: TestMember): Promise<void>
+```
+
+Makes a person leave the server. Resolves once the bot handled it.
+
+### run()
+
+```ts
+run(task: TaskDeclaration, at?: Date): Promise<void>
+```
+
+Runs a task now, as if its time had come. Resolves once it is done.
+
+### settle()
+
+```ts
+settle(): Promise<void>
+```
+
+Waits for everything the bot started to be done.
+
+## TestWhere
+
+Who does something, and where.
+
+<ResponseField name="by" type="TestMember">
+  Who does it. Default: `bot.someone`.
+</ResponseField>
+
+<ResponseField name="in" type="TestChannel | 'dm'">
+  Where: a channel, or `'dm'` for a private message with the bot. Default: `#general`.
+</ResponseField>
+
+<ResponseField name="on" type="TestMessage | TestReply">
+  For a button or a menu: the message it is on. Default: a message of the bot.
+</ResponseField>
+
+## TestMemberOptions
+
+How to make a person for a test.
+
+<ResponseField name="roles" type="(string | TestRole)[]">
+  The roles of the person, by name or as `bot.role()` gave them.
+</ResponseField>
+
+<ResponseField name="permissions" type="PermissionName[]">
+  Permissions given through a role of their own.
+</ResponseField>
+
+<ResponseField name="nickname" type="string">
+  The nickname in the server.
+</ResponseField>
+
+<ResponseField name="bot" type="boolean">
+  Whether the person is a bot.
+</ResponseField>
+
+<ResponseField name="locale" type="Locale">
+  The language of the person: what `t` answers them in. Default: `'en-US'`.
+</ResponseField>
+
+## TestRoleOptions
+
+<ResponseField name="permissions" type="PermissionName[]">
+  What the role allows.
+</ResponseField>
+
+## TestChannelOptions
+
+<ResponseField name="type" type="TestChannelType">
+  `'text'`, `'announcement'`, `'voice'`, `'category'` or `'forum'`. Default: `'text'`.
+</ResponseField>
+
+<ResponseField name="parent" type="TestChannel">
+  The category it is in.
+</ResponseField>
+
+<ResponseField name="topic" type="string">
+  The topic of the channel.
+</ResponseField>
+
+## TestFile
+
+A file someone attaches to a command or a form.
+
+<ResponseField name="name" type="string" required>
+  The name of the file, with its extension: `photo.png`.
+</ResponseField>
+
+<ResponseField name="content" type="string">
+  Its content, as text.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Its media type: guessed from the name by default.
+</ResponseField>
+
+## TestReply
+
+What the bot answered to a command, a button, a menu or a form. It has every check of [`TestAssertions`](#testassertions), and:
+
+<ResponseField name="message" type="TestMessage | null" required>
+  The message the bot answered with (or changed), or `null` without one.
+</ResponseField>
+
+<ResponseField name="content" type="string" required>
+  The text of the answer; `''` without a message.
+</ResponseField>
+
+<ResponseField name="embeds" type="Embed[]" required>
+  The embeds, as the bot sent them.
+</ResponseField>
+
+<ResponseField name="buttons" type="TestButton[]" required>
+  The buttons on it, in order.
+</ResponseField>
+
+<ResponseField name="menus" type="TestMenu[]" required>
+  The select menus on it, in order.
+</ResponseField>
+
+<ResponseField name="followUps" type="TestMessage[]" required>
+  The messages sent after the first answer, in order.
+</ResponseField>
+
+<ResponseField name="form" type="TestForm | null" required>
+  The form the bot opened, or `null`.
+</ResponseField>
+
+<ResponseField name="deferred" type="boolean" required>
+  Whether the bot said the answer was coming before answering.
+</ResponseField>
+
+<ResponseField name="updated" type="boolean" required>
+  Whether the answer changed the message of the component.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean" required>
+  Whether only one person sees it.
+</ResponseField>
+
+### isDeferred()
+
+```ts
+isDeferred(): TestReply
+```
+
+Checks that the bot said the answer was coming ("thinking…").
+
+### updatesMessage()
+
+```ts
+updatesMessage(): TestReply
+```
+
+Checks that the bot changed the message of the button or menu.
+
+### opensForm()
+
+```ts
+opensForm(form?: ModalDeclaration | TestForm): TestReply
+```
+
+Checks that the bot opened a form, this one when given.
+
+### changesNothing()
+
+```ts
+changesNothing(): TestReply
+```
+
+Checks that the bot answered with nothing visible (a deferred update).
+
+### button()
+
+```ts
+button(label: string): TestButton
+```
+
+The button with this label, to click it. Fails when there is none.
+
+### menu()
+
+```ts
+menu(placeholder?: string): TestMenu
+```
+
+The menu, or the one with this placeholder. Fails when there is none.
+
+## TestAssertions
+
+What is checked of a message or an answer. Each check throws a `TestFailure` with a plain sentence when it fails, and returns what it checked otherwise, so checks chain.
+
+### says()
+
+```ts
+says(text: string | RegExp): Self
+```
+
+Checks that the text contains `text` (or matches it).
+
+### saysExactly()
+
+```ts
+saysExactly(text: string): Self
+```
+
+Checks that the text is exactly `text`.
+
+### isEphemeral()
+
+```ts
+isEphemeral(): Self
+```
+
+Checks that only the person who asked sees it.
+
+### isPublic()
+
+```ts
+isPublic(): Self
+```
+
+Checks that everyone sees it.
+
+### hasButton()
+
+```ts
+hasButton(label: string): Self
+```
+
+Checks that there is a button with this label.
+
+### hasEmbed()
+
+```ts
+hasEmbed(title?: string): Self
+```
+
+Checks that there is an embed, with this title when given.
+
+### hasNoEmbed()
+
+```ts
+hasNoEmbed(): Self
+```
+
+Checks that there is no embed.
+
+### hasNoComponent()
+
+```ts
+hasNoComponent(): Self
+```
+
+Checks that there is no button and no menu.
+
+## TestMessage
+
+A message in the test server. It has every check of [`TestAssertions`](#testassertions), and:
+
+<ResponseField name="id" type="string" required>
+  The id of the message.
+</ResponseField>
+
+<ResponseField name="content" type="string" required>
+  The text of the message.
+</ResponseField>
+
+<ResponseField name="author" type="TestMember | null" required>
+  Who wrote it; `null` for someone who is not in the world any more.
+</ResponseField>
+
+<ResponseField name="fromBot" type="boolean" required>
+  Whether the bot wrote it.
+</ResponseField>
+
+<ResponseField name="embeds" type="Embed[]" required>
+  The embeds, as the bot sent them.
+</ResponseField>
+
+<ResponseField name="buttons" type="TestButton[]" required>
+  The buttons on it, in order.
+</ResponseField>
+
+<ResponseField name="menus" type="TestMenu[]" required>
+  The select menus on it, in order.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean" required>
+  Whether only one person sees it.
+</ResponseField>
+
+<ResponseField name="pinned" type="boolean" required>
+  Whether the message is pinned.
+</ResponseField>
+
+<ResponseField name="channel" type="TestChannel" required>
+  The channel it is in.
+</ResponseField>
+
+<ResponseField name="deleted" type="boolean" required>
+  Whether the message was deleted since.
+</ResponseField>
+
+### button()
+
+```ts
+button(label: string): TestButton
+```
+
+The button with this label: to click it. Fails when there is none.
+
+### menu()
+
+```ts
+menu(placeholder?: string): TestMenu
+```
+
+The menu, or the one with this placeholder. Fails when there is none.
+
+## TestMember
+
+A person in the test server.
+
+<ResponseField name="id" type="string" required>
+  The id of the person.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  The username of the person: what `bot.member()` was given.
+</ResponseField>
+
+<ResponseField name="nickname" type="string | null" required>
+  The nickname in the server, or `null` without one.
+</ResponseField>
+
+<ResponseField name="roles" type="string[]" required>
+  The names of the roles of the person.
+</ResponseField>
+
+<ResponseField name="permissions" type="PermissionName[]" required>
+  The permissions of the person in the server.
+</ResponseField>
+
+<ResponseField name="inServer" type="boolean" required>
+  Whether the person is in the server right now.
+</ResponseField>
+
+<ResponseField name="banned" type="boolean" required>
+  Whether the person is banned from the server.
+</ResponseField>
+
+<ResponseField name="timedOut" type="boolean" required>
+  Whether the person is timed out right now.
+</ResponseField>
+
+<ResponseField name="privateMessages" type="TestMessage[]" required>
+  The messages the bot sent to the person in private, oldest first.
+</ResponseField>
+
+### can()
+
+```ts
+can(permission: PermissionName): boolean
+```
+
+Whether the person may do that in the server.
+
+### hasRole()
+
+```ts
+hasRole(role: string | TestRole): boolean
+```
+
+Whether the person has that role.
+
+## TestRole
+
+A role of the test server.
+
+<ResponseField name="id" type="string" required>
+  The id of the role.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  The name of the role.
+</ResponseField>
+
+<ResponseField name="permissions" type="PermissionName[]" required>
+  What the role allows.
+</ResponseField>
+
+<ResponseField name="exists" type="boolean" required>
+  Whether the role still exists.
+</ResponseField>
+
+## TestChannel
+
+A channel of the test server, a thread, or a private conversation.
+
+<ResponseField name="id" type="string" required>
+  The id of the channel.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  The name of the channel.
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  What kind of channel it is: `'text'`, `'voice'`, `'thread'`, `'dm'`...
+</ResponseField>
+
+<ResponseField name="topic" type="string | null" required>
+  The topic, or `null`.
+</ResponseField>
+
+<ResponseField name="slowmode" type="number" required>
+  The seconds between two messages of one person (slowmode); `0` for none.
+</ResponseField>
+
+<ResponseField name="exists" type="boolean" required>
+  Whether the channel still exists.
+</ResponseField>
+
+<ResponseField name="messages" type="TestMessage[]" required>
+  Every message in it that everyone sees, oldest first (deleted and ephemeral ones left out).
+</ResponseField>
+
+<ResponseField name="last" type="TestMessage | null" required>
+  The newest message, or `null`.
+</ResponseField>
+
+<ResponseField name="threads" type="TestChannel[]" required>
+  The threads opened in it.
+</ResponseField>
+
+<ResponseField name="members" type="TestMember[]" required>
+  For a thread: who is in it.
+</ResponseField>
+
+<ResponseField name="archived" type="boolean" required>
+  For a thread: whether it is archived.
+</ResponseField>
+
+<ResponseField name="locked" type="boolean" required>
+  For a thread: whether it is locked.
+</ResponseField>
+
+### allows()
+
+```ts
+allows(member: TestMember | TestRole, permission: PermissionName): boolean
+```
+
+Whether a member may do that in the channel (its overwrites counted).
+
+## TestButton
+
+A button on a message the bot sent.
+
+<ResponseField name="label" type="string | null" required>
+  The text on the button, or `null` for an emoji alone.
+</ResponseField>
+
+<ResponseField name="style" type="string" required>
+  `'primary'`, `'secondary'`, `'success'`, `'danger'`, `'link'` or `'premium'`.
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean" required>
+  Whether the button is disabled.
+</ResponseField>
+
+<ResponseField name="customId" type="string | null" required>
+  The id the framework wrote in it.
+</ResponseField>
+
+## TestMenu
+
+A select menu on a message the bot sent.
+
+<ResponseField name="type" type="string" required>
+  `'string'`, `'user'`, `'role'`, `'mentionable'` or `'channel'`.
+</ResponseField>
+
+<ResponseField name="placeholder" type="string | null" required>
+  The text shown when nothing is picked.
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean" required>
+  Whether the menu is disabled.
+</ResponseField>
+
+<ResponseField name="options" type="{ label: string; value: string }[]" required>
+  For a menu of texts: its options.
+</ResponseField>
+
+<ResponseField name="customId" type="string" required>
+  The id the framework wrote in it.
+</ResponseField>
+
+## TestForm
+
+A form the bot opened.
+
+<ResponseField name="title" type="string" required>
+  The title of the form.
+</ResponseField>
+
+<ResponseField name="fields" type="string[]" required>
+  The names of its fields, in order.
+</ResponseField>
+
+<ResponseField name="customId" type="string" required>
+  The id the framework wrote in it.
+</ResponseField>
+
+## TestSuggestion
+
+A suggestion the bot gave while someone typed in an option.
+
+<ResponseField name="name" type="string" required>
+  What the person sees.
+</ResponseField>
+
+<ResponseField name="value" type="string | number" required>
+  What the bot receives.
+</ResponseField>
+
+## Types
+
+- `OptionInputsOf<Options>`: the options of a command as a test fills them in. A required option can not be left out.
+- `FieldInputsOf<Fields>`: the fields of a form as a test fills them in: a field left out stays empty.
+- `SelectInput`: what a test picks in a menu: texts, or people, roles and channels.
+- `ButtonTarget`: a button, as a test names it: the declaration, an instance, or one found on a message (`reply.button('Confirm')`).
+- `SelectTarget`: a menu, the same way (`reply.menu()`).
+- `FormTarget<Fields>`: a form, the same way (`reply.form`).
+- `TestChannelType`: `'text' | 'announcement' | 'voice' | 'category' | 'forum'`.
+- `TestFailure`: an expectation of a test that the bot did not meet. What every check throws, with a plain sentence: the report shows it with the line of the scenario.

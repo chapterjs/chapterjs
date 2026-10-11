@@ -1,0 +1,76 @@
+---
+title: 'Roadmap'
+description: 'The roadmap of ChapterJS: what it does not do yet, so that you do not look for it, and what to do meanwhile'
+---
+
+ChapterJS is young. This page is its roadmap: everything below is missing today, area by area, and an entry leaves this page the day the feature ships. When there is a way around it meanwhile, it is said.
+
+<Update label="Commands" description="Other kinds of commands than slash commands" tags={['not yet']}>
+
+**Context menu commands.** Commands used by right-clicking a user or a message.
+_Meanwhile:_ a slash command with a `user` option, or a `string` option that takes the link of a message.
+
+**User-installed apps.** A bot that a person adds to their own account, to use its commands in every server and in private messages. A bot is added to a server, and that is where its commands are.
+
+</Update>
+
+<Update label="Conversations" description="Keeping a dialogue going after a message" tags={['not yet']}>
+
+**Waiting for an answer.** Asking a question with a message, then waiting for the next message, reaction or click of the same person.
+_Meanwhile:_ a button or a menu that carries what it needs in its `data`, and runs when the person clicks, however long after.
+
+**Premium and entitlements.** Knowing who has subscribed to your bot, and being told when someone does.
+
+</Update>
+
+<Update label="Events" description="What Discord sends that no event() receives" tags={['not yet']}>
+
+**Auto-moderation, stickers, soundboard, pins, webhooks, integrations and stages.** No `event()` for what auto-moderation does, for stickers and soundboard sounds added or changed, for a message pinned or unpinned, for webhooks and integrations changed, for stage instances, and for the status of a voice channel.
+
+</Update>
+
+<Update label="Voice and presence" description="Beyond playing a sound" tags={['not yet']}>
+
+<a id="recording-voice" />
+
+**Recording voice.** Hearing what people say in a voice channel, to record or transcribe it. The bot only plays, and is deafened by default.
+
+**Changing the presence from code.** A presence that follows live data (a member count, the song playing). The presence is declared once and only changes when its file does.
+
+</Update>
+
+<Update label="Servers" description="Actions on what the bot only reads today" tags={['not yet']}>
+
+**Scheduled events.** Editing or deleting one.
+
+**Stickers and auto-moderation rules.** Creating, editing or deleting one.
+
+</Update>
+
+<Update label="Running the bot" description="How and where a bot runs" tags={['not yet']}>
+
+**A bot spread over several machines.** Running one bot on several machines at once.
+_Meanwhile:_ a large bot runs on [several processes of one machine](/run/start#large-bots) by itself.
+
+**Choosing what the bot remembers.** A setting for how many members, users and messages the bot keeps in memory. It follows [your files and the memory available](/memory).
+
+**A config file.** A `chapterjs.config.ts`. What your bot does comes from the files of `src/`, and what it needs to run from [`.env`](/setup/project-structure#env): one token, one test server.
+
+**Sharing files between bots.** Publishing your commands, events or components as a package, to use them in another project. A file is only loaded from the `src/` of the project.
+
+</Update>
+
+<Update label="Testing" description="What chapterjs test does not simulate" tags={['not yet']}>
+
+**Time, voice, polls, scheduled events and auto-moderation.** Time does not pass in the test server (a `cooldown`, a task that runs `every` so often), and voice, polls, scheduled events and auto-moderation are not simulated. An event the server can not make happen is named in the report, and a request for something it does not model answers as Discord does for something that does not exist. See [Testing](/testing#what-it-does-not-do-yet).
+
+</Update>
+
+<CardGroup cols={2}>
+  <Card title="Reference" icon="library" href="/reference">
+    Everything that exists today, structure by structure.
+  </Card>
+  <Card title="Troubleshooting" icon="bug" href="/run/troubleshooting">
+    Every message of the CLI, and what people see on Discord.
+  </Card>
+</CardGroup>

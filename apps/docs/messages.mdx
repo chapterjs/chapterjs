@@ -215,8 +215,8 @@ async function ask(channel: TextChannel) {
     poll: {
       question: { text: 'Pizza or pasta?' },
       answers: [
-        { answerId: 1, pollMedia: { text: 'Pizza', emoji: { name: '🍕' } } },
-        { answerId: 2, pollMedia: { text: 'Pasta', emoji: { name: '🍝' } } },
+        { pollMedia: { text: 'Pizza', emoji: { name: '🍕' } } },
+        { pollMedia: { text: 'Pasta', emoji: { name: '🍝' } } },
       ],
       duration: 24, // hours
       allowMultiselect: false,

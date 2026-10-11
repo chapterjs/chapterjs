@@ -77,16 +77,21 @@ export class ComponentRouter {
     this.#components = components;
   }
 
-  /** Handles an Interaction Create event, if it is a component or a form. */
-  dispatch(ctx: Context, raw: RawInteraction): void {
+  /**
+   * Handles an Interaction Create event, if it is a component or a form.
+   * Returns a promise of everything being done (the function run, the
+   * person answered), or `null` when the interaction is not for this
+   * router. Nothing of the bot waits for it: `chapterjs test` does.
+   */
+  dispatch(ctx: Context, raw: RawInteraction): Promise<void> | null {
     const isComponent = raw.type === InteractionType.MessageComponent;
     const isModal = raw.type === InteractionType.ModalSubmit;
-    if (!isComponent && !isModal) return;
+    if (!isComponent && !isModal) return null;
     const data = raw.data as
       RawMessageComponentData | RawModalSubmitData | undefined;
-    if (!data || typeof data.custom_id !== 'string') return;
+    if (!data || typeof data.custom_id !== 'string') return null;
     const author = authorOf(raw);
-    if (!author) return;
+    if (!author) return null;
     const user = ctx.entities.user(author.user);
     const { user: _user, member: _member, message: rawMessage, ...rest } = raw;
     const message = rawMessage
@@ -123,7 +128,7 @@ export class ComponentRouter {
           ephemeral: entry ? ephemeralOf(entry.component) : isPrivate,
           message: message!,
         });
-    if (isComponent && !message) return;
+    if (isComponent && !message) return null;
     // Embeds are never in the map: what is left has a `run`.
     if (
       !entry ||
@@ -133,15 +138,13 @@ export class ComponentRouter {
           (data as RawMessageComponentData).component_type)
     ) {
       // Sent before the export was renamed, removed or changed of kind.
-      refuse(interaction, 'gone', { what });
-      return;
+      return refuse(interaction, 'gone', { what });
     }
     const { component, file } = entry;
     const values = readData(component.data, parts);
     if (!values) {
       // The data of the component changed since the message was sent.
-      refuse(interaction, 'outdated', { what });
-      return;
+      return refuse(interaction, 'outdated', { what });
     }
     const placed = resolvePlace(
       ctx,
@@ -152,8 +155,7 @@ export class ComponentRouter {
       warning => this.#options.onWarning(file, `${name} ${warning}`)
     );
     if (!placed.place) {
-      refuse(interaction, placed.refusal, { what });
-      return;
+      return refuse(interaction, placed.refusal, { what });
     }
     const { place } = placed;
     if (
@@ -161,8 +163,7 @@ export class ComponentRouter {
       component.who === 'author' &&
       rawMessage?.interaction_metadata?.user.id !== user.id
     ) {
-      refuse(interaction, 'authorOnly', { what });
-      return;
+      return refuse(interaction, 'authorOnly', { what });
     }
     remember(interaction, {
       guild: place.guild ?? undefined,
@@ -192,8 +193,7 @@ export class ComponentRouter {
             : {};
     } catch (error) {
       this.#options.onError(file, error);
-      refuse(interaction, 'failed', { what });
-      return;
+      return refuse(interaction, 'failed', { what });
     }
     const context = Object.freeze({
       interaction,
@@ -213,7 +213,7 @@ export class ComponentRouter {
       ),
     });
 
-    runInteraction({
+    return runInteraction({
       interaction,
       file,
       name,

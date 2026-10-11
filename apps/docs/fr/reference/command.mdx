@@ -3,7 +3,7 @@ title: 'command()'
 description: 'Tout ce que déclare un fichier de commande, chaque sorte d’option, et ce que reçoit la fonction run'
 ---
 
-`command()` est ce qu’un fichier de `src/commands/` exporte par défaut. Elle prend un objet, `CommandConfig`, et type `run` d’après lui.
+`command()` déclare une commande slash, depuis n’importe quel fichier de `src/` ; son `name` est ce que les gens tapent après le `/`. Elle prend un objet, `CommandConfig`, et type `run` d’après lui.
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
@@ -467,7 +467,7 @@ Ce que déclare un fichier est vérifié à son chargement, par rapport aux limi
 | --- | --- |
 | Un nom (commande, option, nom traduit) | Lettres minuscules, chiffres, `-` et `_`, 32 caractères au plus |
 | Une description (commande, option, description traduite) | 1 à 100 caractères |
-| Profondeur d’une commande | Une commande, un groupe et une sous-commande : 2 dossiers au plus |
+| Profondeur d’une commande | Une commande, un groupe et une sous-commande : 3 mots au plus dans `name` |
 | Options d’une commande | 25 au plus |
 | Choix d’une option | 1 à 25, chacun affiché en 1 à 100 caractères, aucun en double |
 | `minLength`, `maxLength` | Nombres entiers entre 0 et 6000, `minLength` pas au-dessus de `maxLength` |

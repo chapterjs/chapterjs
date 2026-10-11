@@ -46,6 +46,27 @@ interface Scheduled {
 /** The longest a timer of Node can wait. */
 const MAX_DELAY = 2 ** 31 - 1;
 
+/**
+ * Runs a task once, as the scheduler does when its time comes: for no
+ * server (what a store per server reads), with the error of a `run` that
+ * throws given to `onError`. Resolves once the run is done.
+ */
+export function runTask(
+  entry: TaskEntry,
+  context: Omit<TaskContext, 'now'>,
+  now: Date,
+  onError: (file: string, error: unknown) => void
+): Promise<void> {
+  return new Promise(resolve =>
+    resolve(
+      withGuild(null, () => entry.task.run(Object.freeze({ ...context, now })))
+    )
+  ).then(
+    () => {},
+    (error: unknown) => onError(entry.file, error)
+  );
+}
+
 /** Tasks run by the timers of this process. */
 export class TimerScheduler implements Scheduler {
   readonly #options: SchedulerOptions;
@@ -147,16 +168,10 @@ export class TimerScheduler implements Scheduler {
       return;
     }
     scheduled.running = true;
-    new Promise(resolve =>
-      resolve(
-        withGuild(null, () =>
-          scheduled.entry.task.run(Object.freeze({ ...context, now }))
-        )
-      )
-    )
-      .catch((error: unknown) => this.#options.onError(file, error))
-      .finally(() => {
+    runTask(scheduled.entry, context, now, this.#options.onError).finally(
+      () => {
         scheduled.running = false;
-      });
+      }
+    );
   }
 }

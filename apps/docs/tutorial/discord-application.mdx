@@ -39,7 +39,7 @@ Keep it somewhere for a minute: the next page puts it in your project. Then forg
 <Warning>
   The token is the password of your bot. Never put it in your code, never commit
   it, never paste it in a chat or a screenshot. A project made with `create
-  chapter` keeps it in a `.env` file that git ignores.
+  chapterjs` keeps it in a `.env` file that git ignores.
 </Warning>
 
 ## Copy the ID of your test server
@@ -65,9 +65,9 @@ Leave them off for now. ChapterJS tells you when one of your files needs one, wi
 
 | Option                     | Needed when your bot                                                                                       |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Server Members Intent**  | Reacts to members joining, leaving or changing (`memberJoin`, `memberLeave`, `memberUpdate`) |
+| **Server Members Intent**  | Reacts to members joining, leaving or changing (`memberJoin`, `memberLeave`, `memberUpdate`), or to who joins a thread |
 | **Message Content Intent** | Reads the text of the messages people write (`messageCreate`, `messageUpdate`)                |
-| **Presence Intent**        | Nothing in ChapterJS uses it today                                                                         |
+| **Presence Intent**        | Reacts to the status and the activity of people (`presenceUpdate`)                             |
 
 ## Recap
 

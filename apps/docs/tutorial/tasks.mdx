@@ -1,9 +1,9 @@
 ---
 title: 'Tasks'
-description: 'Make your bot do something by itself, every so often or at given times, with one file per task'
+description: 'Make your bot do something by itself, every so often or at given times, with a task() per thing to do'
 ---
 
-Everything so far happened because someone did something: a command, a click, a message. A **task** is what the bot does on its own: a report every Monday, a cleanup every hour, a reminder at noon. One file per task, in `src/tasks/`.
+Everything so far happened because someone did something: a command, a click, a message. A **task** is what the bot does on its own: a report every Monday, a cleanup every hour, a reminder at noon. A task is declared with `task()` and exported, from any file of `src/`; this tutorial keeps them in `src/tasks/`.
 
 ## A task every so often
 
@@ -23,7 +23,7 @@ export default task({
 });
 ```
 
-The name of the file is the name of the task. `every` is a duration: a number and a unit, `s`, `m`, `h` or `d`, which add up (`'1h30m'`). The task runs at that interval, counted from the moment the bot connects. `onStart: true` also runs it once right away, without waiting for the first interval: handy to see that it works.
+The name of the export is the name of the task; a default export takes the name of its file, `heartbeat`. `every` is a duration: a number and a unit, `s`, `m`, `h` or `d`, which add up (`'1h30m'`). The task runs at that interval, counted from the moment the bot connects. `onStart: true` also runs it once right away, without waiting for the first interval: handy to see that it works.
 
 `run` receives `user` (the bot itself), `guilds` (the servers it is in) and `now` (when this run was due, a `Date`). No interaction here: nobody asked, so there is nothing to answer. A task that wants to say something sends a message in a channel it knows.
 

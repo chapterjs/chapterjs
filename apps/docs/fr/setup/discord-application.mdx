@@ -26,7 +26,7 @@ Un bot est une application Discord avec un compte bot. Vous la créez dans le [D
     ```
 
     <Warning>
-      Le token est le mot de passe de votre bot : qui le possède contrôle le bot. Ne le partagez jamais, ne le mettez jamais dans votre code, et ne commitez jamais `.env`. Un projet créé avec `create chapter` l’ignore déjà dans git.
+      Le token est le mot de passe de votre bot : qui le possède contrôle le bot. Ne le partagez jamais, ne le mettez jamais dans votre code, et ne commitez jamais `.env`. Un projet créé avec `create chapterjs` l’ignore déjà dans git.
     </Warning>
   </Step>
   <Step title="Copier l’identifiant de votre serveur de test">
@@ -66,8 +66,8 @@ Discord n’envoie à un bot que ce qu’il a demandé, et trois choses doivent 
 | Option à activer | Nécessaire pour les fichiers de |
 | --- | --- |
 | **Message Content Intent** | `messageCreate`, `messageUpdate` |
-| **Server Members Intent** | `memberJoin`, `memberLeave`, `memberUpdate` |
-| **Presence Intent** | Rien pour l’instant : aucun événement de ChapterJS ne l’utilise |
+| **Server Members Intent** | `memberJoin`, `memberLeave`, `memberUpdate`, `threadMemberJoin`, `threadMemberLeave` |
+| **Presence Intent** | `presenceUpdate` |
 
 Quand un fichier a besoin d’une option qui n’est pas activée, `chapterjs dev` dit quels fichiers et donne le lien vers la page, puis attend :
 

@@ -44,17 +44,17 @@ Reading what people write is the most personal thing a bot can do, so Discord ma
 
 Look at what the file does **not** do. It does not check `if (message.author.bot) return;`. It does not check that the message is in a server. Both are the default:
 
-- **Messages of bots and webhooks are ignored**, yours included. A bot that reacts to messages and answers with a message will see its own answer, react to it, and so on forever; a server with two such bots has them talking to each other all night. So by default your file only runs for messages written by people. When you really want the messages of bots, say it: `{ bots: true }` as the second argument of `event()`.
+- **Messages of bots and webhooks are ignored**, yours included. A bot that reacts to messages and answers with a message will see its own answer, react to it, and so on forever; a server with two such bots has them talking to each other all night. So by default your file only runs for messages written by people. When you really want the messages of bots, say it: `bots: true`, written next to `name`.
 - **Only the messages of servers.** Private messages are a different place, with no server, no member and no channel of a server; a file that handles both has to tell them apart. So by default your file listens in servers, where `message.guild`, `message.channel` and `message.member` are always there.
 
 The safe behavior is the default, and the opt-out is explicit. Here is how the options written next to `name` change it, and what they change in what your function receives:
 
-| Second argument     | Runs for                              | `message.member`                          | `message.guild`   |
+| Options             | Runs for                              | `message.member`                          | `message.guild`   |
 | ------------------- | ------------------------------------- | ----------------------------------------- | ----------------- |
-| nothing             | People, in servers                    | Always there                              | Always there      |
-| `{ bots: true }`    | People, bots and webhooks, in servers | May be `null` (a webhook is not a member) | Always there      |
-| `{ where: 'dm' }`   | People, in private messages           | Does not exist                            | Does not exist    |
-| `{ where: 'both' }` | People, everywhere                    | There when `message.guild` is             | `Guild` or `null` |
+| none                | People, in servers                    | Always there                              | Always there      |
+| `bots: true`        | People, bots and webhooks, in servers | May be `null` (a webhook is not a member) | Always there      |
+| `where: 'dm'`       | People, in private messages           | Does not exist                            | Does not exist    |
+| `where: 'both'`     | People, everywhere                    | There when `message.guild` is             | `Guild` or `null` |
 
 The types follow the options: in a `'dm'` file, the editor does not even offer `message.guild`; in a `'both'` file, one `if (message.guild)` narrows everything inside it to a message of a server. Each file decides for itself: two files of the same folder can listen in different places.
 
@@ -111,7 +111,7 @@ export default event({
 
 ## Points of attention
 
-- **Never answer a message with a message without thinking about loops.** With the default (no bots), you are safe. With `{ bots: true }`, make sure your file can't react to its own answer.
+- **Never answer a message with a message without thinking about loops.** With the default (no bots), you are safe. With `bots: true`, make sure your file can't react to its own answer.
 - **A reaction to a word runs on every message of every channel.** Keep the check cheap and first, and `return` early.
 - **Private messages are for production.** A support bot that listens in private messages is tried with `chapterjs start`, on the dev application if you like.
 - **A thread the bot never saw.** A message can arrive in a channel the bot does not know yet (a thread created before it connected). The framework asks Discord for it once, before running your files, so `message.channel` is always there. When Discord refuses (the bot can't see that channel), the event is not delivered and the terminal says so with `⚠`.
@@ -120,7 +120,7 @@ export default event({
 
 - A `messageCreate` event runs for messages written by people, in servers, by default: no `author.bot` check to write.
 - The Message Content Intent is needed to read `message.content` for `messageCreate` and `messageUpdate`.
-- `{ bots: true }` and `{ where: 'dm' | 'both' }` widen what a file hears, and the types follow.
+- `bots: true` and `where: 'dm'` or `where: 'both'` widen what a file hears, and the types follow.
 - `messageDelete` gives the id, the channel and the server; the message itself is `null`.
 
 <CardGroup cols={2}>

@@ -1,9 +1,9 @@
 ---
 title: 'Les tâches'
-description: 'Faire faire quelque chose à votre bot tout seul, régulièrement ou à des heures données, avec un fichier par tâche'
+description: 'Faire faire quelque chose à votre bot tout seul, régulièrement ou à des heures données, avec une task() par chose à faire'
 ---
 
-Tout ce qui précède se passait parce que quelqu’un faisait quelque chose : une commande, un clic, un message. Une **tâche** est ce que le bot fait de lui-même : un rapport chaque lundi, un nettoyage toutes les heures, un rappel à midi. Un fichier par tâche, dans `src/tasks/`.
+Tout ce qui précède se passait parce que quelqu’un faisait quelque chose : une commande, un clic, un message. Une **tâche** est ce que le bot fait de lui-même : un rapport chaque lundi, un nettoyage toutes les heures, un rappel à midi. Une tâche se déclare avec `task()` et s’exporte, depuis n’importe quel fichier de `src/` ; ce tutoriel les garde dans `src/tasks/`.
 
 ## Une tâche régulière
 
@@ -21,7 +21,7 @@ export default task({
 });
 ```
 
-Le nom du fichier est le nom de la tâche. `every` est une durée : un nombre et une unité, `s`, `m`, `h` ou `d`, qui s’additionnent (`'1h30m'`). La tâche tourne à cet intervalle, compté à partir du moment où le bot se connecte. `onStart: true` la lance aussi une fois tout de suite, sans attendre le premier intervalle : pratique pour voir qu’elle fonctionne.
+Le nom de l’export est le nom de la tâche ; un export par défaut prend le nom de son fichier, `heartbeat`. `every` est une durée : un nombre et une unité, `s`, `m`, `h` ou `d`, qui s’additionnent (`'1h30m'`). La tâche tourne à cet intervalle, compté à partir du moment où le bot se connecte. `onStart: true` la lance aussi une fois tout de suite, sans attendre le premier intervalle : pratique pour voir qu’elle fonctionne.
 
 `run` reçoit `user` (le bot lui-même), `guilds` (les serveurs où il se trouve) et `now` (le moment où ce passage était prévu, un `Date`). Pas d’interaction ici : personne n’a rien demandé, donc il n’y a rien à quoi répondre. Une tâche qui veut dire quelque chose envoie un message dans un salon qu’elle connaît.
 

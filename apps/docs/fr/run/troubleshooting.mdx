@@ -37,7 +37,7 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
     `chapterjs start` n’a trouvé ni fichier `.env` ni `BOT_TOKEN` dans l’environnement. Sur un hébergeur, donnez `BOT_TOKEN` dans ses réglages (souvent appelés « variables d’environnement » ou « secrets »), ou mettez-le dans un fichier `.env` à côté de `package.json`. L’environnement l’emporte quand les deux sont là.
   </Accordion>
   <Accordion title="✗ There is no src folder here.">
-    Lancez la commande dans le dossier de votre bot, celui qui contient `package.json`. Pour commencer un projet, lancez `pnpm create chapter`.
+    Lancez la commande dans le dossier de votre bot, celui qui contient `package.json`. Pour commencer un projet, lancez `pnpm create chapterjs`.
   </Accordion>
   <Accordion title="✗ Discord refused the bot token.">
     Le token n’est plus celui de votre bot, généralement parce qu’il a été réinitialisé. Copiez-le à nouveau depuis le Developer Portal dans `BOT_TOKEN`. Rien ne peut fonctionner tant que ce n’est pas corrigé, donc la commande s’arrête.
@@ -52,7 +52,7 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
     Le message vous donne un lien : ouvrez-le et confirmez. Dans un terminal, `chapterjs dev` attend (`Waiting for the bot to be added...`) et continue tout seul avec `✓ The bot joined …`. Si le lien affiche un autre serveur, `DEV_GUILD_ID` n’est pas l’identifiant d’un serveur que vous gérez. Lancé par un autre programme, le même message est un `✗` et la commande s’arrête.
   </Accordion>
   <Accordion title="⚠ Your files need an option that is not enabled for your bot: …">
-    Un de vos dossiers a besoin d’un intent privilégié : **Message Content Intent** pour `messageCreate` et `messageUpdate`, **Server Members Intent** pour `memberJoin`, `memberLeave` et `memberUpdate`. Le message liste les fichiers qui ont besoin de chacun et donne le lien vers la bonne page : activez l’option sous **Privileged Gateway Intents**, puis enregistrez. Dans un terminal, `chapterjs dev` attend (`Waiting for you to enable it...`) et continue avec `✓ Privileged intents enabled`. Lancé par un autre programme, et toujours avec `chapterjs start`, le même message est un `✗` et la commande s’arrête. Voir [Intents privilégiés](/fr/setup/discord-application#intents-privilégiés).
+    Un de vos fichiers a besoin d’un intent privilégié : **Message Content Intent** pour `messageCreate` et `messageUpdate`, **Server Members Intent** pour `memberJoin`, `memberLeave`, `memberUpdate`, `threadMemberJoin` et `threadMemberLeave`, **Presence Intent** pour `presenceUpdate`. Le message liste les fichiers qui ont besoin de chacun et donne le lien vers la bonne page : activez l’option sous **Privileged Gateway Intents**, puis enregistrez. Dans un terminal, `chapterjs dev` attend (`Waiting for you to enable it...`) et continue avec `✓ Privileged intents enabled`. Lancé par un autre programme, et toujours avec `chapterjs start`, le même message est un `✗` et la commande s’arrête. Voir [Intents privilégiés](/fr/setup/discord-application#intents-privilégiés).
   </Accordion>
   <Accordion title="✗ Discord refused the connection: the bot uses privileged intents (…) that are not enabled.">
     Discord a fermé la connexion à cause d’un intent privilégié, alors que la vérification avant la connexion était passée : l’option a été désactivée pendant que le bot tournait, ou l’application a été modifiée entre-temps. Activez-la dans le Developer Portal (votre application → **Bot** → **Privileged Gateway Intents**) et relancez.
@@ -87,7 +87,7 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
     Une de vos fonctions a levé une erreur : la ligne nomme le fichier et la ligne de votre code, et le reste est l’erreur. Rien d’autre ne s’arrête. Pour une commande, la personne a reçu une courte réponse privée. Voir [quand votre fonction échoue](/fr/commands/answering#quand-votre-fonction-échoue).
   </Accordion>
   <Accordion title="↻ Your files now need more from Discord (…): reconnecting...">
-    Un fichier que vous avez ajouté écoute quelque chose que la connexion n’avait pas demandé (un nouveau dossier d’événement). ChapterJS se reconnecte tout seul avec ce qu’il faut et dit `✓ Reconnected, … loaded` ; si cela demande un intent privilégié, voir plus haut.
+    Un fichier que vous avez ajouté écoute quelque chose que la connexion n’avait pas demandé (un nouvel événement, un fichier qui écoute maintenant les messages privés). ChapterJS se reconnecte tout seul avec ce qu’il faut et dit `✓ Reconnected, … loaded` ; si cela demande un intent privilégié, voir plus haut.
   </Accordion>
   <Accordion title="ℹ … only works in private messages, and chapterjs dev only runs your bot in …">
     `chapterjs dev` ne fait tourner votre bot que sur votre serveur de test, donc une commande ou un événement réservé aux messages privés ne peut pas y être essayé. Cela fonctionne avec [`chapterjs start`](/fr/run/start).
@@ -176,7 +176,30 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
     `chapterjs start` ne prend que `--processes` avec un nombre entier de 1 ou plus. Avec un gestionnaire de paquets, mettez `--` avant l’option quand il en a besoin : `npm run start -- --processes 4`.
   </Accordion>
   <Accordion title='✗ "…" is not a command.'>
-    Le CLI `chapterjs` a quatre commandes : `dev`, `build`, `start` et `sync`. L’aide affichée sous le message les liste.
+    Le CLI `chapterjs` a cinq commandes : `dev`, `build`, `start`, `test` et `sync`. L’aide affichée sous le message les liste.
+  </Accordion>
+</AccordionGroup>
+
+## Tester
+
+<AccordionGroup>
+  <Accordion title="✗ This file can't run, so your bot was not tested.">
+    Les lignes au-dessus nomment chaque fichier et ce qui ne va pas, comme le fait `chapterjs dev` quand vous l’enregistrez. Rien n’est testé tant que chaque fichier ne tourne pas : corrigez-les et testez de nouveau.
+  </Accordion>
+  <Accordion title="✗ Checked src/…: command /name failed in N of M cases">
+    Une de vos fonctions a levé une erreur, ou s’est terminée sans répondre, pendant qu’elle était utilisée toute seule avec des valeurs ordinaires et des valeurs difficiles. Chaque ligne en dessous nomme le cas (un texte à sa longueur maximale, un nombre à zéro, quelqu’un qui est parti…) et le fichier et la ligne de ce qui a levé l’erreur. Voir [Ce qui est vérifié tout seul](/fr/testing#ce-qui-est-vérifié-tout-seul).
+  </Accordion>
+  <Accordion title="ℹ No scenario yet. Write one in a *.test.ts file of src/ with scenario() from 'chapterjs/test' to check what your bot answers.">
+    Chaque fichier a été vérifié une fois, et votre projet n’a aucun scénario à lancer. Rien ne va mal : écrivez-en un quand vous voudrez vérifier ce que répond le bot. Voir [Scénarios](/fr/testing#scénarios).
+  </Accordion>
+  <Accordion title='✗ Tested src/….test.ts: "label" failed'>
+    Une vérification de ce scénario a échoué, ou une fonction du bot a levé une erreur pendant qu’il tournait. La ligne en dessous donne le fichier et la ligne de votre scénario, ce qui était attendu et ce qui est venu.
+  </Accordion>
+  <Accordion title="⚠ src/….test.ts declares no scenario: export one made with scenario() from 'chapterjs/test'">
+    Un fichier `*.test.ts` n’exporte rien de fabriqué avec `scenario()`. Le bot ne charge jamais ces fichiers, donc ce qu’il contient ne tourne nulle part : exportez un scénario, ou renommez le fichier.
+  </Accordion>
+  <Accordion title="… took more than 10 s: is something waiting for an answer that never comes?">
+    Un scénario a dépassé le temps qui lui est donné. En général, un `bot.use()` ou un `bot.click()` attend une fonction qui ne répond jamais, ou un `cooldown` refuse la seconde utilisation : le temps ne passe pas sur le serveur de test.
   </Accordion>
 </AccordionGroup>
 
@@ -190,7 +213,7 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
     Quelqu’un a cliqué sur un bouton ou un menu déroulant, ou envoyé un formulaire, et son `run` s’est terminé sans répondre. `chapterjs dev` vous prévient (`⚠ … finished without answering`). Répondez avec `interaction.update()`, `interaction.reply()`, ou `interaction.deferUpdate()` pour ne rien changer : voir [Boutons](/fr/components#répondre-à-un-clic).
   </Accordion>
   <Accordion title="This button is not available any more. / This menu… / This form…">
-    Le message est plus vieux que votre projet : le fichier du composant a été renommé, supprimé ou déplacé dans une autre sorte de dossier depuis l’envoi du message. Renvoyez le message, ou remettez le fichier.
+    Le message est plus vieux que votre projet : l’export du composant a été renommé ou supprimé depuis l’envoi du message (déplacer son fichier ne change rien). Renvoyez le message, ou remettez l’export.
   </Accordion>
   <Accordion title="This button is out of date.">
     Les `data` du composant ont changé de forme depuis l’envoi du message (une valeur ajoutée, retirée ou d’une autre sorte). Les vieux messages transportent les anciennes données : renvoyez le message.

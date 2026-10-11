@@ -7,12 +7,13 @@ You went from an empty folder to a bot that is online for everyone. Here is what
 
 ## What you can do now
 
-- **Create a project** with `create chapter`, give it a token and a test server, run it with `chapterjs dev`.
-- **Write a command** as a file of `src/commands/`, with options typed for you, answers public or private, slow or immediate.
-- **React to events** with a folder of `src/events/`, members and messages included, with intents worked out from your files.
-- **Add buttons, menus and forms** as files of `src/components/`, carrying data, surviving restarts.
+- **Create a project** with `create chapterjs`, give it a token and a test server, run it with `chapterjs dev`.
+- **Write a command** with `command()`, with options typed for you, answers public or private, slow or immediate.
+- **React to events** with an `event()` per reaction, members and messages included, with intents worked out from your files.
+- **Add buttons, menus and forms** named by their export, carrying data, surviving restarts.
 - **Reuse embeds** and build messages out of components.
 - **Schedule tasks**, set the **presence**, and **speak several languages** with `t`.
+- **Test your bot** without Discord: every file once by itself, and your scenarios with `scenario()`.
 - **Build and deploy**, with a second application for production.
 
 ## Habits that keep a bot healthy
@@ -22,7 +23,7 @@ You went from an empty folder to a bot that is online for everyone. Here is what
 - **Keep `run` short**, and the logic in `src/lib/`.
 - **Think about who reads a message**: `ephemeral` for the person, `allowedMentions` for texts you repeat, `t` for the language.
 - **Ask Discord for the least**: the fewest privileged intents, the fewest permissions in the invite link.
-- **Build before every deploy**, and never share a token.
+- **Test before every build**, build before every deploy, and never share a token.
 
 ## Where to look
 
@@ -31,7 +32,7 @@ You went from an empty folder to a bot that is online for everyone. Here is what
 | How to do one thing, fast            | The **Guide** tab: one page per feature                                                                    |
 | Every field, method and type         | The **Reference** tab: `command()`, `event()`, the structures, the CLI                                     |
 | What a message of the terminal means | [Troubleshooting](/run/troubleshooting)                                                                    |
-| Whether a feature exists             | [What's not there yet](/not-yet)                                                                           |
+| Whether a feature exists             | [Roadmap](/roadmap)                                                                           |
 | What Discord itself allows           | The [Discord developer documentation](https://docs.discord.com/developers), the source of every limit here |
 
 ## Ideas for your bot

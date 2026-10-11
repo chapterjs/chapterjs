@@ -32,7 +32,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Version
         run: |
-          versions="$(for name in chapterjs create-chapter create-chapterjs; do
+          versions="$(for name in chapterjs create-chapterjs create-chapter; do
             node -p "require('./packages/$name/package.json').version"
           done | sort -u)"
           if [ "$(echo "$versions" | wc -l)" -ne 1 ]; then
@@ -40,7 +40,7 @@ jobs:
             exit 1
           fi
           missing=""
-          for name in chapterjs create-chapter create-chapterjs; do
+          for name in chapterjs create-chapterjs create-chapter; do
             npm view "$name@$versions" version > /dev/null 2>&1 || missing="$missing $name"
           done
           if [ -z "$missing" ]; then
@@ -53,7 +53,7 @@ jobs:
       - name: Pack the packages
         run: |
           mkdir release
-          for name in chapterjs create-chapter create-chapterjs; do
+          for name in chapterjs create-chapterjs create-chapter; do
             (cd "packages/$name" && pnpm pack --pack-destination ../../release)
           done
       - uses: actions/setup-node@v5
@@ -67,7 +67,7 @@ jobs:
           # In this order, each one only needs the ones before; a package
           # already on npm is left alone, so a deploy that stopped halfway
           # can be run again.
-          for name in chapterjs create-chapter create-chapterjs; do
+          for name in chapterjs create-chapterjs create-chapter; do
             if npm view "$name@$VERSION" version > /dev/null 2>&1; then
               echo "ℹ $name@$VERSION is already on npm"
               continue

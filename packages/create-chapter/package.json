@@ -1,21 +1,34 @@
 {
   "name": "create-chapter",
-  "version": "0.2.3",
+  "version": "0.3.0",
+  "description": "Alias of create-chapterjs: creates a ChapterJS Discord bot with pnpm create chapter",
+  "keywords": [
+    "discord",
+    "discord-bot",
+    "bot",
+    "framework",
+    "typescript",
+    "slash-commands",
+    "esm",
+    "create",
+    "scaffold",
+    "template",
+    "chapterjs"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/chapterjs/chapterjs.git",
     "directory": "packages/create-chapter"
   },
-  "homepage": "https://chapterjs.dev",
+  "homepage": "https://www.chapterjs.org",
   "bugs": "https://github.com/chapterjs/chapterjs/issues",
   "type": "module",
   "bin": {
     "create-chapter": "./dist/index.js"
   },
   "files": [
-    "dist",
-    "templates"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
@@ -33,7 +46,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@clack/prompts": "^1.8.1"
+    "create-chapterjs": "workspace:^"
   },
   "engines": {
     "node": ">=24"

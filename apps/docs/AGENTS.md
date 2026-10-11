@@ -8,6 +8,8 @@ Amateur developers writing their first Discord bot. They know JavaScript, maybe 
 
 ## The three tabs
 
+The landing page (`index.mdx`, mode `custom`, and `fr/index.mdx`) is in a hidden `Home` tab of `docs.json` (`searchable: true`, so it stays in search and sitemaps): it belongs to no visible tab, and the Guide tab, the first one, opens on `quickstart`. The order of the navbar is Guide, Tutorial, Reference, Changelog. Mintlify still marks the first tab as current on it, so `style.css` shows the tabs of a custom page as plain (`#navbar.is-custom`).
+
 - **Tutorial** (`/tutorial/…`) is a course, read once from start to finish by someone who has never written a bot. It explains _why_ things are the way they are (what a token is, why intents exist, why `t` speaks the language of the readers) before showing how, builds one bot page after page, and never assumes a word is known. Every page has the same shape: what you are about to do and why, a complete file to copy, "Points of attention", a "Recap", then two cards (the next page, and its counterpart in the Guide). It repeats what the Guide says, on purpose, in more words; it never documents a behavior the Guide does not have.
 - **Guide** (`/…`) is read in order and teaches. A guide page shows how to do one thing, with a complete file that works as is, and never lists an API: it links to the reference for that.
 - **Reference** (`/reference/…`) is looked up and lists everything. A reference page never explains a concept: it links to the guide for that.
@@ -23,7 +25,7 @@ What the French version translates, and what it keeps:
 <!-- prettier-ignore -->
 - **Translated**: the prose, the headings, the titles of steps, tabs and accordions, the texts of cards, the explanations of tables, the comments of samples, and the strings of samples that a person reads (a reply, a description, a label). Links point at `/fr/…`; an anchor is the slug Mintlify computes from the French heading (`## Délais entre deux utilisations` is `#délais-entre-deux-utilisations`, and a French ` : ` gives two hyphens: `#intents--rien-à-lister`).
 - **Kept as they are**: every name of the API (functions, options, types, fields, `### kick()`, `<ResponseField name type>`), the values a type is made of (choices, options of a menu, keys of `data`, keys of `t`), the language files of `src/messages/` (byte for byte: the samples are compiled together, and `t` is typed from the first `en-US.ts`), and every message of the CLI and phrase the bot answers by itself, quoted in English as the person sees it, with the explanation around it in French. A reference description is the JSDoc of the source, translated.
-- The French voice is the same as the English one, with « vous ». Terminology: serveur (never guilde), message privé, serveur de test, le bot, la personne, votre fonction, ce dont le bot se souvient, intents et intents privilégiés (with the English name of the Developer Portal option), événement, commande, formulaire, composant, bouton, menu déroulant, salon, fil, tâche, présence, compiler and compilation (for `chapterjs build`). The labels of the Discord app are given as a French Discord shows them (**Paramètres** → **Avancés** → **Mode développeur**); the Developer Portal is in English.
+- The French voice is the same as the English one, with « vous ». Terminology: serveur (never guilde), message privé, serveur de test, le bot, la personne, votre fonction, ce dont le bot se souvient, intents et intents privilégiés (with the English name of the Developer Portal option), événement, commande, formulaire, composant, bouton, menu déroulant, salon, fil, tâche, présence, compiler and compilation (for `chapterjs build`), tester and test (for `chapterjs test`), scénario (a `scenario()`), vérification (a check of the smoke test). The labels of the Discord app are given as a French Discord shows them (**Paramètres** → **Avancés** → **Mode développeur**); the Developer Portal is in English.
 
 ## Voice
 
@@ -138,6 +140,8 @@ The site is Mintlify's `luma` theme, set in `docs.json`, with the Lucide icon li
 
 `index.mdx` is the landing page (`mode: "custom"`: no sidebar, no default typography). It is written with Tailwind classes and the few `cj-` classes of `style.css` (gradients, glows, the colors of the editor, terminal and Discord mockup); nothing uses the `style` prop except a computed indentation. Its terminal lines are real messages of the CLI, and its claims only what exists: change it when the framework changes.
 
+`roadmap.mdx` is the roadmap: one `<Update>` per area (the component of the changelog, which draws the timeline), tagged `not yet`, with one bold entry per missing feature and an italic _Meanwhile:_ line when there is a way around. An entry only names what does not exist; the day a feature ships, it leaves the page. The anchors other pages link to (`#recording-voice`, `#enregistrer-le-vocal`) are inline `<a id>` marks, so the label of an `<Update>` can change.
+
 ## Components
 
 - `<CodeGroup>` for a command, always pnpm, npm, yarn, bun in that order.
@@ -156,9 +160,10 @@ The site is Mintlify's `luma` theme, set in `docs.json`, with the Lucide icon li
 
 ## What is not documented
 
-- The internal environment variables (`CHAPTERJS_API_URL`, `CHAPTERJS_IDENTIFY_INTERVAL`, `CHAPTERJS_PROCESS`, `CHAPTERJS_COLORS`): tests and workers only.
+- The internal environment variables (`CHAPTERJS_API_URL`, `CHAPTERJS_IDENTIFY_INTERVAL`, `CHAPTERJS_PROCESS`, `CHAPTERJS_COLORS`, `CHAPTERJS_SCENARIO_TIMEOUT`): tests and workers only.
+- The inside of the Discord in memory of `chapterjs test` (which routes it models, how it waits for the files): users see a server, people, and what the bot answered. `testing.mdx` says what it does not do yet.
 - Anything about the inside of the framework (gateway, shards, REST client, cache classes): users see servers, members and messages. `memory.mdx` is the one page about what happens behind, in user terms.
-- Features that are not written yet, except in `not-yet.mdx`, which lists them so that nobody looks for them.
+- Features that are not written yet, except in `roadmap.mdx`, which lists them so that nobody looks for them.
 
 ## Keeping in sync
 

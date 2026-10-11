@@ -25,7 +25,8 @@ describe('the published package', () => {
       const file = join(entry.parentPath, entry.name);
       const code = readFileSync(file, 'utf8');
       // Every import of something that is neither a file nor part of Node.
-      // The package's own name only appears in examples for developers.
+      // The package's own name (and its `chapterjs/test` entry) only
+      // appears in examples and messages for developers.
       const packages = [
         ...code.matchAll(/(?:from|import)\s*\(?\s*['"]([^'".][^'"]*)['"]/g),
       ]
@@ -35,6 +36,7 @@ describe('the published package', () => {
             !name.startsWith('node:') &&
             !name.startsWith('#') &&
             name !== 'chapterjs' &&
+            !name.startsWith('chapterjs/') &&
             // Code the framework writes for a project, not an import.
             !name.includes('${')
         );
@@ -89,7 +91,7 @@ describe('the published package', () => {
   });
 
   it('is released with the same version as the scaffolders', () => {
-    for (const name of ['create-chapter', 'create-chapterjs']) {
+    for (const name of ['create-chapterjs', 'create-chapter']) {
       const other = JSON.parse(
         readFileSync(
           new URL(`../../${name}/package.json`, import.meta.url),
@@ -98,5 +100,31 @@ describe('the published package', () => {
       );
       expect(other.version).toBe(pkg.version);
     }
+  });
+});
+
+describe('the npm page', () => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+
+  it('shows a README of the package, with the documentation site', () => {
+    const readme = readFileSync(join(root, 'README.md'), 'utf8');
+    expect(readme).toMatch(/^# ChapterJS\n/);
+    expect(readme).toContain('https://www.chapterjs.org');
+    expect(readme).toContain('pnpm create chapterjs');
+  });
+
+  it('links the documentation site as homepage, and the repository', () => {
+    expect(pkg.homepage).toBe('https://www.chapterjs.org');
+    expect(pkg.repository.url).toBe(
+      'git+https://github.com/chapterjs/chapterjs.git'
+    );
+    expect(pkg.bugs).toBe('https://github.com/chapterjs/chapterjs/issues');
+  });
+
+  it('is found with the words people search npm with', () => {
+    expect(pkg.description).toBeTruthy();
+    expect(pkg.keywords).toEqual(
+      expect.arrayContaining(['discord', 'discord-bot', 'framework'])
+    );
   });
 });

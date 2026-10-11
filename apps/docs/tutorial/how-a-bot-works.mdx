@@ -57,7 +57,7 @@ A **slash command** is what people type after `/` in Discord: `/ping`, `/ban @so
 
 For that menu to exist, the bot has to **register** its commands with Discord first: send the list of names, descriptions and options. Then, each time someone uses one, Discord sends the bot an event called an _interaction_, and the bot has a few seconds to answer.
 
-ChapterJS registers your commands for you: one file in `src/commands/` is one command, and the framework sends the list to Discord when it changed. You only write what the command does.
+ChapterJS registers your commands for you: each `command()` your files export is one command, and the framework sends the list to Discord when it changed. You only write what the command does.
 
 ## Where your bot runs matters
 
@@ -76,7 +76,7 @@ You will use the first one for most of this tutorial, and the second one in the 
 
 A bot has to keep its connection alive, ask for the right intents, register commands, answer interactions in time, respect the limits Discord puts on how many requests a bot may send, remember what it was told so that it does not ask again, and recover when the network drops. All of that is the same for every bot, so the framework does it, and you never see it.
 
-What is left for you is the part that is yours: what the bot says and does. It takes the form of files in conventional folders. Where a file is says what it is, so there is nothing to register, nothing to list, and no type to write.
+What is left for you is the part that is yours: what the bot says and does. It takes the form of files in `src/`, sorted as you like. What a file exports says what it is, so there is nothing to register, nothing to list, and no type to write.
 
 ## Recap
 

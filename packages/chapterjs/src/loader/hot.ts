@@ -50,7 +50,16 @@ export function enableProjectLoader(
       try {
         result = nextResolve(specifier, context);
       } catch (error) {
-        if (!fromProject || EXTENSION.test(specifier)) throw error;
+        // Not found, or a folder (Node refuses those as they are).
+        const code = (error as NodeJS.ErrnoException).code;
+        if (
+          !fromProject ||
+          (code !== 'ERR_MODULE_NOT_FOUND' &&
+            code !== 'ERR_UNSUPPORTED_DIR_IMPORT')
+        ) {
+          throw error;
+        }
+        if (EXTENSION.test(specifier)) throw missing(specifier, false);
         // No extension: look for the file people mean.
         for (const candidate of CANDIDATES) {
           try {
@@ -63,7 +72,7 @@ export function enableProjectLoader(
             // Try the next one.
           }
         }
-        if (!result) throw error;
+        if (!result) throw missing(specifier, true);
       }
       if (hot && root !== null && result.url.startsWith(root)) {
         return {
@@ -74,6 +83,22 @@ export function enableProjectLoader(
       return result;
     },
   });
+}
+
+/**
+ * The error for an import of the project that names no file: said in the
+ * words of the import, not with the absolute paths Node gives.
+ */
+function missing(specifier: string, tried: boolean): Error {
+  const name = specifier.replace(/\/$/, '').split('/').pop() ?? specifier;
+  const looked = tried
+    ? ` No ${name}.ts, ${name}.js or ${name}/index.ts is there.`
+    : '';
+  const error = new Error(
+    `'${specifier}' does not exist.${looked} Check the path and the name of the file.`
+  );
+  (error as NodeJS.ErrnoException).code = 'ERR_MODULE_NOT_FOUND';
+  return error;
 }
 
 /** Makes the next imports load the files again. */

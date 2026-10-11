@@ -42,6 +42,7 @@ import { translation, type LoadedMessages } from '../messages/translate.js';
 import { translateCommand, unknownCommands } from '../messages/commands.js';
 import type { Locale } from '../discord/types/common.js';
 import {
+  runTask,
   TimerScheduler,
   type Scheduler,
   type TaskEntry,
@@ -49,7 +50,11 @@ import {
 import { createBot, type Bot, type BotOptions } from '../core/bot.js';
 import { watchMemory } from '../core/memory.js';
 import { GatewayIntent, type GatewayIntentName } from '../discord/intents.js';
-import type { GatewayDispatchEvents } from '../discord/types/gateway-events.js';
+import type {
+  GatewayDispatchEventName,
+  GatewayDispatchEvents,
+} from '../discord/types/gateway-events.js';
+import type { RawInteraction } from '../discord/types/interaction.js';
 import { eventDeclaration } from '../events/declaration.js';
 import {
   EventRouter,
@@ -102,6 +107,23 @@ export interface ProjectOptions {
   stores?: StoreBackend;
   /** Only tests change this. */
   deferAfter?: number;
+  /**
+   * Told what the bot is doing with the files, and when it is done with
+   * it: what `chapterjs test` waits for. Nothing of the bot waits.
+   */
+  observe?: ProjectObserver;
+}
+
+/** What `chapterjs test` watches of a running project. */
+export interface ProjectObserver {
+  /** An interaction was given to the files; `done` once they answered it. */
+  interaction?(raw: RawInteraction, done: Promise<void>): void;
+  /** A gateway event was given to the files; `done` once they handled it. */
+  event?(
+    event: GatewayDispatchEventName,
+    data: unknown,
+    done: Promise<void>
+  ): void;
 }
 
 /** What the types of a project are written from, once its files ran. */
@@ -241,6 +263,11 @@ export interface Project {
   startTasks(current: () => Bot | null): void;
   /** Stops the tasks: nothing runs after this. */
   stopTasks(): void;
+  /**
+   * Runs one task now, as the scheduler would when its time comes, with
+   * the bot given. Resolves once it is done; an error is reported.
+   */
+  runTask(entry: TaskEntry, bot: Bot, now?: Date): Promise<void>;
   /** Looks after the memory of the bot `current` returns. */
   watchMemory(current: () => Bot | null): { stop(): void };
   /** Writes what the stores still have to write. Nothing is kept after this. */
@@ -253,7 +280,7 @@ export async function hasSources(cwd: string, log: Log): Promise<boolean> {
     return true;
   }
   log.error(
-    'There is no src folder here.\nRun this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapter".'
+    'There is no src folder here.\nRun this command in the folder of your bot (the one with package.json), or create a project with "pnpm create chapterjs".'
   );
   return false;
 }
@@ -675,10 +702,16 @@ export function createProject(options: ProjectOptions): Project {
       stores.size === 0 &&
       presence === null &&
       messages === null,
-    filesNeeding: intent =>
-      [...events.values()]
-        .filter(({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0)
-        .map(({ file }) => file),
+    // A file declaring several events that need the intent is named once.
+    filesNeeding: intent => [
+      ...new Set(
+        [...events.values()]
+          .filter(
+            ({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0
+          )
+          .map(({ file }) => file)
+      ),
+    ],
     intents: (privateEvents = true) =>
       neededIntents() & (privateEvents ? ~0 : ~PRIVATE_INTENTS),
     async connect(connection) {
@@ -709,15 +742,19 @@ export function createProject(options: ProjectOptions): Project {
         beforeDispatch: (event, data) =>
           router.before(created.ctx, event, data),
         onDispatch(event, data, info) {
-          router.dispatch(created.ctx, event, data, {
+          const handled = router.dispatch(created.ctx, event, data, {
             joined: info.joined,
             before: info.before as unknown[] | undefined,
           });
+          options.observe?.event?.(event, data, handled);
           if (event === 'INTERACTION_CREATE') {
             const interaction =
               data as GatewayDispatchEvents['INTERACTION_CREATE'];
-            commandRouter.dispatch(created.ctx, interaction);
-            componentRouter.dispatch(created.ctx, interaction);
+            const answered =
+              commandRouter.dispatch(created.ctx, interaction) ??
+              componentRouter.dispatch(created.ctx, interaction) ??
+              Promise.resolve();
+            options.observe?.interaction?.(interaction, answered);
           }
         },
         onEvent(event) {
@@ -775,6 +812,15 @@ export function createProject(options: ProjectOptions): Project {
       });
     },
     stopTasks: () => scheduler.stop(),
+    runTask(entry, bot, now = new Date()) {
+      const user = bot.ctx.cache.users.get(bot.ctx.self!.userId)!;
+      return runTask(
+        entry,
+        { user, guilds: bot.ctx.cache.guilds, ...translation(bot.ctx, null) },
+        now,
+        reporter.onError
+      );
+    },
     // The bot looks after its own memory: it remembers less before memory
     // is full, and only speaks up when it can't give up anything more.
     closeStores: () => storeBackend.close(),

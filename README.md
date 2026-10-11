@@ -5,7 +5,7 @@
 Drop files into folders, and the `chapterjs` CLI does everything else: the connection, the intents, the registration of commands, hot reload, sharding and several processes for large bots. Everything you write is typed end to end, without a single type to write.
 
 ```bash
-pnpm create chapter my-bot
+pnpm create chapterjs my-bot
 ```
 
 📖 Documentation, in English and in French: **[chapterjs.org](https://www.chapterjs.org)**
@@ -73,8 +73,10 @@ export default command({
 - **Storage**: `store<Warning[]>({ expires: '30d' })` keeps data from one restart to the next, per server, typed, in a JSON file written for you.
 - **Translated messages**: `t('welcome', { name })` speaks the language of who will read it.
 - **Voice**: join a channel and play a file, an attachment or a link, end-to-end encrypted (DAVE).
-- **Three commands**:
+- **Tests**: `chapterjs test` runs the bot against a Discord in memory, no token needed: every command, component, event and task is used once by itself, then your scenarios (`scenario('ping answers Pong', async bot => { … })`) say what the bot should answer.
+- **Four commands**:
   - `chapterjs dev` runs the bot on a test server and reloads each file when you save it. A broken file is reported with its line and never stops the bot.
+  - `chapterjs test` checks the bot without Discord, with nothing written and with your scenarios.
   - `chapterjs build` checks every file and the types, then compiles the bot into one JavaScript file.
   - `chapterjs start` runs it in production, on several processes when the bot is large.
 
@@ -84,13 +86,13 @@ Nothing to install to run a bot: the framework only uses what Node has (Node 24 
 
 This repository is a pnpm and Turborepo monorepo:
 
-| Folder                      | What it is                                                       |
-| --------------------------- | ---------------------------------------------------------------- |
-| `packages/chapterjs`        | The framework and its `chapterjs` CLI                            |
-| `packages/create-chapter`   | `pnpm create chapter`, the project scaffolder, and its templates |
-| `packages/create-chapterjs` | The same, as `pnpm create chapterjs`                             |
-| `packages/test-utils`       | Test helpers: fake Discord REST API, gateway and voice servers   |
-| `apps/docs`                 | The documentation site (Mintlify), in English and in French      |
+| Folder                      | What it is                                                                                         |
+| --------------------------- | -------------------------------------------------------------------------------------------------- |
+| `packages/chapterjs`        | The framework and its `chapterjs` CLI                                                              |
+| `packages/create-chapterjs` | `pnpm create chapterjs`, the project scaffolder, and its templates                                 |
+| `packages/create-chapter`   | The same, as `pnpm create chapter`                                                                 |
+| `packages/test-utils`       | Test helpers: the fake Discord of `chapterjs test`, closed with each test, and a fake voice server |
+| `apps/docs`                 | The documentation site (Mintlify), in English and in French                                        |
 
 ```bash
 pnpm install
@@ -100,6 +102,8 @@ pnpm test           # run every test suite
 ```
 
 Branches: features and fixes are merged into `develop` through pull requests, and `develop` into `master` for a release, then deployed to npm by running the Deploy workflow, with the version written in the three `package.json` (always the same in all three).
+
+[CONTRIBUTING.md](CONTRIBUTING.md) says what a change includes; a vulnerability is reported privately, see [SECURITY.md](SECURITY.md).
 
 ## License
 
