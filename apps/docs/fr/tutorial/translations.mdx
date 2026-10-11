@@ -145,7 +145,7 @@ Une phrase reçoit sa réponse dans la langue de la personne ; une phrase qu’u
 
 ## Les descriptions des commandes
 
-Ce que Discord affiche d’une commande avant qu’elle ne soit utilisée (son nom, sa description, ses options) est enregistré, pas envoyé par le bot, donc cela ne peut pas passer par `t`. C’est la seule chose traduite par des données. Une commande peut laisser `description` hors de son fichier et l’avoir dans les fichiers de langue à la place, par le chemin de la commande :
+Ce que Discord affiche d’une commande avant qu’elle ne soit utilisée (son nom, sa description, ses options) est enregistré, pas envoyé par le bot, donc cela ne peut pas passer par `t`. C’est la seule chose traduite par des données. Une commande peut laisser `description` hors de son fichier et l’avoir dans les fichiers de langue à la place, par le nom de la commande :
 
 ```ts src/messages/en-US.ts
 import { language } from 'chapterjs';

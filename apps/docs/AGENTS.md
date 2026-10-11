@@ -140,6 +140,8 @@ The site is Mintlify's `luma` theme, set in `docs.json`, with the Lucide icon li
 
 `index.mdx` is the landing page (`mode: "custom"`: no sidebar, no default typography). It is written with Tailwind classes and the few `cj-` classes of `style.css` (gradients, glows, the colors of the editor, terminal and Discord mockup); nothing uses the `style` prop except a computed indentation. Its terminal lines are real messages of the CLI, and its claims only what exists: change it when the framework changes.
 
+`roadmap.mdx` is the roadmap: one `<Update>` per area (the component of the changelog, which draws the timeline), tagged `not yet`, with one bold entry per missing feature and an italic _Meanwhile:_ line when there is a way around. An entry only names what does not exist; the day a feature ships, it leaves the page. The anchors other pages link to (`#recording-voice`, `#enregistrer-le-vocal`) are inline `<a id>` marks, so the label of an `<Update>` can change.
+
 ## Components
 
 - `<CodeGroup>` for a command, always pnpm, npm, yarn, bun in that order.
@@ -161,7 +163,7 @@ The site is Mintlify's `luma` theme, set in `docs.json`, with the Lucide icon li
 - The internal environment variables (`CHAPTERJS_API_URL`, `CHAPTERJS_IDENTIFY_INTERVAL`, `CHAPTERJS_PROCESS`, `CHAPTERJS_COLORS`, `CHAPTERJS_SCENARIO_TIMEOUT`): tests and workers only.
 - The inside of the Discord in memory of `chapterjs test` (which routes it models, how it waits for the files): users see a server, people, and what the bot answered. `testing.mdx` says what it does not do yet.
 - Anything about the inside of the framework (gateway, shards, REST client, cache classes): users see servers, members and messages. `memory.mdx` is the one page about what happens behind, in user terms.
-- Features that are not written yet, except in `not-yet.mdx`, which lists them so that nobody looks for them.
+- Features that are not written yet, except in `roadmap.mdx`, which lists them so that nobody looks for them.
 
 ## Keeping in sync
 

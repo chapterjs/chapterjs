@@ -55,7 +55,7 @@ Two kinds of things happen here, and the difference matters:
 The rule to remember: a property never sends a request, and a `fetch…()` does. Anything you can read without `await` is free.
 
 <Info>
-  Why `fetchMember` for a member, while `guild.name` is just there? A server can
+  Why `fetchMember` for a member, while `guild.name` is there at once? A server can
   have millions of members, so a bot can't remember all of them: it keeps the
   ones it saw recently. Servers, channels and roles are few, so it keeps them
   all. The page [Memory and limits](/tutorial/memory-and-limits) says exactly

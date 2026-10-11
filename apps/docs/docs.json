@@ -83,6 +83,13 @@
                 ]
               },
               {
+                "group": "Messages",
+                "icon": "mail",
+                "pages": [
+                  "messages"
+                ]
+              },
+              {
                 "group": "Events",
                 "icon": "zap",
                 "pages": [
@@ -139,10 +146,9 @@
                 ]
               },
               {
-                "group": "Messages and memory",
-                "icon": "message-square",
+                "group": "Memory",
+                "icon": "brain",
                 "pages": [
-                  "messages",
                   "memory"
                 ]
               },
@@ -165,10 +171,10 @@
                 ]
               },
               {
-                "group": "More",
-                "icon": "compass",
+                "group": "Roadmap",
+                "icon": "map",
                 "pages": [
-                  "not-yet"
+                  "roadmap"
                 ]
               }
             ]
@@ -405,6 +411,13 @@
                 ]
               },
               {
+                "group": "Messages",
+                "icon": "mail",
+                "pages": [
+                  "fr/messages"
+                ]
+              },
+              {
                 "group": "Événements",
                 "icon": "zap",
                 "pages": [
@@ -461,10 +474,9 @@
                 ]
               },
               {
-                "group": "Messages et mémoire",
-                "icon": "message-square",
+                "group": "Mémoire",
+                "icon": "brain",
                 "pages": [
-                  "fr/messages",
                   "fr/memory"
                 ]
               },
@@ -487,10 +499,10 @@
                 ]
               },
               {
-                "group": "Plus",
-                "icon": "compass",
+                "group": "Roadmap",
+                "icon": "map",
                 "pages": [
-                  "fr/not-yet"
+                  "fr/roadmap"
                 ]
               }
             ]

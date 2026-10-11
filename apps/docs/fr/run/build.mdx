@@ -51,10 +51,10 @@ C’est tout : [`chapterjs start`](/fr/run/start) fait tourner ce qui a été co
     ```
   </Step>
   <Step title="Lance chaque fichier une fois">
-    Chaque commande et chaque événement est chargé et vérifié, comme le fait `chapterjs dev` quand vous enregistrez : un fichier dans le mauvais dossier, une option sans description, deux fichiers qui sont la même commande... Chaque fichier cassé est signalé, puis la compilation s’arrête :
+    Chaque fichier de `src/` est chargé et ce qu’il déclare est vérifié, comme le fait `chapterjs dev` quand vous enregistrez : un nom que Discord refuse, une option sans description, deux déclarations de la même commande... Chaque fichier cassé est signalé, puis la compilation s’arrête :
 
     ```text
-    ✗ src/commands/poll.ts The default export of this file must be what command() returns: import { command } from 'chapterjs'; export default command({ description: '...', run({ interaction }) { ... } })
+    ✗ src/commands/poll.ts This command has no description: write it in src/messages/en-US.ts (commands: { "poll": { description: '...' } }), or in the file (description: '...').
     ✗ This file can't run, so your bot was not built. Fix it and build again: chapterjs dev shows the same errors while you write.
     ```
 
@@ -63,7 +63,7 @@ C’est tout : [`chapterjs start`](/fr/run/start) fait tourner ce qui a été co
   <Step title="Compile votre bot">
     Tout votre bot devient **un seul fichier JavaScript**, `.chapterjs/build/bot.js` :
 
-    - chaque commande et événement, avec ce qu’ils importent de votre projet ;
+    - chaque fichier de `src/` (commandes, événements, composants, tâches, présence, langues), avec ce qu’ils importent de votre projet ;
     - seulement ce qui est utilisé : le code que rien n’appelle est laissé de côté ;
     - compact, mais avec les noms que vous avez écrits, et une correspondance vers vos fichiers.
 
@@ -76,7 +76,7 @@ C’est tout : [`chapterjs start`](/fr/run/start) fait tourner ce qui a été co
 
 Une compilation qui échoue ne laisse rien derrière elle : la compilation précédente est supprimée avant de compiler, pour qu’il n’y ait jamais un bot à moitié compilé à lancer par erreur.
 
-La compilation écrit aussi `.chapterjs/build/build.json` : la version de ChapterJS qui l’a faite, une empreinte de `src/` et combien de commandes et d’événements elle contient. `chapterjs start` le lit pour savoir si la compilation est celle à lancer.
+La compilation écrit aussi `.chapterjs/build/build.json` : la version de ChapterJS qui l’a faite, une empreinte de `src/` et si vos fichiers rejoignent des salons vocaux. `chapterjs start` le lit pour savoir si la compilation est celle à lancer.
 
 ## La production fait tourner la compilation, pas vos fichiers
 
@@ -107,7 +107,7 @@ Les noms de vos fonctions et variables sont gardés aussi.
 
 | | Dans la compilation |
 | --- | --- |
-| Vos commandes et événements | Oui |
+| Vos commandes, événements, composants, tâches, présence et langues | Oui |
 | Ce qu’ils importent de votre projet, où que ce soit | Oui |
 | Les fichiers et dossiers qui commencent par `_`, quand quelque chose les importe | Oui |
 | Les paquets que vous avez installés | Non : ils restent dans `node_modules`, dont la production a aussi besoin |

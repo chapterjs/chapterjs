@@ -44,7 +44,7 @@ export default command({
 
 The files you import are watched like the others: saving `src/lib/warnings.ts` reloads every file that uses it.
 
-A file that declares nothing is just code: shared code can also sit next to the files that use it, `src/moderation/checks.ts` beside `src/moderation/ban.ts`. Pick one habit and keep it; `src/lib/` is the simplest.
+A file that declares nothing is plain code: shared code can also sit next to the files that use it, `src/moderation/checks.ts` beside `src/moderation/ban.ts`. Pick one habit and keep it; `src/lib/` is the simplest.
 
 ## Keeping files short
 
@@ -91,13 +91,12 @@ ChapterJS is young, and some things a bot may want are not there. Knowing them s
 
 | Not there yet                                              | Meanwhile                                               |
 | ---------------------------------------------------------- | ------------------------------------------------------- |
-| Autocomplete (suggestions while typing an option)          | `choices`, when the values are known in advance         |
 | Context menu commands (right-click on a user or a message) | A slash command with a `user` option                    |
 | Waiting for the next message or click of a person          | A button or a menu that carries what it needs in `data` |
-| Reactions, threads, voice, bans and other events           | Not listed in `src/events/` yet                         |
+| Recording what people say in a voice channel               | The bot joins and plays, and is deafened by default     |
 | Running on several machines                                | Several processes on one machine, by itself             |
 
-The full list, kept up to date, is [What's not there yet](/not-yet).
+The full list, kept up to date, is [Roadmap](/roadmap).
 
 ## Recap
 
@@ -113,7 +112,7 @@ The full list, kept up to date, is [What's not there yet](/not-yet).
   >
     What the bot remembers, and the limits of Discord it handles for you.
   </Card>
-  <Card title="Guide: What's not there yet" icon="book-open" href="/not-yet">
+  <Card title="Guide: Roadmap" icon="book-open" href="/roadmap">
     Everything the framework does not do, and what to do meanwhile.
   </Card>
 </CardGroup>

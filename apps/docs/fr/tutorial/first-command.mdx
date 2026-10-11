@@ -25,7 +25,7 @@ export default command({
 Enregistrez-le pendant que le bot tourne. Le terminal dit :
 
 ```text
-↻ Reloaded in 15 ms, 2 commands, 1 event, 1 component, a presence, messages in 2 languages loaded
+↻ Reloaded in 15 ms, 2 commands, 1 event loaded
 ↻ Commands updated on Discord
 ```
 
@@ -35,7 +35,7 @@ Tapez `/dice` sur votre serveur de test. Elle est là, avec sa description sous 
 
 **`import { command } from 'chapterjs'`.** La fonction qui fabrique une commande. Elle prend un objet qui décrit la commande et renvoie quelque chose que le framework reconnaît comme tel.
 
-**`export default`.** Le fichier remet sa commande au framework en l’exportant. Le framework charge chaque fichier de `src/` et garde ce qu’ils exportent de fabriqué avec `command()`, `event()`, `button()`... : un export par défaut ou un export nommé (`export const dice = command(...)`), peu importe. Ce qui est exporté et n’est rien de tout ça est simplement à vous.
+**`export default`.** Le fichier remet sa commande au framework en l’exportant. Le framework charge chaque fichier de `src/` et garde ce qu’ils exportent de fabriqué avec `command()`, `event()`, `button()`... : un export par défaut ou un export nommé (`export const dice = command(...)`), peu importe. Ce qui est exporté et n’est rien de tout ça est à vous.
 
 **`description`.** Le texte que Discord affiche sous le nom dans le menu `/`, de 1 à 100 caractères. En plus de `run`, c’est la seule chose dont une commande a besoin. (Un chapitre plus loin la déplace dans les fichiers de langue.)
 
@@ -59,7 +59,7 @@ Le framework ne peut pas répondre à votre place (il ne sait pas quoi dire), ma
 
 Discord a des règles pour les commandes : un nom est en minuscules, avec uniquement des lettres, des chiffres, `-` et `_`, 32 caractères au plus ; une description fait de 1 à 100 caractères ; et ainsi de suite. En enfreindre une ferait refuser par Discord toute la liste de vos commandes. Alors le framework vérifie chaque fichier quand il le charge, et explique avec vos mots.
 
-Renommez le fichier en `Dice.ts` et enregistrez :
+Changez `name` en `'Dice'` et enregistrez :
 
 ```text
 ✗ src/commands/dice.ts "Dice" can't be in the name of a command: use lowercase letters, digits, - and _ only, 32 characters at most.

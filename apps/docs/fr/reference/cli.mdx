@@ -58,7 +58,7 @@ Vérifie le projet et le compile dans `.chapterjs/build/`. N’a pas besoin de t
 | Fichiers | La compilation précédente est supprimée. Chaque fichier de `src/` est chargé, et ce qu’il déclare est lu. Un fichier ou une déclaration cassés arrêtent la compilation. |
 | Compilation | Chaque fichier de `src/`, avec ce qu’il importe, est regroupé dans `.chapterjs/build/bot.js` (ESM, Node 24, paquets laissés dans `node_modules`, espaces et syntaxe minifiés, noms gardés) avec `bot.js.map` à côté (sans les sources). |
 | Vérification | Le fichier compilé est chargé une fois et chaque fichier est vérifié à nouveau. |
-| Enregistrement | `.chapterjs/build/build.json` : la version de `chapterjs`, une empreinte de `src/`, le nombre de commandes et d’événements. |
+| Enregistrement | `.chapterjs/build/build.json` : la version de `chapterjs`, une empreinte de `src/`, si les fichiers rejoignent des salons vocaux. |
 
 Une compilation qui échoue ne laisse aucun `.chapterjs/build/` derrière elle. Ne prend aucune option.
 

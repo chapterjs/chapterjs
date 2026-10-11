@@ -3,7 +3,7 @@ title: 'Les menus déroulants'
 description: 'Ajouter un menu à un message avec des options que vous déclarez, ou rempli avec les utilisateurs, rôles et salons du serveur, et recevoir le choix typé'
 ---
 
-Un menu déroulant est une liste sous un message. C’est un composant comme un bouton, donc tout ce que dit la page précédente s’applique : un fichier, un chemin, `data`, `who`, `update()`. Ce qui est nouveau, ce sont les **options**, et ce que `run` en reçoit.
+Un menu déroulant est une liste sous un message. C’est un composant comme un bouton, donc tout ce que dit la page précédente s’applique : une déclaration nommée par son export, `data`, `who`, `update()`. Ce qui est nouveau, ce sont les **options**, et ce que `run` en reçoit.
 
 ## Un menu avec vos options
 
@@ -91,7 +91,7 @@ Un menu avec des `data` les prend en premier : `menu({ page: 2 }, { defaults: ['
 
 - **Un menu répond comme un bouton** : `update()` pour modifier son message, `reply()` pour un nouveau, en moins de 3 secondes (le framework diffère au bout de 2).
 - **`value` est le premier choix**, `values` tous les choix. Avec `max: 1`, ils disent la même chose.
-- **Un vieux message dont le fichier a été renommé** répond « This menu is not available any more. », comme un bouton.
+- **Un vieux message dont l’export a été renommé** répond « This menu is not available any more. », comme un bouton.
 
 ## Récapitulatif
 
