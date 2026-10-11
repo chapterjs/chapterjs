@@ -767,7 +767,7 @@ describe.skipIf(process.platform === 'win32')(
       ],
       [
         [],
-        /^Usage: chapterjs <command>\n\nCommands:\n  dev .+\n  build .+\n  start .+\n  sync .+\n\nOptions of start:\n  --processes <n> /,
+        /^Usage: chapterjs <command>\n\nCommands:\n  dev .+\n  build .+\n  start .+\n  test .+\n  sync .+\n\nOptions of start:\n  --processes <n> /,
         0,
       ],
       [['--help'], /^Usage: chapterjs <command>/, 0],

@@ -59,10 +59,13 @@ function pages(): Map<string, string> {
 
 const site = pages();
 
-/** The names `src/index.ts` and `src/main.ts` export, types included. */
+/**
+ * The names `src/index.ts`, `src/main.ts` and `src/testing/index.ts` (the
+ * `chapterjs/test` entry) export, types included.
+ */
 function exportedNames(): string[] {
   const names = new Set<string>();
-  for (const file of ['index.ts', 'main.ts']) {
+  for (const file of ['index.ts', 'main.ts', 'testing/index.ts']) {
     const source = readFileSync(join(packageDir, 'src', file), 'utf8');
     for (const match of source.matchAll(/export (?:type )?\{([^}]*)\}/g)) {
       for (const entry of match[1]!.split(',')) {

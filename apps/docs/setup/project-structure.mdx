@@ -139,7 +139,7 @@ export const db = { visits: 0 };
 
 Writing the extension works as well: `'../lib/greet.ts'`.
 
-Packages from `node_modules` are imported as usual. Every file of `src/` is watched: in [`chapterjs dev`](/run/dev), saving `src/lib/greet.ts` reloads every file that uses it. A test next to your code (`greet.test.ts`, `greet.spec.ts`) is left to your test runner, and never loaded by the bot.
+Packages from `node_modules` are imported as usual. Every file of `src/` is watched: in [`chapterjs dev`](/run/dev), saving `src/lib/greet.ts` reloads every file that uses it. A test next to your code (`greet.test.ts`, `greet.spec.ts`) is never loaded by the bot: [`chapterjs test`](/testing) runs it.
 
 ## `public/`: the files your bot sends
 
@@ -182,10 +182,11 @@ The scripts of your project run the [CLI](/reference/cli):
 | `dev`         | `chapterjs dev`   | While you write your bot                                |
 | `build`       | `chapterjs build` | Before putting it online                                |
 | `start`       | `chapterjs start` | On the machine that hosts it                            |
+| `test`        | `chapterjs test`  | To check every file, and your scenarios, without Discord |
 | `typecheck`   | `tsc -b`          | To check the types of the whole project from a terminal |
 | `postinstall` | `chapterjs sync`  | By itself, after each install                           |
 
-`chapterjs` is the only dependency of your bot, at the exact version `create chapterjs` had (`"chapterjs": "0.2.3"`, no `^`): your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs). TypeScript and `@types/node` are development dependencies: they check your code, and are not needed to run it.
+`chapterjs` is the only dependency of your bot, at the exact version `create chapterjs` had (`"chapterjs": "0.3.0"`, no `^`): your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs). TypeScript and `@types/node` are development dependencies: they check your code, and are not needed to run it.
 
 ## `tsconfig.json`
 

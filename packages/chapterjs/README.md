@@ -41,10 +41,12 @@ The framework loads every file of `src/`, wherever it is and whatever it is call
 - **Storage**: `store<Warning[]>({ expires: '30d' })` keeps data from one restart to the next, per server, typed, in a JSON file written for you.
 - **Translated messages**: `t('welcome', { name })` speaks the language of who will read it.
 - **Voice**: join a channel and play a file, an attachment or a link, end-to-end encrypted (DAVE).
+- **Tests**: `chapterjs test` runs the bot against a Discord in memory, no token needed: every file is used once by itself, then your scenarios (`scenario('ping answers Pong', async bot => { … })`) say what the bot should answer.
 
-## Three commands
+## Four commands
 
 - `chapterjs dev` runs the bot on a test server and reloads each file when you save it. A broken file is reported with its line and never stops the bot.
+- `chapterjs test` checks the bot without Discord, with nothing written and with your scenarios.
 - `chapterjs build` checks every file and the types, then compiles the bot into one JavaScript file.
 - `chapterjs start` runs it in production, on several processes when the bot is large.
 

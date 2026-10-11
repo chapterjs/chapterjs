@@ -1,6 +1,6 @@
 {
   "name": "create-chapter",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Alias of create-chapterjs: creates a ChapterJS Discord bot with pnpm create chapter",
   "keywords": [
     "discord",

@@ -1,6 +1,6 @@
 {
   "name": "create-chapterjs",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Creates a ChapterJS Discord bot: pnpm create chapterjs",
   "keywords": [
     "discord",

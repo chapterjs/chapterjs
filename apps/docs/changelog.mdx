@@ -27,6 +27,16 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
+<Update label="0.3.0" description="chapterjs test: your bot checked without Discord, and scenarios to say what it should answer">
+
+`chapterjs test` runs your bot against a Discord in memory: one server, a few people, no token and nothing to connect to. With nothing written, every command, button, menu, form, event and task of your project is used once, with ordinary values and with hard ones (a text at its longest, each choice, someone who left...), and must answer without throwing: a function that throws is reported with its file and line, like in `chapterjs dev`. See [Testing](/testing).
+
+Then your scenarios: `scenario('ping answers Pong', async bot => { ... })` in a `*.test.ts` file of `src/`, imported from `chapterjs/test`. `bot.use(ping, { who: alice })` uses a command as a person would, with options typed from your file; `bot.click()`, `bot.select()`, `bot.submit()`, `bot.say()`, `bot.join()` and `bot.run()` do the rest, and what comes back says what the bot answered: `reply.says('Pong').isPublic().hasButton('Confirm')`. Each scenario runs on a fresh server with empty stores, and a failure names the line of your scenario. Everything a scenario can do is in the [reference](/reference/testing).
+
+Every template now has a `test` script and a scenario file to start from. The tutorial has a [Testing](/tutorial/testing) chapter, before building.
+
+</Update>
+
 <Update label="0.2.3" description="Storage, five templates, and a new project on the version of create chapterjs, exactly">
 
 Your bot can keep what it learns: `export const warnings = store<Warning[]>({ expires: '30d' })` declares a [store](/storage), per server unless `scope: 'global'`, typed by what it holds, with an expiration if you want one. In a command or an event, the key is yours and the server is known; elsewhere, `warnings.in(guild)`. One JSON file per store in `data/`, written for you, and shared by every process of a large bot.

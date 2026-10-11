@@ -28,7 +28,7 @@ bun create chapterjs my-bot
 
 A question with only one possible answer is not asked: its answer is shown with `ℹ`. Node 24 or later is needed, and the command says so at once when it is older.
 
-Then it copies the template, installs its dependencies, and tells you what to do next: fill `.env` with your bot token and your test server, and run `chapterjs dev`. The project depends on the exact version of `chapterjs` this command had: `pnpm create chapterjs@1.0.0` gives a project on `chapterjs@1.0.0`.
+Then it copies the template, installs its dependencies, and tells you what to do next: fill `.env` with your bot token and your test server, and run `chapterjs dev`. Every template but `default` comes with a scenario file that `chapterjs test` runs, to start your own from. The project depends on the exact version of `chapterjs` this command had: `pnpm create chapterjs@1.0.0` gives a project on `chapterjs@1.0.0`.
 
 📖 [Quickstart](https://www.chapterjs.org/quickstart) · [Project structure and templates](https://www.chapterjs.org/setup/project-structure) · [Source and issues](https://github.com/chapterjs/chapterjs)
 

@@ -1,6 +1,6 @@
 {
   "name": "chapterjs",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "The Discord framework: ultra simple, but ultra customizable. Your files become a bot, typed end to end, with nothing to register.",
   "keywords": [
     "discord",
@@ -32,6 +32,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/main.js"
+    },
+    "./test": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
     }
   },
   "files": [

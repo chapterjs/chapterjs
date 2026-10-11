@@ -166,15 +166,21 @@ export interface RunOptions {
  * seconds: when `run` takes longer, the framework says the answer is
  * coming. When `run` throws, the person gets a plain answer and the
  * developer the error with its file and line.
+ *
+ * Resolves once everything is done (the function, and the answer sent for
+ * it when it failed): nothing of the bot waits for it, `chapterjs test`
+ * does.
  */
-export function runInteraction(options: RunOptions): void {
+export function runInteraction(options: RunOptions): Promise<void> {
   const { interaction, file, name, reporter } = options;
   const stop = new AbortController();
   sleep(reporter.deferAfter ?? 2000, undefined, { signal: stop.signal })
     .then(() => options.defer())
     .catch(() => {});
 
-  new Promise(resolve => resolve(withGuild(options.guildId, options.run)))
+  return new Promise(resolve =>
+    resolve(withGuild(options.guildId, options.run))
+  )
     .then(() => {
       if (!interaction.answered) {
         reporter.onWarning(file, `${name} ${options.unanswered}`);
@@ -198,7 +204,10 @@ export function runInteraction(options: RunOptions): void {
           : interaction.answered
             ? interaction.followUp({ content, ephemeral: true })
             : interaction.reply({ content, ephemeral: true });
-      tell.catch(() => {});
+      return tell.then(
+        () => {},
+        () => {}
+      );
     })
     .finally(() => stop.abort());
 }

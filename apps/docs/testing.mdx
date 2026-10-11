@@ -1,0 +1,181 @@
+---
+title: 'Testing'
+description: 'Check your bot without Discord: every file used once by itself, then the scenarios you write'
+---
+
+`chapterjs test` runs your bot in a Discord that lives in memory: one server, a few people, and nothing to connect to. No token, no test server, nothing shown to anyone. It is what the `test` script of your project runs:
+
+<CodeGroup>
+```bash pnpm
+pnpm test
+```
+
+```bash npm
+npm test
+```
+
+```bash yarn
+yarn test
+```
+
+```bash bun
+bun test
+```
+</CodeGroup>
+
+```text
+✓ 2 commands, 2 events, 2 components, 1 task, 1 store loaded
+✓ Checked every file once: 7 checks in 2 files
+ℹ No scenario yet. Write one in a *.test.ts file of src/ with scenario() from 'chapterjs/test' to check what your bot answers.
+✓ 7 checks passed
+```
+
+That is all: with nothing written, every command, button, menu, form, event and task of your project is used once, with ordinary values and with hard ones, and must answer without throwing. Then come your scenarios, when you have some: files that say what the bot should answer.
+
+<Note>What a scenario can do is in the [reference](/reference/testing); the exit codes of the command are in the [CLI reference](/reference/cli#chapterjs-test).</Note>
+
+## What is checked by itself
+
+Every file of `src/` is loaded, like `chapterjs dev` does. A file that can not run stops everything, with its line: nothing is tested until it is fixed. Then, in a server where the bot is an admin:
+
+- **Every command** is used with every option filled in, then with the required ones only, then once per hard value: a text at its longest and in unicode, a number at its lowest, its highest and at zero, each of its `choices`, a person who left the server, the bot itself, the owner. A command that only works in private messages is used there; one that works in both places is used in both. Someone with the `permissions` the command asks for uses it.
+- **Every button, menu and form** is used with its `data`, then once per hard value of that data: an empty text, a `:` in it, a huge number. A form is also sent with its required fields only.
+- **Every event** happens once: a message, someone joining or leaving, a reaction, a new channel... An event the test server can not make happen yet is named with `ℹ`, and its file is left alone.
+- **Every task** runs once, as if its time had come.
+
+The files that pass are one line at the end of these checks: what was checked in them is not listed, since none of it is yours to read. While a file is checked, the terminal shows it with the thing and the case being tried (`↻ Checking src/tickets/close.ts`, then `→ button close(), with userId = ""`...), and erases that once done. A check passes when the bot answered and nothing threw. It fails when a function threw, with the file and the line, or when a command finished without answering; only then does a file get its own lines, with the thing named:
+
+```text
+✗ Checked src/bugs.ts: command /crash failed in 1 of 3 cases
+  with text at its longest (10 characters): src/bugs.ts:8 too long for me
+✗ Checked src/bugs.ts: command /silent failed
+  src/bugs.ts /silent finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.
+✗ 2 of 5 checks failed
+```
+
+What your files print while they are tested (a `console.log` in an event, for example) stays out of the report: a line saying "online" there would read as the bot being online, and it is not. What was printed is shown under a check that failed, where it can help.
+
+What the bot answers is not judged here: that is what scenarios are for.
+
+## Scenarios
+
+A scenario is a test you write, in a `*.test.ts` file anywhere in `src/`, with `scenario()` from `chapterjs/test`. The bot never loads these files; `chapterjs test` runs them, each on a fresh server with empty stores.
+
+```ts src/checks/pong.ts
+import { button, command } from 'chapterjs';
+
+export const confirmPong = button({
+  label: 'Confirm',
+  style: 'success',
+  data: { count: 'number' },
+  who: 'author',
+  async run({ interaction, data }) {
+    await interaction.update(`Confirmed ${data.count}`);
+  },
+});
+
+export const pong = command({
+  name: 'pong',
+  description: 'Replies with Pong',
+  options: {
+    count: { type: 'integer', description: 'How many', min: 1, max: 5 },
+    who: { type: 'user', description: 'For whom', required: true },
+  },
+  async run({ interaction, options }) {
+    await interaction.reply({
+      content: `Pong ${options.count ?? 1} for ${options.who.username}`,
+      components: [confirmPong({ count: options.count ?? 1 })],
+    });
+  },
+});
+```
+
+```ts src/checks/pong.test.ts
+import { scenario } from 'chapterjs/test';
+import { pong } from './pong';
+
+export default scenario('pong answers, and only the author confirms', async bot => {
+  const alice = bot.member('alice');
+  const reply = await bot.use(pong, { who: alice, count: 3 });
+  reply.says('Pong 3 for alice').isPublic().hasButton('Confirm');
+
+  const clicked = await bot.click(reply.button('Confirm'), { on: reply });
+  clicked.updatesMessage().says('Confirmed 3');
+
+  const bob = bot.member('bob');
+  const refused = await bot.click(reply.button('Confirm'), { on: reply, by: bob });
+  refused.isEphemeral().says('Only the person who used the command');
+});
+```
+
+`bot` is your bot in its test server. `bot.use()` uses a command as a person would, with its options typed from the file: a person for a `user` option, a number for an `integer` one, one of the `choices`. `bot.click()` presses a button, `bot.select()` picks in a menu, `bot.submit()` sends a form, `bot.say()` writes a message, `bot.join()` and `bot.leave()` make someone come and go, `bot.run()` runs a task. Each resolves once the bot is done with it.
+
+What comes back says what the bot answered: `says()`, `isEphemeral()`, `hasButton()`, `opensForm()`, `updatesMessage()`... Each check throws a plain sentence when it fails. The report has one line per test file, and names a scenario only when it failed, with the line of your scenario:
+
+```text
+✓ Tested src/checks/pong.test.ts
+✗ Tested src/ping.test.ts: "this one fails" failed
+  src/ping.test.ts:37 The answer should say "Nope", it says "Pong 1 for someone".
+✗ 1 of 2 scenarios failed
+```
+
+For everything else, `node:assert` works as in any test:
+
+```ts src/checks/strikes.ts
+import { command, store } from 'chapterjs';
+
+export const strikes = store<number>();
+
+export const strike = command({
+  name: 'strike',
+  description: 'Gives someone a strike',
+  permissions: ['ModerateMembers'],
+  options: {
+    target: { type: 'user', description: 'Who', required: true },
+  },
+  async run({ interaction, options, guild }) {
+    const count = await strikes.update(options.target.id, (count = 0) => count + 1);
+    if (count >= 3) await guild.ban(options.target, { reason: 'Three strikes' });
+    await interaction.reply(`${options.target.username} has ${count} strike(s)`);
+  },
+});
+```
+
+```ts src/checks/strikes.test.ts
+import assert from 'node:assert/strict';
+import { scenario } from 'chapterjs/test';
+import { strike } from './strikes';
+
+export default scenario('three strikes and you are out', async bot => {
+  const mod = bot.member('mod', { permissions: ['ModerateMembers'] });
+  const alice = bot.member('alice');
+  const by = { by: mod };
+  (await bot.use(strike, { target: alice }, by)).says('alice has 1 strike(s)');
+  (await bot.use(strike, { target: alice }, by)).says('alice has 2 strike(s)');
+  assert.equal(alice.banned, false);
+  (await bot.use(strike, { target: alice }, by)).says('alice has 3 strike(s)');
+  assert.equal(alice.banned, true);
+  assert.equal(alice.inServer, false);
+});
+```
+
+A scenario fails too when a function of the bot threw while it ran, even if every check passed: a person would have seen "Something went wrong".
+
+## The test server
+
+It has one channel, `#general`, its owner (`bot.owner`), the bot as an admin (`bot.me`), and `bot.someone`: a person with no special rights, who does everything when nobody is named. `bot.member('alice')` makes a person the first time the name is given (with `permissions` or `roles` when they need some), `bot.role()` a role and `bot.channel()` a channel.
+
+Everything the bot does is kept where the scenario can read it: `channel.messages` and `channel.last`, `member.banned`, `member.timedOut`, `member.roles`, `member.privateMessages`, `channel.threads`, `thread.archived`... And the server refuses what Discord would refuse: a second answer to the same interaction, a member who is not there, a channel that was deleted. A form sent without a required field, or a command used without one, is refused before it reaches the bot, as the Discord app would.
+
+## What it does not do yet
+
+Time does not pass: a `cooldown` or a task that runs `every` so often can not be tested through the clock. Voice is not there, nor polls, scheduled events and auto-moderation: an event the server can not make happen is named in the report, and a request for something it does not model answers as Discord does for something that does not exist, so your function sees the same error it would online.
+
+<CardGroup cols={2}>
+  <Card title="Testing reference" icon="flask-conical" href="/reference/testing">
+    Everything a scenario can do, and what an answer can be checked for.
+  </Card>
+  <Card title="chapterjs build" icon="package" href="/run/build">
+    Check the types and compile the bot for production.
+  </Card>
+</CardGroup>

@@ -25,7 +25,7 @@ What the French version translates, and what it keeps:
 <!-- prettier-ignore -->
 - **Translated**: the prose, the headings, the titles of steps, tabs and accordions, the texts of cards, the explanations of tables, the comments of samples, and the strings of samples that a person reads (a reply, a description, a label). Links point at `/fr/…`; an anchor is the slug Mintlify computes from the French heading (`## Délais entre deux utilisations` is `#délais-entre-deux-utilisations`, and a French ` : ` gives two hyphens: `#intents--rien-à-lister`).
 - **Kept as they are**: every name of the API (functions, options, types, fields, `### kick()`, `<ResponseField name type>`), the values a type is made of (choices, options of a menu, keys of `data`, keys of `t`), the language files of `src/messages/` (byte for byte: the samples are compiled together, and `t` is typed from the first `en-US.ts`), and every message of the CLI and phrase the bot answers by itself, quoted in English as the person sees it, with the explanation around it in French. A reference description is the JSDoc of the source, translated.
-- The French voice is the same as the English one, with « vous ». Terminology: serveur (never guilde), message privé, serveur de test, le bot, la personne, votre fonction, ce dont le bot se souvient, intents et intents privilégiés (with the English name of the Developer Portal option), événement, commande, formulaire, composant, bouton, menu déroulant, salon, fil, tâche, présence, compiler and compilation (for `chapterjs build`). The labels of the Discord app are given as a French Discord shows them (**Paramètres** → **Avancés** → **Mode développeur**); the Developer Portal is in English.
+- The French voice is the same as the English one, with « vous ». Terminology: serveur (never guilde), message privé, serveur de test, le bot, la personne, votre fonction, ce dont le bot se souvient, intents et intents privilégiés (with the English name of the Developer Portal option), événement, commande, formulaire, composant, bouton, menu déroulant, salon, fil, tâche, présence, compiler and compilation (for `chapterjs build`), tester and test (for `chapterjs test`), scénario (a `scenario()`), vérification (a check of the smoke test). The labels of the Discord app are given as a French Discord shows them (**Paramètres** → **Avancés** → **Mode développeur**); the Developer Portal is in English.
 
 ## Voice
 
@@ -158,7 +158,8 @@ The site is Mintlify's `luma` theme, set in `docs.json`, with the Lucide icon li
 
 ## What is not documented
 
-- The internal environment variables (`CHAPTERJS_API_URL`, `CHAPTERJS_IDENTIFY_INTERVAL`, `CHAPTERJS_PROCESS`, `CHAPTERJS_COLORS`): tests and workers only.
+- The internal environment variables (`CHAPTERJS_API_URL`, `CHAPTERJS_IDENTIFY_INTERVAL`, `CHAPTERJS_PROCESS`, `CHAPTERJS_COLORS`, `CHAPTERJS_SCENARIO_TIMEOUT`): tests and workers only.
+- The inside of the Discord in memory of `chapterjs test` (which routes it models, how it waits for the files): users see a server, people, and what the bot answered. `testing.mdx` says what it does not do yet.
 - Anything about the inside of the framework (gateway, shards, REST client, cache classes): users see servers, members and messages. `memory.mdx` is the one page about what happens behind, in user terms.
 - Features that are not written yet, except in `not-yet.mdx`, which lists them so that nobody looks for them.
 

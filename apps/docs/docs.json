@@ -147,6 +147,13 @@
                 ]
               },
               {
+                "group": "Testing",
+                "icon": "flask-conical",
+                "pages": [
+                  "testing"
+                ]
+              },
+              {
                 "group": "Run your bot",
                 "icon": "rocket",
                 "pages": [
@@ -250,6 +257,13 @@
                 ]
               },
               {
+                "group": "Testing",
+                "icon": "flask-conical",
+                "pages": [
+                  "tutorial/testing"
+                ]
+              },
+              {
                 "group": "Going online",
                 "icon": "rocket",
                 "pages": [
@@ -286,7 +300,8 @@
                   "reference/task",
                   "reference/store",
                   "reference/presence",
-                  "reference/messages"
+                  "reference/messages",
+                  "reference/testing"
                 ]
               },
               {
@@ -454,6 +469,13 @@
                 ]
               },
               {
+                "group": "Tests",
+                "icon": "flask-conical",
+                "pages": [
+                  "fr/testing"
+                ]
+              },
+              {
                 "group": "Faire tourner votre bot",
                 "icon": "rocket",
                 "pages": [
@@ -557,6 +579,13 @@
                 ]
               },
               {
+                "group": "Tests",
+                "icon": "flask-conical",
+                "pages": [
+                  "fr/tutorial/testing"
+                ]
+              },
+              {
                 "group": "Mise en ligne",
                 "icon": "rocket",
                 "pages": [
@@ -593,7 +622,8 @@
                   "fr/reference/task",
                   "fr/reference/store",
                   "fr/reference/presence",
-                  "fr/reference/messages"
+                  "fr/reference/messages",
+                  "fr/reference/testing"
                 ]
               },
               {

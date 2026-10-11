@@ -13,6 +13,7 @@ You went from an empty folder to a bot that is online for everyone. Here is what
 - **Add buttons, menus and forms** as files of `src/components/`, carrying data, surviving restarts.
 - **Reuse embeds** and build messages out of components.
 - **Schedule tasks**, set the **presence**, and **speak several languages** with `t`.
+- **Test your bot** without Discord: every file once by itself, and your scenarios with `scenario()`.
 - **Build and deploy**, with a second application for production.
 
 ## Habits that keep a bot healthy
@@ -22,7 +23,7 @@ You went from an empty folder to a bot that is online for everyone. Here is what
 - **Keep `run` short**, and the logic in `src/lib/`.
 - **Think about who reads a message**: `ephemeral` for the person, `allowedMentions` for texts you repeat, `t` for the language.
 - **Ask Discord for the least**: the fewest privileged intents, the fewest permissions in the invite link.
-- **Build before every deploy**, and never share a token.
+- **Test before every build**, build before every deploy, and never share a token.
 
 ## Where to look
 

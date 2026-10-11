@@ -73,7 +73,7 @@ const DECLARATION = /\.d\.m?ts$/;
 const TEST = /\.(?:test|spec)\.[^.]+$/;
 
 /** The source files of a folder and its subfolders, in a stable order. */
-async function scan(dir: string): Promise<string[]> {
+async function scan(dir: string, tests = false): Promise<string[]> {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -84,11 +84,11 @@ async function scan(dir: string): Promise<string[]> {
   const files: string[] = [];
   for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) files.push(...(await scan(path)));
+    if (entry.isDirectory()) files.push(...(await scan(path, tests)));
     else if (
       SOURCE.test(entry.name) &&
       !DECLARATION.test(entry.name) &&
-      !TEST.test(entry.name)
+      TEST.test(entry.name) === tests
     ) {
       files.push(path);
     }
@@ -106,14 +106,24 @@ export interface FoundFile {
 
 /** Every source file of `src/`, in a stable order. */
 export async function listSources(projectDir: string): Promise<FoundFile[]> {
-  const paths = await scan(join(projectDir, 'src'));
-  return paths
+  return found(projectDir, await scan(join(projectDir, 'src')));
+}
+
+/**
+ * Every test file of `src/` (`*.test.ts`, `*.spec.ts`), in a stable order:
+ * what `chapterjs test` runs, and what the bot never loads.
+ */
+export async function listTests(projectDir: string): Promise<FoundFile[]> {
+  return found(projectDir, await scan(join(projectDir, 'src'), true));
+}
+
+const found = (projectDir: string, paths: string[]): FoundFile[] =>
+  paths
     .map(path => ({
       file: relative(projectDir, path).split(sep).join('/'),
       path,
     }))
     .sort((a, b) => (a.file < b.file ? -1 : 1));
-}
 
 /** A file of the project, run: what it exports. */
 export interface LoadedModule {
@@ -130,10 +140,16 @@ export interface LoadedSources {
 
 /** Runs every file of `src/`. A file that fails to run never throws. */
 export async function loadSources(projectDir: string): Promise<LoadedSources> {
-  const found = await listSources(projectDir);
+  return loadFiles(await listSources(projectDir));
+}
+
+/** Runs the files given. A file that fails to run never throws. */
+export async function loadFiles(
+  files: readonly FoundFile[]
+): Promise<LoadedSources> {
   const result: LoadedSources = { modules: [], failed: [] };
   await Promise.all(
-    found.map(async ({ file, path }) => {
+    files.map(async ({ file, path }) => {
       try {
         result.modules.push({ file, exports: await importFile(path) });
       } catch (error) {

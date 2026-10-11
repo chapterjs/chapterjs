@@ -61,12 +61,6 @@ How many members, users and messages the bot keeps in memory is decided by the f
 
 There is no `chapterjs.config.ts`: what your bot does comes from the files of `src/`, and what it needs to run from [`.env`](/setup/project-structure#env). That is also why a project has one token and one test server.
 
-## Testing your bot
-
-Running your functions in a test, without Discord. Not available: nothing of ChapterJS is made for a test runner.
-
-Meanwhile: keep what can be tested in plain files (the text of an answer, a calculation), and test those alone. A file next to your code named `*.test.ts` or `*.spec.ts` is left to your test runner, never loaded by the bot. The declarations of commands, events, components and tasks stay thin.
-
 ## Sharing files between bots
 
 Publishing your commands or events as a package, to use them in another project. Not available: a file is only loaded from the `src/` of the project.
