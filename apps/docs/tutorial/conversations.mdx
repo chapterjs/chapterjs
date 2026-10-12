@@ -1,0 +1,122 @@
+---
+title: 'Menus and conversations'
+description: 'Add a command to the right click menu, then make your bot ask a question and wait for the answer'
+---
+
+So far, everything starts with a `/` or a click on a button the bot sent. This page adds two other ways to talk with your bot: a command in the menu of a right click on a message, and a command that asks a question and waits for the answer in the channel.
+
+## A command on a message
+
+In [Reactions and voice](/tutorial/reactions-and-voice), a reaction saved a message for later. A right click is easier to find: Discord has a menu for that, and a command can be in it. Create `src/commands/save.ts`:
+
+```ts src/commands/save.ts
+import { command } from 'chapterjs';
+
+export const save = command({
+  type: 'message',
+  name: 'Save for later',
+  async run({ interaction, message, user }) {
+    await user.send(`You saved this message: ${message.url}`);
+    await interaction.reply({ content: 'Sent to you in private.', ephemeral: true });
+  },
+});
+```
+
+Save the file, then right click any message of your test server: **Apps**, **Save for later**. On a phone, it is a long press on the message.
+
+What is new here is `type: 'message'`. It turns `command()` into a **menu command**:
+
+- `name` is what the menu shows, so it can have capitals and spaces.
+- There is no `description`: Discord shows none in a menu.
+- There are no options: what the command needs is the message itself, given whole as `message`, even when the bot never saw it before.
+
+Why does the bot not need the Message Content intent to read it? Because the person chose that message: Discord sends it with the use of the command, like the options of a slash command.
+
+With `type: 'user'`, the command is in the menu of a person instead, and receives `target` (the person) and `targetMember` (that person in the server, or `null`). The [guide](/commands/menus#on-a-person) has an example.
+
+## A question, then the answer
+
+A riddle needs the bot to ask, then to listen to what people write next. `channel.waitForMessage()` does that: it resolves with the next message that fits, or with `null` when the time is up. Create `src/commands/riddle.ts`:
+
+```ts src/commands/riddle.ts
+import { command } from 'chapterjs';
+
+export const riddle = command({
+  name: 'riddle',
+  description: 'Asks a riddle to the channel',
+  async run({ interaction, channel }) {
+    await interaction.reply('What has keys but cannot open a single door? You have 30 seconds.');
+    const found = await channel.waitForMessage({
+      matches: /\b(a )?(piano|keyboard)\b/i,
+      within: '30s',
+    });
+    if (found) {
+      await found.reply(`Yes! ${found.author.username} found it.`);
+    } else {
+      await channel.send('Time is up: it was a piano.');
+    }
+  },
+});
+```
+
+Run `/riddle`, and answer in the channel. Several things happen without you writing them:
+
+- Messages of bots never count, so your bot does not answer its own riddle.
+- While it waits, the rest of the bot goes on: other commands and events are not blocked.
+- Your function answered first (`reply()`), then waited. That order matters: Discord wants an answer to a command within 3 seconds, and a wait can be longer.
+
+`matches` can be a text (compared without the capitals and the spaces around), a regular expression like here, or a function of the message. `from: user` keeps only the messages of one person: the one who used the command, for a question asked to them.
+
+## Waiting for a click
+
+A button usually has a `run` of its own, which works for weeks. For a question asked once, there is another way: send the buttons, then wait for the click right there. Create `src/commands/coin.ts`:
+
+```ts src/commands/coin.ts
+import { button, command } from 'chapterjs';
+
+export const heads = button({ label: 'Heads' });
+export const tails = button({ label: 'Tails' });
+
+export const coin = command({
+  name: 'coin',
+  description: 'Guess heads or tails',
+  async run({ interaction, user }) {
+    const asked = await interaction.reply({ content: 'Heads or tails?', components: [heads, tails] });
+    const click = await asked.waitForClick({ from: user, within: '20s' });
+    if (!click) {
+      await interaction.edit({ content: 'Too late!', components: [] });
+      return;
+    }
+    const side = Math.random() < 0.5 ? 'heads' : 'tails';
+    const guessed = click.is(heads) ? 'heads' : 'tails';
+    await click.interaction.update({
+      content: `It is ${side}: ${guessed === side ? 'you win!' : 'you lose.'}`,
+      components: [],
+    });
+  },
+});
+```
+
+The buttons have no `run`: nothing runs them but this wait. `click.is(heads)` says which one was clicked, and `click.interaction` answers it, as in the `run` of a button. A click of someone else is not taken (`from: user`), and once nothing waits, a click on these buttons tells the person they are not available any more.
+
+## Points of attention
+
+- **A wait lives while the bot runs.** A restart ends it with `null`. For something that must work days later, give the button a `run` of its own.
+- **Waiting for messages needs the Message Content intent.** ChapterJS sees `waitForMessage()` in your code and asks for it; when it is not enabled in the Developer Portal, `chapterjs dev` tells you, with the file and the link.
+- **`within` is one minute by default**, between 1 second and 1 day.
+- **Answer first, then wait.** A function that waits before answering is answered for you with "the bot is thinking".
+
+## Recap
+
+- `command({ type: 'message' })` is a command in the right click menu of a message, `type: 'user'` of a person.
+- `channel.waitForMessage()` resolves with the next message that fits (`from`, `matches`), or `null` after `within`; `collectMessages()` gathers several.
+- `message.waitForClick()` waits for a click on its buttons, `message.waitForReaction()` for a reaction.
+
+<CardGroup cols={2}>
+  <Card title="Tasks" icon="clock" href="/tutorial/tasks">
+    Make the bot do something by itself, every so often or at given times.
+  </Card>
+  <Card title="Guide: Waiting for an answer" icon="book-open" href="/waiting">
+    Every option, in short.
+  </Card>
+</CardGroup>

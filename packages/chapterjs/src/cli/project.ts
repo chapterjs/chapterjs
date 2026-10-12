@@ -8,7 +8,10 @@ import { join } from 'node:path';
 import { setPublicDir } from '../assets/asset.js';
 import { listPublic, publicDeclarations } from '../assets/public.js';
 import { MissingForEvent } from '../events/registry.js';
-import { sourcesJoinVoice } from '../voice/usage.js';
+import { VOICE_USE } from '../voice/usage.js';
+import { MESSAGES_USE, REACTIONS_USE } from '../waiting/usage.js';
+import { MemoryWaiters, type WaitWatcher } from '../waiting/waiters.js';
+import { scanUses, usesIntents, type FoundUses } from '../loader/usage.js';
 import { writeGenerated } from '../loader/generated.js';
 import { commandDeclaration, scanCommands } from '../commands/declaration.js';
 import { CommandRouter } from '../commands/router.js';
@@ -34,10 +37,15 @@ import {
 } from '../store/backend.js';
 import { DATA_FOLDER, FileStoreBackend } from '../store/file-backend.js';
 import {
+  checkText,
   DEFAULT_PRESENCE,
   presenceDeclaration,
+  readActivities,
   type LoadedPresence,
 } from '../presence/declaration.js';
+import type { PresenceContext } from '../presence/presence.js';
+import { PresenceRotation } from '../presence/rotation.js';
+import { GetCurrentApplication } from '../discord/endpoints.js';
 import {
   assembleMessages,
   commandsDeclarations,
@@ -77,7 +85,9 @@ import {
 import { GatewayFatalError, SessionLimitError } from '../gateway/errors.js';
 import {
   loadSources,
+  bySite,
   readDeclarations,
+  siteKey,
   siteName,
   type BuiltFile,
   type Declaration,
@@ -106,10 +116,11 @@ export interface ProjectOptions {
    */
   built?: readonly BuiltFile[];
   /**
-   * Whether the files join voice channels, as `chapterjs build` found.
+   * What the files do that only their code shows (`CODE_USES`: joining
+   * voice, waiting for messages or reactions), as `chapterjs build` found.
    * Without it, the files of `src` are read on every load.
    */
-  joinsVoice?: boolean;
+  uses?: FoundUses;
   /**
    * Where the stores of the project keep their data, by storage. `file`: a
    * file per store in the `data/` folder of the project by default, the
@@ -137,6 +148,11 @@ export interface ProjectObserver {
     data: unknown,
     done: Promise<void>
   ): void;
+  /**
+   * Told when a run of the files starts and stops waiting for what comes
+   * next (`waitForMessage()`...): its `done` waits for the test to act.
+   */
+  waits?: WaitWatcher;
 }
 
 /** What the types of a project are written from, once its files ran. */
@@ -226,6 +242,8 @@ export interface ConnectOptions {
   globalLimit?: number | undefined;
   /** Only tests change this. */
   identifyInterval?: number | undefined;
+  /** Where nothing can play (`chapterjs test`): what `join()` says at once. */
+  voiceUnavailable?: string | undefined;
   /** Discord refused the bot for good. */
   onFatal: (bot: Bot) => void;
 }
@@ -281,6 +299,20 @@ export interface Project {
    */
   applyPresence(bot: Bot): boolean;
   /**
+   * Shows the activities of the presence in turn on the bot `current`
+   * returns, and runs its functions when their time comes.
+   */
+  startPresence(current: () => Bot | null): void;
+  /** Stops the presence: nothing of it runs after this. */
+  stopPresence(): void;
+  /** The file of the presence, or `null` without one. */
+  readonly presenceFile: string | null;
+  /**
+   * Runs every function of the presence once (the list, then each text),
+   * as the rotation would, with the bot given. What goes wrong is reported.
+   */
+  runPresence(bot: Bot): Promise<void>;
+  /**
    * Starts the tasks of the project, with the bot `current` returns (none
    * while it reconnects). Only one process of a bot runs them.
    */
@@ -297,6 +329,12 @@ export interface Project {
   /** Writes what the stores still have to write. Nothing is kept after this. */
   closeStores(): Promise<void>;
 }
+
+/**
+ * What the files may do that only their code shows, each with the intents
+ * it needs: read in `src/` (dev, at every load) or kept by the build.
+ */
+export const CODE_USES = [VOICE_USE, MESSAGES_USE, REACTIONS_USE] as const;
 
 /**
  * A promise of the files that nobody waited for (`store.set()` without
@@ -341,8 +379,7 @@ const megabytes = (bytes: number): string =>
   `${Math.round(bytes / 1024 / 1024)} MB`;
 
 /** What tells one declaration from another: its file and its export. */
-const keyOf = (site: { file: string; export: string }): string =>
-  `${site.file}#${site.export}`;
+const keyOf = siteKey;
 
 /**
  * Two declarations with the same name, where the name is the export's
@@ -351,38 +388,29 @@ const keyOf = (site: { file: string; export: string }): string =>
 function sameNames<T extends { file: string; export: string }>(
   entries: readonly T[],
   nameOf: (entry: T) => string,
-  what: string | ((entry: T) => string)
+  what: string | ((entry: T) => string),
+  running?: ReadonlySet<string>
 ): {
   valid: T[];
   conflicts: { file: string; export: string; message: string }[];
 } {
   const seen = new Map<string, T>();
   const conflicts: { file: string; export: string; message: string }[] = [];
-  const valid = [...entries]
-    .sort((a, b) =>
-      a.file === b.file
-        ? a.export < b.export
-          ? -1
-          : 1
-        : a.file < b.file
-          ? -1
-          : 1
-    )
-    .filter(entry => {
-      const first = seen.get(nameOf(entry));
-      if (!first) {
-        seen.set(nameOf(entry), entry);
-        return true;
-      }
-      const kind = (one: T): string =>
-        typeof what === 'string' ? what : what(one);
-      conflicts.push({
-        file: entry.file,
-        export: entry.export,
-        message: `There is already a ${kind(first)} named ${nameOf(entry)}, in ${first.file}: the name of the export is the name of the ${kind(entry)}, so rename one of them.`,
-      });
-      return false;
+  const valid = bySite(entries, running).filter(entry => {
+    const first = seen.get(nameOf(entry));
+    if (!first) {
+      seen.set(nameOf(entry), entry);
+      return true;
+    }
+    const kind = (one: T): string =>
+      typeof what === 'string' ? what : what(one);
+    conflicts.push({
+      file: entry.file,
+      export: entry.export,
+      message: `There is already a ${kind(first)} named ${nameOf(entry)}, in ${first.file}: the name of the export is the name of the ${kind(entry)}, so rename one of them.`,
     });
+    return false;
+  });
   return { valid, conflicts };
 }
 
@@ -439,20 +467,74 @@ export function createProject(options: ProjectOptions): Project {
   let stores = new Map<string, StoreEntry>();
   let rankings = new Map<string, RankingEntry>();
   let presence: LoadedPresence | null = null;
+  /** Where the presence is declared, for what its functions do wrong. */
+  let presenceSite = { file: 'the presence', export: 'default' };
   /** The files the presence was declared in, to keep it when they break. */
   let presenceFiles = new Set<string>();
-  // Joining voice needs the bot's own voice state, sent with an intent.
-  let voice = options.joinsVoice ?? false;
+  // Joining voice, waiting for messages or reactions: intents the code
+  // needs without any declaration saying it.
+  let uses: FoundUses = options.uses ?? {};
   const neededIntents = (): number =>
-    intentsFor(events.values()) | (voice ? GatewayIntent.GuildVoiceStates : 0);
+    intentsFor(events.values()) | usesIntents(CODE_USES, uses);
   let messages: LoadedMessages | null = null;
   /** The last version of each language that loaded. */
   let languages = new Map<string, LanguageEntry>();
   let languageDefaults: readonly Locale[] = [];
+  /** Whether the files were loaded before: what a reload compares with. */
+  let loadedOnce = false;
   /** The bot running the files now, to give it what a reload changes. */
   let running: Bot | null = null;
   /** The presence each bot was given last, to send only what changed. */
   const given = new WeakMap<Bot, string>();
+  /** What each bot shows now, to send only what changed. */
+  const shown = new WeakMap<Bot, string>();
+  /** Whether the running bot is only part of the bot (a cluster). */
+  let partial = false;
+  /** How many servers the whole bot is in, as Discord counted it last. */
+  let counted: { guilds: number; at: number } | null = null;
+  let counting = false;
+  /**
+   * How many servers the bot is in: what this process knows when it runs
+   * every shard; else what Discord counts for the application, asked at
+   * most every 10 minutes.
+   * @see https://docs.discord.com/developers/resources/application#application-object-application-structure
+   */
+  const guildCount = (bot: Bot): number => {
+    const local = bot.ctx.cache.guilds.size;
+    if (!partial) return local;
+    if (!counting && (!counted || Date.now() - counted.at > 600_000)) {
+      counting = true;
+      bot.ctx.rest
+        .request(GetCurrentApplication, [])
+        .then(application => {
+          const guilds = application.approximate_guild_count;
+          if (guilds !== undefined) counted = { guilds, at: Date.now() };
+        })
+        .catch(() => {})
+        .finally(() => (counting = false));
+    }
+    return counted?.guilds ?? local;
+  };
+  let presenceBot: () => Bot | null = () => null;
+  const rotation = new PresenceRotation({
+    apply(raw) {
+      const bot = presenceBot();
+      if (!bot) return;
+      const text = JSON.stringify(raw);
+      if (shown.get(bot) === text) return;
+      shown.set(bot, text);
+      bot.setPresence(raw);
+    },
+    context() {
+      const bot = presenceBot();
+      if (!bot?.ctx.self) return null;
+      return {
+        guilds: guildCount(bot),
+        ...translation(bot.ctx, null),
+      } as PresenceContext;
+    },
+    onError: error => report({ ...presenceSite, error }),
+  });
   let lost = false;
   const count = (size: number, one: string, many: string): string =>
     `${size} ${size === 1 ? one : many}`;
@@ -502,16 +584,19 @@ export function createProject(options: ProjectOptions): Project {
       })),
       ...(messages ? { defaultLocale: messages.default } : {}),
       languageDefaults,
-      commands: [...commands.values()].map(({ command }) => ({
-        name: command.path.join(' '),
-        described: command.described,
-      })),
+      // Only slash commands have texts in the language files.
+      commands: [...commands.values()]
+        .filter(({ command }) => command.type === 'slash')
+        .map(({ command }) => ({
+          name: command.path.join(' '),
+          described: command.described,
+        })),
     }),
     report,
     async load() {
       const { built } = options;
-      if (options.joinsVoice === undefined) {
-        voice = await sourcesJoinVoice(cwd);
+      if (options.uses === undefined) {
+        uses = await scanUses(cwd, CODE_USES);
       }
       // Every file of src/ runs (or ran, in a build); what each exports is
       // then read, kind by kind.
@@ -573,22 +658,29 @@ export function createProject(options: ProjectOptions): Project {
       }));
       router.set(events.values());
 
-      const { valid, conflicts } = findConflicts([
-        ...next(commands, commandItems, item => ({
-          file: item.file,
-          export: item.export,
-          command: item.value,
-        })).values(),
-      ]);
+      // A name two declarations share stays with the one that ran before.
+      const { valid, conflicts } = findConflicts(
+        [
+          ...next(commands, commandItems, item => ({
+            file: item.file,
+            export: item.export,
+            command: item.value,
+          })).values(),
+        ],
+        new Set(commands.keys())
+      );
       commands = new Map(valid.map(entry => [keyOf(entry), entry]));
 
-      const unique = findDuplicates([
-        ...next(components, componentItems, item => ({
-          file: item.file,
-          export: item.export,
-          component: item.value,
-        })).values(),
-      ]);
+      const unique = findDuplicates(
+        [
+          ...next(components, componentItems, item => ({
+            file: item.file,
+            export: item.export,
+            component: item.value,
+          })).values(),
+        ],
+        new Set(components.keys())
+      );
       components = new Map(unique.valid.map(entry => [keyOf(entry), entry]));
       componentRouter.set(components.values());
 
@@ -601,7 +693,8 @@ export function createProject(options: ProjectOptions): Project {
           })).values(),
         ],
         entry => entry.task.name,
-        'task'
+        'task',
+        new Set(tasks.keys())
       );
       tasks = new Map(sameTask.valid.map(entry => [keyOf(entry), entry]));
       scheduler.set(tasks.values());
@@ -625,7 +718,8 @@ export function createProject(options: ProjectOptions): Project {
           })).values(),
         ],
         entry => keptOf(entry).name,
-        entry => ('store' in entry ? 'store' : 'ranking')
+        entry => ('store' in entry ? 'store' : 'ranking'),
+        new Set([...stores.keys(), ...rankings.keys()])
       );
       // What is kept where nothing keeps it (Redis without REDIS_URL) is
       // reported and left out: it says so itself when used.
@@ -657,8 +751,10 @@ export function createProject(options: ProjectOptions): Project {
 
       // One presence. A second one is left out.
       const [first, ...extra] = presenceItems.loaded;
-      if (first) presence = first.value;
-      else if (
+      if (first) {
+        presence = first.value;
+        presenceSite = { file: first.file, export: first.export };
+      } else if (
         presenceItems.failed.length === 0 &&
         ![...broken].some(file => presenceFiles.has(file))
       ) {
@@ -689,14 +785,19 @@ export function createProject(options: ProjectOptions): Project {
       languages = nextLanguages;
       let assembled = assembleMessages([...languages.values()]);
       // A language that no longer matches the others keeps its last version
-      // that did, like a declaration that no longer loads.
+      // that did, like a declaration that no longer loads; one that was not
+      // there before is left out. What already ran is never what breaks
+      // the languages: a second default: true saved in a new file must not
+      // take the texts of every command away.
       const restored = assembled.failed.filter(failure => {
         const key = keyOf({
           file: failure.file,
           export: failure.export ?? 'default',
         });
+        const current = languages.get(key);
+        if (current === undefined) return false;
         const previous = previousLanguages.get(key);
-        return previous !== undefined && previous !== languages.get(key);
+        return previous === undefined ? loadedOnce : previous !== current;
       });
       if (restored.length > 0) {
         for (const failure of restored) {
@@ -704,7 +805,9 @@ export function createProject(options: ProjectOptions): Project {
             file: failure.file,
             export: failure.export ?? 'default',
           });
-          languages.set(key, previousLanguages.get(key)!);
+          const previous = previousLanguages.get(key);
+          if (previous) languages.set(key, previous);
+          else languages.delete(key);
         }
         const again = assembleMessages([...languages.values()]);
         assembled = {
@@ -718,6 +821,7 @@ export function createProject(options: ProjectOptions): Project {
         };
       }
       messages = assembled.messages;
+      loadedOnce = true;
       if (running) running.ctx.messages = messages;
 
       // A command has its texts in its file, or in the language files: the
@@ -726,7 +830,9 @@ export function createProject(options: ProjectOptions): Project {
       const badTexts: FailedFile[] = [...assembled.failed];
       if (messages) {
         const names = new Set(
-          [...commands.values()].map(entry => entry.command.path.join(' '))
+          [...commands.values()]
+            .filter(entry => entry.command.type === 'slash')
+            .map(entry => entry.command.path.join(' '))
         );
         for (const { file, path } of unknownCommands(messages, names)) {
           badTexts.push({
@@ -816,13 +922,16 @@ export function createProject(options: ProjectOptions): Project {
       messages === null,
     // A file declaring several events that need the intent is named once.
     filesNeeding: intent => [
-      ...new Set(
-        [...events.values()]
+      ...new Set([
+        ...[...events.values()]
           .filter(
             ({ event }) => (intentsOf(event) & GatewayIntent[intent]) !== 0
           )
-          .map(({ file }) => file)
-      ),
+          .map(({ file }) => file),
+        ...CODE_USES.filter(
+          use => (use.intents & GatewayIntent[intent]) !== 0
+        ).flatMap(use => uses[use.name] ?? []),
+      ]),
     ],
     intents: (privateEvents = true) =>
       neededIntents() & (privateEvents ? ~0 : ~PRIVATE_INTENTS),
@@ -836,6 +945,9 @@ export function createProject(options: ProjectOptions): Project {
         guildFilter: connection.guildFilter,
         privateEvents: connection.privateEvents,
         presence: presence?.raw,
+        waiters: new MemoryWaiters(
+          options.observe?.waits ? { watch: options.observe.waits } : {}
+        ),
         shards: connection.shards,
         identifyGate: connection.identifyGate,
         ...(connection.identifyInterval === undefined
@@ -844,7 +956,12 @@ export function createProject(options: ProjectOptions): Project {
         // Only what the files of the project use is remembered.
         cache: { limits: limitsFor(events.values()) },
         // A local fake of Discord (tests) serves voice without TLS too.
-        voice: { secure: !connection.apiUrl?.startsWith('http://') },
+        voice: {
+          secure: !connection.apiUrl?.startsWith('http://'),
+          ...(connection.voiceUnavailable === undefined
+            ? {}
+            : { unavailable: connection.voiceUnavailable }),
+        },
         rest: {
           ...(connection.apiUrl ? { baseUrl: connection.apiUrl } : {}),
           ...(connection.globalLimit === undefined
@@ -889,17 +1006,57 @@ export function createProject(options: ProjectOptions): Project {
         },
       });
       given.set(created, presence?.key ?? '');
+      shown.set(created, JSON.stringify(presence?.raw ?? DEFAULT_PRESENCE));
+      partial =
+        connection.shards !== undefined &&
+        connection.shards.ids.length < connection.shards.count;
       created.ctx.messages = messages;
       running = created;
       await created.connect();
       return created;
     },
     applyPresence(bot) {
+      // Always the functions of the files as they are now: a file they
+      // import may have changed. What is shown is only sent when it differs.
+      rotation.set(presence);
       const key = presence?.key ?? '';
       if (given.get(bot) === key) return false;
       given.set(bot, key);
-      bot.setPresence(presence?.raw ?? DEFAULT_PRESENCE);
       return true;
+    },
+    startPresence(current) {
+      presenceBot = current;
+      rotation.set(presence);
+      rotation.start();
+    },
+    stopPresence: () => rotation.stop(),
+    get presenceFile() {
+      return presence ? presenceSite.file : null;
+    },
+    async runPresence(bot) {
+      if (!presence) return;
+      const context = {
+        guilds: guildCount(bot),
+        ...translation(bot.ctx, null),
+      } as PresenceContext;
+      const failed = (error: unknown): void =>
+        report({ ...presenceSite, error });
+      let activities = presence.activities;
+      if (typeof activities === 'function') {
+        try {
+          activities = readActivities(await activities(context));
+        } catch (error) {
+          return failed(error);
+        }
+      }
+      for (const { name } of activities) {
+        if (typeof name !== 'function') continue;
+        try {
+          checkText(await name(context));
+        } catch (error) {
+          failed(error);
+        }
+      }
     },
     ready(bot) {
       const user = bot.ctx.cache.users.get(bot.ctx.self!.userId)!;

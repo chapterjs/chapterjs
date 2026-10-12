@@ -1,0 +1,179 @@
+---
+title: 'Waiting for an answer'
+description: 'Ask something, then wait for the next message, click or reaction, with a time limit'
+---
+
+Your function can ask a question, then wait for what comes next in the channel: `channel.waitForMessage()` resolves with the next message that fits, or `null` when the time is up.
+
+```ts src/commands/capital.ts
+import { command } from 'chapterjs';
+
+export const capital = command({
+  name: 'capital',
+  description: 'Who finds the capital of France first?',
+  async run({ interaction, channel }) {
+    await interaction.reply('What is the capital of France? You have 30 seconds.');
+    const winner = await channel.waitForMessage({ matches: 'paris', within: '30s' });
+    if (!winner) {
+      await channel.send('Nobody found it: it was Paris.');
+      return;
+    }
+    await channel.send(`${winner.author.username} wins!`);
+  },
+});
+```
+
+That is all: the first person to write "Paris" (whatever the capitals) wins, and after 30 seconds without it, the bot gives the answer. Messages of bots never count, and nothing else of your bot waits meanwhile: other commands and events go on.
+
+<Note>
+  Every method and option is in the reference: [channels](/reference/channels#waitformessage) for messages, [messages](/reference/message#waitforclick) for clicks and reactions.
+</Note>
+
+## Who and what
+
+| Option | What it keeps |
+| --- | --- |
+| `from` | Only the messages of this person: a `User`, a `GuildMember` or an id. Anyone's but a bot's when left out. |
+| `matches` | A text (the same, whatever the capitals and the spaces around), a regular expression (`/^paris$/i`), or a function of the message that returns `true`. |
+| `within` | How long to wait: `'30s'`, `'2m'`. One minute by default, 1 second to 1 day. |
+
+Waiting for the answer of the person who used the command:
+
+```ts src/commands/nickname.ts
+import { command } from 'chapterjs';
+
+export const nickname = command({
+  name: 'nickname',
+  description: 'Changes your nickname, after asking which one',
+  async run({ interaction, channel, member, user }) {
+    await interaction.reply('Which nickname do you want? Answer in the next minute.');
+    const answer = await channel.waitForMessage({
+      from: user,
+      matches: message => message.content.length <= 32,
+    });
+    if (!answer) return;
+    await member.edit({ nick: answer.content });
+    await answer.reply('Done!');
+  },
+});
+```
+
+A function given to `matches` that throws ends the wait with its error, thrown where you wait: the person gets a plain answer and you get the error with its line, as for anything else your function does.
+
+## Several messages
+
+`channel.collectMessages()` takes the same options and gathers every message that fits until `within` passes, or until `max` came. It resolves with them, in order, maybe none.
+
+```ts src/commands/brainstorm.ts
+import { command } from 'chapterjs';
+
+export const brainstorm = command({
+  name: 'brainstorm',
+  description: 'Gathers ideas for one minute',
+  async run({ interaction, channel }) {
+    await interaction.reply('Send your ideas, one per message, for one minute!');
+    const ideas = await channel.collectMessages({ within: '1m', max: 20 });
+    await channel.send(`${ideas.length} ideas:\n${ideas.map(idea => `- ${idea.content}`).join('\n')}`);
+  },
+});
+```
+
+## A click
+
+`message.waitForClick()` waits for a click on a button or a menu of a message: the message `reply()` resolves with, for example. The click it gives is answered like in the `run` of a button, with `click.interaction`.
+
+```ts src/commands/reset.ts
+import { button, command } from 'chapterjs';
+
+export const yes = button({ label: 'Yes, reset', style: 'danger' });
+export const no = button({ label: 'Cancel', style: 'secondary' });
+
+export const reset = command({
+  name: 'reset',
+  description: 'Resets the settings of the server',
+  permissions: ['ManageGuild'],
+  async run({ interaction, user }) {
+    const asked = await interaction.reply({ content: 'Reset everything?', components: [yes, no] });
+    const click = await asked.waitForClick({ from: user, within: '30s' });
+    if (!click) {
+      await interaction.edit({ content: 'Nothing was reset.', components: [] });
+      return;
+    }
+    await click.interaction.update({
+      content: click.is(yes) ? 'Everything was reset.' : 'Nothing was reset.',
+      components: [],
+    });
+  },
+});
+```
+
+- A button or a menu that is only waited for needs no `run`. Once nothing waits for it any more, a click on it answers the person that it is not available any more.
+- A click taken by a wait does not run the `run` of its button. A click that the wait does not take (another person, with `from`) runs it as usual.
+- `click.is(yes)` says which one was clicked; `click.data` is what the button carries, `click.values` what was picked in a menu.
+- Without an answer within 2 seconds, the bot changes nothing on screen for you, so the person never sees "This interaction failed". You can still answer with `click.interaction.followUp()` or `edit()`.
+
+## A reaction
+
+`message.waitForReaction()` waits for a reaction added to a message: of a person with `from`, with one emoji with `emoji` (`'👍'`, or a custom one by its name).
+
+```ts src/commands/agree.ts
+import { command } from 'chapterjs';
+
+export const agree = command({
+  name: 'agree',
+  description: 'Waits for someone to agree',
+  async run({ interaction }) {
+    const asked = await interaction.reply('Who agrees? React with 👍');
+    await asked.react('👍');
+    const reaction = await asked.waitForReaction({ emoji: '👍', within: '2m' });
+    await interaction.followUp(reaction ? `${reaction.user.username} agrees.` : 'Nobody agreed.');
+  },
+});
+```
+
+The reaction of the bot itself never counts.
+
+## What it needs
+
+Waiting needs nothing to declare: the intents follow your code, like those of your events.
+
+- Waiting for messages asks Discord for the messages of servers and of private messages, and for their text: the privileged **Message Content Intent**. When it is not enabled, `chapterjs dev` says so, names your file and links the Developer Portal.
+- Waiting for a reaction asks for the reactions.
+- Waiting for a click needs nothing.
+
+## Good to know
+
+- A wait lives while your bot runs: a restart, or `chapterjs dev` stopping, ends it with nothing (`null`, or what a collect gathered). A save in `chapterjs dev` keeps it.
+- Everything of one server reaches the same process of your bot, so a wait works the same in a large bot.
+- The answer to the interaction is still due within 3 seconds: answer first (`reply()`), then wait. Waiting before answering is answered for you with "the bot is thinking", like any slow function.
+
+## Testing
+
+In a scenario, `bot.use()` resolves as soon as your function waits, and what the test does next is what it waits for: `bot.say()`, `bot.click()`, `bot.select()`, `bot.react()`. Time does not pass in the test server: `bot.endWaits()` ends every wait as if its time was up.
+
+```ts src/commands/capital.test.ts
+import { scenario } from 'chapterjs/test';
+import { capital } from './capital';
+
+export const wins = scenario('the first right answer wins', async bot => {
+  await bot.use(capital);
+  await bot.say('Lyon', { by: bot.member('bob') });
+  await bot.say('paris', { by: bot.member('alice') });
+  bot.channel('general').messages.at(-1)?.says('alice wins!');
+});
+
+export const nobody = scenario('nobody finds it', async bot => {
+  await bot.use(capital);
+  await bot.endWaits();
+  bot.channel('general').messages.at(-1)?.says('Nobody found it: it was Paris.');
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="Buttons" icon="mouse-pointer-click" href="/components">
+    Buttons with a run of their own, that work for weeks.
+  </Card>
+  <Card title="Testing" icon="flask-conical" href="/testing">
+    Check what your bot answers, without Discord.
+  </Card>
+</CardGroup>

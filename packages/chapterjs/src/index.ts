@@ -10,7 +10,7 @@
 // types only, and nothing here lets user code connect to Discord or send
 // requests by itself.
 
-// Slash commands: what the files of src/commands/ are written with.
+// Commands (slash and menu): what the files of src/commands/ are written with.
 export { command } from './commands/command.js';
 export type {
   AutocompleteContext,
@@ -29,6 +29,12 @@ export type {
   CommandOptions,
   CommandTranslation,
   Cooldown,
+  MenuConfig,
+  MenuContext,
+  MenuDeclaration,
+  MenuLocales,
+  MenuTranslation,
+  MenuType,
   Duration,
   NumberOption,
   OptionsSoFar,
@@ -235,6 +241,16 @@ export type {
   Reaction,
   ReactionEmoji,
 } from './structures/message.js';
+// Waiting for what comes next: a message, a click, a reaction.
+export type {
+  Click,
+  CollectMessagesOptions,
+  PersonInput,
+  WaitedReaction,
+  WaitForClickOptions,
+  WaitForMessageOptions,
+  WaitForReactionOptions,
+} from './structures/wait.js';
 // Tasks: what the files of src/tasks/ are written with.
 export { language } from './messages/messages.js';
 export type {
@@ -261,12 +277,17 @@ export type {
 } from './messages/messages.js';
 export { presence } from './presence/presence.js';
 export type {
+  Activities,
   Activity,
   ActivityKind,
+  ActivityText,
   PlainActivity,
   PresenceConfig,
+  PresenceContext,
   PresenceDeclaration,
   PresenceStatusName,
+  RotatingPresenceConfig,
+  SinglePresenceConfig,
   StreamingActivity,
 } from './presence/presence.js';
 export { store } from './store/store.js';

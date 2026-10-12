@@ -99,7 +99,7 @@ export default command({
 
 À voir :
 
-- **`permissions: ['ModerateMembers']`** dit qui peut utiliser la commande. Discord la cache aux autres, et le framework vérifie à nouveau quand elle est utilisée : quelqu’un sans la permission lit « You need the ModerateMembers permission to use this command. » et `run` ne démarre jamais. Les permissions s’écrivent par leur nom, et l’éditeur les complète.
+- **`permissions: ['ModerateMembers']`** dit qui peut utiliser la commande. Discord la cache aux autres, et le framework vérifie à nouveau quand elle est utilisée : quelqu’un sans la permission lit « You need the Moderate Members permission to use this command. » et `run` ne démarre jamais. Les permissions s’écrivent par leur nom, et l’éditeur les complète.
 - **`member.isHigherThan(target)`** compare les rôles : Discord refuse de modérer quelqu’un dont le rôle le plus haut est au-dessus du vôtre, alors vérifier d’abord donne une meilleure réponse que de laisser Discord refuser.
 - **`timeout(duration, reason)`** prend des millisecondes, et une raison qui va dans le journal d’audit du serveur. Les actions qui apparaissent dans le journal d’audit prennent toutes une `reason`.
 - **`try` / `catch` autour de `send()`.** Certaines personnes ferment leurs messages privés ; Discord refuse alors avec le code `50007`. L’erreur est une `DiscordApiError`, et son `code` est ce qu’il faut tester : le texte peut changer, le code jamais. Tout le reste est relancé, pour qu’un vrai problème soit signalé.

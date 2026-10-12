@@ -250,8 +250,8 @@ describe('a command the bot already has for everyone', () => {
       'changed',
       'new',
     ]);
-    expect(result.twins).toEqual(['mod', 'same']);
-    expect(result.changed).toEqual(['changed']);
+    expect(result.twins).toEqual(['/mod', '/same']);
+    expect(result.changed).toEqual(['/changed']);
     // Nothing for everyone: everything is given, nothing is "changed".
     expect(withoutGlobalTwins(payloads, [])).toEqual({
       kept: payloads,

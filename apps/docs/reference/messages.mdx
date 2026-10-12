@@ -85,7 +85,9 @@ One text of a language: a string, with its `{placeholders}`, or a text with seve
 A text with several forms, one per quantity: `t('members', { count })` picks the form of the language for that number (`one` for 1 in English, `other` for the rest; French, Russian or Arabic have others). `other` is always there; the forms a language does not use are left out. `{count}` in a form is the number itself.
 
 <ResponseField name="other" type="string" required />
-<ResponseField name="zero" type="string" />
+<ResponseField name="zero" type="string">
+  For 0, in every language; and where a language has a form of its own for other numbers too (Arabic, Latvian).
+</ResponseField>
 <ResponseField name="one" type="string" />
 <ResponseField name="two" type="string" />
 <ResponseField name="few" type="string" />
@@ -111,7 +113,7 @@ What the bot answers by itself, when it can't run what was asked: where a comman
 | `failed`            | "Something went wrong while running this {what}."                                                                                                                        |
 | `missingPermission` | "I don't have the permission to do that here."                                                                                                                           |
 | `cooldown`          | "You can use this {what} again {when}." (a `cooldown` not over yet); `{when}` is a Discord timestamp, shown as "in 5 seconds" (or a date and time past 15 minutes) in the language of the person. |
-| `needsPermissions`  | "You need the {permissions} permission to use this command." A plural of `count`, how many permissions are missing; `{permissions}` is their names, separated by commas. |
+| `needsPermissions`  | "You need the {permissions} permission to use this command." A plural of `count`, how many permissions are missing; `{permissions}` is their names as people read them (Ban Members), separated by commas. |
 
 ### CommandsTranslations
 

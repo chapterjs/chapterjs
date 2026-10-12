@@ -23,6 +23,7 @@ export type {
   TestMember,
   TestMemberOptions,
   TestMenu,
+  TestMenuTarget,
   TestMessage,
   TestReply,
   TestRole,

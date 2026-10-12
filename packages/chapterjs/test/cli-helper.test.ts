@@ -60,6 +60,47 @@ describe('startCli says why a CLI printed nothing', () => {
   });
 });
 
+describe('startCli waits for the end from when it is asked', () => {
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  it('gives the whole timeout to a CLI stopped long after it started', async () => {
+    const cli = startCli({
+      bin: script(
+        'console.log("up"); process.on("SIGTERM", () => setTimeout(() => process.exit(0), 300)); setInterval(() => {}, 1000);'
+      ),
+      cwd: tempDir(),
+      env: {},
+      timeout: 1000,
+    });
+    await cli.waitFor('up');
+    // The test does its own work for longer than the timeout.
+    await wait(1200);
+    cli.signal('SIGTERM');
+    expect(await cli.exited).toEqual({ code: 0, output: 'up\n' });
+  });
+
+  it('still fails when the CLI never stops, and keeps the end of one already gone', async () => {
+    const cli = startCli({
+      bin: script('console.log("up"); setInterval(() => {}, 1000);'),
+      cwd: tempDir(),
+      env: {},
+      timeout: 300,
+    });
+    await cli.waitFor('up');
+    await expect(cli.exited).rejects.toThrow(
+      'The CLI did not exit within 300 ms.\n\nup\n'
+    );
+    const gone = startCli({
+      bin: script('process.exit(4);'),
+      cwd: tempDir(),
+      env: {},
+      timeout: 300,
+    });
+    await wait(500);
+    expect(await gone.exited).toEqual({ code: 4, output: '' });
+  });
+});
+
 describe('a promise of the files that nobody waited for', () => {
   it('is reported with its file and line, and what to write; one from elsewhere is thrown', () => {
     const cwd = '/project';

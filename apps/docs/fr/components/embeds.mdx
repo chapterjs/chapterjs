@@ -124,7 +124,7 @@ export default command({
 });
 ```
 
-Un message contient 40 composants au plus, rangées et pièces dans les conteneurs comprises. Dépasser une limite lève une erreur avant tout envoi, avec la limite dans le message.
+Un message fait seulement de boutons et de menus contient 5 rangées au plus (un menu prend une rangée à lui seul). Un message construit avec ces pièces contient 40 composants au plus, rangées et pièces dans les conteneurs comprises. Dépasser une limite lève une erreur avant tout envoi, avec la limite dans le message.
 
 <CardGroup cols={2}>
   <Card title="Envoyer des messages" icon="mail" href="/fr/messages">

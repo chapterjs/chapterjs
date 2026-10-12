@@ -1,0 +1,93 @@
+---
+title: 'Commandes de menu'
+description: 'Des commandes que les gens utilisent d’un clic droit sur un message ou sur une personne'
+---
+
+Une commande de menu apparaît dans le menu que les gens ouvrent d’un clic droit sur un message (un appui long sur un téléphone), sous **Applications**. C’est une `command()` avec un `type` : `'message'` ici.
+
+```ts src/commands/quote.ts
+import { command } from 'chapterjs';
+
+export const quote = command({
+  type: 'message',
+  name: 'Citer',
+  async run({ interaction, message }) {
+    await interaction.reply(`> ${message.content}\n— ${message.author.username}`);
+  },
+});
+```
+
+C’est tout : clic droit sur un message, **Applications**, **Citer**, et le bot répond avec lui. `message` est le message sur lequel le menu a été utilisé, en entier, même quand le bot ne l’avait jamais vu.
+
+<Note>
+  Tout ce que déclare une commande de menu est dans la [référence](/fr/reference/command#commandes-de-menu).
+</Note>
+
+## Sur une personne
+
+Avec `type: 'user'`, la commande apparaît dans le menu d’une personne : un clic droit sur son nom, dans la liste des membres ou dans un message.
+
+```ts src/commands/avatar.ts
+import { command } from 'chapterjs';
+
+export const avatar = command({
+  type: 'user',
+  name: 'Voir l’avatar',
+  async run({ interaction, target, targetMember }) {
+    // L’avatar du serveur quand elle en a un, sinon le sien.
+    const url = targetMember ? targetMember.avatarURL() : target.avatarURL();
+    await interaction.reply({ content: url, ephemeral: true });
+  },
+});
+```
+
+`target` est la personne, en tant que `User`. `targetMember` est cette personne en tant que membre du serveur, ou `null` quand elle n’y est pas (ou plus).
+
+## Ce qui change par rapport à une commande slash
+
+- `name` est ce qu’affiche le menu : les majuscules et les espaces sont permis (`'Voir l’avatar'`), 32 caractères au plus.
+- Il n’y a ni `description`, ni `options`, ni `autocomplete` : la commande reçoit ce sur quoi elle a été utilisée. En écrire un est souligné dans votre éditeur.
+- `locales` ne traduit que le nom : `locales: { 'en-US': { name: 'Show avatar' } }`. Les fichiers de langue ne décrivent jamais une commande de menu : ses textes restent dans son fichier.
+- Tout le reste fonctionne pareil : `where`, `permissions`, `cooldown`, `ephemeral`, `nsfw`, et ce que reçoit `run` sur l’endroit (`guild`, `member`, `channel`, `interaction`, `t`).
+
+Discord accepte 15 commandes de menu utilisées sur un message et 15 sur une personne. Une commande slash, un menu de message et un menu de personne peuvent avoir le même nom : `/quote` et un menu **Quote** sont deux commandes.
+
+## Sans type
+
+C’est `type` qui fait une commande de menu : omis, `command()` est une commande slash, comme partout ailleurs dans ce guide.
+
+## En développement
+
+Les commandes de menu sont enregistrées sur votre serveur de test avec les commandes slash, et mises à jour quand leur fichier change :
+
+```text
+✓ Commands updated on Dev Server
+```
+
+Discord peut mettre un moment à afficher un nouveau menu : rouvrez le menu, ou rechargez Discord avec `Ctrl+R` (`Cmd+R` sur un Mac).
+
+## Tester
+
+Dans un scénario, `bot.use()` utilise une commande de menu sur ce que vous donnez dans `on` : un message pour un menu de message, une personne pour un menu de personne.
+
+```ts src/commands/quote.test.ts
+import { scenario } from 'chapterjs/test';
+import { quote } from './quote';
+
+export const quotes = scenario('Citer répète le message', async bot => {
+  const said = await bot.say('Bonjour', { by: bot.member('alice') });
+  const reply = await bot.use(quote, { on: said });
+  reply.says('> Bonjour\n— alice');
+});
+```
+
+Sans scénario, `chapterjs test` utilise chaque commande de menu tout seul : sur un message ou une personne ordinaires, et sur les cas difficiles (un message à sa longueur maximale, le bot, le propriétaire, quelqu’un qui est parti). Voir [Tester](/fr/testing).
+
+<CardGroup cols={2}>
+  <Card title="Référence : command()" icon="square-terminal" href="/fr/reference/command#commandes-de-menu">
+    Tout ce que déclare et reçoit une commande de menu.
+  </Card>
+  <Card title="Répondre" icon="message-square-reply" href="/fr/commands/answering">
+    Répondre, en privé ou non, et prendre son temps.
+  </Card>
+</CardGroup>

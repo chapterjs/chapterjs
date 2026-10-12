@@ -5,6 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  bySite,
   listSources,
   loadSources,
   readDeclarations,
@@ -132,6 +133,10 @@ describe('the declarations of a kind', () => {
       'one@list',
       'two@list',
     ]);
+    // Each one is told apart by its place in the list, under its name.
+    expect(named.loaded.map(({ export: at, name }) => `${at} ${name}`)).toEqual(
+      ['list[0] list', 'list[2] list']
+    );
     const unnamed = readDeclarations(modules, things(false));
     expect(unnamed.loaded).toEqual([]);
     expect(unnamed.failed).toHaveLength(1);
@@ -142,6 +147,25 @@ describe('the declarations of a kind', () => {
     expect(
       readDeclarations([module('src/a.ts', { list: [1, 2] })], things(false))
     ).toEqual({ loaded: [], failed: [] });
+  });
+
+  it('read the rest of a list when one of it is wrong', () => {
+    const { loaded, failed } = readDeclarations(
+      [
+        module('src/a.ts', {
+          list: [thing('one'), thing('bad'), thing('two')],
+        }),
+      ],
+      things(true)
+    );
+    expect(loaded.map(({ value }) => value)).toEqual(['one@list', 'two@list']);
+    expect(failed).toEqual([
+      {
+        file: 'src/a.ts',
+        export: 'list[1]',
+        error: new TypeError('bad is not allowed'),
+      },
+    ]);
   });
 
   it('return what can not be read with its export, and read the rest', () => {
@@ -165,5 +189,23 @@ describe('the declarations of a kind', () => {
     expect(siteName({ file: 'src/a.ts', export: 'ban' })).toBe(
       'src/a.ts (ban)'
     );
+  });
+});
+
+describe('which of two declarations with one name is kept', () => {
+  const a = { file: 'src/a.ts', export: 'x' };
+  const b = { file: 'src/b.ts', export: 'x' };
+  const b2 = { file: 'src/b.ts', export: 'y' };
+
+  it('is the first by file, then export, whatever the order found', () => {
+    expect(bySite([b2, b, a])).toEqual([a, b, b2]);
+  });
+
+  it('is what already ran, before any order', () => {
+    expect(bySite([a, b, b2], new Set(['src/b.ts#y']))).toEqual([b2, a, b]);
+    expect(bySite([a, b], new Set(['src/a.ts#x', 'src/b.ts#x']))).toEqual([
+      a,
+      b,
+    ]);
   });
 });

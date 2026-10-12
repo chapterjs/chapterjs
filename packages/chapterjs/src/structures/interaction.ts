@@ -1,3 +1,4 @@
+import { callSite, fromSite } from '../util/call-site.js';
 import {
   CreateFollowupMessage,
   CreateInteractionResponse,
@@ -43,6 +44,12 @@ export type InteractionData = Omit<
 
 /** Only the framework reads how far an interaction was answered. */
 export let isUpdating: (interaction: Interaction) => boolean;
+/**
+ * Resolves once every answer asked so far was sent (or refused): what the
+ * framework waits for before saying a function never answered, since an
+ * answer asked without `await` is still on its way when it returns.
+ */
+export let answersSent: (interaction: Interaction) => Promise<void>;
 /** Answers with a change of the message: see `ComponentInteraction.update()`. */
 let updateMessage: (
   interaction: Interaction,
@@ -90,6 +97,14 @@ export class Interaction extends IdStructure<InteractionData> {
 
   static {
     isUpdating = interaction => interaction.#state === 'updating';
+    answersSent = async interaction => {
+      // Answers asked while waiting are queued after the ones before.
+      let last: Promise<void> | null = null;
+      while (last !== interaction.#queue) {
+        last = interaction.#queue;
+        await last;
+      }
+    };
     updateMessage = (interaction, message) => {
       const { body, files } = buildMessage(message, {
         edit: true,
@@ -261,12 +276,16 @@ export class Interaction extends IdStructure<InteractionData> {
    * error keeps the line of user code that asked for the answer.
    */
   async #run<T>(action: () => Promise<T>): Promise<T> {
+    // Where the files asked, for an answer refused later (`callSite`).
+    const site = callSite();
     const previous = this.#queue;
     let release!: () => void;
     this.#queue = new Promise<void>(resolve => (release = resolve));
     await previous;
     try {
       return await action();
+    } catch (error) {
+      throw fromSite(error, site);
     } finally {
       release();
     }

@@ -1,0 +1,122 @@
+---
+title: 'Menus et conversations'
+description: 'Ajouter une commande au menu du clic droit, puis faire poser une question à votre bot et attendre la réponse'
+---
+
+Jusqu’ici, tout commence par un `/` ou par un clic sur un bouton que le bot a envoyé. Cette page ajoute deux autres façons de parler avec votre bot : une commande dans le menu d’un clic droit sur un message, et une commande qui pose une question et attend la réponse dans le salon.
+
+## Une commande sur un message
+
+Dans [Réactions et vocal](/fr/tutorial/reactions-and-voice), une réaction gardait un message pour plus tard. Un clic droit se trouve plus facilement : Discord a un menu pour cela, et une commande peut y être. Créez `src/commands/save.ts` :
+
+```ts src/commands/save.ts
+import { command } from 'chapterjs';
+
+export const save = command({
+  type: 'message',
+  name: 'Garder pour plus tard',
+  async run({ interaction, message, user }) {
+    await user.send(`Vous avez gardé ce message : ${message.url}`);
+    await interaction.reply({ content: 'Envoyé en privé.', ephemeral: true });
+  },
+});
+```
+
+Enregistrez le fichier, puis faites un clic droit sur n’importe quel message de votre serveur de test : **Applications**, **Garder pour plus tard**. Sur un téléphone, c’est un appui long sur le message.
+
+Ce qui est nouveau ici, c’est `type: 'message'`. Il fait de `command()` une **commande de menu** :
+
+- `name` est ce qu’affiche le menu, il peut donc avoir des majuscules et des espaces.
+- Il n’y a pas de `description` : Discord n’en affiche pas dans un menu.
+- Il n’y a pas d’options : ce dont la commande a besoin est le message lui-même, donné en entier dans `message`, même quand le bot ne l’avait jamais vu.
+
+Pourquoi le bot n’a-t-il pas besoin de l’intent Message Content pour le lire ? Parce que la personne a choisi ce message : Discord l’envoie avec l’utilisation de la commande, comme les options d’une commande slash.
+
+Avec `type: 'user'`, la commande est à la place dans le menu d’une personne, et reçoit `target` (la personne) et `targetMember` (cette personne sur le serveur, ou `null`). Le [guide](/fr/commands/menus#sur-une-personne) a un exemple.
+
+## Une question, puis la réponse
+
+Une devinette demande au bot de poser la question, puis d’écouter ce que les gens écrivent ensuite. `channel.waitForMessage()` fait cela : elle donne le prochain message qui convient, ou `null` quand le temps est écoulé. Créez `src/commands/riddle.ts` :
+
+```ts src/commands/riddle.ts
+import { command } from 'chapterjs';
+
+export const riddle = command({
+  name: 'riddle',
+  description: 'Pose une devinette au salon',
+  async run({ interaction, channel }) {
+    await interaction.reply('Qu’est-ce qui a des touches mais n’ouvre aucune porte ? Vous avez 30 secondes.');
+    const found = await channel.waitForMessage({
+      matches: /\b(un )?(piano|clavier)\b/i,
+      within: '30s',
+    });
+    if (found) {
+      await found.reply(`Oui ! ${found.author.username} a trouvé.`);
+    } else {
+      await channel.send('Temps écoulé : c’était un piano.');
+    }
+  },
+});
+```
+
+Lancez `/riddle`, et répondez dans le salon. Plusieurs choses se passent sans que vous les écriviez :
+
+- Les messages des bots ne comptent jamais, donc votre bot ne répond pas à sa propre devinette.
+- Pendant qu’il attend, le reste du bot continue : les autres commandes et événements ne sont pas bloqués.
+- Votre fonction a d’abord répondu (`reply()`), puis attendu. Cet ordre compte : Discord veut une réponse à une commande dans les 3 secondes, et une attente peut être plus longue.
+
+`matches` peut être un texte (comparé sans les majuscules et les espaces autour), une expression régulière comme ici, ou une fonction du message. `from: user` ne garde que les messages d’une personne : celle qui a utilisé la commande, pour une question qui lui est posée.
+
+## Attendre un clic
+
+Un bouton a d’habitude son propre `run`, qui fonctionne pendant des semaines. Pour une question posée une fois, il existe une autre façon : envoyer les boutons, puis attendre le clic sur place. Créez `src/commands/coin.ts` :
+
+```ts src/commands/coin.ts
+import { button, command } from 'chapterjs';
+
+export const heads = button({ label: 'Pile' });
+export const tails = button({ label: 'Face' });
+
+export const coin = command({
+  name: 'coin',
+  description: 'Devinez pile ou face',
+  async run({ interaction, user }) {
+    const asked = await interaction.reply({ content: 'Pile ou face ?', components: [heads, tails] });
+    const click = await asked.waitForClick({ from: user, within: '20s' });
+    if (!click) {
+      await interaction.edit({ content: 'Trop tard !', components: [] });
+      return;
+    }
+    const side = Math.random() < 0.5 ? 'pile' : 'face';
+    const guessed = click.is(heads) ? 'pile' : 'face';
+    await click.interaction.update({
+      content: `C’est ${side} : ${guessed === side ? 'gagné !' : 'perdu.'}`,
+      components: [],
+    });
+  },
+});
+```
+
+Les boutons n’ont pas de `run` : rien ne les exécute à part cette attente. `click.is(heads)` dit lequel a été cliqué, et `click.interaction` y répond, comme dans le `run` d’un bouton. Un clic de quelqu’un d’autre n’est pas pris (`from: user`), et une fois que plus rien n’attend, un clic sur ces boutons dit à la personne qu’ils ne sont plus disponibles.
+
+## Points d’attention
+
+- **Une attente vit tant que le bot tourne.** Un redémarrage la termine avec `null`. Pour quelque chose qui doit fonctionner des jours plus tard, donnez au bouton son propre `run`.
+- **Attendre des messages demande l’intent Message Content.** ChapterJS voit `waitForMessage()` dans votre code et le demande ; quand il n’est pas activé dans le Developer Portal, `chapterjs dev` vous le dit, avec le fichier et le lien.
+- **`within` vaut une minute par défaut**, entre 1 seconde et 1 jour.
+- **Répondez d’abord, puis attendez.** Une fonction qui attend avant de répondre reçoit pour vous une réponse « le bot réfléchit ».
+
+## Récapitulatif
+
+- `command({ type: 'message' })` est une commande dans le menu du clic droit d’un message, `type: 'user'` d’une personne.
+- `channel.waitForMessage()` donne le prochain message qui convient (`from`, `matches`), ou `null` après `within` ; `collectMessages()` en rassemble plusieurs.
+- `message.waitForClick()` attend un clic sur ses boutons, `message.waitForReaction()` une réaction.
+
+<CardGroup cols={2}>
+  <Card title="Tâches" icon="clock" href="/fr/tutorial/tasks">
+    Faire faire quelque chose au bot tout seul, régulièrement ou à des heures données.
+  </Card>
+  <Card title="Guide : Attendre une réponse" icon="book-open" href="/fr/waiting">
+    Chaque option, en bref.
+  </Card>
+</CardGroup>

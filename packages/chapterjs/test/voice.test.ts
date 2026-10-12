@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 // The bot in voice, against a fake voice server of Discord: joining,
 // playing in time, pausing, moving, leaving, what Discord closes, and the
 // DAVE side the bot drives (key package, transitions).
@@ -245,6 +246,28 @@ describe('joining a voice channel', () => {
       'Discord did not let the bot join Lounge within 0.5 s.'
     );
     expect(w.guild.voice).toBeNull();
+  });
+
+  it('blames the line that joined when the join ends without the bot in', async () => {
+    const w = await world({ joinTimeout: 500 });
+    w.stopAnswering();
+    // As a file awaits it: the line of the await is the one blamed.
+    const failed = (async () => {
+      try {
+        await w.channel(VOICE).join(); // the line that joined
+      } catch (error) {
+        return error as Error;
+      }
+      return null;
+    })();
+    await new Promise(resolve => setTimeout(resolve, 50));
+    await w.guild.voice?.leave();
+    const error = (await failed)!;
+    expect(error.message).toBe('The bot left before it was in the channel.');
+    const lines = error
+      .stack!.split('\n')
+      .filter(line => line.includes('voice.test.ts'));
+    expect(lines[0]).toContain(`voice.test.ts:${joinLine()}:`);
   });
 
   it('chooses XChaCha20 when the voice server offers no AES', async () => {
@@ -646,3 +669,9 @@ describe('a stage', () => {
 });
 
 export type { VoiceConnection };
+
+/** The line of this file where the test above joins. */
+function joinLine(): number {
+  const source = readFileSync(new URL(import.meta.url), 'utf8').split('\n');
+  return source.findIndex(line => line.includes('// the line that joined')) + 1;
+}

@@ -275,7 +275,9 @@ export default event({
       join(cwd, 'src/events/messageCreate/ping.ts'),
       `import { event } from 'chapterjs';\n\nexport default event(async ({ message }) => {\n  await message.reply(;\n};\n`
     );
-    await cli.waitFor(/✗ src\/events\/messageCreate\/ping\.ts:4 .+/);
+    await cli.waitFor(
+      /✗ src\/events\/messageCreate\/ping\.ts:4 .+\. This line can not be read: look for a bracket, a comma or a quote missing or in excess, here or just before\./
+    );
     await cli.waitFor(
       '⚠ Reloaded with an error: that file keeps running its last working version'
     );
@@ -296,6 +298,122 @@ export default event({
       rawMessage('100000000000000071', '!ping')
     );
     expect(await replies(fake, 2)).toEqual(['pong', 'fixed']);
+  });
+
+  it('names the line of a call refused by Discord that was not awaited, and goes on', async () => {
+    const fake = await world();
+    fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+      body: rawMessage('100000000000000080', 'x'),
+    });
+    fake.discord.on('PUT', `/guilds/${GUILD}/bans/${ALICE}`, {
+      status: 403,
+      body: { code: 50013, message: 'Missing Permissions' },
+    });
+    const cwd = project({
+      'src/ban.ts': `import { event } from 'chapterjs';
+export default event({
+  name: 'messageCreate',
+  async run({ message, guild }) {
+    if (message.content === '!ban') {
+      guild.ban('${ALICE}');
+      return;
+    }
+    if (message.content === '!ping') await message.reply('pong');
+  },
+});
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 1 event loaded');
+    const connection = await connected(fake);
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000070', '!ban')
+    );
+    await cli.waitFor(
+      /✗ src\/ban\.ts:6 Discord refused PUT \/guilds\/\{guild\.id\}\/bans\/\{user\.id\}: Missing Permissions \(50013\)\..*\n {2}This call was not awaited/
+    );
+    // Still running.
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000071', '!ping')
+    );
+    expect(await replies(fake, 1)).toEqual(['pong']);
+    cli.signal('SIGTERM');
+    expect((await cli.exited).code).toBe(0);
+  });
+
+  it('runs every one of a list exported under one name', async () => {
+    const fake = await world();
+    fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+      body: rawMessage('100000000000000080', 'x'),
+    });
+    const cwd = project({
+      'src/many.ts': `import { event } from 'chapterjs';
+export const replies = [
+  event({ name: 'messageCreate', async run({ message }) { if (message.content === '!a') await message.reply('a'); } }),
+  event({ name: 'messageCreate', async run({ message }) { if (message.content === '!b') await message.reply('b'); } }),
+];
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 2 events loaded');
+    const connection = await connected(fake);
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000070', '!a')
+    );
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000071', '!b')
+    );
+    expect((await replies(fake, 2)).sort()).toEqual(['a', 'b']);
+    cli.signal('SIGTERM');
+    await cli.exited;
+  });
+
+  it('keeps a name with what already runs when a new file takes it', async () => {
+    const fake = await world();
+    fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+      body: rawMessage('100000000000000080', 'x'),
+    });
+    // src/z.ts comes after src/a.ts: a new src/a.ts would win by its name.
+    const cwd = project({
+      'src/z.ts': `import { event, store } from 'chapterjs';
+export const seen = store<number>();
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content !== '!count') return;
+    await message.reply(String(await seen.increment('n')));
+  },
+});
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 1 event, 1 store loaded');
+    const connection = await connected(fake);
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000070', '!count')
+    );
+    expect(await replies(fake, 1)).toEqual(['1']);
+
+    writeFileSync(
+      join(cwd, 'src/a.ts'),
+      `import { store } from 'chapterjs';\nexport const seen = store<string>();\n`
+    );
+    await cli.waitFor(
+      '✗ src/a.ts (seen) There is already a store named seen, in src/z.ts: the name of the export is the name of the store, so rename one of them.'
+    );
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000071', '!count')
+    );
+    expect(await replies(fake, 2)).toEqual(['1', '2']);
+    expect(cli.output).not.toContain('✗ src/z.ts');
+    cli.signal('SIGTERM');
+    await cli.exited;
   });
 
   it('reports a handler that throws with its file and line, and goes on', async () => {
@@ -1055,6 +1173,97 @@ describe.skipIf(process.platform === 'win32')(
     > = {
       async default() {},
 
+      async games(fake, connection) {
+        const bob = '100000000000000777';
+        const bobUser = { id: bob, username: 'bob', discriminator: '0' };
+        const asBob = { ...admin, user: bobUser, permissions: '0' };
+        // /duel @bob: Accept and Decline, which only bob may use.
+        ask(
+          fake,
+          connection,
+          slash('1', ['duel'], [{ name: 'opponent', type: 6, value: bob }], {
+            users: { [bob]: bobUser },
+          })
+        );
+        const asked = await waitForAnswer(fake, '1');
+        expect(asked.data).toMatchObject({
+          content: `⚔️ <@${bob}>, alice challenges you to a duel! You have a minute.`,
+          components: [
+            {
+              type: 1,
+              components: [
+                { type: 2, custom_id: 'accept', label: 'Accept' },
+                { type: 2, custom_id: 'decline', label: 'Decline' },
+              ],
+            },
+          ],
+        });
+        // The answer of /duel is the message `ask` made: '19'. Bob accepts.
+        ask(fake, connection, {
+          ...base('2'),
+          member: asBob,
+          type: 3,
+          message: rawMessage('19', ''),
+          data: { custom_id: 'accept', component_type: 2 },
+        });
+        const fought = await waitForAnswer(fake, '2');
+        expect(fought.type).toBe(7);
+        expect(fought.data.content).toMatch(
+          /^🎲 alice rolls [1-6], bob rolls [1-6]\.\n(alice wins!|bob wins!|A draw!)$/
+        );
+
+        // /quiz start, then the answers in the channel until one is right.
+        fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+          body: rawMessage('100000000000000095', ''),
+        });
+        ask(fake, connection, slash('3', ['quiz', 'start']));
+        expect((await waitForAnswer(fake, '3')).data.content).toMatch(
+          /^❓ .* First to answer in 30 seconds wins!$/
+        );
+        for (const [index, answer] of [
+          'Paris',
+          '8',
+          'Jupiter',
+          '1969',
+          'H2O',
+        ].entries()) {
+          connection.dispatch(
+            'MESSAGE_CREATE',
+            rawMessage(`10000000000000060${index}`, answer)
+          );
+        }
+        const won = await waitForRequest(
+          fake,
+          'POST',
+          `/channels/${GENERAL}/messages`
+        );
+        expect(won.body).toMatchObject({
+          content: '🎉 alice found it, 1 point now.',
+        });
+
+        // The menu of a person: right click alice, Apps, Quiz score.
+        ask(fake, connection, {
+          ...base('4'),
+          type: 2,
+          data: {
+            id: '40',
+            name: 'Quiz score',
+            type: 2,
+            target_id: ALICE,
+            resolved: {
+              users: { [ALICE]: admin.user },
+            },
+          },
+        });
+        expect(await waitForAnswer(fake, '4')).toEqual({
+          type: 4,
+          data: {
+            content: 'alice has 1 point, rank 1 on this server.',
+            flags: 64,
+          },
+        });
+      },
+
       async tickets(fake, connection) {
         // /ticket panel posts the embed and its button.
         fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
@@ -1470,9 +1679,10 @@ describe.skipIf(process.platform === 'win32')(
         });
 
         // A template runs on a brand new bot: no privileged intent, except
-        // the community one, which welcomes members and says it needs one.
+        // the community one, which welcomes members, and the games one,
+        // which reads the answers of its quiz: both say they need one.
         const fake = await world({
-          flags: name === 'community' ? ALL_PRIVILEGED : 0,
+          flags: name === 'community' || name === 'games' ? ALL_PRIVILEGED : 0,
           devGuild: {
             // View Channel, Connect, Speak, Send Messages.
             roles: [

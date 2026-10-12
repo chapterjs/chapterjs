@@ -67,6 +67,37 @@ export const siteName = (site: { file: string; export?: string }): string =>
     ? site.file
     : `${site.file} (${site.export})`;
 
+/** What tells one export of the project from another: `src/a.ts#ban`. */
+export const siteKey = (site: { file: string; export: string }): string =>
+  `${site.file}#${site.export}`;
+
+/**
+ * The order in which declarations that can't both be kept (two with one
+ * name) are read, the first one winning: what already ran first (`running`,
+ * the `siteKey`s of the declarations of the last load), so that a file saved
+ * in dev never takes its name from one that works, then by file and export,
+ * so that the choice never depends on the order the files were found in.
+ */
+export function bySite<T extends { file: string; export: string }>(
+  entries: readonly T[],
+  running: ReadonlySet<string> = new Set()
+): T[] {
+  const before = (entry: T): number => (running.has(siteKey(entry)) ? 0 : 1);
+  return [...entries].sort(
+    (a, b) =>
+      before(a) - before(b) ||
+      (a.file === b.file
+        ? a.export < b.export
+          ? -1
+          : a.export > b.export
+            ? 1
+            : 0
+        : a.file < b.file
+          ? -1
+          : 1)
+  );
+}
+
 const SOURCE = /\.(?:ts|mts|js|mjs)$/;
 const DECLARATION = /\.d\.m?ts$/;
 /** Tests next to the code: they are for a test runner, not for the bot. */
@@ -153,7 +184,7 @@ export async function loadFiles(
       try {
         result.modules.push({ file, exports: await importFile(path) });
       } catch (error) {
-        result.failed.push({ file, error });
+        result.failed.push({ file, error: readable(error) });
       }
     })
   );
@@ -162,6 +193,22 @@ export async function loadFiles(
   result.modules.sort(byFile);
   result.failed.sort(byFile);
   return result;
+}
+
+/**
+ * A file Node can't read as TypeScript gets the words of its parser
+ * ("Expected ',', got ';'"): what they mean is said after them. The error
+ * is the same, so its line is still found.
+ */
+function readable(error: unknown): unknown {
+  if (
+    error instanceof SyntaxError &&
+    (error as { code?: unknown }).code === 'ERR_INVALID_TYPESCRIPT_SYNTAX' &&
+    !error.message.includes('This line can not be read')
+  ) {
+    error.message = `${error.message.replace(/\.?$/, '.')} This line can not be read: look for a bracket, a comma or a quote missing or in excess, here or just before.`;
+  }
+  return error;
 }
 
 /** The name of a file, without its folders and its extension. */
@@ -198,20 +245,30 @@ export function readDeclarations<T>(
       export: exported,
       name: exported === 'default' ? baseName(file) : exported,
     };
-    const read = (one: unknown): void => {
+    const read = (one: unknown, at: ExportSite): void => {
       if (seen.has(one)) return;
       seen.add(one);
-      result.loaded.push({ ...site, value: declaration.read(one, site) });
+      result.loaded.push({ ...at, value: declaration.read(one, at) });
     };
     try {
-      if (declaration.is(value)) read(value);
+      if (declaration.is(value)) read(value, site);
       else if (Array.isArray(value) && value.some(declaration.is)) {
         if (!declaration.list) {
           throw new TypeError(
             `This export is a list with a ${declaration.one} in it: export each ${declaration.one} on its own (export const ${site.name} = ...), its name is the name of its export.`
           );
         }
-        for (const one of value) if (declaration.is(one)) read(one);
+        // Each one of the list is told apart by its place in it (`events[2]`),
+        // and read on its own: one that is wrong leaves the others running.
+        value.forEach((one, index) => {
+          if (!declaration.is(one)) return;
+          const at = { ...site, export: `${exported}[${index}]` };
+          try {
+            read(one, at);
+          } catch (error) {
+            result.failed.push({ file, export: at.export, error });
+          }
+        });
       }
     } catch (error) {
       result.failed.push({ file, export: exported, error });

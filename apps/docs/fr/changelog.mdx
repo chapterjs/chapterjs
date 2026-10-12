@@ -3,7 +3,7 @@ title: 'Changelog'
 description: 'Ce qui a changé dans chaque version de ChapterJS'
 ---
 
-`chapterjs`, `create-chapterjs` et `create-chapter` ont toujours le même numéro de version, et les numéros suivent le [versionnage sémantique](https://semver.org) : ce que vos fichiers utilisent (les fonctions de `chapterjs` et leurs options, ce que vos fonctions reçoivent, les fichiers et le `.env` d’un projet, les commandes du CLI) ne change que dans une version majeure, et l’entrée de cette version dit quoi changer dans votre projet. Une version mineure ajoute, un correctif corrige : passer à l’une d’elles ne vous demande rien.
+`chapterjs`, `create-chapterjs` et `create-chapter` partagent un même numéro de version, selon le [versionnage sémantique](https://semver.org) : seule une version majeure vous demande de changer vos fichiers, et son entrée dit quoi.
 
 Seul `chapterjs` vit dans votre projet ; `chapterjs dev` vous prévient quand un plus récent est sorti. Pour le mettre à jour :
 
@@ -27,90 +27,76 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
-<Update label="0.4.0" description="Des stores gardés dans Redis sans rien installer, des compteurs, des classements, et des événements qui donnent ce dont ils parlent et le serveur">
+<Update label="0.4.0" description="Commandes de menu, attente, présence tournante, Redis, classements">
 
-**Ce qu’il faut changer dans vos fichiers.** Chaque événement donne maintenant les deux mêmes choses : ce dont il parle, et le serveur où il s’est produit, `guild` (plus `t`, comme avant). La liste complète est dans un seul tableau : [Ce que donne chaque événement](/fr/reference/events#ce-que-donne-chaque-événement).
+**À changer dans vos fichiers :** chaque événement donne maintenant ce dont il parle, plus `guild`. Voir [Ce que donne chaque événement](/fr/reference/events#ce-que-donne-chaque-événement) ; un fichier écrit à l’ancienne est souligné dans votre éditeur.
 
-- `messageCreate` et `messageUpdate` donnent aussi `guild` : rien à changer.
-- `messageDelete` donne `{ message, guild }` : `messageId` est `message.id`, `channel` est `message.channel`, et le message tel qu’il était est `message.before`.
-- `reactionAdd`, `reactionRemove` : `{ reaction, guild }`, donc `emoji` est `reaction.emoji`, `member` est `reaction.member`, et ainsi de suite. `reactionClear` : `{ reactions, guild }`.
-- `pollVoteAdd`, `pollVoteRemove` : `{ vote, guild }`. `typingStart` : `{ typing, guild }`.
-- `voiceJoin`, `voiceLeave`, `voiceMove`, `voiceUpdate` : `{ voice, guild }` : `member`, `channel` (ou `from` et `to`) sont dans `voice`, et ce qui était `voice` est maintenant `voice.state`.
-- `presenceUpdate` : `{ presence, guild }`, avec `userId`, `user` et `member` dans `presence`. `scheduledEventUserAdd` et `scheduledEventUserRemove` : `{ interest, guild }`.
-- `inviteCreate` ne donne plus `channel` : c’est `invite.channel`. `inviteDelete` donne `{ invite, guild }`, avec `code` et `channel` dans `invite`.
-- `memberLeave` donne `{ user, guild }` : `member` disparaît, et avec lui les 1000 membres par serveur que le bot gardait pour lui. `roleDelete` ne donne plus `roleId` : c’est `role.id`. `threadMemberJoin` ne donne plus `user` (`member.user`), `threadMemberLeave` ne donne plus `user`.
+- [Commandes de menu](/fr/commands/menus) : `command({ type: 'message' | 'user', ... })`, utilisées avec un clic droit.
+- [Attendre une réponse](/fr/waiting) : `waitForMessage()`, `collectMessages()`, `waitForClick()`, `waitForReaction()`.
+- [Présence](/fr/presence#plusieurs-activités) : plusieurs activités tour à tour, des textes qui sont des fonctions.
+- [Stores dans Redis](/fr/storage#dans-redis) : `storage: 'redis'`, avec `REDIS_URL` dans `.env`.
+- Stores : `increment()`, `getMany()`, `setMany()`, `deleteAll()` ; `update()` ne perd plus un changement fait au même moment.
+- [Classements](/fr/rankings) : `ranking()`, un score par membre, toujours dans l’ordre.
+- Un sixième modèle, `games`.
 
-Un fichier encore écrit à l’ancienne est souligné dans votre éditeur, sur le nom qui a bougé.
+**Corrections**
 
-
-Un store peut garder ses données dans Redis : `store<Session>({ storage: 'redis', expires: '1h' })`, et `REDIS_URL` (plus `REDIS_PASSWORD` quand le mot de passe n’y est pas) dans `.env`. Mêmes appels, mêmes clés, même portée et même expiration qu’un store gardé dans un fichier ; seuls les stores qui le disent y vont, chaque valeur une clé lisible (`sessions:<id du serveur>:<clé>`, expirée par Redis lui-même), et `chapterjs dev` écrit chaque clé avec `dev:` devant pour qu’un Redis partagé ne mélange jamais développement et production. Le bot se connecte au démarrage, s’arrête avec la raison quand Redis ne répond pas, et revient tout seul après une panne. Rien à installer : le framework parle à Redis avec Node seul. `chapterjs test` n’a besoin d’aucun Redis. Voir [Stockage](/fr/storage#dans-redis).
-
-Chaque store, dans un fichier ou dans Redis, gagne `increment()` pour les compteurs, `getMany()`, `setMany()` et `deleteAll(prefix)` pour plusieurs valeurs d’un coup. Et `update()` ne perd plus rien quand plusieurs tournent en même temps sur la même clé, dans un processus ou dans plusieurs : avant, deux mises à jour rapprochées pouvaient ne garder qu’un des deux changements. Voir [Ce que fait un store](/fr/storage#ce-que-fait-un-store).
-
-`ranking()` garde un score par membre, toujours dans l’ordre : `xp.add(member.id, 10)`, `xp.top(10)`, `xp.rankOf(member.id)`, le plus haut en premier ou `order: 'lowest'` pour des temps. Par serveur comme un store, dans `data/` ou dans Redis, où c’est un sorted set. Voir [Classements](/fr/rankings).
-
-</Update>
-
-<Update label="0.3.0" description="chapterjs test : votre bot vérifié sans Discord, et des scénarios pour dire ce qu’il doit répondre">
-
-`chapterjs test` fait tourner votre bot contre un Discord en mémoire : un serveur, quelques personnes, pas de token et rien à quoi se connecter. Sans rien écrire, chaque commande, bouton, menu, formulaire, événement et tâche de votre projet est utilisé une fois, avec des valeurs ordinaires et des valeurs difficiles (un texte au plus long, chaque choix, quelqu’un qui est parti…), et doit répondre sans lancer d’erreur : une fonction qui en lance une est signalée avec son fichier et sa ligne, comme dans `chapterjs dev`. Voir [Tester](/fr/testing).
-
-Puis vos scénarios : `scenario('ping answers Pong', async bot => { ... })` dans un fichier `*.test.ts` de `src/`, importé depuis `chapterjs/test`. `bot.use(ping, { who: alice })` utilise une commande comme une personne le ferait, avec des options typées depuis votre fichier ; `bot.click()`, `bot.select()`, `bot.submit()`, `bot.say()`, `bot.join()` et `bot.run()` font le reste, et ce qui revient dit ce que le bot a répondu : `reply.says('Pong').isPublic().hasButton('Confirm')`. Chaque scénario tourne sur un serveur neuf avec des stores vides, et un échec nomme la ligne de votre scénario. Tout ce qu’un scénario peut faire est dans la [référence](/fr/reference/testing).
-
-Chaque modèle a maintenant un script `test` et un fichier de scénarios pour démarrer. Le tutoriel a un chapitre [Tester](/fr/tutorial/testing), avant la compilation.
+- `chapterjs dev` : un second `default: true` dans un nouveau fichier ne retire plus de commandes de Discord.
+- `chapterjs dev` : un nouveau fichier ne peut plus prendre le nom d’un store, d’une commande ou d’un composant qui tourne déjà.
+- Les événements et commandes exportés ensemble dans une liste tournent tous : seul le dernier tournait.
+- Un appel refusé par Discord sans `await` (`member.ban()` sans `await`) n’arrête plus le bot : il est signalé avec sa ligne. `chapterjs test` ne s’arrête plus non plus.
+- Une réponse demandée sans `await` n’est plus signalée comme « finished without answering ».
+- `chapterjs dev` : un enregistrement recharge une seule fois, même quand l’éditeur écrit puis renomme le fichier, et sous Linux les enregistrements suivants ne sont plus ratés.
+- Un message de plus de 5 rangées de boutons et de menus est refusé avant Discord, avec un message clair.
+- `chapterjs test` : chaque cas tourne sur un serveur neuf (un `/ban` ne casse plus les cas suivants), une commande différée n’échoue plus au bout de 5 s, un run bloqué ne bloque plus la suite, et `join()` dit que le vocal n’est pas simulé.
+- `channelCreate`, `channelUpdate`, `channelDelete` : `guild` n’est jamais `null`, et `channel` est celui d’un serveur.
+- Un fichier de store dans `data/` avec une entrée abîmée est refusé avec son nom, au lieu de perdre cette entrée à la prochaine écriture.
+- La forme `zero` d’un pluriel sert pour 0 dans toutes les langues : l’anglais l’ignorait.
+- `reply.opensForm()` accepte un formulaire qui porte des données.
+- `chapterjs test` : le serveur refuse, comme Discord, d’expulser, bannir ou renommer le propriétaire ou quelqu’un au-dessus du bot.
+- Des messages plus clairs : les permissions en mots (« Ban Members »), ce que veulent dire les refus de Discord, les erreurs de syntaxe, Redis qui refuse au démarrage, `--processes` au-delà des shards, le serveur de dev dans `start`.
 
 </Update>
 
-<Update label="0.2.3" description="Stockage, cinq modèles, et un nouveau projet à la version de create chapterjs, exactement">
+<Update label="0.3.0" description="chapterjs test">
 
-Votre bot peut garder ce qu’il apprend : `export const warnings = store<Warning[]>({ expires: '30d' })` déclare un [store](/fr/storage), par serveur sauf `scope: 'global'`, typé par ce qu’il contient, avec une expiration si vous en voulez une. Dans une commande ou un événement, la clé est à vous et le serveur est connu ; ailleurs, `warnings.in(guild)`. Un fichier JSON par store dans `data/`, écrit pour vous, et partagé par chaque processus d’un gros bot.
-
-`create chapterjs` propose maintenant cinq [modèles](/fr/setup/project-structure#modèles). `default` est un fichier, l’événement `ready`, et le tutoriel part de lui. Les autres sont des bots complets : `tickets` (des tickets de support dans des fils privés), `music` (un lecteur avec une file d’attente et des boutons), `community` (cartes de bienvenue, rôles à choisir, chiffres hebdomadaires) et `moderation` (exclusions temporaires, purge, mode lent, verrouillage, et un journal de chaque action). Les exemples `/ping`, `/hello`, `/play` et de modération de l’ancien modèle ont disparu : ce qu’ils montraient est dans les nouveaux et dans le guide.
-
-`create chapterjs` écrit aussi la version exacte de `chapterjs` dans votre `package.json` (`"0.2.3"`, sans `^`) : `pnpm create chapterjs@0.2.3` donne un projet en `chapterjs@0.2.3`, et votre projet ne change de version que quand vous lancez la commande que [`chapterjs dev` vous donne](/fr/run/dev#une-nouvelle-version-de-chapterjs).
+- [`chapterjs test`](/fr/testing) : votre bot vérifié contre un Discord en mémoire, sans token.
+- Les scénarios : `scenario()` dans des fichiers `*.test.ts`, depuis `chapterjs/test`.
+- Chaque modèle a un script `test` et un scénario pour commencer.
 
 </Update>
 
-<Update label="0.2.2" description="Un template par défaut plus léger">
+<Update label="0.2.3" description="Stockage et cinq modèles">
 
-Le projet créé par `create chapterjs` n’embarque plus l’exemple de modération (`/ban`, `/kick`, `/warn`) : il garde `/ping`, `/hello`, `/play`, les deux événements, la présence et les deux langues.
-
-</Update>
-
-<Update label="0.2.1" description="chapterjs dev vous prévient quand une nouvelle version est sortie">
-
-Une fois le bot en ligne, `chapterjs dev` dit quand une version plus récente de `chapterjs` est publiée, avec la commande qui l’installe, écrite pour le gestionnaire de paquets de votre projet. npm est interrogé au plus une fois par jour, et ne retient jamais le bot. Voir [Une nouvelle version de ChapterJS](/fr/run/dev#une-nouvelle-version-de-chapterjs).
+- Les [stores](/fr/storage) : `store()` garde des données d’un redémarrage à l’autre, dans `data/`.
+- Cinq [modèles](/fr/setup/project-structure#modèles) : `default`, `tickets`, `music`, `community`, `moderation`.
+- Un nouveau projet a la version exacte de `chapterjs` de `create chapterjs`.
 
 </Update>
 
-<Update label="0.2.0" description="Vos fichiers, votre ordre : le framework lit ce qu’ils exportent">
+<Update label="0.2.2" description="Un modèle par défaut plus léger">
 
-Plus rien n’est lié à un dossier. Chaque fichier de `src/` est chargé, et ce qu’il exporte de fabriqué avec `command()`, `event()`, `button()`, `select()`, `modal()`, `embed()`, `task()`, `presence()` ou `language()` est ce que le bot fait tourner : un fichier peut déclarer plusieurs choses, et se trouver où vous voulez. Voir [Structure du projet](/fr/setup/project-structure).
-
-- **[Les commandes](/fr/commands)** prennent un `name` : `command({ name: 'ping', ... })`, `'mod ban'` pour une sous-commande. Deux commandes du même nom sont signalées, où qu’elles soient.
-- **[Les événements](/fr/events)** prennent un `name` aussi, qui type ce que reçoit `run` : `event({ name: 'memberJoin', run({ member }) { ... } })`. Les options s’écrivent à côté (`bots: true`, `where: 'dm'`), et une faute dans l’un ou l’autre est soulignée.
-- **[Les composants](/fr/components)** et **[les tâches](/fr/tasks)** sont nommés par leur export : `export const again = button(...)` est le bouton `again`. Déplacer un fichier ne change rien ; renommer l’export, si, comme renommer le fichier le faisait.
-- **[Les langues](/fr/translated-messages)** disent leur `locale` : `language({ locale: 'fr', ... })`, et un deuxième `default: true` est souligné dans les deux fichiers. Une langue peut être déclarée à plusieurs endroits : les textes d’une fonctionnalité vivent à côté d’elle, et `t` les propose tous. Un texte que la langue par défaut n’a pas est pris dans la langue qui l’a, donc un module écrit dans d’autres langues que les vôtres fonctionne quand même.
-- `.chapterjs/` est un seul projet TypeScript pour tout `src/`, et ne contient que ce que le projet ajoute : les fichiers de `public/`, les langues et les commandes. Les dossiers entre parenthèses et les fichiers `_` ne servent plus : un dossier n’est qu’un dossier, et un fichier qui ne déclare rien est à vous.
-
-Les types `EventFile`, `CommandFile`, `ButtonFile`, `SelectFile`, `ModalFile`, `EmbedFile`, `TaskFile`, `PresenceFile` et `LanguageFile` s’appellent maintenant `EventDeclaration`, `CommandDeclaration`, `ButtonDeclaration`, `SelectDeclaration`, `ModalDeclaration`, `EmbedDeclaration`, `TaskDeclaration`, `PresenceDeclaration` et `LanguageDeclaration`.
+- Le modèle par défaut n’a plus l’exemple de modération.
 
 </Update>
 
-<Update label="0.1.4" description="La première version du framework">
+<Update label="0.2.1" description="Avis de nouvelle version">
 
-Un dossier de fichiers devient un bot Discord.
+- `chapterjs dev` dit quand un `chapterjs` plus récent est sorti, avec la commande pour mettre à jour.
 
-- **[Commandes](/fr/commands)** : un fichier de `src/commands/` est une commande slash, avec ses options typées, ses choix, l'[autocomplétion](/fr/commands/options#autocomplétion), ses permissions, ses délais entre deux utilisations et ses traductions.
-- **[Événements](/fr/events)** : un fichier de `src/events/<event>/` s'exécute quand l'événement arrive. Les intents découlent des fichiers que vous écrivez.
-- **[Composants](/fr/components)** : boutons, menus déroulants, formulaires et embeds dans `src/components/`, avec des `data` typées et aucun identifiant à écrire.
-- **[Tâches](/fr/tasks)** : ce que le bot fait de lui-même, à intervalle régulier ou à heure fixe.
-- **[Voix](/fr/voice)** : le bot rejoint un salon vocal et y joue un fichier de `public/`, un fichier envoyé sur Discord ou un lien, chiffré de bout en bout comme Discord le demande.
-- **[Présence](/fr/presence)** : ce que le bot affiche sous son nom, dans `src/presence.ts`.
-- **[Messages traduits](/fr/translated-messages)** : un fichier par langue dans `src/messages/`, et `t` parle la langue de ceux qui lisent.
-- **[`chapterjs dev`](/fr/run/dev)** : le bot sur un serveur de test, chaque fichier rechargé dès que vous l'enregistrez.
-- **[`chapterjs build`](/fr/run/build)** et **[`chapterjs start`](/fr/run/start)** : un seul fichier compilé pour la production, réparti sur plusieurs processus quand le bot est grand.
-- **[`create-chapterjs`](/fr/quickstart)** : un nouveau projet en une commande.
-- **[Node.js 24](/fr/quickstart)** ou plus récent : `chapterjs` et `create-chapterjs` s'arrêtent tout de suite avec une version plus ancienne et disent quoi installer.
+</Update>
+
+<Update label="0.2.0" description="Vos fichiers, votre ordre">
+
+**À changer dans vos fichiers :** les commandes et les événements prennent un `name`, les langues un `locale` ; les composants et les tâches sont nommés par leur export. Les fichiers peuvent être n’importe où dans `src/`. Voir [Structure du projet](/fr/setup/project-structure).
+
+- Les types `…File` deviennent `…Declaration` (`CommandFile` → `CommandDeclaration`…).
+
+</Update>
+
+<Update label="0.1.4" description="Première version">
+
+- Commandes, événements, composants, tâches, vocal, présence et messages traduits.
+- `chapterjs dev`, `build` et `start`, et `create chapterjs`.
 
 </Update>

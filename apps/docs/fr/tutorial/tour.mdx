@@ -39,7 +39,7 @@ export default command({
 });
 ```
 
-Enregistrez : le terminal dit `↻ Reloaded in 12 ms, 1 command, 1 event loaded`, puis `↻ Commands updated on Discord`, et `/ping` est sur votre serveur de test. Rien d’autre ne dit « ceci est une commande » : `command()` le dit. Son `name` est ce que les gens tapent après le `/`, et le fichier dit seulement ce que la commande *fait*. Changez `name` en `'hello'`, et la commande devient `/hello` ; déplacez le fichier vers `src/fun/ping.ts`, et rien ne change.
+Enregistrez : le terminal dit `↻ Reloaded in 12 ms, 1 command, 1 event loaded`, puis `↻ Commands updated on My Server`, et `/ping` est sur votre serveur de test. Rien d’autre ne dit « ceci est une commande » : `command()` le dit. Son `name` est ce que les gens tapent après le `/`, et le fichier dit seulement ce que la commande *fait*. Changez `name` en `'hello'`, et la commande devient `/hello` ; déplacez le fichier vers `src/fun/ping.ts`, et rien ne change.
 
 C’est la règle pour tout ce que le framework fait tourner :
 

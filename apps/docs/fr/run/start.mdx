@@ -134,7 +134,12 @@ La production laisse alors ce serveur tranquille, et vous pouvez continuer à tr
 - ce qui se passe sur votre serveur de test n’est géré que par `chapterjs dev` ;
 - ce qui se passe partout ailleurs, et en messages privés, n’est géré que par `chapterjs start`.
 
-Ils ne répondent jamais à la même chose. Sans `DEV_GUILD_ID`, la production fait tourner chaque serveur, votre serveur de test compris.
+Ils ne répondent jamais à la même chose. Sans `DEV_GUILD_ID`, la production fait tourner chaque serveur, votre serveur de test compris. Avec, le nombre de serveurs le laisse de côté, et le dit :
+
+```text
+✓ Online as my-bot in 128 servers
+ℹ The dev server (DEV_GUILD_ID) is not counted: chapterjs start leaves it to chapterjs dev, and answers nothing there.
+```
 
 Ce qu’un seul bot ne peut pas séparer :
 
@@ -163,7 +168,7 @@ Quand il y en a beaucoup, il les répartit aussi sur **plusieurs processus**, po
 Chaque processus fait tourner votre projet pour sa part des serveurs, et ce qu’il affiche commence par son numéro :
 
 ```text
-[3] ✗ src/commands/poll.ts:8 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+[3] ✗ src/commands/poll.ts:8 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013). The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role.
 ```
 
 - **Rien à configurer.** Un processus est utilisé pour 4 shards, jamais plus que le nombre de processeurs de votre machine. Un bot de moins de quelques milliers de serveurs tourne dans un seul processus.
@@ -192,6 +197,12 @@ yarn start --processes 8
 bun start --processes 8
 ```
 </CodeGroup>
+
+Demander plus de processus que le bot n’a de shards fait tourner un processus par shard, et le dit :
+
+```text
+ℹ --processes 8 asks for more processes than your bot has shards (2): each process runs one at least, so it runs in 2 processes. Discord gives a bot more shards as it joins more servers.
+```
 
 Toute autre chose après `start` est refusée :
 

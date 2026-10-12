@@ -295,6 +295,7 @@ export function createContext(input: { rest: Rest; cache: Cache }): Context {
     self: null,
     messages: null,
     voice: null,
+    waiters: null,
   } as { -readonly [K in keyof Context]: Context[K] };
   ctx.entities = new Entities(ctx);
   return ctx;

@@ -2,7 +2,7 @@
 import { fakeGateway } from '@chapterjs/test-utils';
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GatewayOpcode } from '../src/discord/codes.js';
 import { Shard, type ShardOptions } from '../src/gateway/shard.js';
 import {
@@ -10,6 +10,7 @@ import {
   presenceDeclaration,
 } from '../src/presence/declaration.js';
 import { presence } from '../src/presence/presence.js';
+import { activityAt, PresenceRotation } from '../src/presence/rotation.js';
 import {
   connected,
   project,
@@ -37,7 +38,7 @@ describe('presence()', () => {
     ],
     [
       { default: presence({ game: 'chess' } as never) },
-      '"game" is not something a presence has. It can have: status, activity.',
+      '"game" is not something a presence has. It can have: status, activity, activities.',
     ],
     [
       { default: presence({ status: 'busy' as never }) },
@@ -57,7 +58,7 @@ describe('presence()', () => {
           activity: { type: 'playing', name: 'chess', details: 'x' } as never,
         }),
       },
-      '"details" is not something an activity has. It can have: type, name, url.',
+      '"details" is not something an activity has. It can have: type, name, url, for.',
     ],
     [
       {
@@ -225,6 +226,332 @@ describe('presence()', () => {
     const b = read({ default: presence({}) });
     expect(a.key).toBe(b.key);
     expect(a.key).toBe(JSON.stringify(DEFAULT_PRESENCE));
+  });
+});
+
+describe('several activities', () => {
+  const rotating = (config: unknown) =>
+    read({ default: presence(config as never) });
+
+  it('are read with how long each is shown: 30 s by default, 5 s at least', () => {
+    const loaded = rotating({
+      status: 'idle',
+      activities: [
+        { type: 'watching', name: 'the tickets', for: '1m30s' },
+        { type: 'playing', name: '/help' },
+        {
+          type: 'streaming',
+          name: 'live',
+          url: 'https://twitch.tv/x',
+          for: '5s',
+        },
+      ],
+    });
+    expect(loaded.status).toBe('idle');
+    expect(loaded.activities).toEqual([
+      { type: 'watching', name: 'the tickets', for: 90_000 },
+      { type: 'playing', name: '/help', for: 30_000 },
+      {
+        type: 'streaming',
+        name: 'live',
+        url: 'https://twitch.tv/x',
+        for: 5_000,
+      },
+    ]);
+    // It connects with the first one.
+    expect(loaded.raw.activities).toEqual([{ name: 'the tickets', type: 3 }]);
+  });
+
+  it.each([
+    [
+      { activity: { type: 'playing', name: 'a' }, activities: [] },
+      'A presence has "activity" (one) or "activities" (several, shown in turn), not both.',
+    ],
+    [
+      { activities: [] },
+      '"activities" is empty: give it the activities to show in turn, or leave it out.',
+    ],
+    [
+      { activities: 'chess' },
+      `"activities" is a list of activities, like [{ type: 'playing', name: '/help', for: '30s' }]: got "chess".`,
+    ],
+    [
+      { activities: [{ type: 'playing', name: 'a', for: '4s' }] },
+      '"for" of activity 1 of "activities" is "4s": an activity is shown 5 seconds at least, since Discord takes 5 changes of presence per 20 seconds.',
+    ],
+    [
+      {
+        activities: [
+          { type: 'playing', name: 'a' },
+          { type: 'playing', name: 'b', for: 'soon' },
+        ],
+      },
+      '"for" of activity 2 of "activities" is how long it is shown, a duration',
+    ],
+    [
+      { activities: [{ type: 'playing', name: 'a', for: 30 }] },
+      '"for" of activity 1 of "activities" is how long it is shown, a duration',
+    ],
+    [
+      { activities: [{ type: 'gaming', name: 'a' }] },
+      'The "type" of activity 1 of "activities" is "gaming"',
+    ],
+    [
+      { activities: ['a'] },
+      `activity 1 of "activities" is what the bot is doing, an object: { type: 'playing', name: '/help' }`,
+    ],
+    [
+      {
+        activities: Array.from({ length: 101 }, () => ({
+          type: 'playing',
+          name: 'a',
+        })),
+      },
+      '"activities" has 101 activities: 100 at most.',
+    ],
+  ])('refuses %j', (config, message) => {
+    expect(() => rotating(config)).toThrow(message);
+  });
+
+  it('take functions, and connect with the status alone until they ran', () => {
+    const name = () => 'computed';
+    const loaded = rotating({
+      activities: [{ type: 'playing', name, for: '10s' }],
+    });
+    expect(loaded.raw).toEqual(DEFAULT_PRESENCE);
+    const list = rotating({ status: 'dnd', activities: () => [] });
+    expect(typeof list.activities).toBe('function');
+    expect(list.raw.status).toBe('dnd');
+    // The same code saved again is no change; other code is one.
+    expect(
+      rotating({ activities: [{ type: 'playing', name: () => 'computed' }] })
+        .key
+    ).toBe(
+      rotating({ activities: [{ type: 'playing', name: () => 'computed' }] })
+        .key
+    );
+    expect(
+      rotating({ activities: [{ type: 'playing', name: () => 'other' }] }).key
+    ).not.toBe(
+      rotating({ activities: [{ type: 'playing', name: () => 'computed' }] })
+        .key
+    );
+  });
+
+  it('are picked by the clock, as a cycle from the epoch', () => {
+    const list = [
+      { type: 'playing', name: 'a', for: 10_000 },
+      { type: 'playing', name: 'b', for: 5_000 },
+      { type: 'playing', name: 'c', for: 20_000 },
+    ] as const;
+    expect(activityAt(list, 0)).toEqual({ index: 0, left: 10_000 });
+    expect(activityAt(list, 9_999)).toEqual({ index: 0, left: 1 });
+    expect(activityAt(list, 10_000)).toEqual({ index: 1, left: 5_000 });
+    expect(activityAt(list, 14_000)).toEqual({ index: 1, left: 1_000 });
+    expect(activityAt(list, 15_000)).toEqual({ index: 2, left: 20_000 });
+    // The next cycle starts over, whatever the time.
+    expect(activityAt(list, 35_000 * 1000 + 12_000)).toEqual({
+      index: 1,
+      left: 3_000,
+    });
+  });
+});
+
+describe('the rotation of the presence', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** A rotation on a fake clock, and what it sent. */
+  function rotate(
+    config: unknown,
+    context: Record<string, unknown> | null = {}
+  ) {
+    vi.useFakeTimers({ now: 0 });
+    const sent: string[] = [];
+    const errors: string[] = [];
+    const rotation = new PresenceRotation({
+      apply: raw =>
+        sent.push(
+          `${raw.status} ${raw.activities.map(one => one.state ?? one.name).join(',') || '-'}`
+        ),
+      context: () => (context ? ({ guilds: 3, ...context } as never) : null),
+      onError: error =>
+        errors.push(error instanceof Error ? error.message : String(error)),
+    });
+    rotation.set(read({ default: presence(config as never) }));
+    return { rotation, sent, errors };
+  }
+
+  it('shows each activity for its time, in turn, and starts over', async () => {
+    const { rotation, sent } = rotate({
+      activities: [
+        { type: 'playing', name: 'a', for: '10s' },
+        { type: 'custom', name: 'b', for: '5s' },
+      ],
+    });
+    // Nothing before it is started.
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(sent).toEqual([]);
+    rotation.start();
+    await vi.advanceTimersByTimeAsync(0);
+    // 20 s after the epoch: the cycle is 15 s, so 5 s into "a".
+    expect(sent).toEqual(['online a']);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(sent).toEqual(['online a', 'online b']);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(sent).toEqual(['online a', 'online b', 'online a', 'online b']);
+    rotation.stop();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(sent).toHaveLength(4);
+  });
+
+  it('runs a text function each time its activity comes, with the context', async () => {
+    let calls = 0;
+    const { rotation, sent } = rotate({
+      activities: [
+        {
+          type: 'watching',
+          name: async ({ guilds }: { guilds: number }) =>
+            `${guilds} servers, call ${++calls}`,
+          for: '10s',
+        },
+      ],
+    });
+    rotation.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(sent).toEqual([
+      'online 3 servers, call 1',
+      'online 3 servers, call 2',
+    ]);
+  });
+
+  it('asks a list function again once the list was shown in full', async () => {
+    const lists = [
+      [
+        { type: 'playing', name: 'one', for: '10s' },
+        { type: 'playing', name: 'two', for: '10s' },
+      ],
+      [{ type: 'playing', name: 'three', for: '5s' }],
+    ];
+    let asked = 0;
+    const { rotation, sent } = rotate({
+      activities: () => lists[Math.min(asked++, lists.length - 1)],
+    });
+    rotation.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(sent).toEqual(['online one', 'online two']);
+    expect(asked).toBe(1);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(asked).toBe(2);
+    expect(sent.at(-1)).toBe('online three');
+  });
+
+  it('shows the status alone while a list function gives nothing, and asks again', async () => {
+    let list: unknown[] = [];
+    const { rotation, sent } = rotate({
+      status: 'idle',
+      activities: () => list,
+    });
+    rotation.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent).toEqual(['idle -']);
+    list = [{ type: 'playing', name: 'back' }];
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(sent.at(-1)).toBe('idle back');
+  });
+
+  it('says once what a function does wrong, and keeps the last good text and list', async () => {
+    let fail = false;
+    const { rotation, sent, errors } = rotate({
+      activities: [
+        {
+          type: 'playing',
+          name: () => {
+            if (fail) throw new Error('no data');
+            return 'fine';
+          },
+          for: '5s',
+        },
+        { type: 'playing', name: () => '', for: '5s' },
+      ],
+    });
+    rotation.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent).toEqual(['online fine']);
+    fail = true;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(errors).toEqual([
+      `The "name" of the activity is the text shown under the name of the bot: it can't be empty.`,
+      'no data',
+    ]);
+    // "fine" stays shown: nothing else could be.
+    expect(new Set(sent)).toEqual(new Set(['online fine']));
+
+    let broken = false;
+    const second = rotate({
+      activities: () => {
+        if (broken) return [{ type: 'gaming', name: 'x' }];
+        return [{ type: 'playing', name: 'good' }];
+      },
+    });
+    second.rotation.start();
+    await vi.advanceTimersByTimeAsync(0);
+    broken = true;
+    await vi.advanceTimersByTimeAsync(90_000);
+    expect(second.errors).toEqual([
+      `The "type" of activity 1 of "activities" is "gaming": it can be 'playing', 'streaming', 'listening', 'watching', 'custom', 'competing'.`,
+    ]);
+    expect(second.sent.at(-1)).toBe('online good');
+  });
+
+  it('waits for a bot, and goes back to the default when the presence is removed', async () => {
+    let context: Record<string, unknown> | null = null;
+    vi.useFakeTimers({ now: 0 });
+    const sent: unknown[] = [];
+    const rotation = new PresenceRotation({
+      apply: raw => sent.push(raw),
+      context: () => context as never,
+      onError: () => {},
+    });
+    rotation.set(
+      read({ default: presence({ activity: { type: 'playing', name: 'x' } }) })
+    );
+    rotation.start();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(sent).toEqual([]);
+    context = { guilds: 1 };
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(sent).toHaveLength(1);
+    rotation.set(null);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent.at(-1)).toEqual(DEFAULT_PRESENCE);
+    rotation.stop();
+  });
+
+  it('gives up a slow function when the presence changed meanwhile', async () => {
+    let release!: (text: string) => void;
+    const { rotation, sent } = rotate({
+      activity: {
+        type: 'playing',
+        name: () => new Promise<string>(resolve => (release = resolve)),
+      },
+    });
+    rotation.start();
+    await vi.advanceTimersByTimeAsync(0);
+    rotation.set(
+      read({
+        default: presence({ activity: { type: 'playing', name: 'new' } }),
+      })
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    release('old');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(sent).toEqual(['online new']);
+    rotation.stop();
   });
 });
 
@@ -415,6 +742,146 @@ export default command({ name: 'ping', description: 'Pong', run({ interaction })
     expect((identify.d as { presence?: unknown }).presence).toBeUndefined();
     cli.signal('SIGTERM');
     await cli.exited;
+  });
+});
+
+describe('chapterjs dev, with functions', () => {
+  it('shows what the functions give, and says once what they do wrong, with the line', async () => {
+    const fake = await world();
+    const cwd = project({
+      'src/presence.ts': `import { presence } from 'chapterjs';
+export default presence({
+  status: 'idle',
+  activities: [
+    { type: 'watching', name: async ({ guilds }) => \`\${guilds} servers\`, for: '5s' },
+    { type: 'playing', name: () => { throw new Error('nothing to show'); }, for: '5s' },
+  ],
+});
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ a presence loaded');
+    const connection = await connected(fake);
+    // The dev bot runs one server.
+    const update = await connection.waitFor(
+      payload =>
+        payload.op === GatewayOpcode.PresenceUpdate &&
+        JSON.stringify(payload.d).includes('servers'),
+      12_000
+    );
+    expect(update.d).toEqual({
+      since: null,
+      activities: [{ name: '1 servers', type: 3 }],
+      status: 'idle',
+      afk: false,
+    });
+    await cli.waitFor('✗ src/presence.ts:6 nothing to show');
+    await tick(5_500);
+    expect(cli.output.match(/nothing to show/g)).toHaveLength(1);
+    cli.signal('SIGTERM');
+    await cli.exited;
+  }, 30_000);
+
+  it('are typed: one activity or several, and what the functions receive and give', async () => {
+    const { cpSync, symlinkSync } = await import('node:fs');
+    const { spawnSync } = await import('node:child_process');
+    const { packageDir } = await import('./dev-helpers.js');
+    const fake = await world();
+    const cwd = project({
+      'src/ok.ts': `import { presence, type Activity } from 'chapterjs';
+const list: Activity[] = [{ type: 'playing', name: 'a', for: '1m' }];
+export const a = presence({ activities: async ({ guilds }) => [...list, { type: 'watching', name: String(guilds) }] });
+export const b = presence({ activity: { type: 'custom', name: ({ guilds }) => \`\${guilds + 1}\` } });
+`,
+      'src/both.ts': `import { presence } from 'chapterjs';
+export default presence({ activity: { type: 'playing', name: 'a' }, activities: [] });
+`,
+      'src/for.ts': `import { presence } from 'chapterjs';
+export default presence({ activities: [{ type: 'playing', name: 'a', for: 30 }] });
+`,
+      'src/text.ts': `import { presence } from 'chapterjs';
+export default presence({ activity: { type: 'playing', name: () => 42 } });
+`,
+    });
+    cpSync(
+      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(cwd, 'tsconfig.json')
+    );
+    symlinkSync(
+      join(packageDir, 'node_modules/@types'),
+      join(cwd, 'node_modules/@types'),
+      'dir'
+    );
+    await runDev(cwd, fake, ['sync']).exited;
+    const result = spawnSync(
+      join(packageDir, 'node_modules/.bin/tsc'),
+      ['-b'],
+      {
+        cwd,
+        encoding: 'utf8',
+      }
+    );
+    const errors = result.stdout
+      .split('\n')
+      .filter(line => line.includes('error TS'))
+      .map(line => line.replace(/\(\d+,\d+\).*/, ''))
+      .sort();
+    expect([...new Set(errors)]).toEqual([
+      'src/both.ts',
+      'src/for.ts',
+      'src/text.ts',
+    ]);
+  });
+});
+
+describe('chapterjs test', () => {
+  it('runs each function of the presence once, and reports what throws', async () => {
+    const { spawnSync } = await import('node:child_process');
+    const { bin } = await import('./dev-helpers.js');
+    const run = (files: Record<string, string>) => {
+      const result = spawnSync(process.execPath, [bin, 'test'], {
+        cwd: project(files),
+        encoding: 'utf8',
+        env: { PATH: process.env.PATH ?? '', NO_COLOR: '1' },
+      });
+      return { code: result.status, output: result.stdout + result.stderr };
+    };
+    const broken = run({
+      'src/presence.ts': `import { presence } from 'chapterjs';
+export default presence({
+  activities: async ({ guilds }) => [
+    { type: 'watching', name: \`\${guilds} servers\` },
+    { type: 'playing', name: () => { throw new Error('no data'); } },
+  ],
+});
+`,
+    });
+    expect(broken.code).toBe(1);
+    expect(broken.output).toContain(
+      '✗ Checked src/presence.ts: the presence failed\n  src/presence.ts:5 no data'
+    );
+    const wrong = run({
+      'src/presence.ts': `import { presence } from 'chapterjs';
+export default presence({ activities: () => [{ type: 'gaming', name: 'x' }] as never });
+`,
+    });
+    expect(wrong.output).toContain(
+      'The "type" of activity 1 of "activities" is "gaming"'
+    );
+    // Nothing to run: nothing to check.
+    const plain = run({
+      'src/presence.ts': `import { presence } from 'chapterjs';
+export default presence({ activity: { type: 'playing', name: 'x' } });
+`,
+    });
+    expect(plain.output).not.toContain('Checked');
+    const fine = run({
+      'src/presence.ts': `import { presence } from 'chapterjs';
+export default presence({ activity: { type: 'playing', name: async () => 'ok' } });
+`,
+    });
+    expect(fine.code).toBe(0);
+    expect(fine.output).toContain('✓ Checked every file once: 1 check');
   });
 });
 

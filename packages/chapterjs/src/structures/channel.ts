@@ -1,3 +1,11 @@
+import {
+  personId,
+  readMatches,
+  readWithin,
+  waitFor,
+  type CollectMessagesOptions,
+  type WaitForMessageOptions,
+} from './wait.js';
 import { Limits } from '../discord/api.js';
 import type { CacheStore } from '../cache/store.js';
 import {
@@ -231,6 +239,18 @@ export interface TextBasedMethods {
    * @see https://docs.discord.com/developers/resources/message#get-channel-pins
    */
   fetchPins(): Promise<Message[]>;
+  /**
+   * Waits for the next message of the channel that fits: of a person
+   * (`from`), saying something (`matches`). Anyone's but a bot's by
+   * default. Resolves with the message, or `null` when `within` (one
+   * minute by default) passed first. A restart of the bot ends the wait.
+   */
+  waitForMessage(options?: WaitForMessageOptions): Promise<Message | null>;
+  /**
+   * Gathers the messages of the channel that fit, until `within` (one
+   * minute by default) passed or `max` came. Resolves with them, in order.
+   */
+  collectMessages(options?: CollectMessagesOptions): Promise<Message[]>;
 }
 
 const textBasedMethods: TextBasedMethods &
@@ -327,7 +347,46 @@ const textBasedMethods: TextBasedMethods &
       before = last.pinned_at;
     }
   },
+
+  async waitForMessage(options = {}) {
+    const [message] = await waitForMessages(this, options, 1);
+    return message ?? null;
+  },
+
+  collectMessages(options = {}) {
+    const { max } = options;
+    if (max !== undefined && (!Number.isInteger(max) || max < 1)) {
+      throw new RangeError(
+        `"max" is how many messages to gather at most, a whole number from 1: got ${max}.`
+      );
+    }
+    return waitForMessages(this, options, max ?? Infinity);
+  },
 };
+
+/**
+ * The next messages of a channel that fit the options: what
+ * `waitForMessage()` and `collectMessages()` share.
+ */
+function waitForMessages(
+  channel: Channel,
+  options: WaitForMessageOptions,
+  max: number
+): Promise<Message[]> {
+  const within = readWithin(options.within);
+  const from = personId(options.from);
+  const says = readMatches(options.matches);
+  return waitFor<Message>(
+    channel,
+    'message',
+    message =>
+      message.channelId === channel.id &&
+      (from ? message.author.id === from : !message.author.bot) &&
+      says(message),
+    within,
+    max
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Channels of a server

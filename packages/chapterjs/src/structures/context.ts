@@ -3,6 +3,7 @@ import type { Snowflake } from '../discord/types/common.js';
 import type { LoadedMessages } from '../messages/translate.js';
 import type { Rest } from '../rest/rest.js';
 import type { VoiceManager } from '../voice/connection.js';
+import type { Waiters } from '../waiting/waiters.js';
 import type { Entities } from './entities.js';
 
 /**
@@ -20,6 +21,8 @@ export interface Context {
   messages: LoadedMessages | null;
   /** Where the bot is in voice; `null` outside a running bot. */
   voice: VoiceManager | null;
+  /** What the files are waiting for; `null` outside a running bot. */
+  waiters: Waiters | null;
 }
 
 /** The identity of the bot, for actions that need it. */

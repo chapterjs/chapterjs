@@ -447,6 +447,21 @@ describe('the file backend', () => {
     await expect(backend.get('broken', ['a'])).rejects.toThrow(
       'is not a file ChapterJS wrote'
     );
+    // An entry of another shape is said, never dropped without a word the
+    // next time the file is written.
+    for (const [name, entries] of [
+      ['novalue', '[[["k"]]]'],
+      ['badkey', '[["k", 1, null]]'],
+      ['emptykey', '[[[], 1, null]]'],
+      ['badexpiry', '[[["k"], 1, "soon"]]'],
+    ] as const) {
+      const text = `{"version":1,"entries":${entries}}`;
+      writeFileSync(join(dir, `${name}.json`), text);
+      await expect(backend.get(name, ['k'])).rejects.toThrow(
+        'is not a file ChapterJS wrote'
+      );
+      expect(readFileSync(join(dir, `${name}.json`), 'utf8')).toBe(text);
+    }
     await backend.close();
   });
 
@@ -1302,6 +1317,9 @@ export default event({
         const fake = await world();
         const { code, output } = await runDev(cwd, fake).exited;
         expect(output).toMatch(message);
+        // Said once, as what stops the bot: never "trying again".
+        expect(output).not.toContain('⚠');
+        expect(output).not.toContain('Trying again');
         expect(code).toBe(1);
         expect(output).not.toContain('Connected');
         expect(fake.gateway.connections).toEqual([]);

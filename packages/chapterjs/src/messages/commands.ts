@@ -52,6 +52,8 @@ export function translateCommand(
   command: LoadedCommand,
   messages: LoadedMessages | null
 ): TranslatedCommand {
+  // A menu command has its name and translations in its file, always.
+  if (command.type !== 'slash') return { command, failed: [] };
   const path = command.path.join(' ');
   const name = commandName(command.path);
   const failed: FailedFile[] = [];

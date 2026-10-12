@@ -10,7 +10,7 @@ import {
 } from '../discord/types/application-command.js';
 import { ApplicationIntegrationType } from '../discord/types/application.js';
 import { InteractionContextType } from '../discord/types/interaction.js';
-import { siteName } from '../loader/loader.js';
+import { bySite, siteName } from '../loader/loader.js';
 import type { LoadedOption } from './declaration.js';
 import type { CommandOption } from './command.js';
 import type { Locale } from '../discord/types/common.js';
@@ -122,47 +122,91 @@ export const commandName = (path: readonly string[]): string =>
   `/${path.join(' ')}`;
 
 /**
+ * A command as messages name it: `/mod ban` for a slash command, `the
+ * message menu "Report"` for a menu command.
+ */
+export const describeCommand = (
+  command: Pick<LoadedCommand, 'type' | 'path'>
+): string =>
+  command.type === 'slash'
+    ? commandName(command.path)
+    : `the ${command.type} menu "${command.path[0]}"`;
+
+/** The same text, starting with a capital: the start of a sentence. */
+export const capitalize = (text: string): string =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * What tells one command from another: its path for a slash command, its
+ * type and name for a menu command (Discord lets a slash command, a
+ * message menu and a user menu share a name).
+ */
+export const commandKey = (
+  command: Pick<LoadedCommand, 'type' | 'path'>
+): string =>
+  command.type === 'slash'
+    ? command.path.join(' ')
+    : `${command.type}:${command.path[0]}`;
+
+/**
+ * How many menu commands of each type Discord accepts, for everyone and
+ * in each server.
+ * @see https://docs.discord.com/developers/interactions/application-commands#registering-a-command
+ */
+export const MAX_MENUS = 15;
+
+const MENU_TYPES = {
+  user: ApplicationCommandType.User,
+  message: ApplicationCommandType.Message,
+} as const;
+
+/**
  * Finds the declarations that can't be commands together, and leaves them
  * out:
- * - two commands with the same name;
+ * - two commands with the same name (and type);
  * - a command that also has subcommands: Discord only lets people use the
- *   subcommands.
+ *   subcommands;
+ * - a menu command beyond the 15 of its type Discord accepts.
  */
-export function findConflicts(entries: readonly CommandEntry[]): {
+export function findConflicts(
+  entries: readonly CommandEntry[],
+  running?: ReadonlySet<string>
+): {
   valid: CommandEntry[];
   conflicts: CommandConflict[];
 } {
   const conflicts: CommandConflict[] = [];
   const seen = new Map<string, CommandEntry>();
-  const unique = [...entries]
-    .sort((a, b) =>
-      a.file === b.file
-        ? a.export < b.export
-          ? -1
-          : 1
-        : a.file < b.file
-          ? -1
-          : 1
-    )
-    .filter(entry => {
-      const key = entry.command.path.join(' ');
-      const first = seen.get(key);
-      if (!first) {
-        seen.set(key, entry);
-        return true;
-      }
+  const unique = bySite(entries, running).filter(entry => {
+    const key = commandKey(entry.command);
+    const first = seen.get(key);
+    if (!first) {
+      seen.set(key, entry);
+      return true;
+    }
+    conflicts.push({
+      file: entry.file,
+      export: entry.export,
+      message: `${capitalize(describeCommand(entry.command))} is already declared in ${siteName(first)}: two ${entry.command.type === 'slash' ? 'commands' : `${entry.command.type} menu commands`} can't have the same name.`,
+    });
+    return false;
+  });
+  const menus = { user: 0, message: 0 };
+  const valid = unique.filter(entry => {
+    const { path, type } = entry.command;
+    if (type !== 'slash') {
+      if (++menus[type] <= MAX_MENUS) return true;
       conflicts.push({
         file: entry.file,
         export: entry.export,
-        message: `${commandName(entry.command.path)} is already declared in ${siteName(first)}: two commands can't have the same name.`,
+        message: `${capitalize(describeCommand(entry.command))} is one ${type} menu command too many: Discord accepts ${MAX_MENUS} at most. Remove one, or make it a slash command (no "type").`,
       });
       return false;
-    });
-  const valid = unique.filter(entry => {
-    const { path } = entry.command;
+    }
     const child = unique.find(
       other =>
         other !== entry &&
+        other.command.type === 'slash' &&
         other.command.path.length > path.length &&
         path.every((part, index) => other.command.path[index] === part)
     );
@@ -186,7 +230,8 @@ export const privateOnly = (entries: readonly CommandEntry[]): CommandEntry[] =>
   entries.filter(entry => entry.command.where === 'dm');
 
 /**
- * What to register for a set of commands. `guild` is for commands of one
+ * What to register for a set of commands: the slash commands, then the
+ * menu commands. `guild` is for commands of one
  * server (dev), where Discord takes no contexts: the commands that only
  * work in private messages are left out, they could never run there.
  *
@@ -219,13 +264,18 @@ export function buildCommands(
     );
 
   const roots = new Map<string, LoadedCommand[]>();
+  const menus: LoadedCommand[] = [];
   for (const { command } of entries) {
     if (guild && command.where === 'dm') continue;
+    if (command.type !== 'slash') {
+      menus.push(command);
+      continue;
+    }
     const list = roots.get(command.path[0]!) ?? [];
     list.push(command);
     roots.set(command.path[0]!, list);
   }
-  return [...roots]
+  const slash = [...roots]
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([name, commands]) => {
       const [first] = commands;
@@ -251,14 +301,7 @@ export function buildCommands(
                 integration_types: [ApplicationIntegrationType.GuildInstall],
                 // A command is offered wherever one of its subcommands
                 // works; each one refuses the place it does not work in.
-                contexts: [
-                  ...(commands.some(command => command.where !== 'dm')
-                    ? [InteractionContextType.Guild]
-                    : []),
-                  ...(commands.some(command => command.where !== 'guild')
-                    ? [InteractionContextType.BotDm]
-                    : []),
-                ],
+                contexts: contextsOf(commands),
               }),
           ...(commands.some(command => command.nsfw) ? { nsfw: true } : {}),
         } as CommandPayload,
@@ -292,4 +335,49 @@ export function buildCommands(
       payload.options = options;
       return payload;
     });
+  return [
+    ...slash,
+    ...menus.sort(byTypeAndName).map(menu => toMenu(menu, guild)),
+  ];
 }
+
+/** Menu commands in a stable order: by type, then by name. */
+const byTypeAndName = (a: LoadedCommand, b: LoadedCommand): number =>
+  commandKey(a) < commandKey(b) ? -1 : 1;
+
+/**
+ * What Discord registers for a menu command: a name and no description
+ * ("The `description` field is not allowed when creating user commands"),
+ * nor options.
+ * @see https://docs.discord.com/developers/interactions/application-commands#user-commands
+ * @see https://docs.discord.com/developers/interactions/application-commands#message-commands
+ */
+function toMenu(command: LoadedCommand, guild: boolean): CommandPayload {
+  const names = localized(command.names);
+  return {
+    type: MENU_TYPES[command.type as keyof typeof MENU_TYPES],
+    name: command.path[0]!,
+    ...(names ? { name_localizations: names } : {}),
+    default_member_permissions:
+      command.permissions === 0n ? null : String(command.permissions),
+    ...(guild
+      ? {}
+      : {
+          integration_types: [ApplicationIntegrationType.GuildInstall],
+          contexts: contextsOf([command]),
+        }),
+    ...(command.nsfw ? { nsfw: true } : {}),
+  } as CommandPayload;
+}
+
+/** Where Discord offers a command: wherever one of these works. */
+const contextsOf = (
+  commands: readonly LoadedCommand[]
+): InteractionContextType[] => [
+  ...(commands.some(command => command.where !== 'dm')
+    ? [InteractionContextType.Guild]
+    : []),
+  ...(commands.some(command => command.where !== 'guild')
+    ? [InteractionContextType.BotDm]
+    : []),
+];

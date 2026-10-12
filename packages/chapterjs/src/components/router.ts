@@ -36,6 +36,7 @@ import { remember } from '../structures/known.js';
 import { toCamelCase } from '../util/case.js';
 import type { LoadedComponent } from './declaration.js';
 import { decodeCustomId, readData } from './custom-id.js';
+import { componentStateOf } from './declared.js';
 import type { LoadedField } from './modal.js';
 import { SELECT_TYPES } from './select.js';
 
@@ -195,6 +196,33 @@ export class ComponentRouter {
       this.#options.onError(file, error);
       return refuse(interaction, 'failed', { what });
     }
+    // A click a function of the files waits for (`message.waitForClick()`)
+    // is theirs: the `run` of the component does not run.
+    if (component.kind !== 'modal' && ctx.waiters?.wants('click')) {
+      const click = Object.freeze({
+        messageId: message!.id,
+        interaction: interaction as ComponentInteraction,
+        user,
+        member: place.member ?? null,
+        name,
+        data: Object.freeze(values),
+        values: Object.freeze([
+          ...((data as RawMessageComponentData).values ?? []),
+        ]),
+        is: (declared: unknown) => {
+          const state = componentStateOf(declared);
+          return state?.kind === component.kind && state.bound?.name === name;
+        },
+      });
+      if (ctx.waiters.offer('click', click)) {
+        return this.#waited(interaction as ComponentInteraction);
+      }
+    }
+    if (!component.run) {
+      // Only waited for, and nothing waits any more.
+      return refuse(interaction, 'gone', { what });
+    }
+
     const context = Object.freeze({
       interaction,
       user,
@@ -229,6 +257,21 @@ export class ComponentRouter {
       unanswered: `finished without answering: the person sees "This interaction failed". Call interaction.update() or interaction.reply() in run${component.kind === 'modal' ? '' : ', or interaction.deferUpdate() to change nothing'}.`,
       run: () => (component.run as (context: object) => unknown)(context),
     });
+  }
+
+  /**
+   * A click taken by a wait: the files answer it where they waited. When
+   * they did not after 2 seconds, nothing changes on screen
+   * (`deferUpdate()`), so the person never sees "This interaction failed".
+   */
+  #waited(interaction: ComponentInteraction): Promise<void> {
+    const timer = setTimeout(() => {
+      if (!interaction.answered && !interaction.deferred) {
+        interaction.deferUpdate().catch(() => {});
+      }
+    }, this.#options.deferAfter ?? 2000);
+    timer.unref();
+    return Promise.resolve();
   }
 
   /** What the person picked in a menu, as structures where it applies. */

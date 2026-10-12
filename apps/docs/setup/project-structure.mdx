@@ -24,7 +24,7 @@ A project made with `create chapterjs`, from the `default` template, looks like 
 
 ## Templates
 
-`create chapterjs` offers five templates. `default` is preselected: one file, and the rest of this site to grow it. The others are complete bots: read them once you know the framework, or start from one.
+`create chapterjs` offers six templates. `default` is preselected: one file, and the rest of this site to grow it. The others are complete bots: read them once you know the framework, or start from one.
 
 | Template     | What it is                                                                                                                                                         |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -33,8 +33,9 @@ A project made with `create chapterjs`, from the `default` template, looks like 
 | `music`      | A music player in voice: `/play` with a file or a link, a queue per server, `/queue`, `/leave`, and pause, skip and stop buttons under "Now playing".            |
 | `community`  | A welcome card when someone joins, a goodbye when they leave, `/roles` to pick roles from a menu, and a weekly task posting the numbers of the server.           |
 | `moderation` | `/timeout` and `/untimeout`, `/purge`, `/slowmode`, `/lock` and `/unlock`, with the permissions each one needs, and a log of every moderation action in `#mod-log`. |
+| `games`      | `/quiz start` asks a question and the first right answer in the channel wins a point, `/duel` waits for the click of who was challenged, a menu command on a person shows their score and one on a message challenges its author, and a presence that takes turns. |
 
-Every template but `default` has its texts in two languages (`en-US` and `fr`) and a presence. `community` needs the Server Members Intent, to know who joins: `chapterjs dev` says where to enable it.
+Every template but `default` has its texts in two languages (`en-US` and `fr`) and a presence. `community` needs the Server Members Intent, to know who joins, and `games` the Message Content Intent, to read the answers of its quiz: `chapterjs dev` says where to enable them.
 
 ## `src/`: what a file exports says what it is
 

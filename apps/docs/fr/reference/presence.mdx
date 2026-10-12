@@ -37,7 +37,15 @@ Ce que renvoie `presence()` : une déclaration que le framework trouve dans les 
 
 ## PresenceConfig
 
-Ce qu’un fichier donne à `presence()`.
+```ts
+type PresenceConfig = SinglePresenceConfig | RotatingPresenceConfig;
+```
+
+Ce qu’un fichier donne à `presence()` : `activity` pour une seule, ou `activities` pour plusieurs affichées tour à tour.
+
+### SinglePresenceConfig
+
+Une présence avec une activité, ou aucune.
 
 <ResponseField name="status" type="PresenceStatusName">
   Le statut du bot. `'online'` par défaut.
@@ -47,6 +55,19 @@ Ce qu’un fichier donne à `presence()`.
   Ce que fait le bot. Rien par défaut.
 </ResponseField>
 
+### RotatingPresenceConfig
+
+Une présence dont les activités s’affichent tour à tour.
+
+<ResponseField name="status" type="PresenceStatusName">
+  Le statut du bot. `'online'` par défaut.
+</ResponseField>
+
+<ResponseField name="activities" type="Activities" required>
+  Plusieurs activités, affichées l’une après l’autre, chacune pendant son
+  `for` : une liste, ou une fonction qui la donne.
+</ResponseField>
+
 ### PresenceStatusName
 
 ```ts
@@ -54,6 +75,16 @@ type PresenceStatusName = 'online' | 'idle' | 'dnd' | 'invisible';
 ```
 
 Le statut du bot : `'online'` (vert), `'idle'` (orange), `'dnd'` (rouge, « ne pas déranger ») ou `'invisible'` (affiché hors ligne).
+
+## Activities
+
+```ts
+type Activities =
+  | readonly Activity[]
+  | ((context: PresenceContext) => readonly Activity[] | Promise<readonly Activity[]>);
+```
+
+Les activités affichées tour à tour : une liste, ou une fonction qui la donne (éventuellement après une promesse, depuis un store par exemple), exécutée de nouveau chaque fois que la liste a été affichée en entier.
 
 ## Activity
 
@@ -69,8 +100,14 @@ Une activité qui n’est pas un stream.
   `'custom'`.
 </ResponseField>
 
-<ResponseField name="name" type="string" required>
+<ResponseField name="name" type="ActivityText" required>
   Ce qui est affiché après le type (ou seul avec `'custom'`).
+</ResponseField>
+
+<ResponseField name="for" type="Duration">
+  Combien de temps l’activité s’affiche avant la suivante, 5 secondes au
+  minimum : `'30s'`, `'2m'`. 30 secondes par défaut. Seule, c’est la fréquence
+  à laquelle un `name` qui est une fonction s’exécute de nouveau.
 </ResponseField>
 
 ### ActivityKind
@@ -86,13 +123,41 @@ Un stream : « Streame _name_ », avec un lien vers lui.
 
 <ResponseField name="type" type="'streaming'" required></ResponseField>
 
-<ResponseField name="name" type="string" required>
+<ResponseField name="name" type="ActivityText" required>
   Ce qui est affiché après « Streame ».
 </ResponseField>
 
 <ResponseField name="url" type="string" required>
   Le stream : Discord n’accepte qu’un lien `https://twitch.tv/` ou
   `https://youtube.com/`.
+</ResponseField>
+
+<ResponseField name="for" type="Duration">
+  Combien de temps l’activité s’affiche avant la suivante, 5 secondes au
+  minimum : `'30s'`, `'2m'`. 30 secondes par défaut. Seule, c’est la fréquence
+  à laquelle un `name` qui est une fonction s’exécute de nouveau.
+</ResponseField>
+
+### ActivityText
+
+```ts
+type ActivityText =
+  string | ((context: PresenceContext) => string | Promise<string>);
+```
+
+Le texte d’une activité : un texte, ou une fonction qui le donne (éventuellement après une promesse), exécutée chaque fois que l’activité s’affiche.
+
+## PresenceContext
+
+Ce que reçoit une fonction de la présence, à chaque exécution : le nombre de serveurs où est le bot, et les textes des fichiers de langue dans la langue par défaut.
+
+<ResponseField name="guilds" type="number" required>
+  Le nombre de serveurs où est le bot, tous processus confondus.
+</ResponseField>
+
+<ResponseField name="t" type="Translator">
+  Les textes des fichiers de langue, dans la langue par défaut. Seulement quand
+  le projet a des fichiers de langue.
 </ResponseField>
 
 [Documentation de Discord](https://docs.discord.com/developers/events/gateway-events#update-presence)
