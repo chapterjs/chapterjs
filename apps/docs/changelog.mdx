@@ -27,6 +27,30 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
+<Update label="0.4.0" description="Stores kept in Redis with nothing to install, counters, rankings, and events that give what they are about and the server">
+
+**What to change in your files.** Every event now gives the same two things: what it is about, and the server it happened in, `guild` (plus `t`, as before). The full list is in one table: [What each event gives](/reference/events#what-each-event-gives).
+
+- `messageCreate` and `messageUpdate` also give `guild`: nothing to change.
+- `messageDelete` gives `{ message, guild }`: `messageId` is `message.id`, `channel` is `message.channel`, and the message as it was is `message.before`.
+- `reactionAdd`, `reactionRemove`: `{ reaction, guild }`, so `emoji` is `reaction.emoji`, `member` is `reaction.member`, and so on. `reactionClear`: `{ reactions, guild }`.
+- `pollVoteAdd`, `pollVoteRemove`: `{ vote, guild }`. `typingStart`: `{ typing, guild }`.
+- `voiceJoin`, `voiceLeave`, `voiceMove`, `voiceUpdate`: `{ voice, guild }`: `member`, `channel` (or `from` and `to`) are in `voice`, and what was `voice` is now `voice.state`.
+- `presenceUpdate`: `{ presence, guild }`, with `userId`, `user` and `member` in `presence`. `scheduledEventUserAdd` and `scheduledEventUserRemove`: `{ interest, guild }`.
+- `inviteCreate` no longer gives `channel`: it is `invite.channel`. `inviteDelete` gives `{ invite, guild }`, with `code` and `channel` in `invite`.
+- `memberLeave` gives `{ user, guild }`: `member` is gone, and with it the 1000 members per server the bot kept for it. `roleDelete` no longer gives `roleId`: it is `role.id`. `threadMemberJoin` no longer gives `user` (`member.user`), `threadMemberLeave` no longer gives `user`.
+
+A file still written the old way is underlined in your editor, on the name that moved.
+
+
+A store can keep its data in Redis: `store<Session>({ storage: 'redis', expires: '1h' })`, and `REDIS_URL` (plus `REDIS_PASSWORD` when the password is not in it) in `.env`. Same calls, same keys, same scope and expiration as a store kept in a file; only the stores that say so go there, each value one readable key (`sessions:<server id>:<key>`, expired by Redis itself), and `chapterjs dev` writes every key with `dev:` in front so a shared Redis never mixes development and production. The bot connects when it starts, stops with the reason when Redis does not answer, and comes back by itself after an outage. Nothing to install: the framework speaks to Redis on Node alone. `chapterjs test` needs no Redis. See [Storage](/storage#in-redis).
+
+Every store, in a file or in Redis, gets `increment()` for counters, `getMany()`, `setMany()` and `deleteAll(prefix)` for several values at once. And `update()` now loses nothing when several run at once on the same key, in one process or several: before, two updates close together could keep only one of the two changes. See [What a store does](/storage#what-a-store-does).
+
+`ranking()` keeps a score per member, always in order: `xp.add(member.id, 10)`, `xp.top(10)`, `xp.rankOf(member.id)`, the highest first or `order: 'lowest'` for times. Per server like a store, in `data/` or in Redis, where it is a sorted set. See [Rankings](/rankings).
+
+</Update>
+
 <Update label="0.3.0" description="chapterjs test: your bot checked without Discord, and scenarios to say what it should answer">
 
 `chapterjs test` runs your bot against a Discord in memory: one server, a few people, no token and nothing to connect to. With nothing written, every command, button, menu, form, event and task of your project is used once, with ordinary values and with hard ones (a text at its longest, each choice, someone who left...), and must answer without throwing: a function that throws is reported with its file and line, like in `chapterjs dev`. See [Testing](/testing).

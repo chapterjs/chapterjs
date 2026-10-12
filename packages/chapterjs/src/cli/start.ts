@@ -3,6 +3,8 @@
 // large bot is spread over several processes by itself.
 
 import { IpcStoreBackend } from '../store/ipc-backend.js';
+import { NowhereToKeepError } from '../store/backend.js';
+import { checkRedis, describeRedisStores, redisStores } from './redis.js';
 import { registerCommands } from '../commands/register.js';
 import { buildCommands } from '../commands/tree.js';
 import type { Bot } from '../core/bot.js';
@@ -26,7 +28,12 @@ import {
   ensurePrivilegedIntents,
   fetchApplication,
 } from './preflight.js';
-import { createProject, explain, type Project } from './project.js';
+import {
+  createProject,
+  explain,
+  reportLooseRejections,
+  type Project,
+} from './project.js';
 
 export interface StartOptions {
   /** The folder of the project. */
@@ -88,24 +95,29 @@ export async function start(options: StartOptions): Promise<number> {
     }
     return 1;
   }
+  // Every process reaches Redis itself: it is made to be shared.
+  const redis = read.env.redis ? redisStores(read.env.redis, log) : null;
   const project = createProject({
     cwd,
     version: options.version,
     log,
     built: files,
     joinsVoice: built.info.voice === true,
-    // A process started by another keeps no data: the first one does, for
-    // all of them.
-    ...(assignment
-      ? {
-          stores: new IpcStoreBackend({
-            send: message => {
-              if (process.connected) process.send?.(message);
-            },
-            on: listener => process.on('message', listener),
-          }),
-        }
-      : {}),
+    stores: {
+      // A process started by another keeps no file: the first one does,
+      // for all of them.
+      ...(assignment
+        ? {
+            file: new IpcStoreBackend({
+              send: message => {
+                if (process.connected) process.send?.(message);
+              },
+              on: listener => process.on('message', listener),
+            }),
+          }
+        : {}),
+      ...(redis ? { redis } : {}),
+    },
     ...(options.deferAfter === undefined
       ? {}
       : { deferAfter: options.deferAfter }),
@@ -114,8 +126,15 @@ export async function start(options: StartOptions): Promise<number> {
   if (failures.length > 0) {
     for (const failure of failures) project.report(failure);
     if (!assignment) {
+      // A store kept in Redis without REDIS_URL is about the environment,
+      // not the build.
+      const unkept = failures.every(
+        failure => failure.error instanceof NowhereToKeepError
+      );
       log.error(
-        `${failures.length === 1 ? 'This file' : `These ${failures.length} files`} of the build can't run any more, so the bot was not started. Run "chapterjs build" again: it says what to fix.`
+        unkept
+          ? 'The bot was not started. Give REDIS_URL to the bot the way your host does it (its "environment variables" or "secrets"), or in a .env file in this folder.'
+          : `${failures.length === 1 ? 'This file' : `These ${failures.length} files`} of the build can't run any more, so the bot was not started. Run "chapterjs build" again: it says what to fix.`
       );
     }
     return 1;
@@ -136,11 +155,19 @@ export async function start(options: StartOptions): Promise<number> {
       : {}),
   };
 
+  // A promise of the files left alone is an error of the file, not the end
+  // of the bot: in every process, since every one runs the files.
+  const loose = reportLooseRejections(cwd, log);
   try {
     if (assignment)
       return await runShare(project, options, connection, assignment);
 
-    // 3. What Discord must agree with, checked once for every process.
+    // 3. What Redis, then Discord, must agree with, checked once for every
+    // process.
+    if (!(await checkRedis(project, redis, log))) {
+      await project.closeStores();
+      return 1;
+    }
     const rest = new RestClient({
       token,
       version: options.version,
@@ -189,6 +216,8 @@ export async function start(options: StartOptions): Promise<number> {
       );
       log.info(`Intents computed from your files: ${describeIntents(intents)}`);
       (project.isEmpty() ? log.info : log.success)(project.summary());
+      const kept = describeRedisStores(project, redis);
+      if (kept) log.info(kept);
     };
 
     if (processes === 1) {
@@ -204,7 +233,7 @@ export async function start(options: StartOptions): Promise<number> {
       signal,
       identifyInterval,
       write: options.write,
-      stores: project.storeBackend,
+      stores: project.storeBackends.get('file')!,
       onReady: ({ user, guilds }) => online(user, guilds),
       onRestart: (index, why) =>
         log.warn(
@@ -219,6 +248,8 @@ export async function start(options: StartOptions): Promise<number> {
     if (signal.aborted) return 0;
     explain(error, log);
     return assignment ? REFUSED : 1;
+  } finally {
+    loose();
   }
 }
 

@@ -18,6 +18,8 @@ export default event({
 
 That is all. `chapterjs dev` finds the declaration and runs your function every time someone joins your test server. Nothing to register, no list to keep up to date, and no type to write: your editor already knows that `member` is a [`GuildMember`](/reference/member) and `guild` a [`Guild`](/reference/guild).
 
+Every event gives the same two things: **what it is about** (`member` here, `message`, `role`, `reaction`, `voice`...) and **the server** it happened in, `guild`. Nothing else, plus `t` when your project has [languages](/translated-messages). What each event gives is listed in one table in the [reference](/reference/events#what-each-event-gives).
+
 ## The name is the event
 
 - **`name` is the event.** It is one of the [events](/reference/events), and your editor offers them as you type; another word is underlined, and reported with the closest event name when the file loads.
@@ -56,26 +58,26 @@ Your function receives [structures](/reference) you can read and act on. In a se
 
 They stay there while your function runs, even if the person leaves or the channel is deleted in the meantime: your function keeps them as they were. The bot also keeps `guild.me` apart from [what it remembers](/memory), so it is there in a server of any size.
 
-What can be `null` is what may really not exist: a channel without a category (`channel.parent`), a message that was never edited (`message.editedAt`), a member count Discord never sent (`guild.memberCount`), a member the bot never saw in `memberLeave`.
+What can be `null` is what may really not exist: a channel without a category (`channel.parent`), a message that was never edited (`message.editedAt`), a member count Discord never sent (`guild.memberCount`), a deleted message the bot did not remember (`message.before` in `messageDelete`).
 
 ### What was deleted
 
-The events about something that no longer exists give its id, and the thing itself **as it was**:
+The events about something that no longer exists give the thing itself **as it was**:
 
 - `roleDelete`: `role` is always there, the bot knows every role of its servers.
 - `channelDelete`: `channel` is the channel or thread as it was.
 - `guildLeave`: `guild` is the server as it was.
-- `memberLeave`: `member` is `null` when the bot never saw that member. `user` is always there.
+- `memberLeave`: `user` is the account of who left, always there.
 
 ```ts src/events/goodbye.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'memberLeave',
-  async run({ user, guild, member }) {
+  async run({ user, guild }) {
     const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
     if (!channel || !channel.isTextBased()) return;
-    const name = member?.displayName ?? user.displayName;
+    const name = user.displayName;
     await channel.send(`${name} left ${guild.name}.`);
   },
 });

@@ -13,7 +13,7 @@ Everything lives in the memory of the process that runs your bot. Nothing is wri
 | --- | --- | --- |
 | Servers, channels, threads, roles, custom emojis | All of them | Discord announces them when the bot connects, then every change |
 | Your bot as a member of each server | Always | `guild.me` is never missing, whatever the limit on members |
-| Members | The 100 seen the most recently in each server; 1000 when a `memberLeave` event needs them | A server can have millions of members, and a bot rarely needs the silent ones |
+| Members | The 100 seen the most recently in each server | A server can have millions of members, and a bot rarely needs the silent ones |
 | Users | Every one it met, across every server | They come with members and messages |
 | Messages | None | They are by far what a bot receives the most, and most bots never read an old one |
 | Who is in a voice channel | Everyone, while they are in it, when a file of a [voice event](/events/voice) needs it | To tell a join from a move or a mute, and give the channel someone left |
@@ -21,7 +21,7 @@ Everything lives in the memory of the process that runs your bot. Nothing is wri
 "Seen" means Discord just sent that member: they wrote a message, used a command, joined, or changed. A member seen again becomes the most recent; when the limit is reached, the one seen the longest ago makes room.
 
 <Info>
-  The numbers of this table are not a setting: they follow your files. When a file needs more (`memberLeave` and its 1000 members per server), the bot remembers more, and nothing is kept for what no file uses. Saving a file in `chapterjs dev` applies the change at once.
+  The numbers of this table are not a setting: they follow your files. Nothing is kept for what no file uses. Saving a file in `chapterjs dev` applies the change at once.
 </Info>
 
 ## What it means for your code
@@ -58,7 +58,7 @@ export default command({
 });
 ```
 
-The only thing that depends on what the bot remembers is "as it was": `member` in `memberLeave` is `null` when the bot never saw that member, and `message` in `messageDelete` is `null` since the bot remembers no message.
+The only thing that depends on what the bot remembers is "as it was": `message.before` in `messageDelete` is `null` since the bot remembers no message.
 
 ## How memory is freed
 

@@ -2098,7 +2098,7 @@ import { label } from '../../../helpers';
 export default event({ name: 'ready', run: ({ user }) => console.log(label, user.username) });
 `,
       'src/logs/roles.ts': `import { event } from 'chapterjs';
-export default event({ name: 'roleDelete', run: ({ roleId, role }) => console.log('role gone', roleId, role.name) });
+export default event({ name: 'roleDelete', run: ({ role }) => console.log('role gone', role.id, role.name) });
 `,
       'src/events/(logs)/typo.ts': `import { event } from 'chapterjs';\nexport default event({ name: 'typo.ts', run() {} });\n`,
       'src/events/(logs)/roleDelete/wrong.ts': `import { event } from 'chapterjs';

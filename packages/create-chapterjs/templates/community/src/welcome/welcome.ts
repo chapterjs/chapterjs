@@ -19,12 +19,10 @@ export default event({
 // `user` is always there.
 export const goodbye = event({
   name: 'memberLeave',
-  async run({ user, member, guild, t }) {
+  async run({ user, guild, t }) {
     const channel = communityChannel(guild, 'welcome');
     if (!channel) return;
-    await channel.send(
-      t('goodbye', { name: member?.displayName ?? user.displayName })
-    );
+    await channel.send(t('goodbye', { name: user.displayName }));
   },
 });
 

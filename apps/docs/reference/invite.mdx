@@ -40,6 +40,10 @@ async function invite(channel: TextChannel) {
   The id of the channel the invite leads to.
 </ResponseField>
 
+<ResponseField name="channel" type="GuildChannel | null">
+  The channel the invite leads to, when the bot knows it. It never sends a request.
+</ResponseField>
+
 <ResponseField name="expiresAt" type="Date | null">
   When the invite stops working; `null` when it never does.
 </ResponseField>

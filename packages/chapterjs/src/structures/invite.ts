@@ -2,6 +2,7 @@ import { DeleteInvite } from '../discord/endpoints.js';
 import type { Snowflake } from '../discord/types/common.js';
 import type { RawInvite, RawInviteMetadata } from '../discord/types/invite.js';
 import { ctxOf, dataOf, Structure, toDate } from './base.js';
+import type { GuildChannel } from './channel.js';
 import type { Context } from './context.js';
 import type { User } from './user.js';
 
@@ -39,6 +40,18 @@ export class Invite extends Structure<InviteData> {
   /** The id of the channel the invite leads to. */
   get channelId(): Snowflake | null {
     return dataOf(this).channel?.id ?? null;
+  }
+
+  /**
+   * The channel the invite leads to, when the bot knows it. It never sends
+   * a request.
+   */
+  get channel(): GuildChannel | null {
+    const id = this.channelId;
+    const found = id ? ctxOf(this).cache.channels.get(id) : undefined;
+    return found && found.guildId !== null && !found.isThread()
+      ? (found as GuildChannel)
+      : null;
   }
 
   /** When the invite stops working; `null` when it never does. */

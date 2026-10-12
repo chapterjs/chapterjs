@@ -22,7 +22,7 @@ export default event({
 });
 ```
 
-Comparez avec une commande : un événement n’a ni description ni options à déclarer, seulement son `name` et `run`. Et la fonction reçoit ce dont parle l’événement : ici un `member` (qui est arrivé) et un `guild` (où). Survolez `member` dans votre éditeur : c’est un `GuildMember`, avec tout ce que les pages précédentes ont montré. La même ligne `import { event } from 'chapterjs'`, avec `name: 'roleDelete'`, donnerait un `role` à votre fonction.
+Comparez avec une commande : un événement n’a ni description ni options à déclarer, seulement son `name` et `run`. Et la fonction reçoit ce dont parle l’événement : ici un `member` (qui est arrivé) et un `guild` (où). Survolez `member` dans votre éditeur : c’est un `GuildMember`, avec tout ce que les pages précédentes ont montré. La même ligne `import { event } from 'chapterjs'`, avec `name: 'roleDelete'`, donnerait un `role` à votre fonction. Chaque événement marche ainsi : ce dont il parle, et le serveur, `guild`. Rien d’autre, donc vous ne cherchez jamais où se trouve quelque chose.
 
 `guild.systemChannelId` est le salon où Discord lui-même publie « X a rejoint le serveur », quand le serveur en a un : un choix par défaut raisonnable pour un accueil. `guild.channels.get()` le lit dans ce que sait le bot, et `isTextBased()` s’assure qu’un message peut y aller.
 
@@ -98,27 +98,27 @@ export default event({
 | --- | --- | --- |
 | `ready` | Le bot est connecté | `user`, `guilds` |
 | `guildJoin`, `guildLeave` | Le bot est ajouté à un serveur, ou retiré | `guild` |
-| `memberJoin`, `memberUpdate`, `memberLeave` | Quelqu’un arrive, change (surnom, rôles...), part | `member`, `guild` (et `user` pour un départ) |
+| `memberJoin`, `memberUpdate`, `memberLeave` | Quelqu’un arrive, change (surnom, rôles...), part | `member`, `guild` (`user` pour un départ) |
 | `roleCreate`, `roleUpdate`, `roleDelete` | Un rôle est créé, modifié, supprimé | `role`, `guild` |
 | `channelCreate`, `channelUpdate`, `channelDelete` | Un salon est créé, modifié, supprimé | `channel`, `guild` |
-| `messageCreate`, `messageUpdate`, `messageDelete` | Un message est envoyé, modifié, supprimé | `message` et plus : la page suivante |
+| `messageCreate`, `messageUpdate`, `messageDelete` | Un message est envoyé, modifié, supprimé | `message`, `guild` : la page suivante |
 | `reactionAdd`, `voiceJoin`, `banAdd`... | Une réaction, quelqu’un en vocal, un bannissement, et d’autres | Dans deux pages |
 
 Un `name` qui n’est pas un événement est souligné dans l’éditeur, puis signalé au chargement, avec le nom d’événement le plus proche quand il y en a un. Le contenu exact de chacun est dans la [Référence](/fr/reference/events).
 
 ### Ce qui a été supprimé
 
-Pour quelque chose qui n’existe plus, l’événement vous le donne **tel qu’il était** : `roleDelete` donne le rôle, `channelDelete` le salon, `guildLeave` le serveur. Le bot s’en souvenait, donc ils sont là. `memberLeave` est l’exception : un serveur peut avoir plus de membres que le bot n’en garde en mémoire, donc `member` est `null` quand le bot n’a jamais vu cette personne, et `user` (le compte) est toujours là.
+Pour quelque chose qui n’existe plus, l’événement vous le donne **tel qu’il était** : `roleDelete` donne le rôle, `channelDelete` le salon, `guildLeave` le serveur. Le bot s’en souvenait, donc ils sont là. `memberLeave` donne le compte de la personne partie, `user` : un serveur peut avoir plus de membres que le bot n’en garde en mémoire, donc le membre qu’elle était peut être oublié depuis longtemps, mais le compte est toujours là.
 
 ```ts src/events/bye.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'memberLeave',
-  async run({ user, member, guild }) {
+  async run({ user, guild }) {
     const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
     if (!channel?.isTextBased()) return;
-    const name = member?.displayName ?? user.displayName;
+    const name = user.displayName;
     await channel.send(`${name} est parti. Nous sommes ${guild.memberCount ?? '?'} maintenant.`);
   },
 });

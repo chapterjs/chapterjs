@@ -108,6 +108,40 @@ export default command({
 });
 ```
 
+Trois appels de plus vous évitent une boucle. `increment(key)` ajoute 1 à un nombre, en partant de 0, et renvoie le nouveau nombre : un compteur en une ligne. `getMany([a, b])` lit plusieurs clés d’un coup, `setMany([[a, 1], [b, 2]])` garde plusieurs valeurs d’un coup, et `deleteAll(prefix)` oublie tout ce qui est sous un préfixe. Pourquoi pas `update(key, n => n + 1)` pour un compteur ? Ça marche aussi : `increment()` le dit seulement en un mot. Et quand deux personnes le déclenchent au même instant, aucune ne perd le changement de l’autre : `update()` lit et garde d’un trait, même si le bot tourne sur plusieurs processus.
+
+## Un classement
+
+Un store garde des valeurs par clé, sans ordre. Pour savoir qui a écrit le plus de messages, il faudrait lire chaque clé et les trier vous-même, à chaque fois. Un **classement** (`ranking`) garde un score par membre, déjà dans l’ordre. Créez `src/activity/talkers.ts` :
+
+```ts src/activity/talkers.ts
+import { command, event, ranking } from 'chapterjs';
+
+export const talkers = ranking();
+
+export const count = event({
+  name: 'messageCreate',
+  async run({ message }) {
+    await talkers.add(message.author.id, 1);
+  },
+});
+
+export default command({
+  name: 'talkers',
+  description: 'Montre qui a écrit le plus de messages ici',
+  async run({ interaction }) {
+    const best = await talkers.top(5);
+    const lines = best.map(entry => `${entry.rank}. <@${entry.id}> : ${entry.score} messages`);
+    await interaction.reply({
+      content: lines.length > 0 ? lines.join('\n') : 'Personne n’a encore rien écrit.',
+      ephemeral: true,
+    });
+  },
+});
+```
+
+Un fichier, deux déclarations : un événement qui donne un point pour chaque message, et une commande qui montre les cinq premiers. `add()` part de 0, `top(5)` donne les cinq premiers avec leur `rank`, à partir de 1. Comme un store, le classement est par serveur sans le dire, gardé dans `data/talkers.json`, et nommé par son export. `rankOf(id)` dit où est un membre ; `ranking({ order: 'lowest' })` met le score le plus bas en premier, pour un temps ou un nombre d’essais.
+
 ## Points d’attention
 
 - **Un store est pour ce qui tient en mémoire.** Le bot garde les données en mémoire et le fichier en est la copie. Réglages, scores, avertissements, qui a ouvert quoi : oui. Des millions de lignes : une base de données.
@@ -115,13 +149,16 @@ export default command({
 - **Deux stores ne peuvent pas avoir le même nom.** Ils partageraient un fichier : le second est signalé au chargement des fichiers, et mis de côté.
 - **Enregistrer un fichier garde les données.** Un store est lié à son nom : changez le code, les données restent. Supprimez `data/<nom>.json` pour repartir de zéro.
 - **Sur plusieurs processus**, le processus que vous avez lancé garde les données pour les autres : rien à configurer, et rien à penser.
+- **Redis, quand vous le voulez.** `store({ storage: 'redis' })` ou `ranking({ storage: 'redis' })`, et `REDIS_URL` dans `.env` : les données vont dans votre Redis au lieu de `data/`, les appels restent les mêmes. Utile quand plusieurs machines partagent les données, ou quand votre hébergeur n’a pas de disque qui dure. Voir [Stockage](/fr/storage#dans-redis).
+- **Un store et un classement ne peuvent pas partager un nom**, pour la même raison que deux stores.
 
 ## Récapitulatif
 
 - `export const name = store<T>({ scope?, expires? })` : par serveur par défaut, pour toujours par défaut.
 - Dans un serveur, la clé est à vous ; ailleurs, `name.in(guild)`.
-- `update()` lit, change et garde d’un trait ; `entries()` liste ; `expires` sur le store ou sur une valeur.
-- Un fichier JSON par store dans `data/`, écrit pour vous.
+- `update()` lit, change et garde d’un trait ; `increment()` compte ; `entries()` liste ; `getMany()`, `setMany()`, `deleteAll()` travaillent sur plusieurs valeurs ; `expires` sur le store ou sur une valeur.
+- `export const name = ranking({ order? })` : un score par membre, dans l’ordre ; `add()`, `top()`, `rankOf()`.
+- Un fichier JSON par store ou classement dans `data/`, écrit pour vous, ou Redis avec `storage: 'redis'`.
 
 <CardGroup cols={2}>
   <Card title="Organiser vos fichiers" icon="folder-tree" href="/fr/tutorial/organising">

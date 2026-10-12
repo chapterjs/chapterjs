@@ -104,6 +104,8 @@ C’est tout. Beaucoup d’hébergeurs demandent une « build command » et une 
 | --- | --- | --- |
 | `BOT_TOKEN` | Oui | Le token de votre bot de production. |
 | `DEV_GUILD_ID` | Non | L’identifiant de votre serveur de test. Quand il est réglé, la production laisse ce serveur tranquille, pour que `chapterjs dev` puisse y faire tourner le même bot pendant que celui-ci tourne partout ailleurs. Seulement pour un bot qui fait les deux : voir [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement). |
+| `REDIS_URL` | Non | L’adresse de votre Redis, quand un store dit `storage: 'redis'` : voir [Stockage](/fr/storage#dans-redis). Donnez à la production son propre Redis, pas celui du développement. |
+| `REDIS_PASSWORD` | Non | Son mot de passe, quand il n’est pas dans `REDIS_URL`. |
 | `NODE_OPTIONS` | Non | Des options pour Node lui-même. `--max-old-space-size=4096` donne 4096 MB de mémoire au bot : seulement pour un gros bot, quand `chapterjs start` le demande (voir plus bas). |
 | `NO_COLOR` | Non | Réglez-la sur n’importe quoi pour afficher sans couleurs. Les couleurs sont déjà coupées quand la sortie n’est pas un terminal. |
 

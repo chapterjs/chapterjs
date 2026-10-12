@@ -27,7 +27,15 @@ import {
   fetchApplication,
   type PreflightOptions,
 } from './preflight.js';
-import { createProject, explain, hasSources, writeTypes } from './project.js';
+import {
+  createProject,
+  explain,
+  hasSources,
+  reportLooseRejections,
+  writeTypes,
+} from './project.js';
+import { checkRedis, describeRedisStores, redisStores } from './redis.js';
+import { DEV_PREFIX } from '../store/redis-backend.js';
 import { checkForUpdate, describeUpdate } from './update-check.js';
 
 export interface DevOptions {
@@ -58,7 +66,15 @@ export async function dev(options: DevOptions): Promise<number> {
   }
   const { token, devGuildId } = read.env;
   const src = join(cwd, 'src');
+  // Every key written from here starts with `dev:`: a Redis shared with
+  // production, which the docs advise against, is never mixed up.
+  const redis = read.env.redis
+    ? redisStores(read.env.redis, log, { prefix: DEV_PREFIX })
+    : null;
   if (!(await hasSources(cwd, log))) return 1;
+  // A promise of the files left alone is an error of the file, not the end
+  // of the bot.
+  const loose = reportLooseRejections(cwd, log);
   // Asked now, said once the bot is online: the registry answers while the
   // files load and Discord is checked, so nobody waits for it.
   const update = checkForUpdate({
@@ -72,6 +88,7 @@ export async function dev(options: DevOptions): Promise<number> {
     cwd,
     version: options.version,
     log,
+    ...(redis ? { stores: { redis } } : {}),
     ...(options.deferAfter === undefined
       ? {}
       : { deferAfter: options.deferAfter }),
@@ -84,6 +101,12 @@ export async function dev(options: DevOptions): Promise<number> {
   // Now that the files ran, a language only offers the commands they do
   // not describe, and `t` is typed from the default language.
   await writeTypes(cwd, project.typesInfo());
+  // A store kept in Redis needs it now, not when someone uses the bot.
+  if (!(await checkRedis(project, redis, log))) {
+    await project.closeStores();
+    return 1;
+  }
+  let redisLine = describeRedisStores(project, redis);
 
   // 3. What Discord must agree with before connecting.
   const apiUrl = options.env.CHAPTERJS_API_URL;
@@ -198,6 +221,7 @@ export async function dev(options: DevOptions): Promise<number> {
       `Intents computed from your files: ${describeIntents(connectedIntents)}`
     );
     (project.isEmpty() ? log.info : log.success)(project.summary());
+    if (redisLine) log.info(redisLine);
     project.ready(bot);
     // Tasks follow the bot through reconnections: they read the current one.
     project.startTasks(() => bot);
@@ -262,6 +286,12 @@ export async function dev(options: DevOptions): Promise<number> {
             // offer it, or not.
             if ((await writeTypes(cwd, project.typesInfo())) > 0)
               log.reload('Types updated');
+            // A store moved to Redis, or out of it, is said once.
+            const kept = describeRedisStores(project, redis);
+            if (kept !== redisLine) {
+              redisLine = kept;
+              if (kept) log.info(kept);
+            }
             const intents = project.intents(false);
             if ((intents & ~connectedIntents) !== 0 && bot) {
               // Intents are given when connecting: new ones need a new session.
@@ -307,6 +337,7 @@ export async function dev(options: DevOptions): Promise<number> {
     memory.stop();
     await bot?.close();
     await project.closeStores();
+    loose();
     if (code === 0) log.success('Disconnected');
     return code;
   } catch (error) {
@@ -316,6 +347,7 @@ export async function dev(options: DevOptions): Promise<number> {
     memory.stop();
     await bot?.close();
     await project.closeStores();
+    loose();
     if (signal.aborted) return 0;
     explain(error, log);
     return 1;

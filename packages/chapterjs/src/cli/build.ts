@@ -24,6 +24,7 @@ import { enableProjectLoader } from '../loader/hot.js';
 import { listSources, type BuiltFile } from '../loader/loader.js';
 import { sourcesJoinVoice } from '../voice/usage.js';
 import type { Log } from './log.js';
+import { MemoryStoreBackend } from '../store/memory-backend.js';
 import { createProject, hasSources, writeTypes } from './project.js';
 
 /** Where the build of a project is, from its folder. */
@@ -164,7 +165,18 @@ export async function build(options: BuildOptions): Promise<number> {
 
   // 1. Every file must run, one by one: each says what is wrong with it.
   enableProjectLoader(src, { reload: false });
-  const sources = createProject({ cwd, version: options.version, log });
+  // The files run once and keep nothing: a store, wherever it says it
+  // keeps its data, has nowhere to go (so a build needs no Redis).
+  const nothing = {
+    file: new MemoryStoreBackend(),
+    redis: new MemoryStoreBackend(),
+  };
+  const sources = createProject({
+    cwd,
+    version: options.version,
+    log,
+    stores: nothing,
+  });
   const failures = await sources.load();
   // 2. Types: what the editor underlines, for the whole project. Written
   // once the files ran, so a language only offers the commands they do
@@ -248,6 +260,7 @@ export async function build(options: BuildOptions): Promise<number> {
     version: options.version,
     log,
     built: await loadBundle(cwd),
+    stores: nothing,
   });
   const broken = await built.load();
   if (broken.length > 0) {

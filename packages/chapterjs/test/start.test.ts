@@ -1,5 +1,11 @@
-import { startCli, tempDir } from '@chapterjs/test-utils';
-import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { fakeRedis, startCli, tempDir } from '@chapterjs/test-utils';
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { planProcesses, runCluster, splitShards } from '../src/cli/cluster.js';
@@ -197,6 +203,29 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
       files,
       'BOT_TOKEN=test-token\nDEV_GUILD_ID=my-server\n',
       [/✗ DEV_GUILD_ID is "my-server", which is not a server ID/],
+    ],
+    [
+      'a Redis that nothing answers at, when a store is kept there',
+      {
+        ...files,
+        'src/sessions.ts': `import { store } from 'chapterjs';\nexport const sessions = store<string>({ storage: 'redis' });\n`,
+      },
+      'BOT_TOKEN=test-token\nREDIS_URL=redis://127.0.0.1:1\n',
+      [
+        /✗ Redis at 127\.0\.0\.1:1 can't be reached: nothing answers there\. Start Redis, or check REDIS_URL in \.env\./,
+      ],
+    ],
+    [
+      'a store kept in Redis and no REDIS_URL',
+      {
+        ...files,
+        'src/sessions.ts': `import { store } from 'chapterjs';\nexport const sessions = store<string>({ storage: 'redis' });\n`,
+      },
+      'BOT_TOKEN=test-token\n',
+      [
+        /✗ src\/sessions\.ts \(sessions\) sessions is kept in Redis \(storage: 'redis'\), but REDIS_URL is not set: add it to \.env \(like redis:\/\/localhost:6379\) and start again, or remove storage: 'redis' to keep its data in data\/\./,
+        /✗ The bot was not started\. Give REDIS_URL to the bot the way your host does it \(its "environment variables" or "secrets"\), or in a \.env file in this folder\./,
+      ],
     ],
   ])(
     'does not start with %s, and says what to fix',
@@ -629,6 +658,70 @@ export default event({
       expect(
         JSON.parse(readFileSync(join(cwd, 'data', 'total.json'), 'utf8'))
       ).toEqual({ version: 1, entries: [[['all'], 5, null]] });
+    }, 30_000);
+
+    it('reaches Redis from every process, without dev: in front of the keys', async () => {
+      const redis = await fakeRedis({ password: 'pw' });
+      const fake = await big();
+      const cwd = project(
+        {
+          ...files,
+          'src/events/messageCreate/count.ts': `import { event, store } from 'chapterjs';
+export const hits = store<number>({ storage: 'redis' });
+export const total = store<number>({ scope: 'global', storage: 'redis' });
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content !== 'count') return;
+    const here = await hits.update('all', (n = 0) => n + 1);
+    const everywhere = await total.update('all', (n = 0) => n + 1);
+    console.log(\`counted: \${here} in \${message.guild.name}, \${everywhere} everywhere\`);
+  },
+});
+`,
+        },
+        `BOT_TOKEN=test-token\nREDIS_URL=${redis.url}\nREDIS_PASSWORD=pw\n`
+      );
+      const cli = runStart(cwd, fake, ['--processes', '2']);
+      await cli.waitFor('✓ 1 command, 3 events, 2 stores loaded');
+      await cli.waitFor(
+        `ℹ The stores hits and total are kept in Redis at 127.0.0.1:${redis.port}`
+      );
+      await printed(cli, /\[2\] ready: test-bot pid \d+/);
+      await printed(cli, /\[1\] ready: test-bot pid \d+/);
+      const order = [0, 2, 1, 3];
+      for (const [n, index] of order.entries()) {
+        const server = servers[index]!;
+        (await shard(fake, index)).dispatch(
+          'MESSAGE_CREATE',
+          rawMessage(`10000000000000009${n}`, 'count', {
+            guild_id: server.id,
+            channel_id: channelOf(fake, server.id),
+          })
+        );
+        await printed(
+          cli,
+          new RegExp(
+            `\\[${index < 2 ? 1 : 2}\\] counted: 1 in ${server.name}, ${n + 1} everywhere`
+          )
+        );
+      }
+      cli.signal('SIGTERM');
+      const { code, output } = await cli.exited;
+      expect(code).toBe(0);
+      expect(output).not.toMatch(/[✗⚠]/);
+      // Each process logged in and wrote itself: nothing went through IPC.
+      expect(redis.connections.length).toBeGreaterThanOrEqual(2);
+      for (const connection of redis.connections) {
+        expect(connection.commands[0]).toEqual(['AUTH', 'pw']);
+      }
+      expect(redis.keys()).toEqual([
+        ...servers.map(server => `hits:${server.id}:all`).sort(),
+        'total:all',
+      ]);
+      expect(redis.get('total:all')).toBe('4');
+      // Nothing in data/: every store is in Redis.
+      expect(existsSync(join(cwd, 'data'))).toBe(false);
     }, 30_000);
 
     it('uses as many processes as the bot needs when nothing is asked', async () => {

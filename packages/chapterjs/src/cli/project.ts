@@ -20,7 +20,18 @@ import {
 import { ComponentRouter, type ComponentEntry } from '../components/router.js';
 import { taskDeclaration } from '../tasks/declaration.js';
 import { storeDeclaration, type LoadedStore } from '../store/declaration.js';
-import { setStoreBackend, type StoreBackend } from '../store/backend.js';
+import {
+  rankingDeclaration,
+  type LoadedRanking,
+} from '../ranking/declaration.js';
+import {
+  nowhereToKeep,
+  NowhereToKeepError,
+  setStoreBackend,
+  STORAGES,
+  type StoreBackend,
+  type StoreStorage,
+} from '../store/backend.js';
 import { DATA_FOLDER, FileStoreBackend } from '../store/file-backend.js';
 import {
   DEFAULT_PRESENCE,
@@ -100,11 +111,13 @@ export interface ProjectOptions {
    */
   joinsVoice?: boolean;
   /**
-   * Where the stores of the project keep their data. A file per store in
-   * the `data/` folder of the project by default; the first process of a
-   * cluster, through IPC, for the other processes.
+   * Where the stores of the project keep their data, by storage. `file`: a
+   * file per store in the `data/` folder of the project by default, the
+   * first process of a cluster through IPC for the other processes.
+   * `redis`: what the CLI made of `REDIS_URL`; without one, a store that
+   * asks for Redis is reported and left out.
    */
-  stores?: StoreBackend;
+  stores?: Partial<Record<StoreStorage, StoreBackend>>;
   /** Only tests change this. */
   deferAfter?: number;
   /**
@@ -180,9 +193,17 @@ export const DECLARATIONS: readonly Declaration<unknown>[] = [
   componentDeclaration,
   taskDeclaration,
   storeDeclaration,
+  rankingDeclaration,
   presenceDeclaration,
   languageDeclaration,
 ];
+
+/** A ranking, with where it is declared. */
+export interface RankingEntry {
+  file: string;
+  export: string;
+  ranking: LoadedRanking;
+}
 
 /** A store, with where it is declared. */
 export interface StoreEntry {
@@ -220,8 +241,11 @@ export interface Project {
   readonly components: ReadonlyMap<string, ComponentEntry>;
   readonly tasks: ReadonlyMap<string, TaskEntry>;
   readonly stores: ReadonlyMap<string, StoreEntry>;
-  /** Where the stores keep their data: what a cluster serves to its other processes. */
-  readonly storeBackend: StoreBackend;
+  readonly rankings: ReadonlyMap<string, RankingEntry>;
+  /** Where the stores keep their data, by storage: what a cluster serves to its other processes. */
+  readonly storeBackends: ReadonlyMap<StoreStorage, StoreBackend>;
+  /** What is kept in Redis: the names of the stores and of the rankings, sorted. */
+  redisStores(): { stores: string[]; rankings: string[] };
   /** The presence declared, or `null` without one. */
   readonly presence: LoadedPresence | null;
   /** The languages of the project, assembled, or `null` without any. */
@@ -274,6 +298,27 @@ export interface Project {
   closeStores(): Promise<void>;
 }
 
+/**
+ * A promise of the files that nobody waited for (`store.set()` without
+ * `await`, in a `run` that is not `async`) rejects with nobody to tell:
+ * Node would stop the bot. Reported instead, with the file and the line,
+ * and what to write. A rejection from outside the files stays what it is:
+ * a bug of the framework, loud. Returns what stops watching.
+ */
+export function reportLooseRejections(cwd: string, log: Log): () => void {
+  const listener = (reason: unknown): void => {
+    const where = locate(reason, cwd);
+    if (!where) throw reason;
+    log.error(
+      `${where.file}:${where.line} ${messageOf(reason)}\nThis call was not awaited: write await in front of it (and async before run), so that your function waits for it.`
+    );
+  };
+  process.on('unhandledRejection', listener);
+  return () => {
+    process.off('unhandledRejection', listener);
+  };
+}
+
 /** Whether the folder is a project: it has a `src` folder. */
 export async function hasSources(cwd: string, log: Log): Promise<boolean> {
   if ((await stat(join(cwd, 'src')).catch(() => null))?.isDirectory()) {
@@ -306,7 +351,7 @@ const keyOf = (site: { file: string; export: string }): string =>
 function sameNames<T extends { file: string; export: string }>(
   entries: readonly T[],
   nameOf: (entry: T) => string,
-  what: string
+  what: string | ((entry: T) => string)
 ): {
   valid: T[];
   conflicts: { file: string; export: string; message: string }[];
@@ -329,10 +374,12 @@ function sameNames<T extends { file: string; export: string }>(
         seen.set(nameOf(entry), entry);
         return true;
       }
+      const kind = (one: T): string =>
+        typeof what === 'string' ? what : what(one);
       conflicts.push({
         file: entry.file,
         export: entry.export,
-        message: `There is already a ${what} named ${nameOf(entry)}, in ${first.file}: the name of the export is the name of the ${what}, so rename one of them.`,
+        message: `There is already a ${kind(first)} named ${nameOf(entry)}, in ${first.file}: the name of the export is the name of the ${kind(entry)}, so rename one of them.`,
       });
       return false;
     });
@@ -343,10 +390,18 @@ export function createProject(options: ProjectOptions): Project {
   const { cwd, log } = options;
   // Where `asset()` reads the files of the project from.
   setPublicDir(cwd);
-  // Where the stores keep their data, for every store of the process.
-  const storeBackend =
-    options.stores ?? new FileStoreBackend(join(cwd, DATA_FOLDER));
-  setStoreBackend(storeBackend);
+  // Where the stores keep their data, for every store of the process: a
+  // backend per storage the project has one for.
+  const storeBackends = new Map<StoreStorage, StoreBackend>();
+  for (const storage of STORAGES) {
+    const backend =
+      options.stores?.[storage] ??
+      (storage === 'file'
+        ? new FileStoreBackend(join(cwd, DATA_FOLDER))
+        : null);
+    setStoreBackend(storage, backend);
+    if (backend) storeBackends.set(storage, backend);
+  }
   const report = (failure: FailedFile): void => {
     const where = locate(failure.error, cwd);
     log.error(
@@ -382,6 +437,7 @@ export function createProject(options: ProjectOptions): Project {
   let components = new Map<string, ComponentEntry>();
   let tasks = new Map<string, TaskEntry>();
   let stores = new Map<string, StoreEntry>();
+  let rankings = new Map<string, RankingEntry>();
   let presence: LoadedPresence | null = null;
   /** The files the presence was declared in, to keep it when they break. */
   let presenceFiles = new Set<string>();
@@ -417,7 +473,20 @@ export function createProject(options: ProjectOptions): Project {
     get stores() {
       return stores;
     },
-    storeBackend,
+    storeBackends,
+    get rankings() {
+      return rankings;
+    },
+    redisStores: () => ({
+      stores: [...stores.values()]
+        .filter(entry => entry.store.storage === 'redis')
+        .map(entry => entry.store.name)
+        .sort(),
+      rankings: [...rankings.values()]
+        .filter(entry => entry.ranking.storage === 'redis')
+        .map(entry => entry.ranking.name)
+        .sort(),
+    }),
     get presence() {
       return presence;
     },
@@ -458,6 +527,7 @@ export function createProject(options: ProjectOptions): Project {
         componentItems,
         taskItems,
         storeItems,
+        rankingItems,
         presenceItems,
         languageItems,
       ] = [
@@ -466,6 +536,7 @@ export function createProject(options: ProjectOptions): Project {
         read(componentDeclaration),
         read(taskDeclaration),
         read(storeDeclaration),
+        read(rankingDeclaration),
         read(presenceDeclaration),
         read(languageDeclaration),
       ];
@@ -535,19 +606,54 @@ export function createProject(options: ProjectOptions): Project {
       tasks = new Map(sameTask.valid.map(entry => [keyOf(entry), entry]));
       scheduler.set(tasks.values());
 
-      // Two stores with one name would share one file: the later is left out.
-      const sameStore = sameNames(
+      // Two stores, or a store and a ranking, with one name would share
+      // one file or one key: the later is left out.
+      type Kept = StoreEntry | RankingEntry;
+      const keptOf = (entry: Kept): LoadedStore | LoadedRanking =>
+        'store' in entry ? entry.store : entry.ranking;
+      const sameStore = sameNames<Kept>(
         [
           ...next(stores, storeItems, item => ({
             file: item.file,
             export: item.export,
             store: item.value,
           })).values(),
+          ...next(rankings, rankingItems, item => ({
+            file: item.file,
+            export: item.export,
+            ranking: item.value,
+          })).values(),
         ],
-        entry => entry.store.name,
-        'store'
+        entry => keptOf(entry).name,
+        entry => ('store' in entry ? 'store' : 'ranking')
       );
-      stores = new Map(sameStore.valid.map(entry => [keyOf(entry), entry]));
+      // What is kept where nothing keeps it (Redis without REDIS_URL) is
+      // reported and left out: it says so itself when used.
+      const unkept = sameStore.valid.filter(
+        entry => !storeBackends.has(keptOf(entry).storage)
+      );
+      const kept = sameStore.valid.filter(entry => !unkept.includes(entry));
+      stores = new Map(
+        kept
+          .filter((entry): entry is StoreEntry => 'store' in entry)
+          .map(entry => [keyOf(entry), entry])
+      );
+      rankings = new Map(
+        kept
+          .filter((entry): entry is RankingEntry => 'ranking' in entry)
+          .map(entry => [keyOf(entry), entry])
+      );
+      const nowhere = unkept.map(entry => ({
+        file: entry.file,
+        export: entry.export,
+        error: new NowhereToKeepError(
+          nowhereToKeep(
+            keptOf(entry).storage,
+            keptOf(entry).name,
+            'store' in entry ? 'store' : 'ranking'
+          )
+        ),
+      }));
 
       // One presence. A second one is left out.
       const [first, ...extra] = presenceItems.loaded;
@@ -649,10 +755,12 @@ export function createProject(options: ProjectOptions): Project {
         ...componentItems.failed,
         ...taskItems.failed,
         ...storeItems.failed,
+        ...rankingItems.failed,
         ...presenceItems.failed,
         ...languageItems.failed,
         ...badTexts,
         ...twice,
+        ...nowhere,
         ...[
           ...conflicts,
           ...unique.conflicts,
@@ -686,6 +794,9 @@ export function createProject(options: ProjectOptions): Project {
           : []),
         ...(tasks.size > 0 ? [count(tasks.size, 'task', 'tasks')] : []),
         ...(stores.size > 0 ? [count(stores.size, 'store', 'stores')] : []),
+        ...(rankings.size > 0
+          ? [count(rankings.size, 'ranking', 'rankings')]
+          : []),
         ...(presence ? ['a presence'] : []),
         ...(messages
           ? [
@@ -700,6 +811,7 @@ export function createProject(options: ProjectOptions): Project {
       components.size === 0 &&
       tasks.size === 0 &&
       stores.size === 0 &&
+      rankings.size === 0 &&
       presence === null &&
       messages === null,
     // A file declaring several events that need the intent is named once.
@@ -823,7 +935,9 @@ export function createProject(options: ProjectOptions): Project {
     },
     // The bot looks after its own memory: it remembers less before memory
     // is full, and only speaks up when it can't give up anything more.
-    closeStores: () => storeBackend.close(),
+    closeStores: async () => {
+      for (const backend of storeBackends.values()) await backend.close();
+    },
     watchMemory: current =>
       watchMemory({
         cache: () => current()?.ctx.cache,

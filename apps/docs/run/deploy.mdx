@@ -104,6 +104,8 @@ That is all. Many hosts ask for a "build command" and a "start command": give th
 | --- | --- | --- |
 | `BOT_TOKEN` | Yes | The token of your production bot. |
 | `DEV_GUILD_ID` | No | The ID of your test server. When it is set, production leaves that server alone, so `chapterjs dev` can run the same bot there while this one runs everywhere else. Only for one bot doing both: see [A second bot for development](/run/start#a-second-bot-for-development). |
+| `REDIS_URL` | No | The address of your Redis, when a store says `storage: 'redis'`: see [Storage](/storage#in-redis). Give production its own Redis, not the one of development. |
+| `REDIS_PASSWORD` | No | Its password, when it is not in `REDIS_URL`. |
 | `NODE_OPTIONS` | No | Options for Node itself. `--max-old-space-size=4096` gives the bot 4096 MB of memory: only for a large bot, when `chapterjs start` asks for it (see below). |
 | `NO_COLOR` | No | Set to anything to print without colors. Colors are already off when the output is not a terminal. |
 

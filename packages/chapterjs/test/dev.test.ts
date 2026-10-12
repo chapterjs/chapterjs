@@ -496,16 +496,16 @@ export default event({
       'src/events/memberLeave/left.ts': `import { event } from 'chapterjs';
 export default event({
   name: 'memberLeave',
-  run({ user, member, guild }) {
-    console.log(\`left: \${user.username} nick=\${member?.nick} count=\${guild.memberCount}\`);
+  run({ user, guild }) {
+    console.log(\`left: \${user.username} count=\${guild.memberCount}\`);
   },
 });
 `,
       'src/events/roleDelete/role.ts': `import { event } from 'chapterjs';
 export default event({
   name: 'roleDelete',
-  run({ role, roleId }) {
-    console.log(\`role deleted: \${role.name} \${roleId} of \${role.guild.name}\`);
+  run({ role, guild }) {
+    console.log(\`role deleted: \${role.name} \${role.id} of \${guild.name}\`);
   },
 });
 `,
@@ -543,7 +543,7 @@ export default event({
       guild_id: GUILD,
       user: member.user,
     });
-    await cli.waitFor('left: alice nick=Ali count=2');
+    await cli.waitFor('left: alice count=2');
     connection.dispatch('GUILD_ROLE_CREATE', {
       guild_id: GUILD,
       role: {
@@ -1625,7 +1625,7 @@ export default event({ name: 'roleDelete', run: ({ role, guild }) => role.name +
       .sort();
     expect(errors).toHaveLength(3);
     expect(errors[0]).toMatch(
-      /src\/events\/memberLeave\/wrong\.ts\(2,\d+\): error TS18047: 'member' is possibly 'null'/
+      /src\/events\/memberLeave\/wrong\.ts\(2,\d+\): error TS2339: Property 'member' does not exist/
     );
     expect(errors[1]).toMatch(
       /src\/events\/messageCreate\/wrong\.ts\(2,\d+\): error TS2339: Property 'member' does not exist/
@@ -1656,8 +1656,8 @@ export default event({
   ) => `import { event } from 'chapterjs';
 export default event({
   name: 'messageDelete',${options.replace(/^, \{(.*)\}$/, '$1,')}
-  run({ messageId, guildId }) {
-    console.log(\`${label}: \${messageId} of \${guildId}\`);
+  run({ message }) {
+    console.log(\`${label}: \${message.id} of \${message.guildId}\`);
   },
 });
 `;
@@ -2008,7 +2008,17 @@ export default event({ name: 'messageCreate', where, run: ({ message }) => messa
         ", { where: 'both', wher: true }"
       ),
       'src/events/messageDelete/servers.ts': `import { event } from 'chapterjs';
-export default event({ name: 'messageDelete', run: ({ guildId, message, channel }) => guildId.length + (message?.guild.name ?? '') + channel.name });
+export default event({ name: 'messageDelete', run: ({ message, guild }) => message.guildId.length + (message.before?.guild.name ?? '') + message.channel.name + guild.name });
+`,
+      // The server is next to what the event is about.
+      'src/events/messageCreate/guild-ok.ts': `import { event } from 'chapterjs';
+export default event({ name: 'messageCreate', run: ({ message, guild }) => guild.name + message.guild.name + guild.me.displayName });
+`,
+      'src/events/messageCreate/guild-both.ts': `import { event } from 'chapterjs';
+export default event({ name: 'messageCreate', where: 'both', run: ({ guild }) => guild.name });
+`,
+      'src/events/messageCreate/guild-dm.ts': `import { event } from 'chapterjs';
+export default event({ name: 'messageCreate', where: 'dm', run: context => context.guild });
 `,
       // One check tells the place, for everything at once.
       'src/events/messageCreate/both-ok.ts': `import { event } from 'chapterjs';
@@ -2025,9 +2035,9 @@ export default event({
 export default event({
   name: 'messageDelete',
   where: 'both',
-  run({ guild, channel }) {
-    if (guild) return guild.name + channel.name;
-    return channel?.recipientId;
+  run({ message, guild }) {
+    if (guild) return guild.name + message.channel.name;
+    return message.channel?.recipientId;
   },
 });
 `,
@@ -2041,14 +2051,14 @@ export default event({
         ", { where: 'dm' }"
       ),
       'src/events/messageDelete/only.ts': `import { event } from 'chapterjs';
-export default event({ name: 'messageDelete', where: 'dm', run: context => context.guildId });
+export default event({ name: 'messageDelete', where: 'dm', run: context => context.guild });
 `,
       'src/events/messageCreate/place.ts': file(
         'message.id',
         ", { where: 'server' }"
       ),
       'src/events/messageDelete/dm.ts': `import { event } from 'chapterjs';
-export default event({ name: 'messageDelete', where: 'both', run: ({ guildId }) => guildId.length });
+export default event({ name: 'messageDelete', where: 'both', run: ({ message }) => message.guildId.length });
 `,
     });
     cpSync(
@@ -2078,12 +2088,14 @@ export default event({ name: 'messageDelete', where: 'both', run: ({ guildId }) 
       "src/events/messageCreate/bots.ts: 'message.member' is possibly 'null'.",
       "src/events/messageCreate/dm-channel.ts: 'message.channel' is possibly 'null'.",
       "src/events/messageCreate/dm.ts: 'message.guild' is possibly 'null'.",
+      "src/events/messageCreate/guild-both.ts: 'guild' is possibly 'null'.",
+      "src/events/messageCreate/guild-dm.ts: Property 'guild' does not exist on type '{ message: DmMessage; }'.",
       "src/events/messageCreate/maybe.ts: 'message.guild' is possibly 'null'.",
       "src/events/messageCreate/only.ts: Property 'guild' does not exist on type 'DmMessage'.",
       `src/events/messageCreate/place.ts: Type '"server"' is not assignable to type 'EventWhere | undefined'.`,
       "src/events/messageCreate/typo.ts: Type 'true' is not assignable to type 'never'.",
-      "src/events/messageDelete/dm.ts: 'guildId' is possibly 'null'.",
-      "src/events/messageDelete/only.ts: Property 'guildId' does not exist on type 'DeletedInDm'.",
+      "src/events/messageDelete/dm.ts: 'message.guildId' is possibly 'null'.",
+      "src/events/messageDelete/only.ts: Property 'guild' does not exist on type '{ message: DeletedInDm; }'.",
       "src/events/messageUpdate/dm-member.ts: 'message.member' is possibly 'null'.",
     ]);
   });
@@ -2098,21 +2110,21 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       // In a server: the server, the channel and who reacted are there.
       'src/events/reactionAdd/servers.ts': ev(
         'reactionAdd',
-        '({ guild, channel, member, user, emoji, message }) => guild.name + channel.name + member.displayName + user.username + emoji.name + message?.guild.name'
+        '({ guild, reaction: { channel, member, user, emoji, message } }) => guild.name + channel.name + member.displayName + user.username + emoji.name + message?.guild.name'
       ),
       'src/events/reactionAdd/both.ts': ev(
         'reactionAdd',
-        '({ guild, member, channel }) => guild ? member.displayName + channel.name : channel?.recipientId',
+        '({ guild, reaction }) => guild ? reaction.member.displayName + reaction.channel.name : reaction.channel?.recipientId',
         ", { where: 'both', bots: true }"
       ),
       'src/events/reactionAdd/both-bad.ts': ev(
         'reactionAdd',
-        '({ member }) => member.displayName',
+        '({ reaction }) => reaction.member.displayName',
         ", { where: 'both' }"
       ),
       'src/events/reactionRemove/member.ts': ev(
         'reactionRemove',
-        '({ member }) => member.displayName'
+        '({ reaction }) => reaction.member.displayName'
       ),
       'src/events/reactionRemove/dm.ts': ev(
         'reactionRemove',
@@ -2121,32 +2133,32 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       ),
       'src/events/reactionClear/ok.ts': ev(
         'reactionClear',
-        '({ emoji, channel }) => (emoji?.name ?? "all") + channel.name'
+        '({ reactions: { emoji, channel } }) => (emoji?.name ?? "all") + channel.name'
       ),
       'src/events/pollVoteAdd/ok.ts': ev(
         'pollVoteAdd',
-        '({ answerId, user, guild }) => answerId + user.username + guild.name'
+        '({ vote: { answerId, user }, guild }) => answerId + user.username + guild.name'
       ),
       'src/events/typingStart/ok.ts': ev(
         'typingStart',
-        '({ member, startedAt }) => member.displayName + startedAt.getTime()'
+        '({ typing: { member, startedAt } }) => member.displayName + startedAt.getTime()'
       ),
       'src/events/typingStart/bots.ts': ev(
         'typingStart',
-        '({ user }) => user.id',
+        '({ typing }) => typing.user.id',
         ', { bots: true }'
       ),
       'src/events/voiceJoin/ok.ts': ev(
         'voiceJoin',
-        '({ member, channel, voice }) => member.displayName + channel.bitrate + voice.selfMute'
+        '({ voice: { member, channel, state } }) => member.displayName + channel.bitrate + state.selfMute'
       ),
       'src/events/voiceMove/ok.ts': ev(
         'voiceMove',
-        '({ from, to }) => from.name + to.name'
+        '({ voice: { from, to } }) => from.name + to.name'
       ),
       'src/events/voiceUpdate/ok.ts': ev(
         'voiceUpdate',
-        '({ voice, before }) => voice.selfMute !== before.selfMute'
+        '({ voice: { state, before } }) => state.selfMute !== before.selfMute'
       ),
       'src/events/banAdd/ok.ts': ev(
         'banAdd',
@@ -2154,7 +2166,7 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       ),
       'src/events/inviteCreate/ok.ts': ev(
         'inviteCreate',
-        '({ invite, channel }) => invite.url + channel.name'
+        '({ invite }) => invite.url + (invite.channel?.name ?? "")'
       ),
       'src/events/auditLogEntryCreate/ok.ts': ev(
         'auditLogEntryCreate',
@@ -2170,15 +2182,15 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       ),
       'src/events/threadMemberLeave/bad.ts': ev(
         'threadMemberLeave',
-        '({ user }) => user.username'
+        '({ member }) => member.displayName'
       ),
       'src/events/presenceUpdate/ok.ts': ev(
         'presenceUpdate',
-        '({ presence }) => presence.status + presence.activities.length'
+        '({ presence }) => presence.status + presence.activities.length + presence.userId'
       ),
       'src/events/scheduledEventUserAdd/ok.ts': ev(
         'scheduledEventUserAdd',
-        '({ scheduledEventId, user }) => scheduledEventId + user.username'
+        '({ interest: { scheduledEventId, user } }) => scheduledEventId + user.username'
       ),
       'src/events/guildUpdate/ok.ts': ev(
         'guildUpdate',
@@ -2206,10 +2218,10 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       .map(line => line.replace(/\(\d+,\d+\): error TS\d+/, ''))
       .sort();
     expect(errors).toEqual([
-      "src/events/reactionAdd/both-bad.ts: 'member' is possibly 'null'.",
-      `src/events/reactionRemove/dm.ts: Property 'guild' does not exist on type 'ContextOf<"reactionRemove", OptionsWritten<{ readonly name: "reactionRemove"; readonly where: "dm"; readonly run: unknown; }>>'.`,
-      "src/events/reactionRemove/member.ts: 'member' is possibly 'null'.",
-      "src/events/threadMemberLeave/bad.ts: 'user' is possibly 'null'.",
+      "src/events/reactionAdd/both-bad.ts: 'reaction.member' is possibly 'null'.",
+      "src/events/reactionRemove/dm.ts: Property 'guild' does not exist on type '{ reaction: Unplaced<UserReaction> & InDm & DmMessagePart; }'.",
+      "src/events/reactionRemove/member.ts: 'reaction.member' is possibly 'null'.",
+      "src/events/threadMemberLeave/bad.ts: 'member' is possibly 'null'.",
       "src/events/typingStart/bots.ts: Type 'true' is not assignable to type 'never'.",
     ]);
   });
@@ -2333,7 +2345,7 @@ describe.skipIf(process.platform === 'win32')('who did it', () => {
         'src/events/reactionRemove/log.ts': `import { event } from 'chapterjs';
 export default event({
   name: 'reactionRemove',
-  run({ user, emoji, channel }) {
+  run({ reaction: { user, emoji, channel } }) {
     console.log(\`unreacted: \${user.username} \${emoji.name} in #\${channel.name}\`);
   },
 });
@@ -2393,8 +2405,8 @@ export default event({
       'src/events/messageDelete/log.ts': `import { event } from 'chapterjs';
 export default event({
   name: 'messageDelete',
-  run({ messageId, channel }) {
-    console.log(\`deleted: \${messageId} in #\${channel.name}\`);
+  run({ message }) {
+    console.log(\`deleted: \${message.id} in #\${message.channel.name}\`);
   },
 });
 `,

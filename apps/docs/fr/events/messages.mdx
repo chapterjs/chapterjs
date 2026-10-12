@@ -128,22 +128,22 @@ Les deux options vont ensemble : `{ bots: true, where: 'both' }` reçoit tout, s
 
 ## Un message supprimé
 
-Un message supprimé n’existe plus, donc `messageDelete` vous donne son identifiant, le salon et le serveur où il était, et le message lui-même **tel qu’il était** quand le bot s’en souvenait.
+Un message supprimé n’existe plus, donc le `message` de `messageDelete` est ce qu’il en reste : son `id`, le `channel` où il était, et `before`, le message lui-même **tel qu’il était** quand le bot s’en souvenait.
 
 ```ts src/events/log.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'messageDelete',
-  run({ messageId, channel, guild }) {
-    console.log(`Le message ${messageId} a été supprimé dans #${channel.name} de ${guild.name}`);
+  run({ message, guild }) {
+    console.log(`Le message ${message.id} a été supprimé dans #${message.channel.name} de ${guild.name}`);
   },
 });
 ```
 
-Sur un serveur, `guild` et `channel` (un `GuildTextBasedChannel`) sont toujours là. `message` est `null` quand le bot ne se souvenait pas du message : le bot [ne se souvient d’aucun message](/fr/memory) aujourd’hui, donc utilisez toujours `messageId`.
+Sur un serveur, `guild` et `message.channel` (un `GuildTextBasedChannel`) sont toujours là. `message.before` est `null` quand le bot ne se souvenait pas du message : le bot [ne se souvient d’aucun message](/fr/memory) aujourd’hui, donc utilisez toujours `message.id`.
 
-`messageDelete` prend `where` comme les deux autres, et ce que reçoit votre fonction suit : avec `'dm'`, il n’y a ni `guild` ni `guildId` du tout ; avec `'both'`, `guild` est `null` pour un message privé et distingue les deux. Il n’a pas d’option `bots` : un message supprimé n’a plus d’auteur.
+`messageDelete` prend `where` comme les deux autres, et ce que reçoit votre fonction suit : avec `'dm'`, il n’y a ni `guild` ni `message.guildId` du tout ; avec `'both'`, `guild` est `null` pour un message privé et distingue les deux. Il n’a pas d’option `bots` : un message supprimé n’a plus d’auteur.
 
 ## Les intents suivent vos options
 

@@ -1,0 +1,106 @@
+---
+title: 'Classements'
+description: 'Garder un score par membre, dans l’ordre, et montrer qui est premier, avec une déclaration ranking()'
+---
+
+Un classement se déclare avec `ranking()`, dans n’importe quel fichier de `src/`, et s’exporte. Il garde un score par membre, toujours dans l’ordre, d’un redémarrage à l’autre, et par serveur sauf si vous dites autrement.
+
+```ts src/levels/xp.ts
+import { event, ranking } from 'chapterjs';
+
+export const xp = ranking();
+
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    const score = await xp.add(message.author.id, 10);
+    if (score % 1000 === 0) await message.reply(`Niveau supérieur : ${score} xp !`);
+  },
+});
+```
+
+C’est tout. Le nom de l’export est le nom du classement (`xp`), et chaque message écrit dans un serveur donne 10 points à son auteur dans le classement de ce serveur. `add()` part de 0, et deux messages au même instant ne perdent jamais un point, même sur [plusieurs processus](/fr/run/start#gros-bots).
+
+Pour montrer qui est premier :
+
+```ts src/levels/top.ts
+import { command } from 'chapterjs';
+import { xp } from './xp';
+
+export default command({
+  name: 'top',
+  description: 'Montre les dix membres qui ont le plus d’xp',
+  async run({ interaction, user }) {
+    const best = await xp.top(10);
+    const mine = await xp.rankOf(user.id);
+    const lines = best.map(entry => `${entry.rank}. <@${entry.id}> : ${entry.score} xp`);
+    lines.push(mine === undefined ? 'Vous n’avez pas encore d’xp.' : `Vous êtes n°${mine}.`);
+    await interaction.reply({ content: lines.join('\n'), ephemeral: true });
+  },
+});
+```
+
+`top(10)` donne les dix premiers, `top(10, 10)` les dix suivants. Chaque entrée a son `id`, son `score` et son `rank`, à partir de 1.
+
+<Note>
+  Tout ce qu’un classement déclare et fait est dans la [référence](/fr/reference/ranking).
+</Note>
+
+## Ce que fait un classement
+
+| Appel | Ce qu’il fait |
+| --- | --- |
+| `add(id, points)` | Ajoute des points (négatifs pour en retirer) à un score, depuis 0, d’un trait ; renvoie le nouveau score |
+| `set(id, score)` | Fixe un score, quel qu’il soit |
+| `score(id)` | Le score, ou `undefined` quand il n’y en a pas |
+| `rankOf(id)` | La place du membre, à partir de 1, ou `undefined` |
+| `top(count?, skip?)` | Les `count` premiers (10 par défaut), après en avoir sauté `skip` |
+| `remove(id)` | Oublie un score ; `true` quand il y en avait un |
+| `size()` | Combien de membres ont un score |
+| `clear()` | Oublie chaque score ; renvoie combien il y en avait |
+
+Un id est un texte : `member.id`, ou tout ce que vous classez d’autre (une équipe, un salon). Un score est un nombre, avec des décimales si vous voulez.
+
+## Le plus bas d’abord
+
+Pour un temps, un nombre d’essais, un score de golf : `order: 'lowest'` met le score le plus bas en premier.
+
+```ts src/race/fastest.ts
+import { command, ranking } from 'chapterjs';
+
+export const fastest = ranking({ order: 'lowest' });
+
+export default command({
+  name: 'race',
+  description: 'Lance une course et garde votre meilleur temps',
+  async run({ interaction, user }) {
+    const time = Math.round(5000 + Math.random() * 5000);
+    const best = await fastest.score(user.id);
+    if (best === undefined || time < best) await fastest.set(user.id, time);
+    await interaction.reply(`${time} ms. Vous êtes n°${await fastest.rankOf(user.id)}.`);
+  },
+});
+```
+
+Deux scores égaux sont rangés par leur id, de la même façon où que soient gardés les scores.
+
+## Par serveur, ou pour tout le bot
+
+Un classement est par serveur par défaut, comme un [store](/fr/storage) : dans une fonction qui tourne dans un serveur, `xp.add()` et `xp.top()` travaillent sur le classement de ce serveur. Hors d’un serveur (une tâche, un message privé), dites lequel avec `xp.in(guild)`. Pour un seul classement sur tous les serveurs, déclarez-le avec `scope: 'global'`.
+
+## Où sont les scores
+
+Comme un store, un classement garde ses scores dans `data/<nom>.json` par défaut, une entrée par membre, et avec `storage: 'redis'` dans le Redis de `REDIS_URL` (voir [Stockage](/fr/storage#dans-redis)), où c’est un sorted set : `xp:<id du serveur>`, `dev:xp:<id du serveur>` dans `chapterjs dev`.
+
+Dans un fichier, `top()` et `rankOf()` remettent chaque score dans l’ordre à chaque appel : instantané pour des milliers de membres, plus lent pour des centaines de milliers. Redis garde lui-même les scores dans l’ordre, quel que soit leur nombre : pour un gros bot, utilisez `storage: 'redis'`.
+
+Un classement et un store ne peuvent pas partager un nom : ils partageraient un fichier, ou une clé. Le second est signalé au chargement des fichiers, et mis de côté.
+
+<CardGroup cols={2}>
+  <Card title="Référence de ranking()" icon="trophy" href="/fr/reference/ranking">
+    Chaque champ d’un classement, et ce que chaque appel renvoie.
+  </Card>
+  <Card title="Stockage" icon="database" href="/fr/storage">
+    Garder tout le reste, par serveur.
+  </Card>
+</CardGroup>

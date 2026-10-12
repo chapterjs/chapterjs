@@ -22,3 +22,36 @@ export function withGuild<T>(guildId: string | null, fn: () => T): T {
 export function currentGuildId(): string | null | undefined {
   return scope.getStore();
 }
+
+/**
+ * The scope part of a key, for data per server or for the whole bot: the
+ * id of the server the code runs for (`guildOf`), or nothing for a global
+ * one. `what` names the kind of declaration in the message, when no server
+ * is known.
+ */
+export function scopeParts(
+  what: string,
+  name: string,
+  scope: 'guild' | 'global',
+  guildOf: () => string | null
+): string[] {
+  if (scope === 'global') return [];
+  const guildId = guildOf();
+  if (!guildId) {
+    throw new Error(
+      `${name} is a ${what} per server, and this code does not run in one: use ${name}.in(guild) to say which server, or declare the ${what} with scope: 'global'.`
+    );
+  }
+  return [guildId];
+}
+
+/** The id of what `in()` was given: a server, or its id. */
+export function guildIdOf(guild: { id: string } | string): string {
+  const id = typeof guild === 'string' ? guild : guild?.id;
+  if (typeof id !== 'string' || id === '') {
+    throw new TypeError(
+      'in() takes a server (a Guild) or its id, like warnings.in(guild) or warnings.in(guild.id).'
+    );
+  }
+  return id;
+}

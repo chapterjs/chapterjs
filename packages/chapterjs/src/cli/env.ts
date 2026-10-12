@@ -2,10 +2,13 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseEnv } from 'node:util';
 import { isSnowflake } from '../discord/snowflake.js';
+import { parseRedisUrl, type RedisAddress } from '../redis/url.js';
 
 export interface DevEnv {
   token: string;
   devGuildId: string;
+  /** Where the stores with `storage: 'redis'` go, when `REDIS_URL` is set. */
+  redis: RedisAddress | null;
 }
 
 /**
@@ -20,6 +23,8 @@ export interface StartEnv {
   token: string;
   /** The dev server, when the project has one: production leaves it alone. */
   devGuildId: string | null;
+  /** Where the stores with `storage: 'redis'` go, when `REDIS_URL` is set. */
+  redis: RedisAddress | null;
 }
 
 /** The `.env` file of a project, with the real environment on top. */
@@ -39,6 +44,31 @@ async function readEnv(
     read: name => (processEnv[name] ?? file[name] ?? '').trim(),
     hasFile,
   };
+}
+
+/**
+ * `REDIS_URL` and `REDIS_PASSWORD`, when they are there: nothing is needed
+ * unless a store asks for Redis, which the files say once they loaded.
+ */
+function redisProblem(
+  read: (name: string) => string,
+  where: string
+): { redis: RedisAddress | null } | { problem: string } {
+  const url = read('REDIS_URL');
+  const password = read('REDIS_PASSWORD');
+  if (url === '') {
+    if (password !== '') {
+      return {
+        problem: `${where}: REDIS_PASSWORD is set, but REDIS_URL is not.\nAdd REDIS_URL, the address of your Redis (like redis://localhost:6379), or remove REDIS_PASSWORD.`,
+      };
+    }
+    return { redis: null };
+  }
+  const parsed = parseRedisUrl(url, password);
+  if ('problem' in parsed) {
+    return { problem: `${where}: REDIS_URL ${parsed.problem}` };
+  }
+  return { redis: parsed.address };
 }
 
 const TOKEN_HELP =
@@ -87,7 +117,11 @@ export async function readDevEnv(
       `.env: DEV_GUILD_ID is "${devGuildId}", which is not a server ID (an ID only has digits).\nIn Discord, right-click your test server → Copy Server ID.`
     );
   }
-  return problems.length > 0 ? { problems } : { env: { token, devGuildId } };
+  const redis = redisProblem(read, '.env');
+  if ('problem' in redis) problems.push(redis.problem);
+  return problems.length > 0 || 'problem' in redis
+    ? { problems }
+    : { env: { token, devGuildId, redis: redis.redis } };
 }
 
 /**
@@ -118,7 +152,15 @@ export async function readStartEnv(
       `DEV_GUILD_ID is "${devGuildId}", which is not a server ID (an ID only has digits).\nRemove it, or copy it again: in Discord, right-click your test server → Copy Server ID.`
     );
   }
-  return problems.length > 0
+  const redis = redisProblem(read, hasFile ? '.env' : 'Environment');
+  if ('problem' in redis) problems.push(redis.problem);
+  return problems.length > 0 || 'problem' in redis
     ? { problems }
-    : { env: { token, devGuildId: devGuildId === '' ? null : devGuildId } };
+    : {
+        env: {
+          token,
+          devGuildId: devGuildId === '' ? null : devGuildId,
+          redis: redis.redis,
+        },
+      };
 }

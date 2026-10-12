@@ -86,6 +86,9 @@ Chaque message de ChapterJS dit ce qui s’est passé, puis quoi faire. Cette pa
   <Accordion title="✗ src/…:line … (while the bot runs)">
     Une de vos fonctions a levé une erreur : la ligne nomme le fichier et la ligne de votre code, et le reste est l’erreur. Rien d’autre ne s’arrête. Pour une commande, la personne a reçu une courte réponse privée. Voir [quand votre fonction échoue](/fr/commands/answering#quand-votre-fonction-échoue).
   </Accordion>
+  <Accordion title="✗ src/…:line …, puis This call was not awaited: write await in front of it (and async before run)">
+    Une de vos fonctions a appelé quelque chose qui répond plus tard (un store, une réponse, une requête) sans `await`, et cela a échoué sans personne à prévenir. Sans cette ligne, Node aurait arrêté le bot ; à la place l’erreur est signalée avec votre fichier et la ligne, et le bot continue. Écrivez `await` devant l’appel et `async` devant `run`, pour que votre fonction l’attende et que ses erreurs soient signalées avec elle.
+  </Accordion>
   <Accordion title="↻ Your files now need more from Discord (…): reconnecting...">
     Un fichier que vous avez ajouté écoute quelque chose que la connexion n’avait pas demandé (un nouvel événement, un fichier qui écoute maintenant les messages privés). ChapterJS se reconnecte tout seul avec ce qu’il faut et dit `✓ Reconnected, … loaded` ; si cela demande un intent privilégié, voir plus haut.
   </Accordion>

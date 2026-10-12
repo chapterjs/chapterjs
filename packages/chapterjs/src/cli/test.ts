@@ -109,7 +109,7 @@ async function startSession(
   observer: Observer,
   stores: MemoryStoreBackend
 ): Promise<{ session: Session; close(): Promise<void> }> {
-  stores.clear();
+  stores.reset();
   observer.reset();
   const world = new World();
   await world.start();
@@ -229,7 +229,9 @@ async function run(
     cwd,
     version: options.version,
     log: capture.log,
-    stores,
+    // Every store, wherever it says it keeps its data, is in memory here:
+    // a test never needs a Redis, and starts from nothing.
+    stores: { file: stores, redis: stores },
     observe: observer.observe,
   });
   await writeTypes(cwd);
