@@ -1,0 +1,24 @@
+{
+  "name": "levels-bot",
+  "description": "XP for every message, levels, role rewards and a leaderboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "chapterjs dev",
+    "start": "chapterjs start",
+    "build": "chapterjs build",
+    "test": "chapterjs test",
+    "typecheck": "tsc -b",
+    "postinstall": "chapterjs sync"
+  },
+  "dependencies": {
+    "chapterjs": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

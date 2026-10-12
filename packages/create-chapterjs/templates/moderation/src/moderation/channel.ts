@@ -1,6 +1,6 @@
 import { command } from 'chapterjs';
 
-// /slowmode sets how long people wait between two messages in the channel.
+// /slowmode sets how long people wait between two messages in the channel;
 // 0 removes it.
 export const slowmode = command({
   name: 'slowmode',
@@ -26,7 +26,7 @@ export const slowmode = command({
 });
 
 // /lock keeps everyone from writing in the channel, /unlock gives it back.
-// Both change the permissions of @everyone on the channel only.
+// Both change what @everyone may do in this channel only.
 export const lock = command({
   name: 'lock',
   permissions: ['ManageChannels'],
@@ -57,7 +57,7 @@ export const unlock = command({
       await interaction.reply({ content: t('notHere'), ephemeral: true });
       return;
     }
-    // Deleting the overwrite gives @everyone back what the server says.
+    // Without its overwrite, @everyone may do here what the server allows.
     await channel.deletePermissions(
       guild.everyoneRole,
       `Unlocked by ${member.user.username}`

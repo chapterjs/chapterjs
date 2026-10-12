@@ -1,13 +1,12 @@
 import { command } from 'chapterjs';
 
-// /purge deletes the last messages of the channel, all of them or only
-// the ones of a person. Discord only deletes in bulk what is less than two
-// weeks old: older messages are left out, and the answer says how many
-// really went.
+// /purge deletes the last messages of the channel, all of them or only the
+// ones of a person. Discord only deletes in bulk what is less than two weeks
+// old: older messages stay, and the answer says how many really went.
 export default command({
   name: 'purge',
   permissions: ['ManageMessages'],
-  // The answer only the person sees, so the channel is not filled again.
+  // An answer only the moderator sees, so the channel stays clean.
   ephemeral: true,
   cooldown: { channel: '5s' },
   options: {

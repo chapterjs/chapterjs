@@ -8,6 +8,9 @@ export const templatesDir = fileURLToPath(
   new URL('../templates/', import.meta.url)
 );
 
+/** The template preselected in the menu: the smallest bot, ready to grow. */
+export const DEFAULT_TEMPLATE = 'minimal';
+
 export interface Template {
   /** Folder name in `templates/`. */
   name: string;
@@ -35,13 +38,13 @@ export async function listTemplates(dir = templatesDir): Promise<Template[]> {
         return { name: entry.name, description };
       })
   );
-  // `default` first, so it is the preselected choice.
+  // `minimal` first, so it is the preselected choice.
   return templates
     .filter(template => template !== undefined)
     .sort((a, b) =>
-      a.name === 'default'
+      a.name === DEFAULT_TEMPLATE
         ? -1
-        : b.name === 'default'
+        : b.name === DEFAULT_TEMPLATE
           ? 1
           : a.name.localeCompare(b.name)
     );

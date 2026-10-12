@@ -1,6 +1,6 @@
 {
   "name": "ticket-bot",
-  "description": "Support tickets in private threads: a panel, a form, a close button",
+  "description": "Support tickets in private threads: a panel, a form, claim and close",
   "private": true,
   "type": "module",
   "scripts": {
