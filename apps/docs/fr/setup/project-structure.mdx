@@ -3,16 +3,14 @@ title: 'Structure du projet'
 description: 'À quoi sert chaque dossier et fichier de votre projet, et comment le framework trouve ce que vos fichiers déclarent'
 ---
 
-Un projet créé avec `create chapterjs`, à partir du modèle `default`, ressemble à ceci. Tout ce que fait votre bot vit dans `src/` ; le reste est de la configuration que vous touchez rarement.
+Un projet créé avec `create chapterjs`, à partir du modèle `minimal`, ressemble à ceci. Tout ce que fait votre bot vit dans `src/` ; le reste est de la configuration que vous touchez rarement.
 
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
     <Tree.Folder name=".chapterjs" />
     <Tree.Folder name="public" />
     <Tree.Folder name="src" defaultOpen>
-      <Tree.Folder name="events" defaultOpen>
-        <Tree.File name="ready.ts" highlight />
-      </Tree.Folder>
+      <Tree.File name="presence.ts" highlight />
     </Tree.Folder>
     <Tree.File name=".env" />
     <Tree.File name=".env.example" />
@@ -24,18 +22,17 @@ Un projet créé avec `create chapterjs`, à partir du modèle `default`, ressem
 
 ## Modèles
 
-`create chapterjs` propose six modèles. `default` est présélectionné : un fichier, et le reste de ce site pour le faire grandir. Les autres sont des bots complets : lisez-les une fois le framework connu, ou partez de l’un d’eux.
+`create chapterjs` propose cinq modèles. `minimal` est présélectionné : un fichier, et le reste de ce site pour le faire grandir. Les autres sont des bots complets : lisez-les une fois le framework connu, ou partez de l’un d’eux.
 
-| Modèle       | Ce que c’est                                                                                                                                                                              |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `default`    | Un événement, `ready`, qui affiche une ligne quand le bot est en ligne. Rien d’autre.                                                                                                     |
-| `tickets`    | Des tickets de support dans des fils privés : `/ticket panel` poste un bouton, qui ouvre un formulaire, qui ouvre un fil avec un bouton de fermeture pour le staff ou la personne.        |
-| `music`      | Un lecteur de musique en vocal : `/play` avec un fichier ou un lien, une file d’attente par serveur, `/queue`, `/leave`, et des boutons pause, passer et stop sous « Now playing ».        |
-| `community`  | Une carte de bienvenue quand quelqu’un arrive, un au revoir quand il part, `/roles` pour choisir ses rôles dans un menu, et une tâche hebdomadaire qui poste les chiffres du serveur.     |
-| `moderation` | `/timeout` et `/untimeout`, `/purge`, `/slowmode`, `/lock` et `/unlock`, avec les permissions dont chacune a besoin, et un journal de chaque action de modération dans `#mod-log`.       |
-| `games`      | `/quiz start` pose une question et la première bonne réponse dans le salon gagne un point, `/duel` attend le clic de qui a été défié, une commande de menu sur une personne montre son score et une sur un message défie son auteur, et une présence qui tourne. |
+| Modèle       | Ce que c’est                                                                                                                                                                                                                              |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minimal`    | Un fichier, `src/presence.ts` : le texte que Discord affiche sous le nom de votre bot. Rien d’autre.                                                                                                                                      |
+| `tickets`    | Des tickets de support dans des fils privés : `/ticket panel` poste un bouton, qui ouvre un formulaire, qui ouvre un fil avec un bouton de prise en charge pour le staff et un bouton de fermeture ; `/ticket add` y fait entrer quelqu’un. |
+| `moderation` | `/warn add`, `/warn list` et `/warn clear` (oubliés après 30 jours), `/timeout`, `/untimeout`, `/kick`, `/ban`, `/purge`, `/slowmode`, `/lock` et `/unlock`, et un journal de chaque action dans `#mod-log`.                              |
+| `levels`     | De l’XP pour chaque message, une fois par minute et par personne, un message et un rôle à chaque nouveau niveau, `/rank` (et la même chose dans le menu d’une personne), `/leaderboard` page après page, et `/xp set` pour le staff.      |
+| `giveaways`  | `/giveaway start` poste un concours auquel on participe avec un bouton ; une tâche tire les gagnants quand le temps est écoulé, et le menu de son message le termine plus tôt ou tire à nouveau. `/giveaway list` montre ceux en cours.   |
 
-Chaque modèle sauf `default` a ses textes en deux langues (`en-US` et `fr`) et une présence. `community` a besoin du Server Members Intent, pour savoir qui arrive, et `games` du Message Content Intent, pour lire les réponses de son quiz : `chapterjs dev` dit où les activer.
+Chaque modèle sauf `minimal` a ses textes en deux langues (`en-US` et `fr`), une présence et un [fichier de test](/fr/testing). `levels` a besoin du Message Content Intent, pour entendre chaque message : `chapterjs dev` dit où l’activer.
 
 ## `src/` : ce qu’un fichier exporte dit ce qu’il est
 
@@ -50,7 +47,7 @@ ChapterJS ne vous demande jamais d’enregistrer quoi que ce soit. Il charge cha
 | `presence({ ... })`                               | Ce que le bot affiche sous son nom : son statut et ce qu’il fait, déclaré une fois                                                                        |
 | `language({ locale, ... })`                       | Une langue du bot : `locale` dit laquelle ; chaque fonction reçoit alors `t`                                                                              |
 
-Tous s’importent du même endroit, et un fichier peut en déclarer autant que vous voulez. Les modèles font les deux : `default` garde un dossier par sorte (`src/events/`), `tickets` met tout ce qui touche aux tickets dans `src/tickets/` : la commande, le formulaire, les boutons et leurs textes. Un fichier qui déclare plusieurs choses ressemble à ceci :
+Tous s’importent du même endroit, et un fichier peut en déclarer autant que vous voulez. Le modèle `tickets` met tout ce qui touche aux tickets dans `src/tickets/` : les commandes, le formulaire, les boutons et leurs textes, et son `tickets.ts` déclare à la fois un store et un événement. Un fichier qui déclare plusieurs choses ressemble à ceci :
 
 ```ts src/moderation/ban.ts
 import { button, command, event } from 'chapterjs';

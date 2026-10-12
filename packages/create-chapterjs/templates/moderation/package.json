@@ -1,6 +1,6 @@
 {
   "name": "moderation-bot",
-  "description": "Timeouts, purge, slowmode, lock, and a log of every moderation action",
+  "description": "Warnings, timeouts, kicks, bans, purge, channel lock and a mod log",
   "private": true,
   "type": "module",
   "scripts": {

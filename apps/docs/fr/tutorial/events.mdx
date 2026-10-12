@@ -7,7 +7,7 @@ Les commandes tournent quand quelqu’un demande. Les événements tournent quan
 
 ## Une déclaration par réaction
 
-Pour réagir à un événement, déclarez-le avec `event()` et exportez-le : `name` est l’événement, et le reste est une réaction. Le fichier est à vous à placer et à nommer ; le modèle garde ses événements dans `src/events/`. Créez `src/events/hello.ts` :
+Pour réagir à un événement, déclarez-le avec `event()` et exportez-le : `name` est l’événement, et le reste est une réaction. Le fichier est à vous à placer et à nommer ; ce tutoriel garde ses événements dans `src/events/`. Créez `src/events/hello.ts` :
 
 ```ts src/events/hello.ts
 import { event } from 'chapterjs';
@@ -45,7 +45,7 @@ Ouvrez le lien (il mène directement à la page **Bot** de votre application de 
 ```text
 ✓ Privileged intents enabled
 ↻ Your files now need more from Discord (GUILD_MEMBERS): reconnecting...
-✓ Reconnected, 2 events loaded
+✓ Reconnected, 1 event, a presence loaded
 ```
 
 Les intents sont donnés à Discord à la connexion, donc avoir besoin d’un nouvel intent veut dire se reconnecter. Le framework l’a fait. Désormais, chaque fois que quelqu’un rejoint votre serveur de test, votre fichier tourne. Essayez avec un second compte, ou en quittant et en revenant.
@@ -77,7 +77,7 @@ Pourquoi une déclaration par chose, plutôt qu’une grosse fonction ? Parce qu
 
 ## L’événement ready
 
-`ready` est spécial : ce n’est pas quelque chose qui se passe sur Discord, mais le moment où votre bot est connecté et connaît chaque serveur où il se trouve. Il tourne **une fois par démarrage**, jamais lors d’un rechargement. Le modèle est ce seul fichier :
+`ready` est spécial : ce n’est pas quelque chose qui se passe sur Discord, mais le moment où votre bot est connecté et connaît chaque serveur où il se trouve. Il tourne **une fois par démarrage**, jamais lors d’un rechargement. Créez `src/events/ready.ts` :
 
 ```ts src/events/ready.ts
 import { event } from 'chapterjs';
@@ -90,7 +90,7 @@ export default event({
 });
 ```
 
-`user` est le bot lui-même, `guilds` les serveurs où il se trouve. Servez-vous-en pour ce qui doit se faire une fois au démarrage. Ne vous en servez pas pour ce qui doit se faire régulièrement : c’est le rôle des tâches, quelques chapitres plus loin.
+Enregistrez-le, puis arrêtez le bot et relancez-le : le terminal affiche `buddy est en ligne sur 1 serveur(s)`, une fois. `user` est le bot lui-même, `guilds` les serveurs où il se trouve. Servez-vous-en pour ce qui doit se faire une fois au démarrage. Ne vous en servez pas pour ce qui doit se faire régulièrement : c’est le rôle des tâches, quelques chapitres plus loin.
 
 ## Les événements auxquels réagir
 

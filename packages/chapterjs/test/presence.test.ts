@@ -804,7 +804,7 @@ export default presence({ activity: { type: 'playing', name: () => 42 } });
 `,
     });
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(

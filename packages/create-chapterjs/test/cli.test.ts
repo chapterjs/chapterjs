@@ -69,8 +69,8 @@ describe.skipIf(process.platform === 'win32')('create-chapterjs CLI', () => {
       // The template question offers every template, the default one first
       // and preselected: Enter takes it (the helper presses it).
       expect(output).toContain('Which template do you want to start from?');
-      expect(output.indexOf('default')).toBeLessThan(output.indexOf('tickets'));
-      expect(existsSync(join(dir, 'src/events/ready.ts'))).toBe(true);
+      expect(output.indexOf('minimal')).toBeLessThan(output.indexOf('tickets'));
+      expect(existsSync(join(dir, 'src/presence.ts'))).toBe(true);
       expect(existsSync(join(dir, 'src/tickets'))).toBe(false);
       expect(output).toContain(`Project created in ${dir}`);
       expect(output).toContain('Dependencies installed with pnpm');
