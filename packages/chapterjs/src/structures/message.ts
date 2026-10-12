@@ -45,6 +45,18 @@ import {
 } from './payload.js';
 import { translatorOf } from '../messages/translate.js';
 import type { User } from './user.js';
+import {
+  personId,
+  readEmoji,
+  readWithin,
+  waitFor,
+  type WaitedReaction,
+  type Click,
+  type OfferedClick,
+  type OfferedReaction,
+  type WaitForClickOptions,
+  type WaitForReactionOptions,
+} from './wait.js';
 
 /** What the message stores: users are kept as structures, not copies. */
 export type MessageData = Omit<RawMessage, 'author' | 'mentions'> & {
@@ -376,6 +388,53 @@ export class Message extends IdStructure<MessageData> {
       { body: toSnakeCase<StartThreadFromMessageJSONParams>(options), reason }
     );
     return entities.channel(raw) as ThreadChannel;
+  }
+
+  /**
+   * Waits for a click on a button or a menu of this message: of a person
+   * (`from`), anyone by default. Resolves with the click, to answer with
+   * `click.interaction`, or `null` when `within` (one minute by default)
+   * passed first. A click taken here does not run the `run` of the button;
+   * a button that is only waited for needs none. A restart of the bot ends
+   * the wait.
+   */
+  async waitForClick(options: WaitForClickOptions = {}): Promise<Click | null> {
+    const within = readWithin(options.within);
+    const from = personId(options.from);
+    const [click] = await waitFor<OfferedClick>(
+      this,
+      'click',
+      offered =>
+        offered.messageId === this.id && (!from || offered.user.id === from),
+      within
+    );
+    return click ?? null;
+  }
+
+  /**
+   * Waits for a reaction added to this message: of a person (`from`),
+   * anyone's but a bot's by default, with an emoji (`emoji`), any by
+   * default. Resolves with it, or `null` when `within` (one minute by
+   * default) passed first. A restart of the bot ends the wait.
+   */
+  async waitForReaction(
+    options: WaitForReactionOptions = {}
+  ): Promise<WaitedReaction | null> {
+    const within = readWithin(options.within);
+    const from = personId(options.from);
+    const isEmoji = readEmoji(options.emoji);
+    const [reaction] = await waitFor<OfferedReaction>(
+      this,
+      'reaction',
+      offered =>
+        offered.messageId === this.id &&
+        (from ? offered.user.id === from : !offered.user.bot) &&
+        isEmoji(offered.emoji),
+      within
+    );
+    if (!reaction) return null;
+    const { messageId: _, ...rest } = reaction;
+    return Object.freeze(rest);
   }
 }
 

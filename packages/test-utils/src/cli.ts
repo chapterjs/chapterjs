@@ -44,7 +44,10 @@ export interface Cli {
   press(key: keyof typeof keys): void;
   /** Sends a signal to the process, like the system or Ctrl+C would. */
   signal(name: NodeJS.Signals): void;
-  /** Resolves when the process exits, with its code and full output. */
+  /**
+   * Resolves when the process exits, with its code and full output. The
+   * `timeout` counts from the first time it is read.
+   */
   readonly exited: Promise<ExitResult>;
 }
 
@@ -106,24 +109,40 @@ export function startCli({
   child.stdout.on('data', onData);
   child.stderr.on('data', onData);
 
-  const exited = new Promise<ExitResult>((resolve, reject) => {
-    const timer = setTimeout(
-      () =>
-        reject(
-          new Error(
-            `The CLI did not exit within ${timeout} ms.\n\n${stripAnsi(raw)}`
-          )
-        ),
-      timeout
-    );
+  /** How the process ended, heard from the start so it is never missed. */
+  const closed = new Promise<ExitResult>((resolve, reject) => {
     child.on('close', (code, signal) => {
-      clearTimeout(timer);
       if (spawnError) reject(new Error(ending(code, signal)));
       else resolve({ code, output: stripAnsi(raw) });
     });
   });
-  // Handled by whoever awaits it; this avoids an unhandled rejection otherwise.
-  exited.catch(() => {});
+  closed.catch(() => {});
+  /**
+   * The wait starts when a test asks for the end, not when the process
+   * started: a test that runs a long while before stopping the CLI must
+   * still give it the whole `timeout` to stop.
+   */
+  let exited: Promise<ExitResult> | null = null;
+  const waitForExit = (): Promise<ExitResult> => {
+    let timer: NodeJS.Timeout | undefined;
+    const late = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `The CLI did not exit within ${timeout} ms.\n\n${stripAnsi(raw)}`
+            )
+          ),
+        timeout
+      );
+    });
+    const result = Promise.race([closed, late]).finally(() =>
+      clearTimeout(timer)
+    );
+    // Handled by whoever awaits it; this avoids an unhandled rejection otherwise.
+    result.catch(() => {});
+    return result;
+  };
 
   return {
     get output() {
@@ -175,6 +194,8 @@ export function startCli({
     signal(name) {
       child.kill(name);
     },
-    exited,
+    get exited() {
+      return (exited ??= waitForExit());
+    },
   };
 }

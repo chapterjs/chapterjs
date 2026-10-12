@@ -3,7 +3,7 @@ title: 'Changelog'
 description: 'What changed in each version of ChapterJS'
 ---
 
-Every version of `chapterjs`, `create-chapterjs` and `create-chapter` has the same number, and the numbers follow [semantic versioning](https://semver.org): what your files use (the functions of `chapterjs` and their options, what your functions receive, the files and `.env` of a project, the commands of the CLI) only changes in a major version, and the entry of that version says what to change in your project. A minor version adds, a patch fixes: updating to one never asks anything of you.
+`chapterjs`, `create-chapterjs` and `create-chapter` share one version number, following [semantic versioning](https://semver.org): only a major version asks you to change your files, and its entry says what.
 
 Only `chapterjs` lives in your project; `chapterjs dev` tells you when a newer one is out. To update it:
 
@@ -27,90 +27,81 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
-<Update label="0.4.0" description="Stores kept in Redis with nothing to install, counters, rankings, and events that give what they are about and the server">
+<Update label="0.5.0" description="Menu commands, waiting, rotating presence">
 
-**What to change in your files.** Every event now gives the same two things: what it is about, and the server it happened in, `guild` (plus `t`, as before). The full list is in one table: [What each event gives](/reference/events#what-each-event-gives).
+- [Menu commands](/commands/menus): `command({ type: 'message' | 'user', ... })`, used with a right click.
+- [Waiting for an answer](/waiting): `waitForMessage()`, `collectMessages()`, `waitForClick()`, `waitForReaction()`.
+- [Presence](/presence#several-activities): several activities in turn, texts that are functions.
+- A sixth template, `games`.
 
-- `messageCreate` and `messageUpdate` also give `guild`: nothing to change.
-- `messageDelete` gives `{ message, guild }`: `messageId` is `message.id`, `channel` is `message.channel`, and the message as it was is `message.before`.
-- `reactionAdd`, `reactionRemove`: `{ reaction, guild }`, so `emoji` is `reaction.emoji`, `member` is `reaction.member`, and so on. `reactionClear`: `{ reactions, guild }`.
-- `pollVoteAdd`, `pollVoteRemove`: `{ vote, guild }`. `typingStart`: `{ typing, guild }`.
-- `voiceJoin`, `voiceLeave`, `voiceMove`, `voiceUpdate`: `{ voice, guild }`: `member`, `channel` (or `from` and `to`) are in `voice`, and what was `voice` is now `voice.state`.
-- `presenceUpdate`: `{ presence, guild }`, with `userId`, `user` and `member` in `presence`. `scheduledEventUserAdd` and `scheduledEventUserRemove`: `{ interest, guild }`.
-- `inviteCreate` no longer gives `channel`: it is `invite.channel`. `inviteDelete` gives `{ invite, guild }`, with `code` and `channel` in `invite`.
-- `memberLeave` gives `{ user, guild }`: `member` is gone, and with it the 1000 members per server the bot kept for it. `roleDelete` no longer gives `roleId`: it is `role.id`. `threadMemberJoin` no longer gives `user` (`member.user`), `threadMemberLeave` no longer gives `user`.
+**Fixes**
 
-A file still written the old way is underlined in your editor, on the name that moved.
-
-
-A store can keep its data in Redis: `store<Session>({ storage: 'redis', expires: '1h' })`, and `REDIS_URL` (plus `REDIS_PASSWORD` when the password is not in it) in `.env`. Same calls, same keys, same scope and expiration as a store kept in a file; only the stores that say so go there, each value one readable key (`sessions:<server id>:<key>`, expired by Redis itself), and `chapterjs dev` writes every key with `dev:` in front so a shared Redis never mixes development and production. The bot connects when it starts, stops with the reason when Redis does not answer, and comes back by itself after an outage. Nothing to install: the framework speaks to Redis on Node alone. `chapterjs test` needs no Redis. See [Storage](/storage#in-redis).
-
-Every store, in a file or in Redis, gets `increment()` for counters, `getMany()`, `setMany()` and `deleteAll(prefix)` for several values at once. And `update()` now loses nothing when several run at once on the same key, in one process or several: before, two updates close together could keep only one of the two changes. See [What a store does](/storage#what-a-store-does).
-
-`ranking()` keeps a score per member, always in order: `xp.add(member.id, 10)`, `xp.top(10)`, `xp.rankOf(member.id)`, the highest first or `order: 'lowest'` for times. Per server like a store, in `data/` or in Redis, where it is a sorted set. See [Rankings](/rankings).
-
-</Update>
-
-<Update label="0.3.0" description="chapterjs test: your bot checked without Discord, and scenarios to say what it should answer">
-
-`chapterjs test` runs your bot against a Discord in memory: one server, a few people, no token and nothing to connect to. With nothing written, every command, button, menu, form, event and task of your project is used once, with ordinary values and with hard ones (a text at its longest, each choice, someone who left...), and must answer without throwing: a function that throws is reported with its file and line, like in `chapterjs dev`. See [Testing](/testing).
-
-Then your scenarios: `scenario('ping answers Pong', async bot => { ... })` in a `*.test.ts` file of `src/`, imported from `chapterjs/test`. `bot.use(ping, { who: alice })` uses a command as a person would, with options typed from your file; `bot.click()`, `bot.select()`, `bot.submit()`, `bot.say()`, `bot.join()` and `bot.run()` do the rest, and what comes back says what the bot answered: `reply.says('Pong').isPublic().hasButton('Confirm')`. Each scenario runs on a fresh server with empty stores, and a failure names the line of your scenario. Everything a scenario can do is in the [reference](/reference/testing).
-
-Every template now has a `test` script and a scenario file to start from. The tutorial has a [Testing](/tutorial/testing) chapter, before building.
+- `chapterjs dev`: a second `default: true` in a new file no longer removes commands from Discord.
+- `chapterjs dev`: a new file can no longer take the name of a store, command or component that already runs.
+- Events and commands exported together in a list all run: only the last one did.
+- A call refused by Discord that was not awaited (`member.ban()` without `await`) no longer stops the bot: it is reported with its line. `chapterjs test` no longer stops on one either.
+- An answer asked without `await` is no longer reported as "finished without answering".
+- `chapterjs dev`: one save reloads once, even when the editor writes then renames the file, and on Linux the saves that follow are no longer missed.
+- A message with more than 5 rows of buttons and menus is refused before Discord with a clear message.
+- `chapterjs test`: each case runs on a fresh server (a `/ban` no longer breaks the cases after it), a command that defers is no longer failed after 5 s, a stuck run no longer blocks what follows, and `join()` says voice is not simulated.
+- `channelCreate`, `channelUpdate`, `channelDelete`: `guild` is never `null`, and `channel` is one of a server.
+- A store file in `data/` with a damaged entry is refused with its name, instead of losing that entry the next time it is written.
+- A plural's `zero` form is used for 0 in every language: English ignored it.
+- `reply.opensForm()` takes a form that carries data.
+- `chapterjs test`: the server refuses, as Discord does, to kick, ban or rename the owner or someone above the bot.
+- Clearer messages: permissions in words ("Ban Members"), what Discord refusals mean, syntax errors, Redis refusing at start, `--processes` above the shards, the dev server in `start`.
 
 </Update>
 
-<Update label="0.2.3" description="Storage, five templates, and a new project on the version of create chapterjs, exactly">
+<Update label="0.4.0" description="Redis, rankings, events with guild">
 
-Your bot can keep what it learns: `export const warnings = store<Warning[]>({ expires: '30d' })` declares a [store](/storage), per server unless `scope: 'global'`, typed by what it holds, with an expiration if you want one. In a command or an event, the key is yours and the server is known; elsewhere, `warnings.in(guild)`. One JSON file per store in `data/`, written for you, and shared by every process of a large bot.
+**To change in your files:** every event now gives what it is about plus `guild`. See [What each event gives](/reference/events#what-each-event-gives); a file written the old way is underlined in your editor.
 
-`create chapterjs` now offers five [templates](/setup/project-structure#templates). `default` is one file, the `ready` event, and the tutorial starts from it. The others are complete bots: `tickets` (support tickets in private threads), `music` (a player with a queue and buttons), `community` (welcome cards, roles people pick, weekly stats) and `moderation` (timeouts, purge, slowmode, lock, and a log of every action). The `/ping`, `/hello`, `/play` and moderation examples of the old template are gone: what they showed is in the new ones and in the guide.
+- [Stores in Redis](/storage#in-redis): `storage: 'redis'`, with `REDIS_URL` in `.env`.
+- Stores: `increment()`, `getMany()`, `setMany()`, `deleteAll()`; `update()` no longer loses a change made at the same time.
+- [Rankings](/rankings): `ranking()`, a score per member, always in order.
 
-`create chapterjs` also writes the exact version of `chapterjs` in your `package.json` (`"0.2.3"`, no `^`): `pnpm create chapterjs@0.2.3` gives a project on `chapterjs@0.2.3`, and your project only changes version when you run the command [`chapterjs dev` gives you](/run/dev#a-new-version-of-chapterjs).
+</Update>
+
+<Update label="0.3.0" description="chapterjs test">
+
+- [`chapterjs test`](/testing): your bot checked against a Discord in memory, no token needed.
+- Scenarios: `scenario()` in `*.test.ts` files, from `chapterjs/test`.
+- Every template has a `test` script and a scenario to start from.
+
+</Update>
+
+<Update label="0.2.3" description="Storage and five templates">
+
+- [Stores](/storage): `store()` keeps data from one restart to the next, in `data/`.
+- Five [templates](/setup/project-structure#templates): `default`, `tickets`, `music`, `community`, `moderation`.
+- A new project gets the exact version of `chapterjs` of `create chapterjs`.
 
 </Update>
 
 <Update label="0.2.2" description="A lighter default template">
 
-The project made by `create chapterjs` no longer ships the moderation example (`/ban`, `/kick`, `/warn`): it keeps `/ping`, `/hello`, `/play`, the two events, the presence and the two languages.
+- The default template no longer has the moderation example.
 
 </Update>
 
-<Update label="0.2.1" description="chapterjs dev tells you when a new version is out">
+<Update label="0.2.1" description="New version notice">
 
-Once the bot is online, `chapterjs dev` says when a newer version of `chapterjs` is published, with the command that installs it, written for the package manager of your project. npm is asked at most once a day, and never holds the bot. See [A new version of ChapterJS](/run/dev#a-new-version-of-chapterjs).
-
-</Update>
-
-<Update label="0.2.0" description="Your files, your order: the framework reads what they export">
-
-Nothing is tied to a folder any more. Every file of `src/` is loaded, and what it exports made with `command()`, `event()`, `button()`, `select()`, `modal()`, `embed()`, `task()`, `presence()` or `language()` is what the bot runs: a file may declare several things, and sit wherever you like. See [Project structure](/setup/project-structure).
-
-- **[Commands](/commands)** take a `name`: `command({ name: 'ping', ... })`, `'mod ban'` for a subcommand. Two commands with the same name are reported, wherever they are.
-- **[Events](/events)** take a `name` too, which types what `run` receives: `event({ name: 'memberJoin', run({ member }) { ... } })`. The options are written next to it (`bots: true`, `where: 'dm'`), and a typo in either is underlined.
-- **[Components](/components)** and **[tasks](/tasks)** are named by their export: `export const again = button(...)` is the button `again`. Moving a file changes nothing; renaming the export does, as renaming the file did.
-- **[Languages](/translated-messages)** say their `locale`: `language({ locale: 'fr', ... })`, and a second `default: true` is underlined in both files. A language may be declared in several places: the texts of a feature live next to it, and `t` offers them all. A text the default language does not have is taken from the language that has it, so a module written in other languages than yours still works.
-- `.chapterjs/` is one TypeScript project for the whole of `src/`, and holds only what the project adds: the files of `public/`, the languages and the commands. The folders in parentheses and the `_` files are not needed any more: a folder is only a folder, and a file that declares nothing is yours.
-
-The types `EventFile`, `CommandFile`, `ButtonFile`, `SelectFile`, `ModalFile`, `EmbedFile`, `TaskFile`, `PresenceFile` and `LanguageFile` are now `EventDeclaration`, `CommandDeclaration`, `ButtonDeclaration`, `SelectDeclaration`, `ModalDeclaration`, `EmbedDeclaration`, `TaskDeclaration`, `PresenceDeclaration` and `LanguageDeclaration`.
+- `chapterjs dev` says when a newer `chapterjs` is out, with the command to update.
 
 </Update>
 
-<Update label="0.1.4" description="The first version of the framework">
+<Update label="0.2.0" description="Your files, your order">
 
-A folder of files becomes a Discord bot.
+**To change in your files:** commands and events take a `name`, languages a `locale`; components and tasks are named by their export. Files can be anywhere in `src/`. See [Project structure](/setup/project-structure).
 
-- **[Commands](/commands)**: a file of `src/commands/` is a slash command, with typed options, choices, [autocomplete](/commands/options#autocomplete), permissions, cooldowns and translations.
-- **[Events](/events)**: a file of `src/events/<event>/` runs when it happens. The intents follow from the files you write.
-- **[Components](/components)**: buttons, select menus, forms and embeds in `src/components/`, with typed `data` and no id to write.
-- **[Tasks](/tasks)**: what the bot does by itself, every so often or at set times.
-- **[Voice](/voice)**: the bot joins a voice channel and plays a file of `public/`, a file sent on Discord or a link, end-to-end encrypted as Discord asks.
-- **[Presence](/presence)**: what the bot shows under its name, in `src/presence.ts`.
-- **[Translated messages](/translated-messages)**: one file per language in `src/messages/`, and `t` speaks the language of the readers.
-- **[`chapterjs dev`](/run/dev)**: the bot on a test server, every file reloaded when you save it.
-- **[`chapterjs build`](/run/build)** and **[`chapterjs start`](/run/start)**: one compiled file for production, run on several processes when the bot is large.
-- **[`create-chapterjs`](/quickstart)**: a new project in one command.
-- **[Node.js 24](/quickstart)** or newer: `chapterjs` and `create-chapterjs` stop at once on an older one and say what to install.
+- The `…File` types are now `…Declaration` (`CommandFile` → `CommandDeclaration`…).
+
+</Update>
+
+<Update label="0.1.4" description="First version">
+
+- Commands, events, components, tasks, voice, presence and translated messages.
+- `chapterjs dev`, `build` and `start`, and `create chapterjs`.
 
 </Update>

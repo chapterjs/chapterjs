@@ -94,8 +94,8 @@ describe.skipIf(process.platform === 'win32')('chapterjs build', () => {
       sources: expect.stringMatching(/^[0-9a-f]{64}$/),
       commands: 1,
       events: 1,
-      // No file joins voice: no voice states to ask for.
-      voice: false,
+      // No file joins voice or waits: no intent to add.
+      uses: {},
     });
     // The types of the project are written too, and the build is not in git.
     expect(existsSync(join(cwd, '.chapterjs/tsconfig.json'))).toBe(true);

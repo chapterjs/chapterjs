@@ -274,6 +274,26 @@ Starts a thread from the message.
 
 [Discord documentation](https://docs.discord.com/developers/resources/channel#start-thread-from-message)
 
+## Waiting
+
+They wait for what comes next on the message, while your bot runs: a restart ends the wait. How to use them is in the [guide](/waiting).
+
+### waitForClick()
+
+```ts
+waitForClick(options?: WaitForClickOptions): Promise<Click | null>
+```
+
+Waits for a click on a button or a menu of this message: of a person (`from`), anyone by default. Resolves with the click, to answer with `click.interaction`, or `null` when `within` (one minute by default) passed first. A click taken here does not run the `run` of the button; a button that is only waited for needs none. A restart of the bot ends the wait.
+
+### waitForReaction()
+
+```ts
+waitForReaction(options?: WaitForReactionOptions): Promise<WaitedReaction | null>
+```
+
+Waits for a reaction added to this message: of a person (`from`), anyone's but a bot's by default, with an emoji (`emoji`), any by default. Resolves with it, or `null` when `within` (one minute by default) passed first. A restart of the bot ends the wait.
+
 ## Types
 
 ### GuildMessage
@@ -363,6 +383,82 @@ type MessageFlagName = keyof typeof MessageFlags
 ```
 
 The name of a flag of a message: a key of [`MessageFlags`](/reference/enums#messageflags). It is what `flags` lists.
+
+### WaitForClickOptions
+
+What `waitForClick()` takes.
+
+<ResponseField name="from" type="PersonInput">
+  Only a click of this person. Anyone by default. A [`PersonInput`](/reference/channels#personinput).
+</ResponseField>
+
+<ResponseField name="within" type="Duration">
+  How long to wait: `'30s'`, `'2m'`. One minute by default.
+</ResponseField>
+
+### Click
+
+A click on a button or a menu of a message, as `waitForClick()` gives it.
+
+<ResponseField name="interaction" type="ComponentInteraction">
+  The click itself: answer it as in the `run` of a button, with `update()`, `reply()` or `deferUpdate()`. Without an answer within 2 seconds, the bot changes nothing on screen for you (`deferUpdate()`).
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  Who clicked.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  Who clicked, as a member of the server; `null` in a private message.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the button or menu: the name of its export.
+</ResponseField>
+
+<ResponseField name="data" type="Readonly<Record<string, string | number | boolean>>">
+  The data the button or menu carries.
+</ResponseField>
+
+<ResponseField name="values" type="readonly string[]">
+  What was picked in a menu: the values of a menu of texts, the ids of the people, roles or channels of the others. Empty for a button.
+</ResponseField>
+
+<ResponseField name="is" type="(component: ButtonDeclaration<never> | SelectDeclaration<never>) => boolean">
+  Whether it is this button or this menu.
+</ResponseField>
+
+### WaitForReactionOptions
+
+What `waitForReaction()` takes.
+
+<ResponseField name="from" type="PersonInput">
+  Only a reaction of this person. Anyone but a bot by default.
+</ResponseField>
+
+<ResponseField name="emoji" type="string">
+  Only this emoji: a standard one (`'👍'`), or a custom one by its name, its id or as Discord writes it (`'<:party:123>'`).
+</ResponseField>
+
+<ResponseField name="within" type="Duration">
+  How long to wait: `'30s'`, `'2m'`. One minute by default.
+</ResponseField>
+
+### WaitedReaction
+
+A reaction added to a message, as `waitForReaction()` gives it.
+
+<ResponseField name="emoji" type="ReactionEmoji">
+  The emoji.
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  Who reacted.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  Who reacted, as a member of the server; `null` in a private message.
+</ResponseField>
 
 ### Elsewhere
 

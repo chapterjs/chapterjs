@@ -271,23 +271,32 @@ export interface EventContexts {
   /** A channel was created. */
   channelCreate: {
     /** The new channel or thread. */
-    channel: GuildChannel | ThreadChannel | Channel;
-    /** The server of the channel; `null` for a private conversation. */
-    guild: Guild | null;
+    channel: GuildChannel | ThreadChannel;
+    /**
+     * The server of the channel: Discord only sends these events, with the
+     * Guilds intent, for the channels of a server.
+     */
+    guild: Guild;
   };
   /** A channel changed: name, topic, permissions... */
   channelUpdate: {
     /** The channel or thread, as it is now. */
-    channel: GuildChannel | ThreadChannel | Channel;
-    /** The server of the channel; `null` for a private conversation. */
-    guild: Guild | null;
+    channel: GuildChannel | ThreadChannel;
+    /**
+     * The server of the channel: Discord only sends these events, with the
+     * Guilds intent, for the channels of a server.
+     */
+    guild: Guild;
   };
   /** A channel was deleted. */
   channelDelete: {
     /** The channel or thread as it was. */
-    channel: GuildChannel | ThreadChannel | Channel;
-    /** The server of the channel; `null` for a private conversation. */
-    guild: Guild | null;
+    channel: GuildChannel | ThreadChannel;
+    /**
+     * The server of the channel: Discord only sends these events, with the
+     * Guilds intent, for the channels of a server.
+     */
+    guild: Guild;
   };
   /** A role was created. */
   roleCreate: {
@@ -847,8 +856,11 @@ const channel = (
 ): Source<'channelCreate' | 'channelUpdate', typeof on> => ({
   on,
   build: (ctx, data) => {
+    // A server's channel only: what the types promise.
     const found = ctx.cache.channels.get(data.id);
-    return found ? { channel: found, guild: found.guild } : null;
+    return found?.isGuildChannel() || found?.isThread()
+      ? { channel: found, guild: found.guild }
+      : null;
   },
 });
 
@@ -857,10 +869,12 @@ const deletedChannel = (
 ): Source<'channelDelete', typeof on> => ({
   on,
   before: (ctx, data) => ctx.cache.channels.get(data.id) ?? null,
-  build: (_ctx, _data, { before }) =>
-    before
-      ? { channel: before as Channel, guild: (before as Channel).guild }
-      : null,
+  build: (_ctx, _data, { before }) => {
+    const channel = before as Channel | null;
+    return channel?.isGuildChannel() || channel?.isThread()
+      ? { channel, guild: channel.guild }
+      : null;
+  },
 });
 
 /**

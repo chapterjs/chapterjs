@@ -5,7 +5,7 @@
 // instances.
 
 import { Limits } from '../discord/api.js';
-import type { Declaration, ExportSite } from '../loader/loader.js';
+import { bySite, type Declaration, type ExportSite } from '../loader/loader.js';
 import { checkEmbed, type Embed } from '../structures/payload.js';
 import { isDynamic } from './component.js';
 import {
@@ -158,6 +158,19 @@ function checkRun(what: string, value: unknown, example: string): void {
   }
 }
 
+/**
+ * The `run` of a button or a menu: optional, since one may only be waited
+ * for (`message.waitForClick()`); when given, a function.
+ */
+function checkOptionalRun(what: string, value: unknown, example: string): void {
+  if (value === undefined) return;
+  if (typeof value !== 'function') {
+    fail(
+      `"run" of ${what} is the function to run when someone uses it, like ${example}. Leave it out for one that is only waited for with message.waitForClick().`
+    );
+  }
+}
+
 function readButton(name: string, config: unknown): LoadedButton {
   if (!isRecord(config)) {
     return fail(
@@ -185,7 +198,7 @@ function readButton(name: string, config: unknown): LoadedButton {
   if (look.label === undefined && look.emoji === undefined) {
     fail('A button needs a label or an emoji.');
   }
-  checkRun(
+  checkOptionalRun(
     what,
     config.run,
     `async run({ interaction }) { await interaction.update('Done!'); }`
@@ -246,7 +259,11 @@ function readSelect(name: string, config: unknown): LoadedSelect {
   }
   const options = type === 'string' ? readOptions(what, config.options) : [];
   const placeholder = readPlaceholder(what, config.placeholder);
-  checkRun(what, config.run, `async run({ interaction, values }) { ... }`);
+  checkOptionalRun(
+    what,
+    config.run,
+    `async run({ interaction, values }) { ... }`
+  );
   return Object.freeze({
     kind: 'select',
     name,
@@ -424,37 +441,28 @@ export function findDuplicates<
     component: { kind: ComponentKind; name: string };
   },
 >(
-  entries: readonly T[]
+  entries: readonly T[],
+  running?: ReadonlySet<string>
 ): {
   valid: T[];
   conflicts: { file: string; export: string; message: string }[];
 } {
   const seen = new Map<string, T>();
   const conflicts: { file: string; export: string; message: string }[] = [];
-  const valid = [...entries]
-    .sort((a, b) =>
-      a.file === b.file
-        ? a.export < b.export
-          ? -1
-          : 1
-        : a.file < b.file
-          ? -1
-          : 1
-    )
-    .filter(entry => {
-      const key = `${entry.component.kind}:${entry.component.name}`;
-      const first = seen.get(key);
-      if (!first) {
-        seen.set(key, entry);
-        return true;
-      }
-      conflicts.push({
-        file: entry.file,
-        export: entry.export,
-        message: `There is already a ${WHAT[entry.component.kind]} named ${entry.component.name}, in ${first.file}: the name of the export is what tells a ${WHAT[entry.component.kind]} apart, so rename one of them.`,
-      });
-      return false;
+  const valid = bySite(entries, running).filter(entry => {
+    const key = `${entry.component.kind}:${entry.component.name}`;
+    const first = seen.get(key);
+    if (!first) {
+      seen.set(key, entry);
+      return true;
+    }
+    conflicts.push({
+      file: entry.file,
+      export: entry.export,
+      message: `There is already a ${WHAT[entry.component.kind]} named ${entry.component.name}, in ${first.file}: the name of the export is what tells a ${WHAT[entry.component.kind]} apart, so rename one of them.`,
     });
+    return false;
+  });
   return { valid, conflicts };
 }
 

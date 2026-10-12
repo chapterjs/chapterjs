@@ -30,6 +30,7 @@ import type { Log } from './log.js';
 import {
   createProject,
   hasSources,
+  reportLooseRejections,
   writeTypes,
   type Project,
 } from './project.js';
@@ -104,6 +105,10 @@ function where(error: unknown, cwd: string): string {
 }
 
 /** Runs the whole project in a fresh world; `close` ends it. */
+/** What join() says in the Discord in memory, where nothing plays. */
+const VOICE_NOT_SIMULATED =
+  'Voice is not simulated by chapterjs test yet: the bot can not join a voice channel here.';
+
 async function startSession(
   project: Project,
   observer: Observer,
@@ -119,6 +124,7 @@ async function startSession(
       token: 'test-token',
       apiUrl: world.discord.url,
       privateEvents: true,
+      voiceUnavailable: VOICE_NOT_SIMULATED,
       onFatal: () => {},
     });
   } catch (error) {
@@ -198,9 +204,11 @@ export async function test(options: TestOptions): Promise<number> {
   if (!(await hasSources(cwd, options.log))) return 1;
   const src = join(cwd, 'src');
   const output = quiet();
+  const stops: (() => void)[] = [];
   try {
-    return await run(options, src, output);
+    return await run(options, src, output, stop => stops.push(stop));
   } finally {
+    for (const stop of stops) stop();
     output.restore();
   }
 }
@@ -208,7 +216,9 @@ export async function test(options: TestOptions): Promise<number> {
 async function run(
   options: TestOptions,
   src: string,
-  output: ReturnType<typeof quiet>
+  output: ReturnType<typeof quiet>,
+  /** What to undo when the run ends. */
+  onEnd: (stop: () => void) => void
 ): Promise<number> {
   const { cwd } = options;
   // The report, written while what the files print is kept out of it.
@@ -223,6 +233,9 @@ async function run(
   // 1. The files of the project, every one of them running.
   enableProjectLoader(src, { reload: false });
   const capture = captureLog();
+  // A promise of the files that nobody awaited fails the check or the
+  // scenario it belongs to, as dev says it, instead of ending the run.
+  onEnd(reportLooseRejections(cwd, capture.log));
   const observer = new Observer();
   const stores = new MemoryStoreBackend();
   const project = createProject({
@@ -263,15 +276,25 @@ async function run(
     // has one line per file: what was checked in it only shows when
     // something failed.
     const { checks, notSimulated } = smokeChecks(project);
-    const smoke = await startSession(project, observer, stores);
+    const smoke = {
+      current: await startSession(project, observer, stores),
+      /** Whether a case ran on the current world: the next gets a new one. */
+      used: false,
+      async restart() {
+        await this.current.close();
+        this.current = await startSession(project, observer, stores);
+      },
+    };
+    /** The checks whose files join voice, which is not played here. */
+    const voiceSkipped: string[] = [];
     const progress = checkProgress(options.progress === true, log, text =>
       output.report(() => process.stdout.write(text))
     );
     try {
       // The ready event runs first, as it does online; its result is
       // reported with the file it comes from.
-      project.ready(smoke.session.bot);
-      await smoke.session.settle();
+      project.ready(smoke.current.session.bot);
+      await smoke.current.session.settle();
       const atStart = problems(capture.take());
       const readyPrinted = output.take();
       const readyFiles = [
@@ -308,14 +331,12 @@ async function run(
         }
         for (const check of own) {
           progress.step(check.subject);
-          const result = await runCheck(
-            check,
-            smoke.session,
-            capture,
-            cwd,
-            label => progress.step(`${check.subject}, ${label}`)
+          const result = await runCheck(check, smoke, capture, cwd, label =>
+            progress.step(`${check.subject}, ${label}`)
           );
           const wrote = output.take();
+          if (result.notSimulated)
+            voiceSkipped.push(`${check.subject} (${file})`);
           if (result.failed.length === 0) passed++;
           else {
             // One case: its label says nothing more than the subject.
@@ -349,7 +370,12 @@ async function run(
         );
       }
     } finally {
-      await smoke.close();
+      await smoke.current.close();
+    }
+    if (voiceSkipped.length > 0) {
+      log.info(
+        `Voice is not played in memory, so what comes after join() was not run for: ${voiceSkipped.join(', ')}. Try it on your server with chapterjs dev.`
+      );
     }
     if (notSimulated.length > 0) {
       log.info(
@@ -462,45 +488,125 @@ function report(failure: FailedFile, cwd: string, log: Log): void {
   );
 }
 
-/** Runs the cases of a check, one after the other, in the same world. */
+/**
+ * How long a case of a check may go without any answer: Discord gives an
+ * interaction 3 s, and the framework defers by itself after 2.
+ */
+const ANSWER_WITHIN = 5000;
+/**
+ * How long a case may take in all once every interaction it started was
+ * answered: a deferred answer may come later, as it may online.
+ */
+const FINISH_WITHIN = 30_000;
+
+/** The world the checks run in, made again when a case was abandoned. */
+interface SmokeWorld {
+  session: Session;
+  close(): Promise<void>;
+}
+
+/**
+ * Runs the cases of a check, one after the other, in the same world. A case
+ * still running when its time is up is abandoned with the world it ran in:
+ * the next case gets a fresh one, so what the abandoned case does later is
+ * never taken for what the next one did.
+ */
 async function runCheck(
   check: Check,
-  session: Session,
+  smoke: { current: SmokeWorld; used: boolean; restart(): Promise<void> },
   capture: ReturnType<typeof captureLog>,
   cwd: string,
   onCase: (label: string) => void = () => {}
 ): Promise<{
   failed: { label: string; message: string }[];
   warnings: string[];
+  notSimulated: boolean;
 }> {
   const failed: { label: string; message: string }[] = [];
   const warnings: string[] = [];
+  let notSimulated = false;
   for (const one of check.cases) {
     onCase(one.label);
+    // Every case on a server as it was: a /ban used on someone must not
+    // leave the next case without them.
+    if (smoke.used) await smoke.restart();
+    smoke.used = true;
     capture.take();
+    const { session } = smoke.current;
+    const before = new Set(session.world.interactions.values());
+    const running = Promise.resolve().then(() => one.run(session));
     let thrown: string | null = null;
-    try {
-      await withTimeout(
-        one.run(session),
-        5000,
-        'the bot did not answer within 5 s'
-      );
-    } catch (error) {
+    let abandoned = false;
+    const fail = (error: unknown): void => {
       thrown =
         error instanceof TestFailure
           ? error.message
           : `${where(error, cwd)}${messageOf(error)}`;
+    };
+    let outcome = await within(running, ANSWER_WITHIN);
+    if (outcome.late) {
+      const unanswered = [...session.world.interactions.values()].some(
+        record => !before.has(record) && record.callbacks.length === 0
+      );
+      if (unanswered) {
+        thrown = `the bot did not answer within ${ANSWER_WITHIN / 1000} s`;
+        abandoned = true;
+      } else {
+        outcome = await within(running, FINISH_WITHIN - ANSWER_WITHIN);
+        if (outcome.late) {
+          thrown = `it did not finish within ${FINISH_WITHIN / 1000} s: is something waiting for what never comes?`;
+          abandoned = true;
+        }
+      }
     }
+    if (!outcome.late && outcome.failed) fail(outcome.error);
     const captured = problems(capture.take());
     const messages = [...(thrown ? [thrown] : []), ...captured.failures];
-    if (messages.length > 0) {
+    // Voice is not played in memory: a case that only failed there is not
+    // the file's fault, it was not run to its end.
+    if (
+      messages.length > 0 &&
+      messages.every(message => message.includes(VOICE_NOT_SIMULATED))
+    ) {
+      notSimulated = true;
+    } else if (messages.length > 0) {
       failed.push({ label: one.label, message: messages.join('; ') });
     }
     for (const warning of captured.warnings) {
       if (!warnings.includes(warning)) warnings.push(warning);
     }
+    if (abandoned) running.catch(() => {});
   }
-  return { failed, warnings };
+  return { failed, warnings, notSimulated };
+}
+
+/** Whether `promise` settled within `ms`, and how. */
+async function within(
+  promise: Promise<unknown>,
+  ms: number
+): Promise<
+  | { late: true }
+  | { late: false; failed: false }
+  | { late: false; failed: true; error: unknown }
+> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise.then(
+        () => ({ late: false as const, failed: false as const }),
+        (error: unknown) => ({
+          late: false as const,
+          failed: true as const,
+          error,
+        })
+      ),
+      new Promise<{ late: true }>(resolve => {
+        timer = setTimeout(() => resolve({ late: true }), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Loads the test files and reads their scenarios; what fails is reported. */

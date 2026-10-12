@@ -142,7 +142,7 @@ export default event({
 - **A failing file is reported with the file and the line**, and nothing else stops:
 
 ```text
-✗ src/events/role.ts:6 Discord refused PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}: Missing Permissions (50013)
+✗ src/events/role.ts:6 Discord refused PUT /guilds/{guild.id}/members/{user.id}/roles/{role.id}: Missing Permissions (50013). The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role.
 ```
 
 ## Recap

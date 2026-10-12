@@ -14,7 +14,7 @@ export default presence({
 });
 ```
 
-C’est tout : dès que le bot est connecté, il est en ligne et « Regarde le serveur ». Sans ce fichier, le bot est en ligne et n’affiche rien. Les deux champs sont facultatifs : un `status` seul, ou une `activity` seule, fonctionne.
+C’est tout : dès que le bot est connecté, il est en ligne et « Regarde le serveur ». Sans ce fichier, le bot est en ligne et n’affiche rien. Les deux champs sont facultatifs : un `status` seul, ou une `activity` seule, fonctionne. Plusieurs activités affichées tour à tour, et des textes qui changent, sont [plus bas](#plusieurs-activités).
 
 <Note>
   Tout ce que déclare le fichier est dans la [référence](/fr/reference/presence).
@@ -58,6 +58,74 @@ export default presence({
 
 Un statut ou un type qui n’est pas dans ces listes, un `name` vide, ou une `url` sur un autre type, est une erreur au chargement du fichier, avec quoi écrire.
 
+## Plusieurs activités
+
+`activities` affiche plusieurs activités l’une après l’autre, chacune pendant son `for` : une durée comme `'30s'` ou `'2m'`, 30 secondes quand il est omis, 5 secondes au minimum. Après la dernière, la première revient.
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  activities: [
+    { type: 'watching', name: 'les tickets', for: '30s' },
+    { type: 'playing', name: '/help', for: '10s' },
+    { type: 'custom', name: 'Ouvert tous les jours', for: '1m' },
+  ],
+});
+```
+
+Une présence a `activity` ou `activities`, jamais les deux. L’activité affichée se lit sur l’horloge : un gros bot qui tourne sur plusieurs processus affiche la même partout, au même moment.
+
+## Des textes qui changent
+
+Un `name` peut être une fonction. Elle s’exécute chaque fois que son activité s’affiche, et reçoit `guilds`, le nombre de serveurs où est le bot (tous processus confondus), et `t`, les textes de vos fichiers de langue dans la langue par défaut.
+
+```ts src/status.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  activities: [
+    { type: 'watching', name: ({ guilds }) => `${guilds} serveurs`, for: '1m' },
+    { type: 'playing', name: '/help', for: '20s' },
+  ],
+});
+```
+
+Seule, une activité dont le `name` est une fonction l’exécute de nouveau tous les `for`.
+
+## Des activités tirées de vos données
+
+`activities` peut aussi être une fonction, `async` si besoin : elle donne la liste, et s’exécute de nouveau chaque fois que la liste a été affichée en entier. Les activités peuvent alors venir d’un [store](/fr/storage), gardé dans un fichier ou dans Redis, qu’une commande remplit :
+
+```ts src/rotation.ts
+import { command, presence, store } from 'chapterjs';
+
+/** Les textes affichés sous le nom du bot, pour tout le bot. */
+export const statuses = store<string[]>({ scope: 'global' });
+
+export default presence({
+  activities: async () => {
+    const texts = (await statuses.get('list')) ?? ['/help'];
+    return texts.map(text => ({ type: 'custom', name: text, for: '20s' }));
+  },
+});
+
+export const addStatus = command({
+  name: 'status-add',
+  description: 'Ajoute un texte sous le nom du bot',
+  permissions: ['ManageGuild'],
+  options: { text: { type: 'string', description: 'Le texte', required: true, maxLength: 100 } },
+  async run({ interaction, options }) {
+    await statuses.update('list', texts => [...(texts ?? []), options.text]);
+    await interaction.reply({ content: 'Ajouté : il apparaît après la liste en cours.', ephemeral: true });
+  },
+});
+```
+
+Quand une fonction lève une erreur, ou donne autre chose qu’une activité, l’erreur s’affiche une fois avec le fichier et la ligne, et le bot garde le dernier texte ou la dernière liste qui fonctionnait. Tant qu’une fonction de liste ne s’est pas exécutée, le bot n’affiche que son statut.
+
+`chapterjs test` exécute une fois chaque fonction de la présence, et signale celle qui lève une erreur avec sa ligne.
+
 ## En développement
 
 Dans `chapterjs dev`, enregistrer `src/presence.ts` change la présence immédiatement, sans se reconnecter :
@@ -66,7 +134,7 @@ Dans `chapterjs dev`, enregistrer `src/presence.ts` change la présence immédia
 ↻ Presence updated
 ```
 
-Un fichier qui ne se charge pas est signalé avec ce qui ne va pas, et le bot garde la dernière présence qui fonctionnait. Supprimer le fichier remet le bot en ligne sans rien afficher. Discord accepte quelques changements de présence par minute : quand vous enregistrez plus vite que cela, seule la dernière est envoyée, quand elle peut l’être.
+Un fichier qui ne se charge pas est signalé avec ce qui ne va pas, et le bot garde la dernière présence qui fonctionnait. Supprimer le fichier remet le bot en ligne sans rien afficher. Discord accepte 5 changements de présence par 20 secondes : quand vous enregistrez plus vite que cela, seule la dernière est envoyée, quand elle peut l’être. Les fonctions de la présence s’exécutent toujours avec vos fichiers tels qu’ils sont, même quand le fichier de présence n’a pas changé.
 
 La présence est celle du bot, pas du serveur. Avec un seul bot pour le dev et la production, ce que vous essayez ici peut être montré à tout le monde : voir [Un second bot pour le développement](/fr/run/start#un-second-bot-pour-le-développement).
 

@@ -21,8 +21,16 @@ import {
   type CommandContext,
   type CommandOption,
   type CommandWhere,
+  type MenuType,
   type Suggestion,
 } from './command.js';
+
+/**
+ * The kinds of commands: a slash command, or a menu command used on a
+ * message or a person.
+ * @see https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-types
+ */
+export type CommandType = 'slash' | MenuType;
 
 /** A name or a description in other languages, as Discord takes them. */
 export type Localizations = Readonly<Partial<Record<Locale, string>>>;
@@ -48,12 +56,17 @@ export type AutocompleteFunction = (
 
 /** A command, checked: what the rest of the feature works with. */
 export interface LoadedCommand {
+  /** A slash command, or a menu command used on a message or a person. */
+  readonly type: CommandType;
   /** The name and description of the command in other languages. */
   readonly names: Localizations;
   readonly descriptions: Localizations;
   /** The translations of the options, by option name. */
   readonly optionLocales: Readonly<Record<string, OptionLocales>>;
-  /** `['mod', 'ban']` for `name: 'mod ban'`: `/mod ban`. */
+  /**
+   * `['mod', 'ban']` for `name: 'mod ban'`: `/mod ban`. A menu command has
+   * one name, spaces included: `['Report message']`.
+   */
   readonly path: readonly string[];
   /**
    * Whether the file gives its own texts (`description`, `locales`). When
@@ -112,6 +125,7 @@ const OPTION_KEYS: Record<string, readonly string[]> = {
   channel: ['channelTypes'],
 };
 const COMMAND_KEYS = [
+  'type',
   'name',
   'description',
   'options',
@@ -124,6 +138,21 @@ const COMMAND_KEYS = [
   'autocomplete',
   'run',
 ];
+const MENU_KEYS = [
+  'type',
+  'name',
+  'locales',
+  'permissions',
+  'where',
+  'nsfw',
+  'ephemeral',
+  'cooldown',
+  'run',
+];
+const MENU_TYPES: readonly MenuType[] = ['message', 'user'];
+
+/** The longest name of a menu command. */
+const MAX_MENU_NAME = 32;
 
 /** The kinds of options whose suggestions can come from the bot. */
 const SUGGESTABLE_TYPES = ['string', 'integer', 'number'] as const;
@@ -626,10 +655,107 @@ export function readCommandName(name: unknown): string[] {
 }
 
 /**
+ * The name of a menu command: what the menu shows, 1 to 32 characters,
+ * capitals and spaces included.
+ * @see https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-naming
+ */
+function readMenuName(name: unknown, what: string): string {
+  if (typeof name !== 'string' || name.trim() === '') {
+    return fail(
+      `${what} has no "name": what the menu shows, like name: 'Report message'.`
+    );
+  }
+  if (name !== name.trim()) {
+    return fail(
+      `The name ${JSON.stringify(name)} of ${what} starts or ends with a space: remove it.`
+    );
+  }
+  if ([...name].length > MAX_MENU_NAME) {
+    return fail(
+      `The name ${JSON.stringify(name)} of ${what} is ${[...name].length} characters long: Discord accepts ${MAX_MENU_NAME} at most.`
+    );
+  }
+  return name;
+}
+
+/** Checks the `locales` of a menu command: a name per language. */
+function checkMenuLocales(locales: unknown): Localizations {
+  const names: Record<string, string> = {};
+  if (locales === undefined) return names;
+  if (!isRecord(locales)) {
+    return fail(
+      `"locales" is an object whose keys are languages: locales: { fr: { name: '...' } }`
+    );
+  }
+  for (const [locale, translation] of Object.entries(locales)) {
+    const where = `the "${locale}" translation`;
+    if (!LOCALES.includes(locale)) {
+      fail(
+        `"${locale}" is not a language Discord knows. Languages are: ${LOCALES.join(', ')}.`
+      );
+    }
+    if (!isRecord(translation)) {
+      return fail(`${where} must be an object like { name: '...' }.`);
+    }
+    checkKeys(where, translation, ['name']);
+    if (translation.name === undefined) continue;
+    names[locale] = readMenuName(translation.name, `this command in ${where}`);
+  }
+  return names;
+}
+
+/** A menu command, checked: one used on a message or a person. */
+function readMenu(config: Record<string, unknown>): LoadedCommand {
+  const type = config.type;
+  if (!MENU_TYPES.includes(type as MenuType)) {
+    return fail(
+      `"type" is what a menu command is used on: 'message' (a right click on a message) or 'user' (a right click on a person). Got ${JSON.stringify(type) ?? typeof type}. Leave it out for a slash command.`
+    );
+  }
+  const what = `this ${type === 'user' ? 'user' : 'message'} menu command`;
+  for (const key of ['description', 'options', 'autocomplete']) {
+    if (config[key] !== undefined) {
+      fail(
+        key === 'description'
+          ? `A menu command has no "description": Discord only shows its name. Remove it.`
+          : `A menu command has no "${key}": it receives what it was used on (${type === 'user' ? 'target' : 'message'}). Remove it, or make it a slash command (no "type").`
+      );
+    }
+  }
+  checkKeys('a menu command', config, MENU_KEYS);
+  const name = readMenuName(config.name, what);
+  if (typeof config.run !== 'function') {
+    fail(
+      `This command has no "run": the function to run when someone uses it, like async run({ interaction }) { await interaction.reply('Done!'); }`
+    );
+  }
+  const where = checkWhere(config.where);
+  return Object.freeze({
+    type: type as MenuType,
+    names: Object.freeze(checkMenuLocales(config.locales)),
+    descriptions: Object.freeze({}),
+    optionLocales: Object.freeze({}),
+    path: Object.freeze([name]),
+    // Its texts are its name and its translations, all in its file.
+    described: true,
+    description: '',
+    options: Object.freeze([]),
+    permissions: checkPermissions(config.permissions),
+    where,
+    nsfw: checkBoolean('"nsfw"', config.nsfw),
+    ephemeral: checkBoolean('"ephemeral"', config.ephemeral),
+    cooldown: checkCooldown(config.cooldown, where),
+    autocomplete: Object.freeze({}),
+    run: config.run as LoadedCommand['run'],
+  });
+}
+
+/**
  * A slash command, declared anywhere in `src/` with `command()`: `name` is
  * what people type after the `/`, with its parents for a subcommand
- * (`'mod ban'` is `/mod ban`, `'mod roles add'` is `/mod roles add`). A
- * file may declare several.
+ * (`'mod ban'` is `/mod ban`, `'mod roles add'` is `/mod roles add`). With
+ * a `type`, a menu command, used on a message or a person. A file may
+ * declare several.
  */
 export const commandDeclaration: Declaration<LoadedCommand> = {
   one: 'command',
@@ -641,6 +767,7 @@ export const commandDeclaration: Declaration<LoadedCommand> = {
     if (!isRecord(config)) {
       return fail(`command() needs an object: ${EXAMPLE}`);
     }
+    if (config.type !== undefined) return readMenu(config);
     checkKeys('a command', config, COMMAND_KEYS);
     const parts = readCommandName(config.name);
     // No description: the language files describe the command, options
@@ -679,6 +806,7 @@ export const commandDeclaration: Declaration<LoadedCommand> = {
     );
     const where = checkWhere(config.where);
     return Object.freeze({
+      type: 'slash',
       ...checkLocales(config.locales, options),
       path: Object.freeze(parts),
       described,
@@ -697,12 +825,33 @@ export const commandDeclaration: Declaration<LoadedCommand> = {
 
 /** `command({ ... name: '...' ... })`, as written in a file. */
 const DECLARED = /\bcommand\s*\(\s*\{[^]*?\bname\s*:\s*['"`]([^'"`]+)['"`]/g;
+/** `type: 'message'` or `type: 'user'`: a menu command, which no language file describes. */
+const MENU = /\btype\s*:\s*['"`](?:message|user)['"`]/;
+
+/**
+ * The text of an object written in a file, without what is nested in it:
+ * the `type` of an option is not the `type` of the command. `code` starts
+ * right after the `{` of the object.
+ */
+function topLevel(code: string): string {
+  let depth = 0;
+  let kept = '';
+  for (const char of code) {
+    if (char === '{' || char === '[' || char === '(') depth++;
+    else if (char === '}' || char === ']' || char === ')') {
+      if (depth === 0) break;
+      depth--;
+    } else if (depth === 0) kept += char;
+  }
+  return kept;
+}
 
 /**
  * The names of the commands of a project, found without running its
  * files: a text search for `command({ name: '...' })`. Approximate on
  * purpose, for `sync`, which runs nothing: `dev` and `build` then write
  * the exact ones. Whether a command is described is not known: none is.
+ * Menu commands are left out: their texts are always in their file.
  */
 export async function scanCommands(cwd: string): Promise<string[]> {
   const names = new Set<string>();
@@ -710,6 +859,9 @@ export async function scanCommands(cwd: string): Promise<string[]> {
     const code = await readFile(path, 'utf8').catch(() => '');
     if (!code.includes('command(')) continue;
     for (const match of code.matchAll(DECLARED)) {
+      // The config of this declaration, without its options.
+      const open = code.indexOf('{', match.index);
+      if (MENU.test(topLevel(code.slice(open + 1)))) continue;
       const name = match[1]!.trim().split(/\s+/).join(' ');
       if (name !== '') names.add(name);
     }

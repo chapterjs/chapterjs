@@ -1,0 +1,93 @@
+---
+title: 'Menu commands'
+description: 'Commands people use with a right click on a message or on a person'
+---
+
+A menu command shows up in the menu people open with a right click on a message (a long press on a phone), under **Apps**. It is a `command()` with a `type`: `'message'` here.
+
+```ts src/commands/quote.ts
+import { command } from 'chapterjs';
+
+export const quote = command({
+  type: 'message',
+  name: 'Quote',
+  async run({ interaction, message }) {
+    await interaction.reply(`> ${message.content}\n— ${message.author.username}`);
+  },
+});
+```
+
+That is all: right click a message, **Apps**, **Quote**, and the bot answers with it. `message` is the message the menu was used on, whole, even when the bot never saw it before.
+
+<Note>
+  Everything a menu command declares is in the [reference](/reference/command#menu-commands).
+</Note>
+
+## On a person
+
+With `type: 'user'`, the command shows up in the menu of a person: a right click on their name, in the member list or in a message.
+
+```ts src/commands/avatar.ts
+import { command } from 'chapterjs';
+
+export const avatar = command({
+  type: 'user',
+  name: 'Show avatar',
+  async run({ interaction, target, targetMember }) {
+    // The avatar of the server when they have one, else their own.
+    const url = targetMember ? targetMember.avatarURL() : target.avatarURL();
+    await interaction.reply({ content: url, ephemeral: true });
+  },
+});
+```
+
+`target` is the person, as a `User`. `targetMember` is that person as a member of the server, or `null` when they are not in it (any more).
+
+## What changes from a slash command
+
+- `name` is what the menu shows: capitals and spaces are fine (`'Show avatar'`), 32 characters at most.
+- There is no `description`, no `options` and no `autocomplete`: the command receives what it was used on. Writing one is underlined in your editor.
+- `locales` only translates the name: `locales: { fr: { name: 'Voir l’avatar' } }`. Language files never describe a menu command: its texts stay in its file.
+- Everything else works the same: `where`, `permissions`, `cooldown`, `ephemeral`, `nsfw`, and what `run` receives about the place (`guild`, `member`, `channel`, `interaction`, `t`).
+
+Discord takes 15 menu commands used on a message and 15 used on a person. A slash command, a message menu and a user menu may share a name: `/quote` and a **Quote** menu are two commands.
+
+## Without a type
+
+`type` is what makes a menu command: left out, `command()` is a slash command, as everywhere else in this guide.
+
+## In development
+
+Menu commands are registered on your test server with the slash commands, and updated when their file changes:
+
+```text
+✓ Commands updated on Dev Server
+```
+
+Discord may take a moment to show a new menu: reopen the menu, or reload Discord with `Ctrl+R` (`Cmd+R` on a Mac).
+
+## Testing
+
+In a scenario, `bot.use()` uses a menu command on what you give in `on`: a message for a message menu, a person for a user menu.
+
+```ts src/commands/quote.test.ts
+import { scenario } from 'chapterjs/test';
+import { quote } from './quote';
+
+export const quotes = scenario('quote repeats the message', async bot => {
+  const said = await bot.say('Hello there', { by: bot.member('alice') });
+  const reply = await bot.use(quote, { on: said });
+  reply.says('> Hello there\n— alice');
+});
+```
+
+Without a scenario, `chapterjs test` uses each menu command by itself: on an ordinary message or person, and on the hard ones (a message at its longest, the bot, the owner, someone who left). See [Testing](/testing).
+
+<CardGroup cols={2}>
+  <Card title="command() reference" icon="square-terminal" href="/reference/command#menu-commands">
+    Everything a menu command declares and receives.
+  </Card>
+  <Card title="Answering" icon="message-square-reply" href="/commands/answering">
+    Answer, privately or not, and take your time.
+  </Card>
+</CardGroup>

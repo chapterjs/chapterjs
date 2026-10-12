@@ -9,7 +9,7 @@ ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A 
 This file holds the rules of the repo. What a package or a module does is described next to it, in a `CLAUDE.md` loaded when you work there. **Read the one of the folder you touch before changing anything in it**, and update it in the same change:
 
 - `packages/chapterjs/CLAUDE.md`: the framework, its layers and every core module (`discord/`, `util/`, `rest/`, `cache/`, `structures/`, `gateway/`, `core/`, `loader/`, `assets/`, `interactions/`, `presence/`, `cli/`).
-- `packages/chapterjs/src/<feature>/CLAUDE.md`, one per feature: `events/`, `commands/`, `components/`, `messages/`, `tasks/`, `store/`, `ranking/`, `voice/`.
+- `packages/chapterjs/src/<feature>/CLAUDE.md`, one per feature: `events/`, `commands/`, `components/`, `messages/`, `tasks/`, `store/`, `ranking/`, `voice/`, `waiting/`.
 - `packages/create-chapterjs/CLAUDE.md`: the scaffolder and its templates.
 - `apps/docs/AGENTS.md`: the style guide of the documentation site.
 
@@ -19,7 +19,7 @@ This file holds the rules of the repo. What a package or a module does is descri
 - `packages/create-chapterjs`: the project scaffolder (`pnpm create chapterjs [dir]`); `packages/create-chapter` is an alias so `pnpm create chapter` works too.
 - `packages/test-utils` (`@chapterjs/test-utils`, private, never published, exports its TypeScript sources): the test helpers shared by every package. Any new test helper useful to more than one package goes here.
   - `tempDir()`: a folder deleted when the test ends. `fakeBin()`: fake commands to use as the only `PATH` entry.
-  - `startCli()`: runs a CLI as a real process and drives it through stdin (`waitFor`, `type`, `press`, `exited`); a CLI that ends before printing what is waited for is explained: not started (the spawn error), killed by a signal, or its exit code.
+  - `startCli()`: runs a CLI as a real process and drives it through stdin (`waitFor`, `type`, `press`, `exited`, whose `timeout` counts from when it is first read, so a long test still gives the CLI the whole time to stop); a CLI that ends before printing what is waited for is explained: not started (the spawn error), killed by a signal, or its exit code.
   - `fakeDiscord()`, `webSocketServer()` and `fakeGateway()` are the fakes of `packages/chapterjs/src/testing/` (where `chapterjs test` runs a bot against them), re-exported from their sources with one thing added: they are closed when the current test ends. Their behavior is described in `packages/chapterjs/CLAUDE.md`; test-utils never imports the built package, so the dependency graph stays one way.
   - `fakeDiscord()`: a local HTTP server playing Discord's REST API: programmable answers per route with `on()`, a `fallback` for the others, every received request recorded with its JSON body, query and uploaded files.
   - `webSocketServer()`: the WebSocket server, on Node built-ins, the fakes below are written on (masked and fragmented client frames, text and binary).

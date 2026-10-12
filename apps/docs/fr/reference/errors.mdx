@@ -31,7 +31,7 @@ Discord a répondu à une requête par une erreur.
 Elle est levée quand Discord refuse ce que le bot a demandé : une permission manquante, quelque chose qui n’existe plus, une valeur qu’il n’accepte pas. La requête a été reçue et comprise ; la relancer donne la même réponse tant que rien ne change.
 
 <ResponseField name="name" type="'DiscordApiError'" required>Ce que dit `instanceof`, sous forme de texte.</ResponseField>
-<ResponseField name="message" type="string" required>Ce qui s’est passé, avec la raison donnée par Discord et les champs qu’il a refusés : `Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)`, suivi d’une ligne par champ refusé quand il y en a.</ResponseField>
+<ResponseField name="message" type="string" required>Ce qui s’est passé, avec la raison donnée par Discord et les champs qu’il a refusés : `Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013).`, puis ce que cela veut dire en mots simples pour les codes qu’un bot rencontre le plus (une permission qui manque, quelque chose de supprimé, des messages privés fermés), et une ligne par champ refusé quand il y en a.</ResponseField>
 <ResponseField name="status" type="number" required>Le statut HTTP de la réponse (403, 404...).</ResponseField>
 <ResponseField name="code" type="number" required>Le code d’erreur JSON de Discord (50013 pour « Missing Permissions »...), ou 0 quand la réponse n’en avait pas.</ResponseField>
 <ResponseField name="fieldErrors" type="readonly DiscordFieldError[]" required>Les champs de la requête que Discord a refusés, quand il dit lesquels.</ResponseField>

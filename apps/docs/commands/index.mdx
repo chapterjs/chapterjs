@@ -173,7 +173,7 @@ export default command({
 });
 ```
 
-Discord hides the command from members who lack the permissions, and ChapterJS checks again when it is used: someone without them gets a private answer saying which ones are missing ("You need the ManageMessages permission to use this command."), and your function does not run. Server admins can change who sees the command in the settings of their server.
+Discord hides the command from members who lack the permissions, and ChapterJS checks again when it is used: someone without them gets a private answer saying which ones are missing ("You need the Manage Messages permission to use this command."), and your function does not run. Server admins can change who sees the command in the settings of their server.
 
 The names are the ones of [Permissions](/reference/permissions#permissionname): `['BanMembers']`, `['ManageMessages', 'ManageThreads']`... A name that does not exist is reported when the file loads.
 
@@ -269,7 +269,7 @@ On each save, they are registered again if they changed:
 
 ```text
 ↻ Reloaded in 12 ms, 3 commands, 2 events loaded
-↻ Commands updated on Discord
+↻ Commands updated on My Server
 ```
 
 If Discord refuses them, the bot keeps running with the commands Discord already has:

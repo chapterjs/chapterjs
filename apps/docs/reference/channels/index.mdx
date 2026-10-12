@@ -442,6 +442,26 @@ Shows "the bot is typing…" for 10 seconds, or until it sends a message.
 
 [Discord documentation](https://docs.discord.com/developers/resources/channel#trigger-typing-indicator)
 
+### Waiting
+
+They wait for what comes next in the channel, while your bot runs: a restart ends the wait. How to use them is in the [guide](/waiting).
+
+#### waitForMessage()
+
+```ts
+waitForMessage(options?: WaitForMessageOptions): Promise<Message | null>
+```
+
+Waits for the next message of the channel that fits: of a person (`from`), saying something (`matches`). Anyone's but a bot's by default. Resolves with the message, or `null` when `within` (one minute by default) passed first. A restart of the bot ends the wait.
+
+#### collectMessages()
+
+```ts
+collectMessages(options?: CollectMessagesOptions): Promise<Message[]>
+```
+
+Gathers the messages of the channel that fit, until `within` (one minute by default) passed or `max` came. Resolves with them, in order.
+
 ## Types
 
 ### TextBasedChannel
@@ -459,6 +479,38 @@ type GuildTextBasedChannel = TextChannel | VoiceChannel | ThreadChannel
 ```
 
 Any channel of a server messages can be sent in. It is the `channel` of a [`GuildMessage`](/reference/message#guildmessage) and of a command used in a server.
+
+### WaitForMessageOptions
+
+What `waitForMessage()` takes.
+
+<ResponseField name="from" type="PersonInput">
+  Only a message of this person. Anyone but a bot by default.
+</ResponseField>
+
+<ResponseField name="matches" type="string | RegExp | ((message: Message) => boolean)">
+  Only a message that says this: a text (the same, whatever the capitals and the spaces around), a regular expression, or a function of the message.
+</ResponseField>
+
+<ResponseField name="within" type="Duration">
+  How long to wait: `'30s'`, `'2m'`. One minute by default, a second at least, a day at most.
+</ResponseField>
+
+### CollectMessagesOptions
+
+What `collectMessages()` takes: everything [`WaitForMessageOptions`](#waitformessageoptions) has, and:
+
+<ResponseField name="max" type="number">
+  Stops once this many messages came. No limit by default: until `within`.
+</ResponseField>
+
+### PersonInput
+
+```ts
+type PersonInput = User | GuildMember | Snowflake
+```
+
+A person, as a wait takes it: a user, a member, or an id.
 
 ### Elsewhere
 

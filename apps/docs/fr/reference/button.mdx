@@ -52,8 +52,8 @@ type ButtonDeclaration<Data extends DataShape = {}> = { readonly config: unknown
 
 Ce qu’un fichier de bouton donne à `button()`. Il a chaque champ de [`ButtonLook`](#buttonlook) et d’[`InteractiveConfig`](#interactiveconfig), plus :
 
-<ResponseField name="run" type="(context: ButtonContext<Data, Where>) => unknown" required>
-  Ce qu’il faut faire quand quelqu’un clique sur le bouton.
+<ResponseField name="run" type="(context: ButtonContext<Data, Where>) => unknown">
+  Ce qu’il faut faire quand quelqu’un clique sur le bouton. Omis pour un bouton qui n’est qu’attendu (`message.waitForClick()`) : quand plus rien ne l’attend, un clic répond qu’il n’est plus disponible. Voir [Attendre une réponse](/fr/waiting#un-clic).
 </ResponseField>
 
 Un bouton a besoin d’un `label` ou d’un `emoji`.

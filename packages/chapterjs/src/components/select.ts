@@ -125,8 +125,11 @@ export interface StringSelectConfig<
    * shown to what your code receives, or a list of `RichOption`.
    */
   options: Options;
-  /** What to do when something is picked. */
-  run: (context: SelectContext<OptionValue<Options>, Data, Where>) => unknown;
+  /**
+   * What to do when something is picked. Leave it out for a menu that is
+   * only waited for (`message.waitForClick()`).
+   */
+  run?: (context: SelectContext<OptionValue<Options>, Data, Where>) => unknown;
 }
 
 /** A menu of users, roles, users and roles, or channels of the server. */
@@ -139,8 +142,11 @@ export interface EntitySelectConfig<
   type: Type;
   /** For a menu of channels: the kinds of channels listed. All by default. */
   channelTypes?: readonly ChannelType[];
-  /** What to do when something is picked. */
-  run: (context: SelectContext<EntityValues[Type], Data, Where>) => unknown;
+  /**
+   * What to do when something is picked. Leave it out for a menu that is
+   * only waited for (`message.waitForClick()`).
+   */
+  run?: (context: SelectContext<EntityValues[Type], Data, Where>) => unknown;
 }
 
 /** What a select file gives to `select()`: a menu of texts, or of things of the server. */
@@ -225,9 +231,10 @@ export interface LoadedSelect {
   readonly where: ComponentWhere;
   readonly who: 'everyone' | 'author';
   readonly ephemeral: boolean;
-  readonly run: (
-    context: SelectContext<unknown, DataShape, ComponentWhere>
-  ) => unknown;
+  /** `undefined` for a menu that is only waited for. */
+  readonly run:
+    | ((context: SelectContext<unknown, DataShape, ComponentWhere>) => unknown)
+    | undefined;
 }
 
 const fail = (message: string): never => {

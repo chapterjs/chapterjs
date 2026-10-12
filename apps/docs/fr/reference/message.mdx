@@ -274,6 +274,26 @@ Démarre un fil depuis le message.
 
 [Documentation de Discord](https://docs.discord.com/developers/resources/channel#start-thread-from-message)
 
+## Attendre
+
+Elles attendent ce qui suit sur le message, tant que votre bot tourne : un redémarrage termine l’attente. Comment les utiliser est dans le [guide](/fr/waiting).
+
+### waitForClick()
+
+```ts
+waitForClick(options?: WaitForClickOptions): Promise<Click | null>
+```
+
+Attend un clic sur un bouton ou un menu de ce message : d’une personne (`from`), n’importe qui par défaut. Donne le clic, auquel répondre avec `click.interaction`, ou `null` quand `within` (une minute par défaut) est passé avant. Un clic pris ici n’exécute pas le `run` du bouton ; un bouton qui n’est qu’attendu n’en a pas besoin. Un redémarrage du bot termine l’attente.
+
+### waitForReaction()
+
+```ts
+waitForReaction(options?: WaitForReactionOptions): Promise<WaitedReaction | null>
+```
+
+Attend une réaction ajoutée à ce message : d’une personne (`from`), celle de n’importe qui sauf un bot par défaut, avec un emoji (`emoji`), n’importe lequel par défaut. La donne, ou `null` quand `within` (une minute par défaut) est passé avant. Un redémarrage du bot termine l’attente.
+
 ## Types
 
 ### GuildMessage
@@ -363,6 +383,82 @@ type MessageFlagName = keyof typeof MessageFlags
 ```
 
 Le nom d’un drapeau d’un message : une clé de [`MessageFlags`](/fr/reference/enums#messageflags). C’est ce que liste `flags`.
+
+### WaitForClickOptions
+
+Ce que prend `waitForClick()`.
+
+<ResponseField name="from" type="PersonInput">
+  Seulement un clic de cette personne. N’importe qui par défaut. Un [`PersonInput`](/fr/reference/channels#personinput).
+</ResponseField>
+
+<ResponseField name="within" type="Duration">
+  Combien de temps attendre : `'30s'`, `'2m'`. Une minute par défaut.
+</ResponseField>
+
+### Click
+
+Un clic sur un bouton ou un menu d’un message, tel que le donne `waitForClick()`.
+
+<ResponseField name="interaction" type="ComponentInteraction">
+  Le clic lui-même : répondez-y comme dans le `run` d’un bouton, avec `update()`, `reply()` ou `deferUpdate()`. Sans réponse dans les 2 secondes, le bot ne change rien à l’écran pour vous (`deferUpdate()`).
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  Qui a cliqué.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  Qui a cliqué, en tant que membre du serveur ; `null` en message privé.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Le nom du bouton ou du menu : le nom de son export.
+</ResponseField>
+
+<ResponseField name="data" type="Readonly<Record<string, string | number | boolean>>">
+  Les données que porte le bouton ou le menu.
+</ResponseField>
+
+<ResponseField name="values" type="readonly string[]">
+  Ce qui a été choisi dans un menu : les valeurs d’un menu de textes, les identifiants des personnes, rôles ou salons des autres. Vide pour un bouton.
+</ResponseField>
+
+<ResponseField name="is" type="(component: ButtonDeclaration<never> | SelectDeclaration<never>) => boolean">
+  Si c’est ce bouton ou ce menu.
+</ResponseField>
+
+### WaitForReactionOptions
+
+Ce que prend `waitForReaction()`.
+
+<ResponseField name="from" type="PersonInput">
+  Seulement une réaction de cette personne. N’importe qui sauf un bot par défaut.
+</ResponseField>
+
+<ResponseField name="emoji" type="string">
+  Seulement cet emoji : un emoji standard (`'👍'`), ou un emoji personnalisé par son nom, son identifiant ou tel que Discord l’écrit (`'<:party:123>'`).
+</ResponseField>
+
+<ResponseField name="within" type="Duration">
+  Combien de temps attendre : `'30s'`, `'2m'`. Une minute par défaut.
+</ResponseField>
+
+### WaitedReaction
+
+Une réaction ajoutée à un message, telle que la donne `waitForReaction()`.
+
+<ResponseField name="emoji" type="ReactionEmoji">
+  L’emoji.
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  Qui a réagi.
+</ResponseField>
+
+<ResponseField name="member" type="GuildMember | null">
+  Qui a réagi, en tant que membre du serveur ; `null` en message privé.
+</ResponseField>
 
 ### Ailleurs
 

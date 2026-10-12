@@ -30,7 +30,15 @@ export default command({
     reason: { type: 'string', maxLength: 200 },
   },
   async run({ interaction, options, guild, member, t }) {
-    const target = await guild.fetchMember(options.user);
+    // Someone who left, or never joined, is no member: Discord says so.
+    const target = await guild.fetchMember(options.user).catch(() => null);
+    if (!target) {
+      await interaction.reply({
+        content: t('notMember', { user: options.user.toString() }),
+        ephemeral: true,
+      });
+      return;
+    }
     if (!canModerate(target, member)) {
       await interaction.reply({
         content: t('cantModerate', { user: target.toString() }),
@@ -60,7 +68,14 @@ export const untimeout = command({
     user: { type: 'user', required: true },
   },
   async run({ interaction, options, guild, member, t }) {
-    const target = await guild.fetchMember(options.user);
+    const target = await guild.fetchMember(options.user).catch(() => null);
+    if (!target) {
+      await interaction.reply({
+        content: t('notMember', { user: options.user.toString() }),
+        ephemeral: true,
+      });
+      return;
+    }
     // The same rule as /timeout: nobody lifts what someone above them set.
     if (!canModerate(target, member)) {
       await interaction.reply({

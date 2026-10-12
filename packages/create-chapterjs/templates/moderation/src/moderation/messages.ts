@@ -9,6 +9,7 @@ export const en = language({
   texts: {
     cantModerate:
       'You can not moderate {user}: their highest role is above yours.',
+    notMember: '{user} is not in this server.',
     timedOut: '{user} is timed out until {until}. Reason: {reason}',
     noReason: 'none given',
     notTimedOut: '{user} is not timed out.',
@@ -82,6 +83,7 @@ export const fr = language({
   texts: {
     cantModerate:
       'Vous ne pouvez pas modérer {user} : son rôle le plus haut est au-dessus du vôtre.',
+    notMember: '{user} n’est pas sur ce serveur.',
     timedOut:
       '{user} est exclu temporairement jusqu’à {until}. Raison : {reason}',
     noReason: 'aucune',

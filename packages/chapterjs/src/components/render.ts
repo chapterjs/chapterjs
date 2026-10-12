@@ -67,6 +67,13 @@ export function renderComponents(
   const v2 = rows.some(one => one.kind !== 'row');
   // The texts of a piece may be computed now, for who will read the message.
   const raw = rows.map(one => resolve(one, t).raw as RawComponent);
+  // Without the pieces of the new layout, a message is rows only, and
+  // Discord takes 5 of them.
+  if (!v2 && raw.length > Limits.MessageActionRows) {
+    throw new RangeError(
+      `The message has ${raw.length} rows of components: Discord accepts ${Limits.MessageActionRows} at most. A menu takes a row by itself and up to 5 buttons share one: send the rest in another message.`
+    );
+  }
   const total = count(raw);
   if (total > Limits.MessageComponents) {
     throw new RangeError(

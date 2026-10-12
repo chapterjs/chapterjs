@@ -1,0 +1,179 @@
+---
+title: 'Attendre une réponse'
+description: 'Poser une question, puis attendre le message, le clic ou la réaction qui suit, avec une limite de temps'
+---
+
+Votre fonction peut poser une question, puis attendre ce qui suit dans le salon : `channel.waitForMessage()` donne le prochain message qui convient, ou `null` quand le temps est écoulé.
+
+```ts src/commands/capital.ts
+import { command } from 'chapterjs';
+
+export const capital = command({
+  name: 'capital',
+  description: 'Qui trouve la capitale de la France en premier ?',
+  async run({ interaction, channel }) {
+    await interaction.reply('Quelle est la capitale de la France ? Vous avez 30 secondes.');
+    const winner = await channel.waitForMessage({ matches: 'paris', within: '30s' });
+    if (!winner) {
+      await channel.send('Personne n’a trouvé : c’était Paris.');
+      return;
+    }
+    await channel.send(`${winner.author.username} a gagné !`);
+  },
+});
+```
+
+C’est tout : la première personne qui écrit « Paris » (quelles que soient les majuscules) gagne, et après 30 secondes sans cela, le bot donne la réponse. Les messages des bots ne comptent jamais, et rien d’autre dans votre bot n’attend pendant ce temps : les autres commandes et événements continuent.
+
+<Note>
+  Chaque méthode et option est dans la référence : [salons](/fr/reference/channels#waitformessage) pour les messages, [messages](/fr/reference/message#waitforclick) pour les clics et les réactions.
+</Note>
+
+## Qui et quoi
+
+| Option | Ce qu’elle garde |
+| --- | --- |
+| `from` | Seulement les messages de cette personne : un `User`, un `GuildMember` ou un identifiant. Ceux de n’importe qui sauf un bot quand elle est omise. |
+| `matches` | Un texte (le même, quelles que soient les majuscules et les espaces autour), une expression régulière (`/^paris$/i`), ou une fonction du message qui renvoie `true`. |
+| `within` | Combien de temps attendre : `'30s'`, `'2m'`. Une minute par défaut, de 1 seconde à 1 jour. |
+
+Attendre la réponse de la personne qui a utilisé la commande :
+
+```ts src/commands/nickname.ts
+import { command } from 'chapterjs';
+
+export const nickname = command({
+  name: 'nickname',
+  description: 'Change votre pseudo, après avoir demandé lequel',
+  async run({ interaction, channel, member, user }) {
+    await interaction.reply('Quel pseudo voulez-vous ? Répondez dans la minute.');
+    const answer = await channel.waitForMessage({
+      from: user,
+      matches: message => message.content.length <= 32,
+    });
+    if (!answer) return;
+    await member.edit({ nick: answer.content });
+    await answer.reply('C’est fait !');
+  },
+});
+```
+
+Une fonction donnée à `matches` qui lève une erreur termine l’attente avec cette erreur, levée là où vous attendez : la personne reçoit une réponse simple et vous recevez l’erreur avec sa ligne, comme pour tout ce que fait votre fonction.
+
+## Plusieurs messages
+
+`channel.collectMessages()` prend les mêmes options et rassemble chaque message qui convient jusqu’à ce que `within` passe, ou que `max` soient arrivés. Elle les donne, dans l’ordre, peut-être aucun.
+
+```ts src/commands/brainstorm.ts
+import { command } from 'chapterjs';
+
+export const brainstorm = command({
+  name: 'brainstorm',
+  description: 'Rassemble des idées pendant une minute',
+  async run({ interaction, channel }) {
+    await interaction.reply('Envoyez vos idées, une par message, pendant une minute !');
+    const ideas = await channel.collectMessages({ within: '1m', max: 20 });
+    await channel.send(`${ideas.length} idées :\n${ideas.map(idea => `- ${idea.content}`).join('\n')}`);
+  },
+});
+```
+
+## Un clic
+
+`message.waitForClick()` attend un clic sur un bouton ou un menu d’un message : celui que donne `reply()`, par exemple. Le clic qu’elle donne se répond comme dans le `run` d’un bouton, avec `click.interaction`.
+
+```ts src/commands/reset.ts
+import { button, command } from 'chapterjs';
+
+export const yes = button({ label: 'Oui, tout effacer', style: 'danger' });
+export const no = button({ label: 'Annuler', style: 'secondary' });
+
+export const reset = command({
+  name: 'reset',
+  description: 'Remet à zéro les réglages du serveur',
+  permissions: ['ManageGuild'],
+  async run({ interaction, user }) {
+    const asked = await interaction.reply({ content: 'Tout effacer ?', components: [yes, no] });
+    const click = await asked.waitForClick({ from: user, within: '30s' });
+    if (!click) {
+      await interaction.edit({ content: 'Rien n’a été effacé.', components: [] });
+      return;
+    }
+    await click.interaction.update({
+      content: click.is(yes) ? 'Tout a été effacé.' : 'Rien n’a été effacé.',
+      components: [],
+    });
+  },
+});
+```
+
+- Un bouton ou un menu qui n’est qu’attendu n’a pas besoin de `run`. Une fois que plus rien ne l’attend, un clic dessus répond à la personne qu’il n’est plus disponible.
+- Un clic pris par une attente n’exécute pas le `run` de son bouton. Un clic que l’attente ne prend pas (une autre personne, avec `from`) l’exécute comme d’habitude.
+- `click.is(yes)` dit lequel a été cliqué ; `click.data` est ce que porte le bouton, `click.values` ce qui a été choisi dans un menu.
+- Sans réponse dans les 2 secondes, le bot ne change rien à l’écran pour vous, si bien que la personne ne voit jamais « This interaction failed ». Vous pouvez encore répondre avec `click.interaction.followUp()` ou `edit()`.
+
+## Une réaction
+
+`message.waitForReaction()` attend une réaction ajoutée à un message : d’une personne avec `from`, avec un emoji avec `emoji` (`'👍'`, ou un emoji personnalisé par son nom).
+
+```ts src/commands/agree.ts
+import { command } from 'chapterjs';
+
+export const agree = command({
+  name: 'agree',
+  description: 'Attend que quelqu’un soit d’accord',
+  async run({ interaction }) {
+    const asked = await interaction.reply('Qui est d’accord ? Réagissez avec 👍');
+    await asked.react('👍');
+    const reaction = await asked.waitForReaction({ emoji: '👍', within: '2m' });
+    await interaction.followUp(reaction ? `${reaction.user.username} est d’accord.` : 'Personne n’est d’accord.');
+  },
+});
+```
+
+La réaction du bot lui-même ne compte jamais.
+
+## Ce dont elle a besoin
+
+Attendre ne demande rien à déclarer : les intents suivent votre code, comme ceux de vos événements.
+
+- Attendre des messages demande à Discord les messages des serveurs et des messages privés, et leur texte : l’intent privilégié **Message Content Intent**. Quand il n’est pas activé, `chapterjs dev` le dit, nomme votre fichier et donne le lien du Developer Portal.
+- Attendre une réaction demande les réactions.
+- Attendre un clic ne demande rien.
+
+## Bon à savoir
+
+- Une attente vit tant que votre bot tourne : un redémarrage, ou l’arrêt de `chapterjs dev`, la termine sans rien (`null`, ou ce qu’un rassemblement a déjà reçu). Un enregistrement dans `chapterjs dev` la garde.
+- Tout ce qui concerne un serveur arrive au même processus de votre bot : une attente fonctionne pareil dans un gros bot.
+- La réponse à l’interaction reste due dans les 3 secondes : répondez d’abord (`reply()`), puis attendez. Attendre avant de répondre est répondu pour vous par « le bot réfléchit », comme toute fonction lente.
+
+## Tester
+
+Dans un scénario, `bot.use()` rend la main dès que votre fonction attend, et ce que fait le test ensuite est ce qu’elle attend : `bot.say()`, `bot.click()`, `bot.select()`, `bot.react()`. Le temps ne passe pas dans le serveur de test : `bot.endWaits()` termine chaque attente comme si son temps était écoulé.
+
+```ts src/commands/capital.test.ts
+import { scenario } from 'chapterjs/test';
+import { capital } from './capital';
+
+export const wins = scenario('la première bonne réponse gagne', async bot => {
+  await bot.use(capital);
+  await bot.say('Lyon', { by: bot.member('bob') });
+  await bot.say('paris', { by: bot.member('alice') });
+  bot.channel('general').messages.at(-1)?.says('alice a gagné !');
+});
+
+export const nobody = scenario('personne ne trouve', async bot => {
+  await bot.use(capital);
+  await bot.endWaits();
+  bot.channel('general').messages.at(-1)?.says('Personne n’a trouvé : c’était Paris.');
+});
+```
+
+<CardGroup cols={2}>
+  <Card title="Boutons" icon="mouse-pointer-click" href="/fr/components">
+    Des boutons avec leur propre run, qui fonctionnent pendant des semaines.
+  </Card>
+  <Card title="Tester" icon="flask-conical" href="/fr/testing">
+    Vérifier ce que répond votre bot, sans Discord.
+  </Card>
+</CardGroup>

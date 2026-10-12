@@ -34,10 +34,12 @@ The framework loads every file of `src/`, wherever it is and whatever it is call
 
 ## What it does
 
-- **Slash commands** with typed options, choices, autocomplete, permissions, cooldowns and translations.
+- **Slash commands** with typed options, choices, autocomplete, permissions, cooldowns and translations, and **menu commands** on the right click of a message or a person.
 - **Events**: the intents follow from the files you write, privileged ones included, with a direct link when one must be enabled.
 - **Components**: buttons, select menus, forms and embeds, with typed `data` carried in the message and no id to write.
+- **Waiting for an answer**: `await channel.waitForMessage({ matches: 'paris', within: '30s' })`, a click or a reaction, right where your function asked.
 - **Tasks**: every so often or with a cron, in the timezone you choose.
+- **Presence**: one activity, or several in turn, with texts computed when shown.
 - **Storage**: `store<Warning[]>({ expires: '30d' })` keeps data from one restart to the next, per server, typed, in a JSON file written for you, or in Redis with `storage: 'redis'` and a `REDIS_URL`; `ranking()` keeps a score per member in order, for leaderboards.
 - **Translated messages**: `t('welcome', { name })` speaks the language of who will read it.
 - **Voice**: join a channel and play a file, an attachment or a link, end-to-end encrypted (DAVE).

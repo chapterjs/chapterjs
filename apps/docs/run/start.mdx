@@ -134,7 +134,12 @@ Production then leaves that server alone, and you can keep working with `chapter
 - what happens in your test server is only handled by `chapterjs dev`;
 - what happens everywhere else, and in private messages, is only handled by `chapterjs start`.
 
-They never answer the same thing. Without `DEV_GUILD_ID`, production runs every server, your test server included.
+They never answer the same thing. Without `DEV_GUILD_ID`, production runs every server, your test server included. With it, the server count leaves it out, and says so:
+
+```text
+✓ Online as my-bot in 128 servers
+ℹ The dev server (DEV_GUILD_ID) is not counted: chapterjs start leaves it to chapterjs dev, and answers nothing there.
+```
 
 What one bot can't separate:
 
@@ -163,7 +168,7 @@ When there are many, it also spreads them over **several processes**, so your bo
 Each process runs your project for its share of the servers, and what it prints starts with its number:
 
 ```text
-[3] ✗ src/commands/poll.ts:8 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+[3] ✗ src/commands/poll.ts:8 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013). The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role.
 ```
 
 - **Nothing to configure.** One process is used for every 4 shards, never more than your machine has CPUs. A bot under a few thousand servers runs in one process.
@@ -192,6 +197,12 @@ yarn start --processes 8
 bun start --processes 8
 ```
 </CodeGroup>
+
+Asking for more processes than the bot has shards runs one process per shard, and says so:
+
+```text
+ℹ --processes 8 asks for more processes than your bot has shards (2): each process runs one at least, so it runs in 2 processes. Discord gives a bot more shards as it joins more servers.
+```
 
 Anything else after `start` is refused:
 

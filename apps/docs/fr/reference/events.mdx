@@ -209,11 +209,11 @@ Chaque événement reçoit aussi `t`, dans la langue du serveur où il s’est p
 | Options | Aucune |
 | Mémoire | Par défaut |
 
-<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+<ResponseField name="channel" type="GuildChannel | ThreadChannel" required>
   Le nouveau salon ou fil.
 </ResponseField>
-<ResponseField name="guild" type="Guild | null" required>
-  Le serveur du salon ; `null` pour une conversation privée.
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du salon : Discord n’envoie ces événements, avec l’intent Guilds, que pour les salons d’un serveur.
 </ResponseField>
 
 ## channelUpdate
@@ -225,11 +225,11 @@ Chaque événement reçoit aussi `t`, dans la langue du serveur où il s’est p
 | Options | Aucune |
 | Mémoire | Par défaut |
 
-<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+<ResponseField name="channel" type="GuildChannel | ThreadChannel" required>
   Le salon ou fil, tel qu’il est maintenant.
 </ResponseField>
-<ResponseField name="guild" type="Guild | null" required>
-  Le serveur du salon ; `null` pour une conversation privée.
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du salon : Discord n’envoie ces événements, avec l’intent Guilds, que pour les salons d’un serveur.
 </ResponseField>
 
 ## channelDelete
@@ -241,11 +241,11 @@ Chaque événement reçoit aussi `t`, dans la langue du serveur où il s’est p
 | Options | Aucune |
 | Mémoire | Par défaut |
 
-<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+<ResponseField name="channel" type="GuildChannel | ThreadChannel" required>
   Le salon ou fil tel qu’il était.
 </ResponseField>
-<ResponseField name="guild" type="Guild | null" required>
-  Le serveur du salon ; `null` pour une conversation privée.
+<ResponseField name="guild" type="Guild" required>
+  Le serveur du salon : Discord n’envoie ces événements, avec l’intent Guilds, que pour les salons d’un serveur.
 </ResponseField>
 
 ## messageCreate

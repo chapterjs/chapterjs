@@ -24,7 +24,7 @@ Un projet créé avec `create chapterjs`, à partir du modèle `default`, ressem
 
 ## Modèles
 
-`create chapterjs` propose cinq modèles. `default` est présélectionné : un fichier, et le reste de ce site pour le faire grandir. Les autres sont des bots complets : lisez-les une fois le framework connu, ou partez de l’un d’eux.
+`create chapterjs` propose six modèles. `default` est présélectionné : un fichier, et le reste de ce site pour le faire grandir. Les autres sont des bots complets : lisez-les une fois le framework connu, ou partez de l’un d’eux.
 
 | Modèle       | Ce que c’est                                                                                                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,8 +33,9 @@ Un projet créé avec `create chapterjs`, à partir du modèle `default`, ressem
 | `music`      | Un lecteur de musique en vocal : `/play` avec un fichier ou un lien, une file d’attente par serveur, `/queue`, `/leave`, et des boutons pause, passer et stop sous « Now playing ».        |
 | `community`  | Une carte de bienvenue quand quelqu’un arrive, un au revoir quand il part, `/roles` pour choisir ses rôles dans un menu, et une tâche hebdomadaire qui poste les chiffres du serveur.     |
 | `moderation` | `/timeout` et `/untimeout`, `/purge`, `/slowmode`, `/lock` et `/unlock`, avec les permissions dont chacune a besoin, et un journal de chaque action de modération dans `#mod-log`.       |
+| `games`      | `/quiz start` pose une question et la première bonne réponse dans le salon gagne un point, `/duel` attend le clic de qui a été défié, une commande de menu sur une personne montre son score et une sur un message défie son auteur, et une présence qui tourne. |
 
-Chaque modèle sauf `default` a ses textes en deux langues (`en-US` et `fr`) et une présence. `community` a besoin du Server Members Intent, pour savoir qui arrive : `chapterjs dev` dit où l’activer.
+Chaque modèle sauf `default` a ses textes en deux langues (`en-US` et `fr`) et une présence. `community` a besoin du Server Members Intent, pour savoir qui arrive, et `games` du Message Content Intent, pour lire les réponses de son quiz : `chapterjs dev` dit où les activer.
 
 ## `src/` : ce qu’un fichier exporte dit ce qu’il est
 

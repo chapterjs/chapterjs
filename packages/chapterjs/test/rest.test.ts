@@ -241,7 +241,7 @@ describe('an error of Discord', () => {
       ],
     });
     expect(error.message).toBe(
-      'Discord refused POST /channels/{channel.id}/messages: Invalid Form Body (50035)\n  embeds[0].title: Must be 256 or fewer in length.'
+      'Discord refused POST /channels/{channel.id}/messages: Invalid Form Body (50035).\n  embeds[0].title: Must be 256 or fewer in length.'
     );
     // One try: a 4xx is never sent again.
     expect(discord.requests).toHaveLength(1);
@@ -252,9 +252,15 @@ describe('an error of Discord', () => {
       403,
       { code: 50013, message: 'Missing Permissions' },
       50013,
-      /Missing Permissions \(50013\)/,
+      /Missing Permissions \(50013\)\. The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role\.$/,
     ],
-    [404, { code: 10003 }, 10003, /Unknown channel \(10003\)/],
+    [
+      404,
+      { code: 10003 },
+      10003,
+      /Unknown channel \(10003\)\. The channel does not exist any more: it was deleted\.$/,
+    ],
+    [404, { code: 10004 }, 10004, /Unknown guild \(10004\)\.$/],
     [404, 'not json', 0, /HTTP 404 \(404\)/],
     [400, { message: '' }, 0, /HTTP 400 \(400\)/],
     [400, { code: 0 }, 0, /General error.*\(400\)/],

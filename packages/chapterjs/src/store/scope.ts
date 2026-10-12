@@ -6,12 +6,20 @@
 
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-/** The id of the server the current function runs for, or `null` for none. */
-const scope = new AsyncLocalStorage<string | null>();
+/**
+ * One run of a function of the files: the server it runs for, or `null`
+ * for none. A new object each time, so it also tells one run from another
+ * (what waits for a message belongs to its run: `waiting/`).
+ */
+interface Run {
+  readonly guildId: string | null;
+}
 
-/** Runs `fn` for a server (or for none, with `null`). */
+const scope = new AsyncLocalStorage<Run>();
+
+/** Runs `fn` for a server (or for none, with `null`), as one run. */
 export function withGuild<T>(guildId: string | null, fn: () => T): T {
-  return scope.run(guildId, fn);
+  return scope.run({ guildId }, fn);
 }
 
 /**
@@ -20,6 +28,14 @@ export function withGuild<T>(guildId: string | null, fn: () => T): T {
  * the framework runs.
  */
 export function currentGuildId(): string | null | undefined {
+  return scope.getStore()?.guildId;
+}
+
+/**
+ * The run of a function of the files the current code belongs to, or
+ * `undefined` outside any.
+ */
+export function currentRun(): object | undefined {
   return scope.getStore();
 }
 

@@ -123,7 +123,7 @@ Your code will throw one day: a bug, or Discord refusing something. What happens
 - **You** get the error in your terminal, with the file and the line:
 
 ```text
-✗ src/commands/whois.ts:11 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+✗ src/commands/whois.ts:11 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013). The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role.
 ```
 
 - **The bot** keeps running. One failing command never stops anything else.

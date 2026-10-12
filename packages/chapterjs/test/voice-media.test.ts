@@ -21,7 +21,11 @@ import {
   TransportEncryptor,
   xchacha20poly1305Seal,
 } from '../src/voice/transport.js';
-import { joinsVoice, sourcesJoinVoice } from '../src/voice/usage.js';
+import { joinsVoice, VOICE_USE } from '../src/voice/usage.js';
+import { scanUses } from '../src/loader/usage.js';
+
+const sourcesJoinVoice = async (cwd: string) =>
+  ((await scanUses(cwd, [VOICE_USE])).voice ?? []).length > 0;
 import { block, el, ogg, webm } from './voice-helpers.js';
 
 const hex = (text: string) => Buffer.from(text.replace(/\s/g, ''), 'hex');

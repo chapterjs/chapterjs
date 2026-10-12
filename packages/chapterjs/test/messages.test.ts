@@ -163,6 +163,19 @@ describe('a text', () => {
     expect(fill('k', plural, { count: 1000000, guild: 'g', n: 0 }, 'fr')).toBe(
       '1\u202f000\u202f000 members, 0 new'
     );
+    // A zero written is for 0, in every language: English never picks it
+    // by its rules. Elsewhere the rules of the language decide.
+    const apples = templateOf({
+      zero: 'no apple',
+      one: '{count} apple',
+      other: '{count} apples',
+    });
+    expect(fill('k', apples, { count: 0 })).toBe('no apple');
+    expect(fill('k', apples, { count: 0 }, 'fr')).toBe('no apple');
+    expect(fill('k', apples, { count: 1 })).toBe('1 apple');
+    expect(fill('k', apples, { count: 0.5 })).toBe('0.5 apples');
+    // Latvian has a zero of its own for 10 too.
+    expect(fill('k', apples, { count: 10 }, 'lv' as never)).toBe('no apple');
     expect(() => fill('members', plural, { guild: 'g', n: 0 })).toThrow(
       `The message "members" needs {count}: t('members', { count, guild, n })`
     );
@@ -2130,7 +2143,7 @@ export default language({ locale: 'en-US', default: true, texts: { a: 'b' }, com
       await cli.waitFor(
         `✗ src/commands/ping.ts The option "who" of /ping has no description: write it in src/messages/en-US.ts (commands: { "ping": { options: { who: { description: '...' } } } }), or in the file.`
       );
-      await cli.waitFor('↻ Commands updated on Discord');
+      await cli.waitFor('↻ Commands updated on Dev Server');
       const again = fake.discord.requestsTo(
         'PUT',
         `/applications/${BOT}/guilds/${GUILD}/commands`
@@ -2140,6 +2153,53 @@ export default language({ locale: 'en-US', default: true, texts: { a: 'b' }, com
       ).toEqual(['mod']);
       cli.signal('SIGTERM');
       await cli.exited;
+    });
+
+    it('keep their texts when a new file says default: true a second time', async () => {
+      const fake = await world();
+      const cwd = project({
+        'src/messages/en-US.ts': `import { language } from 'chapterjs';
+export default language({ locale: 'en-US', default: true, texts: { a: 'b' }, commands: { ping: { description: 'Pong' } } });
+`,
+        'src/commands/ping.ts': `import { command } from 'chapterjs';
+export default command({ name: 'ping', run() {} });
+`,
+        'src/presence.ts': `import { presence } from 'chapterjs';
+export default presence({ activity: { type: 'playing', name: ({ t }) => t('a') } });
+`,
+      });
+      const cli = runDev(cwd, fake);
+      await cli.waitFor('✓ Commands updated on Dev Server');
+
+      writeFileSync(
+        join(cwd, 'src/messages/de.ts'),
+        `import { language } from 'chapterjs';
+export const de = language({ locale: 'de', default: true, texts: { a: 'c' } });
+`
+      );
+      await cli.waitFor(
+        /✗ src\/messages\/de\.ts \(de\) 2 languages say default: true \(.+\): only one can be the default\./
+      );
+      await cli.waitFor('⚠ Reloaded with');
+      // Saved again, fixed: German joins the languages.
+      writeFileSync(
+        join(cwd, 'src/messages/de.ts'),
+        `import { language } from 'chapterjs';
+export const de = language({ locale: 'de', texts: { a: 'c' } });
+`
+      );
+      await cli.waitFor(/↻ Reloaded in \d+ ms, .*messages in 2 languages/);
+      cli.signal('SIGTERM');
+      await cli.exited;
+      // /ping never lost its description, so it was never registered again
+      // without it; and the presence always had its t.
+      const registered = fake.discord.requestsTo(
+        'PUT',
+        `/applications/${BOT}/guilds/${GUILD}/commands`
+      );
+      expect(registered).toHaveLength(1);
+      expect(cli.output).not.toContain('has no description');
+      expect(cli.output).not.toContain('t is not a function');
     });
   }
 );

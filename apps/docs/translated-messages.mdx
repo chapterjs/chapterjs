@@ -100,7 +100,7 @@ export default command({
 });
 ```
 
-The forms are `zero`, `one`, `two`, `few`, `many` and `other`. `other` is always there; write the forms your language uses, the others fall back to `other`. `count` is a number, and `{count}` in a form is that number; a form may have other placeholders, given the same way. A plural in one language can be a plain text in another (`'{count} membre(s)'`), as long as the placeholders match.
+The forms are `zero`, `one`, `two`, `few`, `many` and `other`. `other` is always there; write the forms your language uses, the others fall back to `other`. `zero`, when written, is used for 0 in every language (`{ zero: 'no apple', one: '{count} apple', other: '{count} apples' }`). `count` is a number, and `{count}` in a form is that number; a form may have other placeholders, given the same way. A plural in one language can be a plain text in another (`'{count} membre(s)'`), as long as the placeholders match.
 
 ## Which language t speaks
 

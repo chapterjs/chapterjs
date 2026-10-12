@@ -39,7 +39,7 @@ export default command({
 });
 ```
 
-Save: the terminal says `↻ Reloaded in 12 ms, 1 command, 1 event loaded`, then `↻ Commands updated on Discord`, and `/ping` is in your test server. Nothing else says "this is a command": `command()` does. Its `name` is what people type after the `/`, and the file only says what the command _does_. Change `name` to `'hello'`, and the command becomes `/hello`; move the file to `src/fun/ping.ts`, and nothing changes.
+Save: the terminal says `↻ Reloaded in 12 ms, 1 command, 1 event loaded`, then `↻ Commands updated on My Server`, and `/ping` is in your test server. Nothing else says "this is a command": `command()` does. Its `name` is what people type after the `/`, and the file only says what the command _does_. Change `name` to `'hello'`, and the command becomes `/hello`; move the file to `src/fun/ping.ts`, and nothing changes.
 
 That is the rule for everything the framework runs:
 

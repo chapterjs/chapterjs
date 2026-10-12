@@ -79,9 +79,10 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
     const cli = runStart(cwd, fake);
     await cli.waitFor('✓ 1 command, 2 events loaded');
     // What a person reads, in order.
-    expect(cli.output.split('\n').slice(0, 4)).toEqual([
+    expect(cli.output.split('\n').slice(0, 5)).toEqual([
       '✓ Commands updated for everyone',
       '✓ Online as test-bot in 1 server',
+      'ℹ The dev server (DEV_GUILD_ID) is not counted: chapterjs start leaves it to chapterjs dev, and answers nothing there.',
       'ℹ Intents computed from your files: GUILDS, GUILD_MESSAGES, MESSAGE_CONTENT',
       '✓ 1 command, 2 events loaded',
     ]);
@@ -153,6 +154,7 @@ describe.skipIf(process.platform === 'win32')('chapterjs start', () => {
     const cli = runStart(project(files, 'BOT_TOKEN=test-token\n'), fake);
     await cli.waitFor('✓ Online as test-bot in 2 servers');
     await cli.waitFor(/ready: test-bot pid \d+ in Dev Server\+Someone else/);
+    expect(cli.output).not.toContain('The dev server');
     (await connected(fake)).dispatch(
       'MESSAGE_CREATE',
       rawMessage('100000000000000072', 'hello')
@@ -722,6 +724,20 @@ export default event({
       expect(redis.get('total:all')).toBe('4');
       // Nothing in data/: every store is in Redis.
       expect(existsSync(join(cwd, 'data'))).toBe(false);
+    }, 30_000);
+
+    it('says it runs in fewer processes than asked when the bot has fewer shards', async () => {
+      const fake = await world({ shards: 1, guilds: [] });
+      const cli = runStart(project(files, 'BOT_TOKEN=test-token\n'), fake, [
+        '--processes',
+        '3',
+      ]);
+      await cli.waitFor(
+        'ℹ --processes 3 asks for more processes than your bot has shards (1): each process runs one at least, so it runs in 1 process. Discord gives a bot more shards as it joins more servers.'
+      );
+      await cli.waitFor('✓ Online as test-bot in 1 server');
+      cli.signal('SIGTERM');
+      await cli.exited;
     }, 30_000);
 
     it('uses as many processes as the bot needs when nothing is asked', async () => {

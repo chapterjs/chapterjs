@@ -5,7 +5,7 @@
 import { existsSync, watch } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
-import { watchFolder } from '../loader/watch.js';
+import { snapshotFolder, watchFolder } from '../loader/watch.js';
 
 /** The folder, at the root of the project. */
 export const PUBLIC_FOLDER = 'public';
@@ -78,9 +78,9 @@ export function watchPublic(
   let catchUps: NodeJS.Timeout[] = [];
   const appeared = (): void => {
     if (inner) return;
-    // The folder was not there: what it has by the time it is watched
-    // (files copied with it, or written right after) is all new.
-    watchInside(Promise.resolve(''));
+    // The folder was not there: what it has now (files copied with it) is
+    // told at once, and what is written after it by the watch.
+    watchInside(snapshotFolder(root));
     if (!inner) return;
     outer?.close();
     outer = null;

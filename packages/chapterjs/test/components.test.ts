@@ -217,11 +217,32 @@ describe('the pieces of a message', () => {
   it('counts every component, nested ones included', () => {
     const link = () => linkButton({ label: 'L', url: 'https://x.y' });
     const many = Array.from({ length: 13 }, () => row([link(), link()]));
-    expect(() => renderComponents(many)).not.toThrow(); // 39
     expect(() => renderComponents([...many, text('x')])).not.toThrow(); // 40
-    expect(() => renderComponents([...many, section('s', link())])).toThrow(
-      'The message has 42 components once its rows are made: Discord accepts 40 at most.'
+    expect(() =>
+      renderComponents([...many, text('x'), section('s', link())])
+    ).toThrow(
+      'The message has 43 components once its rows are made: Discord accepts 40 at most.'
     );
+  });
+
+  it('takes 5 rows in a message without the new layout', () => {
+    const link = () => linkButton({ label: 'L', url: 'https://x.y' });
+    const pick = select({ options: ['a'], run() {} });
+    load('pick.ts', { default: pick });
+    const five = [link(), pick, pick, pick, pick];
+    expect(renderComponents(five).raw).toHaveLength(5);
+    // A menu takes a row by itself: a sixth row is refused here, before
+    // Discord answers "Invalid Form Body".
+    expect(() => renderComponents([...five, pick])).toThrow(
+      'The message has 6 rows of components: Discord accepts 5 at most. A menu takes a row by itself and up to 5 buttons share one: send the rest in another message.'
+    );
+    expect(() =>
+      renderComponents(Array.from({ length: 26 }, () => link()))
+    ).toThrow('The message has 6 rows of components');
+    // With the new layout, rows are counted as components only.
+    expect(() =>
+      renderComponents([text('x'), ...five, pick, pick])
+    ).not.toThrow();
   });
 
   it('adds up the texts of a message', () => {
@@ -544,8 +565,9 @@ describe('a component declared in a file', () => {
       '"disabled" of this button is true or false.',
     ],
     [
-      { default: button({ label: 'x' } as never) },
-      'this button has no "run": the function to run when someone uses it',
+      // Left out: a button only waited for. Not a function: refused.
+      { default: button({ label: 'x', run: 'go' } as never) },
+      '"run" of this button is the function to run when someone uses it, like async run({ interaction }) { await interaction.update(\'Done!\'); }. Leave it out for one that is only waited for with message.waitForClick().',
     ],
     [
       { default: button({ label: 'x', data: 'userId' as never, run() {} }) },
@@ -789,8 +811,8 @@ describe('a component declared in a file', () => {
       '"min" of this select menu is a whole number between 0 and 25, got -1.',
     ],
     [
-      { default: select({ options: ['a'] } as never) },
-      'this select menu has no "run"',
+      { default: select({ options: ['a'], run: 1 } as never) },
+      '"run" of this select menu is the function to run when someone uses it',
     ],
   ])('refuse a select file that is wrong (%#)', (exports, message) => {
     expect(() => load('pick.ts', exports)).toThrow(message);

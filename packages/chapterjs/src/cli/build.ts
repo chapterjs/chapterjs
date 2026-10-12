@@ -22,10 +22,10 @@ import { join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { enableProjectLoader } from '../loader/hot.js';
 import { listSources, type BuiltFile } from '../loader/loader.js';
-import { sourcesJoinVoice } from '../voice/usage.js';
+import { scanUses, type FoundUses } from '../loader/usage.js';
 import type { Log } from './log.js';
 import { MemoryStoreBackend } from '../store/memory-backend.js';
-import { createProject, hasSources, writeTypes } from './project.js';
+import { CODE_USES, createProject, hasSources, writeTypes } from './project.js';
 
 /** Where the build of a project is, from its folder. */
 export const buildDir = (cwd: string): string =>
@@ -42,8 +42,11 @@ export interface BuildInfo {
   sources: string;
   commands: number;
   events: number;
-  /** Whether the files join voice channels (an intent to ask for). */
-  voice: boolean;
+  /**
+   * What the files do that only their code shows, with the files doing it
+   * (`CODE_USES`: intents to ask for).
+   */
+  uses: FoundUses;
 }
 
 /** One value for everything in a folder: it changes when a file does. */
@@ -273,7 +276,7 @@ export async function build(options: BuildOptions): Promise<number> {
     sources: await fingerprint(src),
     commands: built.commands.size,
     events: built.events.size,
-    voice: await sourcesJoinVoice(cwd),
+    uses: await scanUses(cwd, CODE_USES),
   };
   await writeFile(join(out, 'build.json'), JSON.stringify(info, null, 2));
   if (built.isEmpty()) log.info(built.summary());

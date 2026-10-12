@@ -173,7 +173,7 @@ export default command({
 });
 ```
 
-Discord cache la commande aux membres qui n’ont pas les permissions, et ChapterJS vérifie à nouveau quand elle est utilisée : quelqu’un qui ne les a pas reçoit une réponse privée qui dit lesquelles manquent (« You need the ManageMessages permission to use this command. »), et votre fonction ne tourne pas. Les administrateurs d’un serveur peuvent changer qui voit la commande dans les réglages de leur serveur.
+Discord cache la commande aux membres qui n’ont pas les permissions, et ChapterJS vérifie à nouveau quand elle est utilisée : quelqu’un qui ne les a pas reçoit une réponse privée qui dit lesquelles manquent (« You need the Manage Messages permission to use this command. »), et votre fonction ne tourne pas. Les administrateurs d’un serveur peuvent changer qui voit la commande dans les réglages de leur serveur.
 
 Les noms sont ceux de [Permissions](/fr/reference/permissions#permissionname) : `['BanMembers']`, `['ManageMessages', 'ManageThreads']`... Un nom qui n’existe pas est signalé au chargement du fichier.
 
@@ -269,7 +269,7 @@ Vous n’enregistrez jamais rien : ChapterJS présente vos commandes à Discord,
 
 ```text
 ↻ Reloaded in 12 ms, 3 commands, 2 events loaded
-↻ Commands updated on Discord
+↻ Commands updated on My Server
 ```
 
 Si Discord les refuse, le bot continue de tourner avec les commandes que Discord a déjà :

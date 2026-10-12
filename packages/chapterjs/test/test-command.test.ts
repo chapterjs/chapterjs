@@ -5,6 +5,8 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { checkProgress } from '../src/cli/test.js';
+import { modal } from '../src/components/modal.js';
+import type { TestReply } from '../src/testing/harness.js';
 import { bin, project } from './dev-helpers.js';
 
 /** Runs `chapterjs test` in a project, and waits for it. */
@@ -110,6 +112,22 @@ export const weekly = task({
   },
 });
 `;
+
+// Typed: a form that carries data is named by its export, with or without
+// it, or called with it. Checked by the type checker, never run.
+const report = modal({
+  title: 'Report',
+  data: { userId: 'string' },
+  fields: { why: { type: 'text', label: 'Why' } },
+  run() {},
+});
+export function formTypes(reply: TestReply): void {
+  reply.opensForm(report);
+  reply.opensForm(report({ userId: '1' }));
+  reply.opensForm();
+  // @ts-expect-error not a form
+  reply.opensForm('report');
+}
 
 const full = (extra: Record<string, string> = {}) =>
   project({ 'src/ping.ts': PING, 'src/mod/warn.ts': WARN, ...extra });
@@ -307,6 +325,149 @@ export default [
     expect(existsSync(join(cwd, 'data'))).toBe(false);
   });
 
+  it('waits for an answer that was deferred, and keeps what a stuck case does to it', () => {
+    const cwd = project({
+      'src/slow.ts': `import { command } from 'chapterjs';
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Deferred by the framework after 2 s, answered after 6: fine online.
+export const slow = command({
+  name: 'slow',
+  description: 'Answers late',
+  async run({ interaction }) {
+    await wait(6000);
+    await interaction.reply('late but there');
+  },
+});
+
+// Answered, then never done: given up after 30 s.
+export const stuck = command({
+  name: 'stuck',
+  description: 'Never ends',
+  async run({ interaction }) {
+    await interaction.reply('started');
+    await new Promise(() => {});
+  },
+});
+`,
+      // Checked after src/slow.ts: nothing of the stuck case may reach it.
+      'src/z.ts': `import { command } from 'chapterjs';
+export const after = command({
+  name: 'after',
+  description: 'Fine',
+  run: ({ interaction }) => interaction.reply('ok'),
+});
+`,
+    });
+    const { code, output } = runTest(cwd);
+    expect(code, output).toBe(1);
+    expect(output).not.toContain('/slow failed');
+    expect(output).toContain(
+      '✗ Checked src/slow.ts: command /stuck failed\n  it did not finish within 30 s: is something waiting for what never comes?'
+    );
+    expect(output).toContain('✗ 1 of 3 checks failed');
+  }, 60_000);
+
+  it('says what joins voice was not run to its end, without failing it', () => {
+    const cwd = project({
+      'src/voice.ts': `import { ChannelType, command } from 'chapterjs';
+
+export const join = command({
+  name: 'join',
+  description: 'Joins a new voice channel',
+  async run({ interaction, guild }) {
+    const channel = await guild.createChannel({ name: 'Lounge', type: ChannelType.GuildVoice });
+    if (!channel.isVoice()) return interaction.reply('Not voice.');
+    await channel.join();
+    await interaction.reply('Joined.');
+  },
+});
+
+export const leave = command({
+  name: 'leave',
+  description: 'Leaves',
+  async run({ interaction, guild }) {
+    await guild.voice?.leave();
+    await interaction.reply('Left.');
+  },
+});
+`,
+      'src/voice.test.ts': `import { scenario } from 'chapterjs/test';
+import { join } from './voice';
+export default scenario('joining says voice is not simulated', async bot => {
+  await bot.use(join);
+});
+`,
+    });
+    const { code, output } = runTest(cwd);
+    expect(output).toContain(
+      'ℹ Voice is not played in memory, so what comes after join() was not run for: command /join (src/voice.ts). Try it on your server with chapterjs dev.'
+    );
+    expect(output).toContain('✓ Checked every file once: 2 checks in 1 file');
+    // A scenario is the developer's: it says why it stopped.
+    expect(output).toContain(
+      'Voice is not simulated by chapterjs test yet: the bot can not join a voice channel here.'
+    );
+    expect(code).toBe(1);
+  });
+
+  it('runs every case on a server as it was, so a ban never spills into the next case', () => {
+    // And, as on Discord, the owner can not be banned: without the check,
+    // "target being the owner" fails.
+    const cwd = project({
+      'src/ban.ts': `import { command } from 'chapterjs';
+export const ban = command({
+  name: 'ban',
+  description: 'Bans someone',
+  permissions: ['BanMembers'],
+  options: { target: { type: 'user', description: 'Who', required: true } },
+  async run({ interaction, guild, options }) {
+    // Discord never lets a bot ban the owner of the server.
+    if (options.target.id === guild.ownerId) return interaction.reply('Not the owner.');
+    await guild.ban(options.target.id);
+    await interaction.reply('Banned.');
+  },
+});
+`,
+    });
+    const { code, output } = runTest(cwd);
+    // "target being who uses it" bans the person using the command: the
+    // cases after it still have them.
+    expect(output, output).toContain(
+      '✓ Checked every file once: 1 check in 1 file'
+    );
+    expect(code).toBe(0);
+  });
+
+  it('fails what forgot an await, with its line, and goes on', () => {
+    const cwd = project({
+      'src/twice.ts': `import { command } from 'chapterjs';
+export const twice = command({
+  name: 'twice',
+  description: 'Answers twice without await',
+  run({ interaction }) {
+    interaction.reply('one');
+    interaction.reply('two');
+  },
+});
+export const fine = command({
+  name: 'fine',
+  description: 'Answers',
+  run: ({ interaction }) => interaction.reply('ok'),
+});
+`,
+    });
+    const { code, output } = runTest(cwd);
+    expect(output).toContain(
+      '✗ Checked src/twice.ts: command /twice failed\n  src/twice.ts:7 This interaction was already answered. Use interaction.followUp() to send another message, or interaction.edit() to change the answer.\n  This call was not awaited: write await in front of it (and async before run), so that your function waits for it.'
+    );
+    // The first answer reached the person: no "did not respond".
+    expect(output).not.toContain('finished without answering');
+    expect(output).toContain('✗ 1 of 2 checks failed');
+    expect(code).toBe(1);
+  });
+
   it('says which events it can not make happen yet', () => {
     const cwd = project({
       'src/polls.ts': `import { event } from 'chapterjs';
@@ -342,7 +503,7 @@ export default [
   }),
   scenario('warn needs the permission, and opens a form', async bot => {
     const refused = await bot.use(warn, { target: bot.member('alice'), text: 'spam' });
-    refused.isEphemeral().says('ModerateMembers');
+    refused.isEphemeral().says('You need the Moderate Members permission');
     const mod = bot.member('mod', { permissions: ['ModerateMembers'] });
     const reply = await bot.use(warn, { target: bot.member('alice'), text: 'spam' }, { by: mod });
     reply.says('alice has 1 warning(s)');
@@ -538,6 +699,78 @@ export default scenario('waits forever', () => new Promise(() => {}));
       expect(code).toBe(1);
       expect(output).toContain(
         '✗ Tested src/slow.test.ts: "waits forever" failed\n  took more than 0.2 s: is something waiting for an answer that never comes?'
+      );
+    });
+
+    it('starts the next scenario clean when one was given up while the bot ran', () => {
+      const cwd = project({
+        'src/stuck.ts': `import { command } from 'chapterjs';
+export const stuck = command({
+  name: 'stuck',
+  description: 'Never ends',
+  async run({ interaction }) {
+    await interaction.reply('started');
+    await new Promise(() => {});
+  },
+});
+export const fine = command({
+  name: 'fine',
+  description: 'Answers',
+  run: ({ interaction }) => interaction.reply('fine'),
+});
+`,
+        'src/stuck.test.ts': `import { scenario } from 'chapterjs/test';
+import { fine, stuck } from './stuck';
+export default [
+  scenario('a stuck command', async bot => {
+    await bot.use(stuck);
+  }),
+  scenario('then a fine one', async bot => {
+    (await bot.use(fine)).says('fine');
+  }),
+];
+`,
+      });
+      const { output } = runTest(cwd, { CHAPTERJS_SCENARIO_TIMEOUT: '1000' });
+      expect(output).toContain('"a stuck command" failed');
+      expect(output).not.toContain('"then a fine one" failed');
+    }, 60_000);
+
+    it('checks that a form carrying data was opened, by its export', () => {
+      const cwd = project({
+        'src/report.ts': `import { command, modal } from 'chapterjs';
+export const report = modal({
+  title: 'Report',
+  data: { userId: 'string' },
+  fields: { why: { type: 'text', label: 'Why' } },
+  run: ({ interaction, data, fields }) => interaction.reply(\`\${data.userId}: \${fields.why}\`),
+});
+export const other = modal({ title: 'Other', fields: { a: { type: 'text', label: 'A' } }, run() {} });
+export default command({
+  name: 'report',
+  description: 'Reports someone',
+  run: ({ interaction, user }) => interaction.showModal(report({ userId: user.id })),
+});
+`,
+        'src/report.test.ts': `import { scenario } from 'chapterjs/test';
+import use, { other, report } from './report';
+export default [
+  scenario('opens the form, whatever its data', async bot => {
+    const reply = await bot.use(use);
+    reply.opensForm(report).opensForm(report({ userId: 'x' })).opensForm(reply.form!);
+  }),
+  scenario('names the form it expected', async bot => {
+    (await bot.use(use)).opensForm(other);
+  }),
+];
+`,
+      });
+      const { output } = runTest(cwd);
+      expect(output).not.toContain(
+        '"opens the form, whatever its data" failed'
+      );
+      expect(output).toContain(
+        '"names the form it expected" failed\n  src/report.test.ts:9 The bot should have opened the form other, it opened report.'
       );
     });
 

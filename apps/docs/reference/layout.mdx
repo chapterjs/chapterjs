@@ -191,7 +191,7 @@ How a container looks.
 type MessageComponent = ContainerChild | ContainerComponent
 ```
 
-What the `components` of a message take. Buttons and menus are put in rows by the framework (5 buttons per row, a menu alone in its row); `row()` is there to choose. As soon as a message has a text, a section, a gallery, a file, a separator or a container, it is built with components only: Discord then takes no `content` and no `embeds`.
+What the `components` of a message take. Buttons and menus are put in rows by the framework (5 buttons per row, a menu alone in its row); `row()` is there to choose. Such a message holds 5 rows at most. As soon as a message has a text, a section, a gallery, a file, a separator or a container, it is built with components only: Discord then takes no `content` and no `embeds`.
 
 ### ContainerChild
 

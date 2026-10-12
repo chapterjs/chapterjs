@@ -191,7 +191,7 @@ L’apparence d’un conteneur.
 type MessageComponent = ContainerChild | ContainerComponent
 ```
 
-Ce que prennent les `components` d’un message. Les boutons et menus sont mis en rangées par le framework (5 boutons par rangée, un menu seul dans sa rangée) ; `row()` est là pour choisir. Dès qu’un message a un texte, une section, une galerie, un fichier, un séparateur ou un conteneur, il est construit uniquement avec des composants : Discord ne prend alors ni `content` ni `embeds`.
+Ce que prennent les `components` d’un message. Les boutons et menus sont mis en rangées par le framework (5 boutons par rangée, un menu seul dans sa rangée) ; `row()` est là pour choisir. Un tel message contient 5 rangées au plus. Dès qu’un message a un texte, une section, une galerie, un fichier, un séparateur ou un conteneur, il est construit uniquement avec des composants : Discord ne prend alors ni `content` ni `embeds`.
 
 ### ContainerChild
 

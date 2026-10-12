@@ -16,7 +16,11 @@ import { ctxOf } from '../structures/base.js';
 import type { TextBasedChannel } from '../structures/channel.js';
 import type { Context } from '../structures/context.js';
 import type { Guild } from '../structures/guild.js';
-import { isUpdating, type Interaction } from '../structures/interaction.js';
+import {
+  answersSent,
+  isUpdating,
+  type Interaction,
+} from '../structures/interaction.js';
 import type { GuildMember } from '../structures/member.js';
 import type { User } from '../structures/user.js';
 
@@ -181,7 +185,9 @@ export function runInteraction(options: RunOptions): Promise<void> {
   return new Promise(resolve =>
     resolve(withGuild(options.guildId, options.run))
   )
-    .then(() => {
+    .then(async () => {
+      // An answer asked without await is on its way: not a missing one.
+      await answersSent(interaction);
       if (!interaction.answered) {
         reporter.onWarning(file, `${name} ${options.unanswered}`);
       }

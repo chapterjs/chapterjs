@@ -86,6 +86,8 @@ export const Limits = {
   CustomId: 100,
   /** @see https://docs.discord.com/developers/components/reference#component-object */
   MessageComponents: 40,
+  /** @see https://docs.discord.com/developers/components/reference#legacy-message-component-behavior */
+  MessageActionRows: 5,
   /** @see https://docs.discord.com/developers/components/reference#action-row */
   ActionRowButtons: 5,
   /** @see https://docs.discord.com/developers/components/reference#button-button-structure */

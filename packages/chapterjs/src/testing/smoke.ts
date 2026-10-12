@@ -7,7 +7,11 @@
 import type { PermissionName } from '../discord/permissions.js';
 import { Permissions } from '../discord/permissions.js';
 import { ChannelType } from '../discord/types/channel.js';
-import { commandName, type CommandEntry } from '../commands/tree.js';
+import {
+  commandName,
+  describeCommand,
+  type CommandEntry,
+} from '../commands/tree.js';
 import type { LoadedCommand } from '../commands/declaration.js';
 import type { ComponentEntry } from '../components/router.js';
 import type { LoadedField } from '../components/modal.js';
@@ -212,9 +216,126 @@ function hard(option: LoadedCommand['options'][number]): HardValue[] {
   }
 }
 
+/** The longest message Discord accepts. */
+const MAX_MESSAGE = 2000;
+
+/**
+ * The checks of a menu command: used on an ordinary message or person, and
+ * on the hard ones (a message at its longest, the bot, the owner, someone
+ * who left...).
+ */
+function menuCheck({ command, file }: CommandEntry): Check {
+  const declaration = { config: { run: command.run } };
+  const subject = describeCommand(command);
+  const dm = command.where === 'dm';
+  const cases: Case[] = [];
+  const use = (
+    session: Session,
+    on: (session: Session, by: TestMember) => Promise<unknown> | unknown,
+    where: Partial<TestWhere> = {}
+  ): Promise<void> => {
+    const by = userFor(session, command);
+    return Promise.resolve(on(session, by))
+      .then(target =>
+        session.use(declaration as never, { on: target } as never, {
+          by,
+          ...where,
+        })
+      )
+      .then(() => {});
+  };
+  if (command.type === 'message') {
+    // The message is written where the menu is used.
+    const say =
+      (content: string, author?: (session: Session) => TestMember) =>
+      (session: Session, by: TestMember) =>
+        session.say(content, {
+          by: author?.(session) ?? session.someone,
+          ...(dm ? { in: 'dm', by } : {}),
+        });
+    cases.push(
+      { label: 'on a message', run: session => use(session, say('Hello!')) },
+      {
+        label: 'on a message at its longest, with unicode',
+        run: session =>
+          use(
+            session,
+            say(`${UNICODE} ${textOf(MAX_MESSAGE)}`.slice(0, MAX_MESSAGE))
+          ),
+      }
+    );
+    if (!dm) {
+      cases.push(
+        {
+          label: 'on a message of the owner',
+          run: session =>
+            use(
+              session,
+              say('Hello!', current => current.owner)
+            ),
+        },
+        {
+          label: 'on a message of someone who left',
+          run: session =>
+            use(session, async (current, by) => {
+              // Someone of its own, who writes and then leaves.
+              const writer = current.member('gone-writer');
+              const message = await say('Hello!', () => writer)(current, by);
+              current.world.members.delete(writer.id);
+              return message;
+            }),
+        }
+      );
+    }
+    if (command.where === 'both') {
+      cases.push({
+        label: 'in a private message',
+        run: session =>
+          use(session, (current, by) =>
+            current.say('Hello!', { by, in: 'dm' })
+          ),
+      });
+    }
+    return { subject, file, cases };
+  }
+  cases.push(
+    {
+      label: 'on someone',
+      run: session => use(session, current => current.member('alice')),
+    },
+    { label: 'on who uses it', run: session => use(session, (_, by) => by) },
+    { label: 'on the bot', run: session => use(session, current => current.me) }
+  );
+  if (!dm) {
+    cases.push(
+      {
+        label: 'on the owner',
+        run: session => use(session, current => current.owner),
+      },
+      {
+        label: 'on someone who left',
+        run: session =>
+          use(session, current => {
+            const gone = current.member('gone');
+            current.world.members.delete(gone.id);
+            return gone;
+          }),
+      }
+    );
+  }
+  if (command.where === 'both') {
+    cases.push({
+      label: 'in a private message',
+      run: session => use(session, (_, by) => by, { in: 'dm' }),
+    });
+  }
+  return { subject, file, cases };
+}
+
 /** The checks of the commands. */
 function commandChecks(project: Project): Check[] {
   return [...project.commands.values()].map((entry: CommandEntry) => {
+    if (entry.command.type !== 'slash') return menuCheck(entry);
     const { command, file } = entry;
     const declaration = { config: { run: command.run } };
     const subject = `command ${commandName(command.path)}`;
@@ -356,6 +477,8 @@ function componentChecks(project: Project): Check[] {
   for (const entry of project.components.values() as Iterable<ComponentEntry>) {
     const { component, file } = entry;
     if (component.kind === 'embed') continue;
+    // Only waited for (`message.waitForClick()`): nothing of its own runs.
+    if (component.kind !== 'modal' && !component.run) continue;
     const { name, data } = component;
     const target = (values: Record<string, unknown>) => ({
       customId: [
@@ -773,6 +896,32 @@ function taskChecks(project: Project): Check[] {
   }));
 }
 
+/**
+ * The check of the presence, when it has functions: each runs once, as
+ * the rotation would run it.
+ */
+function presenceChecks(project: Project): Check[] {
+  const file = project.presenceFile;
+  const presence = project.presence;
+  if (!file || !presence) return [];
+  const hasFunctions =
+    typeof presence.activities === 'function' ||
+    presence.activities.some(one => typeof one.name === 'function');
+  if (!hasFunctions) return [];
+  return [
+    {
+      subject: 'the presence',
+      file,
+      cases: [
+        {
+          label: 'once',
+          run: session => session.project.runPresence(session.bot),
+        },
+      ],
+    },
+  ];
+}
+
 /** Every check of the project, in the order of the report. */
 export function smokeChecks(project: Project): {
   checks: Check[];
@@ -785,6 +934,7 @@ export function smokeChecks(project: Project): {
       ...componentChecks(project),
       ...events.checks,
       ...taskChecks(project),
+      ...presenceChecks(project),
     ],
     notSimulated: events.notSimulated,
   };

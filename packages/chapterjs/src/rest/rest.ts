@@ -1,6 +1,7 @@
 // The only place that sends HTTP requests to Discord.
 // https://docs.discord.com/developers/reference#http-api
 
+import { callSite, fromSite } from '../util/call-site.js';
 import { setTimeout as sleep } from 'node:timers/promises';
 import {
   API_BASE_URL,
@@ -161,10 +162,23 @@ export class RestClient implements Rest {
     });
   }
 
-  async request<E extends Endpoint>(
+  request<E extends Endpoint>(
     endpoint: E,
     params: PathParams<E['path']>,
     options: RequestOptions<E> = {}
+  ): Promise<EndpointResult<E>> {
+    // Taken now, while the files are in the stack: a refusal that comes
+    // later still names their line, even when they did not await.
+    const site = callSite();
+    return this.#send(endpoint, params, options).catch((error: unknown) => {
+      throw fromSite(error, site);
+    });
+  }
+
+  async #send<E extends Endpoint>(
+    endpoint: E,
+    params: PathParams<E['path']>,
+    options: RequestOptions<E>
   ): Promise<EndpointResult<E>> {
     const auth = options.auth ?? true;
     if (auth && this.#tokenRefused) throw new InvalidTokenError();

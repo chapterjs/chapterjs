@@ -65,8 +65,8 @@ Both have every field of [InteractiveConfig](/reference/button#interactiveconfig
   How many things can be picked at most (1 to 25). 1 by default.
 </ResponseField>
 
-<ResponseField name="run" type="(context: SelectContext<Picked, Data, Where>) => unknown" required>
-  What to do when something is picked.
+<ResponseField name="run" type="(context: SelectContext<Picked, Data, Where>) => unknown">
+  What to do when something is picked. Leave it out for a menu that is only waited for (`message.waitForClick()`).
 </ResponseField>
 
 ### StringSelectConfig
