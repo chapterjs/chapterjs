@@ -86,6 +86,9 @@ Every message of ChapterJS says what happened, then what to do. This page gather
   <Accordion title="✗ src/…:line … (while the bot runs)">
     One of your functions threw: the line names the file and the line in your code, and the rest is the error. Nothing else stops. For a command, the person got a short private answer. See [when your function fails](/commands/answering#when-your-function-fails).
   </Accordion>
+  <Accordion title="✗ src/…:line …, then This call was not awaited: write await in front of it (and async before run)">
+    One of your functions called something that answers later (a store, a reply, a request) without `await`, and it failed with nobody to tell. Without this line, Node would have stopped the bot; instead the error is reported with your file and line, and the bot keeps running. Write `await` in front of the call and `async` before `run`, so that your function waits for it and its errors are reported with it.
+  </Accordion>
   <Accordion title="↻ Your files now need more from Discord (…): reconnecting...">
     A file you added listens to something the connection was not asked for (a new event, a file that now listens to private messages). ChapterJS reconnects by itself with what is needed and says `✓ Reconnected, … loaded`; if that needs a privileged intent, see above.
   </Accordion>

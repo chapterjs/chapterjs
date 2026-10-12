@@ -14,7 +14,7 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'reactionAdd',
-  async run({ emoji, member, guild, channel, messageId }) {
+  async run({ reaction: { emoji, member, channel, messageId }, guild }) {
     if (emoji.name !== '🔖') return;
     const link = `https://discord.com/channels/${guild.id}/${channel.id}/${messageId}`;
     await member.send(`You bookmarked a message in #${channel.name}: ${link}`);
@@ -30,19 +30,19 @@ Save it, then react 🔖 to any message of your test server: the bot sends you i
 
 Reactions are not privileged: Discord does not consider them personal, unlike what people write.
 
-`emoji` is the emoji of the reaction. For a standard emoji, `emoji.name` is the character itself (`'🔖'`); a custom emoji of a server has a name and an `id`.
+The function receives the `reaction` and the server, `guild`, and takes from the reaction what it needs: `emoji`, `member`, `channel`, `messageId`. `emoji` is the emoji of the reaction. For a standard emoji, `emoji.name` is the character itself (`'🔖'`); a custom emoji of a server has a name and an `id`.
 
 ## Safe by default, again
 
-The rules of the [previous page](/tutorial/message-events) hold here: by default a reaction file runs **for people, in servers**. The reactions of bots are left out, yours included, so the file never reacts to what it does itself; `bots: true` lets them in. And because the file listens in servers, `guild`, `channel` and `member` are always there, with no `?.` to write. `where: 'dm'` or `where: 'both'` change that exactly like for messages.
+The rules of the [previous page](/tutorial/message-events) hold here: by default a reaction file runs **for people, in servers**. The reactions of bots are left out, yours included, so the file never reacts to what it does itself; `bots: true` lets them in. And because the file listens in servers, `guild`, and the `channel` and `member` of the reaction, are always there, with no `?.` to write. `where: 'dm'` or `where: 'both'` change that exactly like for messages.
 
 ## Only an id for the message
 
-Look at what the function receives: `messageId`, not a message. When someone reacts, Discord sends who reacted and with what, but not the message: it may be years old. And your bot [remembers no message](/tutorial/memory-and-limits). So the event gives its id, and `message` is `null`.
+Look at what the reaction holds: `messageId`, not a message. When someone reacts, Discord sends who reacted and with what, but not the message: it may be years old. And your bot [remembers no message](/tutorial/memory-and-limits). So the reaction gives its id, and `reaction.message` is `null`.
 
 Often the id is enough: the link above is built from it, without asking Discord anything. When you really need the message, ask for it: `await channel.fetchMessage(messageId)`. Do it after the checks, never for every reaction.
 
-`reactionRemove` goes further: Discord sends only the id of who removed their reaction. ChapterJS asks Discord who it is the first time, then remembers them, so `user` is always there; `member` is only there when the bot remembers that member.
+`reactionRemove` goes further: Discord sends only the id of who removed their reaction. ChapterJS asks Discord who it is the first time, then remembers them, so `reaction.user` is always there; `reaction.member` is only there when the bot remembers that member.
 
 ## Hello in voice
 
@@ -53,13 +53,13 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceJoin',
-  async run({ member, channel }) {
+  async run({ voice: { member, channel } }) {
     await channel.send(`Welcome to ${channel.name}, ${member.displayName}!`);
   },
 });
 ```
 
-Join a voice channel of your test server: the bot writes in the chat of that channel. Every voice channel has a text chat, and `channel` is a `VoiceChannel` you can send to.
+Join a voice channel of your test server: the bot writes in the chat of that channel. Every voice channel has a text chat, and `voice.channel` is a `VoiceChannel` you can send to. The function receives `voice` (who, where, and their voice state) and the server, `guild`.
 
 Discord tells a bot only that "someone's voice state changed". ChapterJS remembers who is in which channel, compares, and gives you four events instead of one:
 
@@ -85,7 +85,7 @@ Polls (`pollVoteAdd`), typing (`typingStart`), bans (`banAdd`), the audit log, i
 
 - `reactionAdd`, `reactionRemove`, `pollVoteAdd`, `typingStart`, the voice events and the others are declared with `event()`, like `memberJoin`.
 - Reactions ignore bots and private messages by default, like messages; `bots` and `where` change it.
-- Some events only give ids: `messageId` is always there, `message` is `null`; `user` is asked to Discord once when needed.
+- Every event gives what it is about and `guild`: `reaction`, `vote`, `voice`... Some only hold ids: `reaction.messageId` is always there, `reaction.message` is `null`; `user` is asked to Discord once when needed.
 - Four voice events tell a join, a leave, a move and a change apart.
 
 <CardGroup cols={2}>

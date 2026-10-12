@@ -70,7 +70,7 @@ export default command({
 - **Events**: the intents follow from the files you write, privileged ones included, with a direct link when one must be enabled.
 - **Components**: buttons, select menus, forms and embeds, with typed `data` carried in the message and no id to write.
 - **Tasks**: every so often or with a cron, in the timezone you choose.
-- **Storage**: `store<Warning[]>({ expires: '30d' })` keeps data from one restart to the next, per server, typed, in a JSON file written for you.
+- **Storage**: `store<Warning[]>({ expires: '30d' })` keeps data from one restart to the next, per server, typed, in a JSON file written for you, or in Redis with `storage: 'redis'` and a `REDIS_URL`; `ranking()` keeps a score per member in order, for leaderboards.
 - **Translated messages**: `t('welcome', { name })` speaks the language of who will read it.
 - **Voice**: join a channel and play a file, an attachment or a link, end-to-end encrypted (DAVE).
 - **Tests**: `chapterjs test` runs the bot against a Discord in memory, no token needed: every command, component, event and task is used once by itself, then your scenarios (`scenario('ping answers Pong', async bot => { … })`) say what the bot should answer.

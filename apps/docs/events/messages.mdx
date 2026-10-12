@@ -128,22 +128,22 @@ Both options go together: `{ bots: true, where: 'both' }` receives everything, a
 
 ## A deleted message
 
-A message that was deleted no longer exists, so `messageDelete` gives you its id, the channel and the server it was in, and the message itself **as it was** when the bot remembered it.
+A message that was deleted no longer exists, so the `message` of `messageDelete` is what is left of it: its `id`, the `channel` it was in, and `before`, the message itself **as it was** when the bot remembered it.
 
 ```ts src/events/log.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'messageDelete',
-  run({ messageId, channel, guild }) {
-    console.log(`Message ${messageId} was deleted in #${channel.name} of ${guild.name}`);
+  run({ message, guild }) {
+    console.log(`Message ${message.id} was deleted in #${message.channel.name} of ${guild.name}`);
   },
 });
 ```
 
-In a server, `guild` and `channel` (a `GuildTextBasedChannel`) are always there. `message` is `null` when the bot did not remember the message: the bot [remembers no message](/memory) today, so always use `messageId`.
+In a server, `guild` and `message.channel` (a `GuildTextBasedChannel`) are always there. `message.before` is `null` when the bot did not remember the message: the bot [remembers no message](/memory) today, so always use `message.id`.
 
-`messageDelete` takes `where` like the other two, and what your function receives follows it: with `'dm'`, there is no `guild` nor `guildId` at all; with `'both'`, `guild` is `null` for a private message and tells the two apart. It has no `bots` option: a deleted message has no author anymore.
+`messageDelete` takes `where` like the other two, and what your function receives follows it: with `'dm'`, there is no `guild` nor `message.guildId` at all; with `'both'`, `guild` is `null` for a private message and tells the two apart. It has no `bots` option: a deleted message has no author anymore.
 
 ## Intents follow your options
 

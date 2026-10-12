@@ -1,0 +1,166 @@
+---
+title: 'ranking()'
+description: 'Tout ce que ranking() déclare et fait : la portée, le stockage, l’ordre, et chaque appel'
+---
+
+`ranking()` déclare un classement, depuis n’importe quel fichier de `src/`, et le nom de son export est le nom du classement. Il prend un objet, `RankingConfig`, ou rien.
+
+```ts src/levels/best.ts
+import { ranking } from 'chapterjs';
+
+export const best = ranking({ order: 'lowest' });
+```
+
+<Note>
+  Comment utiliser un classement, et où sont ses scores, est dans le [guide](/fr/rankings). Cette page liste ce qui existe.
+</Note>
+
+## ranking()
+
+```ts
+ranking(config?: RankingConfig): Ranking
+```
+
+Déclare un classement : un score par membre, gardé dans l’ordre d’un redémarrage à l’autre. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est le nom du classement. Par serveur sauf si `scope: 'global'` est donné, le score le plus haut en premier sauf si `order: 'lowest'` l’est.
+
+## RankingConfig
+
+Ce qu’un fichier donne à `ranking()`.
+
+<ResponseField name="scope" type="StoreScope">
+  `'guild'` (le défaut) : un classement par serveur, et une fonction qui tourne dans un serveur lit et écrit le classement de ce serveur, sans rien dire. `'global'` : un seul classement pour tout le bot.
+</ResponseField>
+
+<ResponseField name="storage" type="StoreStorage">
+  Où les scores sont gardés : `'file'` (le défaut), un fichier dans le dossier `data/` du projet, ou `'redis'`, le Redis de `REDIS_URL` dans `.env`, où un classement est un sorted set.
+</ResponseField>
+
+<ResponseField name="order" type="RankingOrder">
+  Quel bout vient en premier : `'highest'` (le défaut), le score le plus haut en premier, ou `'lowest'`, le plus bas en premier (un temps, un nombre d’essais).
+</ResponseField>
+
+### RankingOrder
+
+```ts
+type RankingOrder = 'highest' | 'lowest';
+```
+
+Quel bout d’un classement vient en premier.
+
+`StoreScope` et `StoreStorage` sont ceux de [`store()`](/fr/reference/store#storescope).
+
+## Ranking
+
+Ce que renvoie `ranking()` : une déclaration que le framework trouve dans les exports d’un fichier. C’est un `ScopedRanking` pour le serveur où le code tourne, plus :
+
+### in()
+
+```ts
+in(guild: Guild | string): ScopedRanking
+```
+
+Le même classement, pour un serveur : ce qu’une tâche, ou une fonction qui tourne hors d’un serveur, utilise pour lire et écrire le classement de ce serveur.
+
+## ScopedRanking
+
+Un classement, pour un serveur ou pour tout le bot.
+
+### add()
+
+```ts
+add(id: string, points: number): Promise<number>
+```
+
+Ajoute `points` (négatifs pour retirer) au score de `id`, en partant de 0, d’un trait : rien de ce qui est ajouté entre-temps n’est perdu, même par un autre processus. Renvoie le nouveau score.
+
+### set()
+
+```ts
+set(id: string, score: number): Promise<void>
+```
+
+Fixe le score de `id`, quel qu’il soit.
+
+### score()
+
+```ts
+score(id: string): Promise<number | undefined>
+```
+
+Le score de `id`, ou `undefined` quand il n’en a pas.
+
+### rankOf()
+
+```ts
+rankOf(id: string): Promise<number | undefined>
+```
+
+La place de `id`, à partir de 1, ou `undefined` quand il n’a pas de score.
+
+### top()
+
+```ts
+top(count?: number, skip?: number): Promise<RankingEntry[]>
+```
+
+Les `count` premiers membres (10 par défaut), après en avoir sauté `skip` (0 par défaut) : `top(10, 10)` est la deuxième page.
+
+### remove()
+
+```ts
+remove(id: string): Promise<boolean>
+```
+
+Oublie le score de `id`. `true` quand il en avait un.
+
+### size()
+
+```ts
+size(): Promise<number>
+```
+
+Combien de membres ont un score.
+
+### clear()
+
+```ts
+clear(): Promise<number>
+```
+
+Oublie chaque score. Renvoie combien il y en avait.
+
+## RankingEntry
+
+Un membre d’un classement, comme `top()` les liste.
+
+<ResponseField name="id" type="string" required>
+  L’id donné à `add()` ou à `set()` : un membre, ou autre chose.
+</ResponseField>
+
+<ResponseField name="score" type="number" required>
+  Le score.
+</ResponseField>
+
+<ResponseField name="rank" type="number" required>
+  Sa place, à partir de 1. Les scores égaux sont rangés par id.
+</ResponseField>
+
+## Où vivent les scores
+
+Avec `storage: 'file'`, une entrée par membre dans `data/<nom>.json`, écrite comme les entrées d’un store (`[[id du serveur, id du membre], score, null]`). `top()`, `rankOf()` et `size()` remettent chaque score du serveur dans l’ordre à chaque appel ; `add()` est une mise à jour de l’entrée, d’un trait.
+
+Avec `storage: 'redis'`, un sorted set par serveur : `<nom>:<id du serveur>`, `<nom>` pour un classement global, `dev:` devant dans `chapterjs dev`. `add()` est `ZINCRBY`, `set()` `ZADD`, `score()` `ZSCORE`, `rankOf()` `ZREVRANK` (`ZRANK` pour `order: 'lowest'`), `top()` `ZREVRANGE … WITHSCORES` (`ZRANGE`), `remove()` `ZREM`, `size()` `ZCARD`, `clear()` `DEL`.
+
+Les scores égaux sont rangés par les octets de leur id, comme le fait Redis : à l’envers pour le plus haut en premier. Les deux stockages donnent le même ordre.
+
+## Erreurs
+
+| Quand | Message |
+| --- | --- |
+| Un classement par serveur est utilisé là où aucun serveur n’est connu | `<name> is a ranking per server, and this code does not run in one: use <name>.in(guild) to say which server, or declare the ranking with scope: 'global'.` |
+| Un classement qui n’est pas exporté est utilisé | `This ranking was not loaded by ChapterJS: a ranking is exported from a file of src/ (export const name = ranking()), and used once the bot started.` |
+| Un id est vide, ou n’est pas un texte | `The id of a member of a ranking is a text that is not empty, got 12. Write an id as a text: member.id, not a number.` |
+| Un score n’est pas un nombre | `What add() adds is a number, got "3".` / `The score set() is a number, got null.` |
+| `top()` reçoit un nombre qui n’est pas entier | `How many top() lists is a whole number, 0 or more, got -1.` |
+| Un store et un classement ont le même nom | `✗ src/b.ts (xp) There is already a store named xp, in src/a.ts: the name of the export is the name of the ranking, so rename one of them.` |
+| Un classement dit `storage: 'redis'` et `REDIS_URL` n’est pas réglé | `✗ src/b.ts (best) best is kept in Redis (storage: 'redis'), but REDIS_URL is not set: add it to .env (like redis://localhost:6379) and start again, or remove storage: 'redis' to keep its scores in data/.` |

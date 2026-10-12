@@ -4,6 +4,7 @@
 
 import type { Declaration } from '../loader/loader.js';
 import { DURATION_EXAMPLE, parseDuration } from '../util/duration.js';
+import { STORAGES, type StoreStorage } from './backend.js';
 import {
   bindStore,
   isStoreDeclaration,
@@ -17,6 +18,8 @@ export interface LoadedStore {
   /** The name of the store: the name of the export that declares it. */
   readonly name: string;
   readonly scope: StoreScope;
+  /** Where its data is: a file of `data/`, or Redis. */
+  readonly storage: StoreStorage;
   /** The default expiration, in ms, or `null` for never. */
   readonly expires: number | null;
 }
@@ -28,7 +31,7 @@ const fail = (message: string): never => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const KEYS = ['scope', 'expires'];
+const KEYS = ['scope', 'storage', 'expires'];
 const SCOPES: readonly StoreScope[] = ['guild', 'global'];
 
 /** What a name can be: a file in `data/` is called after it. */
@@ -68,6 +71,12 @@ export const storeDeclaration: Declaration<LoadedStore> = {
         `"scope" is 'guild' (the data is kept per server, the default) or 'global' (one set of data for the whole bot), got ${JSON.stringify(config.scope)}.`
       );
     }
+    const storage = (config.storage ?? 'file') as StoreStorage;
+    if (!STORAGES.includes(storage)) {
+      fail(
+        `"storage" is 'file' (a file in data/, the default) or 'redis' (the Redis of REDIS_URL in .env), got ${JSON.stringify(config.storage)}.`
+      );
+    }
     let expires: number | null = null;
     if (config.expires !== undefined) {
       const ms =
@@ -81,7 +90,7 @@ export const storeDeclaration: Declaration<LoadedStore> = {
       }
       expires = ms;
     }
-    bindStore(value, { name, scope, expires });
-    return Object.freeze({ name, scope, expires });
+    bindStore(value, { name, scope, storage, expires });
+    return Object.freeze({ name, scope, storage, expires });
   },
 };

@@ -55,8 +55,8 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'inviteCreate',
-  run({ invite, channel }) {
-    console.log(`${invite.inviter?.username ?? 'Someone'} created ${invite.url} for #${channel.name}`);
+  run({ invite }) {
+    console.log(`${invite.inviter?.username ?? 'Someone'} created ${invite.url} for #${invite.channel?.name}`);
   },
 });
 ```
@@ -81,7 +81,7 @@ export default event({
 
 ## Threads
 
-A thread created, changed or deleted is a channel: [`channelCreate`, `channelUpdate` and `channelDelete`](/reference/events#channelcreate) run for it. Who is in a thread has two events of its own: `threadMemberJoin` (with `thread` and `member`) and `threadMemberLeave` (with `thread` and `userId`; `user` and `member` when the bot knows them).
+A thread created, changed or deleted is a channel: [`channelCreate`, `channelUpdate` and `channelDelete`](/reference/events#channelcreate) run for it. Who is in a thread has two events of its own: `threadMemberJoin` (with `thread` and `member`) and `threadMemberLeave` (with `thread` and `userId`; `member` when the bot remembers them), both with `guild`.
 
 ```ts src/events/hello.ts
 import { event } from 'chapterjs';
@@ -98,14 +98,15 @@ They need the **Server Members Intent**: without it, Discord only says when your
 
 ## Presences
 
-`presenceUpdate` runs when someone's status or activity changes: online, idle, playing a game. `presence` is a [`UserPresence`](/reference/data#userpresence).
+`presenceUpdate` runs when someone's status or activity changes: online, idle, playing a game. `presence` has the fields of a [`UserPresence`](/reference/data#userpresence) (`status`, `activities`, `clientStatus`), plus whose it is: `userId`, and `user` and `member` when the bot knows them.
 
 ```ts src/events/games.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'presenceUpdate',
-  run({ userId, user, presence }) {
+  run({ presence }) {
+    const { userId, user } = presence;
     const game = presence.activities.find(activity => activity.type === 0);
     if (game) console.log(`${user?.username ?? userId} is playing ${game.name}`);
   },

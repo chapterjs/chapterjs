@@ -34,9 +34,10 @@ Fait tourner le bot du dossier courant sur le serveur de test de `DEV_GUILD_ID`,
 
 | Étape | Ce qui se passe |
 | --- | --- |
-| `.env` | `BOT_TOKEN` et `DEV_GUILD_ID` sont lus et vérifiés. Chaque problème est affiché, puis la commande s’arrête. |
+| `.env` | `BOT_TOKEN` et `DEV_GUILD_ID` sont lus et vérifiés, et `REDIS_URL` et `REDIS_PASSWORD` quand ils sont là. Chaque problème est affiché, puis la commande s’arrête. |
 | Types | `.chapterjs/` est écrit, comme avec `chapterjs sync`. |
 | Fichiers | Chaque fichier de `src/` est chargé, et ce qu’ils exportent avec `command()`, `event()`, `button()`... est lu. Un fichier ou une déclaration cassés sont signalés et mis de côté. |
+| Redis | Quand un store dit `storage: 'redis'`, Redis doit répondre : sinon la raison est affichée et la commande s’arrête. Chaque clé écrite depuis `dev` commence par `dev:`. |
 | Token | Vérifié auprès de Discord. |
 | Serveur de test | Le bot doit y être : sinon un lien d’invitation est affiché et, dans un terminal, la commande attend. |
 | Intents privilégiés | Ceux dont les fichiers ont besoin doivent être activés : sinon les fichiers et le lien sont affichés et, dans un terminal, la commande attend. |
@@ -72,9 +73,10 @@ chapterjs start [--processes <n>]
 
 | Étape | Ce qui se passe |
 | --- | --- |
-| `.env` | `BOT_TOKEN` est lu et vérifié ; `DEV_GUILD_ID` est lu quand il est là. |
+| `.env` | `BOT_TOKEN` est lu et vérifié ; `DEV_GUILD_ID`, `REDIS_URL` et `REDIS_PASSWORD` sont lus quand ils sont là. |
 | Compilation | `.chapterjs/build/` doit exister et avoir été faite par la même version de `chapterjs`. Quand `src/` est là et a changé depuis la compilation, un `⚠` le dit et la compilation tourne quand même. |
 | Fichiers | Chargés depuis la compilation, jamais depuis `src/`. |
+| Redis | Quand un store dit `storage: 'redis'`, Redis doit répondre. Chaque processus l’atteint lui-même. |
 | Token et intents privilégiés | Vérifiés une fois. Un problème est une erreur : rien n’attend. |
 | Commandes | Enregistrées pour tout le monde, seulement quand elles ont changé depuis le dernier démarrage depuis ce dossier. |
 | Sessions | Discord est interrogé sur le nombre de shards dont le bot a besoin et le nombre de sessions qu’il peut encore démarrer aujourd’hui. Pas assez de sessions restantes arrête la commande. |
@@ -126,6 +128,14 @@ Affiche l’aide ci-dessus. `-h` et aucune commande du tout font la même chose.
 
 <ResponseField name="DEV_GUILD_ID" type="string">
   L’identifiant du serveur de test : 17 à 20 chiffres. Obligatoire pour `dev`, qui ne fait tourner le bot que sur ce serveur. Facultatif pour `start`, qui ignore alors ce serveur, pour que `dev` et `start` puissent partager un token sans répondre deux fois à la même chose. Refusé quand ce n’est pas un identifiant.
+</ResponseField>
+
+<ResponseField name="REDIS_URL" type="string">
+  L’adresse du Redis qu’utilisent les stores déclarés avec `storage: 'redis'` : `redis://hôte:port`, `rediss://` pour une connexion TLS, `/1` à la fin pour une base autre que la première, un utilisateur et un mot de passe devant l’hôte quand il y en a (`redis://user:password@host:6379`). Nécessaire seulement quand un store dit `storage: 'redis'` ; réglée sans store de ce genre, rien n’est connecté. Refusée quand ce n’est pas une adresse de cette forme. Voir [Stockage](/fr/storage#dans-redis).
+</ResponseField>
+
+<ResponseField name="REDIS_PASSWORD" type="string">
+  Le mot de passe de ce Redis, quand il n’est pas dans `REDIS_URL` (ou pour remplacer celui qui y est). Refusé quand `REDIS_URL` n’est pas réglée.
 </ResponseField>
 
 Sans fichier `.env`, `dev` s’arrête avec `✗ There is no .env file in this folder.` quand aucune des deux valeurs n’est dans l’environnement, et `start` avec `✗ BOT_TOKEN is not set.` quand le token n’y est pas.

@@ -13,6 +13,7 @@ import {
   encodeKey,
   startsWith,
   type StoreBackend,
+  type StoreChange,
   type StoreEntry,
   type StoreKeyParts,
   type StoreListedEntry,
@@ -203,6 +204,36 @@ export class FileStoreBackend implements StoreBackend {
       }
     }
     return listed;
+  }
+
+  // Read and written without an await in between: nothing else runs there.
+  async update(
+    store: string,
+    key: StoreKeyParts,
+    change: StoreChange
+  ): Promise<StoreEntry | undefined> {
+    const entries = this.#load(store);
+    const encoded = encodeKey(key);
+    let current = entries.get(encoded);
+    if (current && !alive(current, this.#now())) current = undefined;
+    const next = change(current);
+    if (next === undefined) return current;
+    entries.set(encoded, next);
+    this.#changed(store);
+    return next;
+  }
+
+  async clear(store: string, prefix: StoreKeyParts): Promise<number> {
+    const entries = this.#load(store);
+    const now = this.#now();
+    let count = 0;
+    for (const [encoded, entry] of entries) {
+      if (!startsWith(decodeKey(encoded), prefix)) continue;
+      entries.delete(encoded);
+      if (alive(entry, now)) count++;
+    }
+    if (count > 0) this.#changed(store);
+    return count;
   }
 
   async close(): Promise<void> {

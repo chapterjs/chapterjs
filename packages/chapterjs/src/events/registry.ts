@@ -50,7 +50,164 @@ import type { Role } from '../structures/role.js';
 import type { User, UserPresence } from '../structures/user.js';
 import type { TranslationContext } from '../messages/messages.js';
 
-/** What your function receives, for each event. */
+/**
+ * A message that was deleted: what is known of it. The message itself is
+ * only there when the bot remembered it.
+ */
+export interface DeletedMessage {
+  /** The id of the deleted message. */
+  id: Snowflake;
+  /** The id of the channel the message was in. */
+  channelId: Snowflake;
+  /** The channel, when the bot knows it. */
+  channel: TextBasedChannel | null;
+  /** The id of the server; `null` for a private message. */
+  guildId: Snowflake | null;
+  /** The message as it was, when the bot remembered it. */
+  before: Message | null;
+}
+
+/** A reaction added to a message, or removed from it. */
+export interface UserReaction {
+  /** The emoji of the reaction. */
+  emoji: ReactionEmoji;
+  /** Who reacted. */
+  user: User;
+  /** Who reacted, as a member of the server: `null` in a private message, or when the bot does not remember them. */
+  member: GuildMember | null;
+  /** Whether it is a super reaction. */
+  burst: boolean;
+  /** The id of the message. */
+  messageId: Snowflake;
+  /** The message, when the bot remembers it. */
+  message: Message | null;
+  /** The id of the channel of the message. */
+  channelId: Snowflake;
+  /** The channel of the message, when the bot knows it. */
+  channel: TextBasedChannel | null;
+  /** The id of the server; `null` in a private message. */
+  guildId: Snowflake | null;
+}
+
+/** A reaction added to a message: what Discord tells of its message too. */
+export interface AddedReaction extends UserReaction {
+  /** The id of who wrote the message, when Discord says it. */
+  messageAuthorId: Snowflake | null;
+}
+
+/** Reactions removed from a message at once: all of them, or every reaction of one emoji. */
+export interface ClearedReactions {
+  /** The emoji whose reactions were removed; `null` when all were. */
+  emoji: ReactionEmoji | null;
+  /** The id of the message. */
+  messageId: Snowflake;
+  /** The message, when the bot remembers it. */
+  message: Message | null;
+  /** The id of the channel of the message. */
+  channelId: Snowflake;
+  /** The channel of the message, when the bot knows it. */
+  channel: TextBasedChannel | null;
+  /** The id of the server; `null` in a private message. */
+  guildId: Snowflake | null;
+}
+
+/** A vote in a poll, given or taken back. */
+export interface PollVote {
+  /** The id Discord gave to the answer: today, its position in the poll, `1` for the first answer. */
+  answerId: number;
+  /** Who voted. */
+  user: User;
+  /** Who voted, as a member of the server, when the bot remembers it. */
+  member: GuildMember | null;
+  /** The id of the message of the poll. */
+  messageId: Snowflake;
+  /** The message of the poll, when the bot remembers it. */
+  message: Message | null;
+  /** The id of the channel of the poll. */
+  channelId: Snowflake;
+  /** The channel of the poll, when the bot knows it. */
+  channel: TextBasedChannel | null;
+  /** The id of the server; `null` in a private message. */
+  guildId: Snowflake | null;
+}
+
+/** Someone typing in a channel. */
+export interface Typing {
+  /** Who is typing. */
+  user: User;
+  /** Who is typing, as a member of the server; `null` in a private message. */
+  member: GuildMember | null;
+  /** When they started. */
+  startedAt: Date;
+  /** The id of the channel. */
+  channelId: Snowflake;
+  /** The channel, when the bot knows it. */
+  channel: TextBasedChannel | null;
+  /** The id of the server; `null` in a private message. */
+  guildId: Snowflake | null;
+}
+
+/** An invite that was deleted, or expired: what is left of it. */
+export interface DeletedInvite {
+  /** The code of the invite (`discord.gg/code`). */
+  code: string;
+  /** The channel the invite led to. */
+  channel: GuildChannel;
+}
+
+/** Someone in a voice channel: who, where, and their voice state. */
+export interface VoiceActivity {
+  /** Who it is. */
+  member: GuildMember;
+  /** The voice channel. */
+  channel: VoiceChannel;
+  /** Their voice state: muted, deafened, streaming... */
+  state: VoiceState;
+}
+
+/** Someone who went from one voice channel to another. */
+export interface VoiceMove {
+  /** Who moved. */
+  member: GuildMember;
+  /** The channel they left. */
+  from: VoiceChannel;
+  /** The channel they are in now. */
+  to: VoiceChannel;
+  /** Their voice state, as it is now. */
+  state: VoiceState;
+}
+
+/** Someone in a voice channel whose voice state changed. */
+export interface VoiceChange extends VoiceActivity {
+  /** Their voice state as it was. */
+  before: VoiceState;
+}
+
+/** Someone's status or activity, as it is now, and whose it is. */
+export interface PresenceChange extends UserPresence {
+  /** The id of whose presence changed. */
+  userId: Snowflake;
+  /** The account of whose presence changed, when the bot knows it. */
+  user: User | null;
+  /** Whose presence changed, as a member of the server, when the bot remembers it. */
+  member: GuildMember | null;
+}
+
+/** Someone interested in a scheduled event, or no longer. */
+export interface ScheduledEventInterest {
+  /** The id of the scheduled event. */
+  scheduledEventId: Snowflake;
+  /** Who it is. */
+  user: User;
+  /** Who it is, as a member of the server, when the bot remembers it. */
+  member: GuildMember | null;
+}
+
+/**
+ * What your function receives, for each event: what the event is about,
+ * the server it happened in, and `t`. The widest form: the options of a
+ * file narrow it (`ContextOf`).
+ */
 export interface EventContexts {
   /** The bot is connected and knows every server it is in. */
   ready: {
@@ -63,26 +220,22 @@ export interface EventContexts {
   messageCreate: {
     /** The message that was sent. */
     message: Message;
+    /** The server; `null` for a private message. */
+    guild: Guild | null;
   };
   /** A message was edited. */
   messageUpdate: {
     /** The message, as it is now. */
     message: Message;
+    /** The server; `null` for a private message. */
+    guild: Guild | null;
   };
   /** A message was deleted. */
   messageDelete: {
-    /** The id of the deleted message. */
-    messageId: Snowflake;
-    /** The id of the channel the message was in. */
-    channelId: Snowflake;
-    /** The id of the server; `null` for a private message. */
-    guildId: Snowflake | null;
+    /** The message that was deleted. */
+    message: DeletedMessage;
     /** The server; `null` for a private message. */
     guild: Guild | null;
-    /** The channel, when the bot knows it. */
-    channel: TextBasedChannel | null;
-    /** The message as it was, when the bot remembered it. */
-    message: Message | null;
   };
   /** Someone joined a server. */
   memberJoin: {
@@ -97,8 +250,6 @@ export interface EventContexts {
     user: User;
     /** The server they left. */
     guild: Guild;
-    /** The member as it was, when the bot knew it. */
-    member: GuildMember | null;
   };
   /** A member changed: nickname, roles, timeout, avatar... */
   memberUpdate: {
@@ -121,16 +272,22 @@ export interface EventContexts {
   channelCreate: {
     /** The new channel or thread. */
     channel: GuildChannel | ThreadChannel | Channel;
+    /** The server of the channel; `null` for a private conversation. */
+    guild: Guild | null;
   };
   /** A channel changed: name, topic, permissions... */
   channelUpdate: {
     /** The channel or thread, as it is now. */
     channel: GuildChannel | ThreadChannel | Channel;
+    /** The server of the channel; `null` for a private conversation. */
+    guild: Guild | null;
   };
   /** A channel was deleted. */
   channelDelete: {
     /** The channel or thread as it was. */
     channel: GuildChannel | ThreadChannel | Channel;
+    /** The server of the channel; `null` for a private conversation. */
+    guild: Guild | null;
   };
   /** A role was created. */
   roleCreate: {
@@ -148,12 +305,10 @@ export interface EventContexts {
   };
   /** A role was deleted. */
   roleDelete: {
-    /** The id of the deleted role. */
-    roleId: Snowflake;
-    /** The server the role was in. */
-    guild: Guild;
     /** The role as it was. */
     role: Role;
+    /** The server the role was in. */
+    guild: Guild;
   };
   /** The server changed: name, icon, settings... */
   guildUpdate: {
@@ -201,17 +356,13 @@ export interface EventContexts {
     invite: Invite;
     /** The server the invite leads to. */
     guild: Guild;
-    /** The channel the invite leads to. */
-    channel: GuildChannel;
   };
   /** An invite was deleted, or expired. */
   inviteDelete: {
-    /** The code of the invite (`discord.gg/code`). */
-    code: string;
+    /** The invite that was deleted. */
+    invite: DeletedInvite;
     /** The server the invite led to. */
     guild: Guild;
-    /** The channel the invite led to. */
-    channel: GuildChannel;
   };
   /** Something was added to the audit log of a server. */
   auditLogEntryCreate: {
@@ -222,125 +373,43 @@ export interface EventContexts {
   };
   /** Someone added a reaction to a message. */
   reactionAdd: {
-    /** The emoji of the reaction. */
-    emoji: ReactionEmoji;
-    /** Who reacted. */
-    user: User;
-    /** Who reacted, as a member of the server; `null` in a private message. */
-    member: GuildMember | null;
-    /** Whether it is a super reaction. */
-    burst: boolean;
-    /** The id of the message. */
-    messageId: Snowflake;
-    /** The message, when the bot remembers it. */
-    message: Message | null;
-    /** The id of who wrote the message, when Discord says it. */
-    messageAuthorId: Snowflake | null;
-    /** The id of the channel of the message. */
-    channelId: Snowflake;
-    /** The channel of the message, when the bot knows it. */
-    channel: TextBasedChannel | null;
-    /** The id of the server; `null` in a private message. */
-    guildId: Snowflake | null;
+    /** The reaction that was added. */
+    reaction: AddedReaction;
     /** The server; `null` in a private message. */
     guild: Guild | null;
   };
   /** Someone removed their reaction from a message. */
   reactionRemove: {
-    /** The emoji of the reaction. */
-    emoji: ReactionEmoji;
-    /** Who had reacted. */
-    user: User;
-    /** Who had reacted, as a member of the server, when the bot remembers it. */
-    member: GuildMember | null;
-    /** Whether it was a super reaction. */
-    burst: boolean;
-    /** The id of the message. */
-    messageId: Snowflake;
-    /** The message, when the bot remembers it. */
-    message: Message | null;
-    /** The id of the channel of the message. */
-    channelId: Snowflake;
-    /** The channel of the message, when the bot knows it. */
-    channel: TextBasedChannel | null;
-    /** The id of the server; `null` in a private message. */
-    guildId: Snowflake | null;
+    /** The reaction that was removed. */
+    reaction: UserReaction;
     /** The server; `null` in a private message. */
     guild: Guild | null;
   };
   /** The reactions of a message were removed: all of them, or every reaction of one emoji. */
   reactionClear: {
-    /** The emoji whose reactions were removed; `null` when all were. */
-    emoji: ReactionEmoji | null;
-    /** The id of the message. */
-    messageId: Snowflake;
-    /** The message, when the bot remembers it. */
-    message: Message | null;
-    /** The id of the channel of the message. */
-    channelId: Snowflake;
-    /** The channel of the message, when the bot knows it. */
-    channel: TextBasedChannel | null;
-    /** The id of the server; `null` in a private message. */
-    guildId: Snowflake | null;
+    /** The reactions that were removed. */
+    reactions: ClearedReactions;
     /** The server; `null` in a private message. */
     guild: Guild | null;
   };
   /** Someone voted in a poll. */
   pollVoteAdd: {
-    /** The id Discord gave to the answer they voted for: today, its position in the poll, `1` for the first answer. */
-    answerId: number;
-    /** Who voted. */
-    user: User;
-    /** Who voted, as a member of the server, when the bot remembers it. */
-    member: GuildMember | null;
-    /** The id of the message of the poll. */
-    messageId: Snowflake;
-    /** The message of the poll, when the bot remembers it. */
-    message: Message | null;
-    /** The id of the channel of the poll. */
-    channelId: Snowflake;
-    /** The channel of the poll, when the bot knows it. */
-    channel: TextBasedChannel | null;
-    /** The id of the server; `null` in a private message. */
-    guildId: Snowflake | null;
+    /** The vote. */
+    vote: PollVote;
     /** The server; `null` in a private message. */
     guild: Guild | null;
   };
   /** Someone took back their vote in a poll. */
   pollVoteRemove: {
-    /** The id Discord gave to the answer they no longer vote for: today, its position in the poll, `1` for the first answer. */
-    answerId: number;
-    /** Who had voted. */
-    user: User;
-    /** Who had voted, as a member of the server, when the bot remembers it. */
-    member: GuildMember | null;
-    /** The id of the message of the poll. */
-    messageId: Snowflake;
-    /** The message of the poll, when the bot remembers it. */
-    message: Message | null;
-    /** The id of the channel of the poll. */
-    channelId: Snowflake;
-    /** The channel of the poll, when the bot knows it. */
-    channel: TextBasedChannel | null;
-    /** The id of the server; `null` in a private message. */
-    guildId: Snowflake | null;
+    /** The vote taken back. */
+    vote: PollVote;
     /** The server; `null` in a private message. */
     guild: Guild | null;
   };
   /** Someone started typing in a channel. */
   typingStart: {
-    /** Who is typing. */
-    user: User;
-    /** Who is typing, as a member of the server; `null` in a private message. */
-    member: GuildMember | null;
-    /** When they started. */
-    startedAt: Date;
-    /** The id of the channel. */
-    channelId: Snowflake;
-    /** The channel, when the bot knows it. */
-    channel: TextBasedChannel | null;
-    /** The id of the server; `null` in a private message. */
-    guildId: Snowflake | null;
+    /** Who is typing, and where. */
+    typing: Typing;
     /** The server; `null` in a private message. */
     guild: Guild | null;
   };
@@ -350,8 +419,6 @@ export interface EventContexts {
     thread: ThreadChannel;
     /** Who was added, as a member of the server. */
     member: GuildMember;
-    /** The account of who was added. */
-    user: User;
     /** The server of the thread. */
     guild: Guild;
   };
@@ -361,8 +428,6 @@ export interface EventContexts {
     thread: ThreadChannel;
     /** The id of who was removed. */
     userId: Snowflake;
-    /** The account of who was removed, when the bot knows it. */
-    user: User | null;
     /** Who was removed, as a member of the server, when the bot remembers it. */
     member: GuildMember | null;
     /** The server of the thread. */
@@ -370,62 +435,36 @@ export interface EventContexts {
   };
   /** Someone joined a voice channel. */
   voiceJoin: {
-    /** Who joined. */
-    member: GuildMember;
-    /** The channel they joined. */
-    channel: VoiceChannel;
-    /** Their voice state: muted, deafened, streaming... */
-    voice: VoiceState;
+    /** Who joined, the channel, and their voice state. */
+    voice: VoiceActivity;
     /** The server of the channel. */
     guild: Guild;
   };
   /** Someone left a voice channel, or was disconnected. */
   voiceLeave: {
-    /** Who left. */
-    member: GuildMember;
-    /** The channel they left. */
-    channel: VoiceChannel;
-    /** Their voice state as it was, in that channel. */
-    voice: VoiceState;
+    /** Who left, the channel they left, and their voice state as it was. */
+    voice: VoiceActivity;
     /** The server of the channel. */
     guild: Guild;
   };
   /** Someone went from one voice channel to another, or was moved. */
   voiceMove: {
-    /** Who moved. */
-    member: GuildMember;
-    /** The channel they left. */
-    from: VoiceChannel;
-    /** The channel they are in now. */
-    to: VoiceChannel;
-    /** Their voice state, as it is now. */
-    voice: VoiceState;
+    /** Who moved, from where, to where. */
+    voice: VoiceMove;
     /** The server of the channels. */
     guild: Guild;
   };
   /** Someone in a voice channel changed: muted, deafened, started a stream or a camera... */
   voiceUpdate: {
-    /** Who changed. */
-    member: GuildMember;
-    /** The channel they are in. */
-    channel: VoiceChannel;
-    /** Their voice state, as it is now. */
-    voice: VoiceState;
-    /** Their voice state as it was. */
-    before: VoiceState;
+    /** Who changed, their voice state now and before. */
+    voice: VoiceChange;
     /** The server of the channel. */
     guild: Guild;
   };
   /** Someone's status or activity changed: online, idle, playing a game... */
   presenceUpdate: {
-    /** The id of whose presence changed. */
-    userId: Snowflake;
-    /** The account of whose presence changed, when the bot knows it. */
-    user: User | null;
-    /** Whose presence changed, as a member of the server, when the bot remembers it. */
-    member: GuildMember | null;
-    /** Their status, activities and devices, as they are now. */
-    presence: UserPresence;
+    /** The presence as it is now, and whose it is. */
+    presence: PresenceChange;
     /** The server the change is seen from. */
     guild: Guild;
   };
@@ -452,23 +491,15 @@ export interface EventContexts {
   };
   /** Someone said they are interested in a scheduled event. */
   scheduledEventUserAdd: {
-    /** The id of the scheduled event. */
-    scheduledEventId: Snowflake;
-    /** Who is interested. */
-    user: User;
-    /** Who is interested, as a member of the server, when the bot remembers it. */
-    member: GuildMember | null;
+    /** Who is interested, in which scheduled event. */
+    interest: ScheduledEventInterest;
     /** The server of the scheduled event. */
     guild: Guild;
   };
   /** Someone is no longer interested in a scheduled event. */
   scheduledEventUserRemove: {
-    /** The id of the scheduled event. */
-    scheduledEventId: Snowflake;
-    /** Who is no longer interested. */
-    user: User;
-    /** Who is no longer interested, as a member of the server, when the bot remembers it. */
-    member: GuildMember | null;
+    /** Who is no longer interested, in which scheduled event. */
+    interest: ScheduledEventInterest;
     /** The server of the scheduled event. */
     guild: Guild;
   };
@@ -549,127 +580,70 @@ type WhereOf<Options> = 'where' extends keyof Options
     : Exclude<Options['where'], undefined>
   : 'guild';
 
-/** A message of a server: its author is a member unless bots are let in. */
-type ServerMessage<Options> =
-  IsOn<Options, 'bots'> extends true ? GuildMessage : MemberMessage;
-
-/** The message a file receives: what its options let through. */
-type MessageFor<Options, Where = WhereOf<Options>> = Where extends 'guild'
-  ? ServerMessage<Options>
-  : Where extends 'dm'
-    ? DmMessage
-    : ServerMessage<Options> | PrivateMessage;
-
-type Deleted = Omit<
-  EventContexts['messageDelete'],
-  'guildId' | 'guild' | 'channel' | 'message'
->;
-
-/** A message deleted in a server. */
-interface DeletedInGuild extends Deleted {
+/**
+ * Something about a message, told apart by where it happened: in a server
+ * the server is there and the channel is one of the server; in private,
+ * the conversation, when the bot knows it.
+ */
+interface InServer {
   /** The id of the server. */
   guildId: Snowflake;
-  /** The server the message was in. */
-  guild: Guild;
-  /** The channel the message was in. */
-  channel: GuildTextBasedChannel;
-  /** The message as it was, when the bot remembered it. */
-  message: GuildMessage | null;
-}
-
-/** A private message deleted, for a file that receives both kinds. */
-interface DeletedInPrivate extends Deleted {
-  /** No server: the message was private. */
-  guildId: null;
-  /** No server: the message was private. */
-  guild: null;
-  /** The private conversation, when the bot knows it. */
-  channel: DMChannel | null;
-  /** The message as it was, when the bot remembered it. */
-  message: PrivateMessage | null;
-}
-
-/** A private message deleted, for a file that only receives those. */
-interface DeletedInDm extends Deleted {
-  /** The private conversation, when the bot knows it. */
-  channel: DMChannel | null;
-  /** The message as it was, when the bot remembered it. */
-  message: DmMessage | null;
-}
-
-type DeletedFor<Where> = Where extends 'guild'
-  ? DeletedInGuild
-  : Where extends 'dm'
-    ? DeletedInDm
-    : DeletedInGuild | DeletedInPrivate;
-
-/** Where something happened in a server: the server and the channel are there. */
-interface ServerPlace {
-  /** The id of the server. */
-  guildId: Snowflake;
-  /** The server. */
-  guild: Guild;
   /** The channel. */
   channel: GuildTextBasedChannel;
 }
 
-/** Where something happened in private, for a file that receives both kinds. */
-interface PrivatePlace {
+/** In private, for a file that receives both kinds. */
+interface InPrivate {
   /** No server: it happened in private. */
   guildId: null;
-  /** No server: it happened in private. */
-  guild: null;
   /** The private conversation, when the bot knows it. */
   channel: DMChannel | null;
 }
 
-/** Where something happened in private, for a file that only receives that. */
-interface DmPlace {
+/** In private, for a file that only receives that. */
+interface InDm {
   /** The private conversation, when the bot knows it. */
   channel: DMChannel | null;
 }
 
-/** The message of something that happened in a server. */
+/** The fields of an object that its place narrows. */
+type PlaceKeys = 'guildId' | 'channel' | 'message' | 'member' | 'before';
+
+/** `T` without what its place narrows: the rest is the same everywhere. */
+type Unplaced<T> = Omit<T, PlaceKeys>;
+
+/**
+ * What a file receives for an event of servers and private messages,
+ * following where it listens: the object of the event under `Key`, and
+ * the server when there is one. With `'both'`, a union told apart by
+ * `guild`.
+ */
+type Placed<
+  Where,
+  Key extends string,
+  InGuild,
+  Private,
+  Dm,
+> = Where extends 'guild'
+  ? { [K in Key]: InGuild } & { guild: Guild }
+  : Where extends 'dm'
+    ? { [K in Key]: Dm }
+    : | ({ [K in Key]: InGuild } & { guild: Guild })
+      | ({ [K in Key]: Private } & { guild: null });
+
+/** A message the bot remembers, in each place. */
 interface ServerMessagePart {
   /** The message, when the bot remembers it. */
   message: GuildMessage | null;
 }
-
-/** The message of something that happened in private, for both kinds. */
 interface PrivateMessagePart {
   /** The message, when the bot remembers it. */
   message: PrivateMessage | null;
 }
-
-/** The message of something that happened in private, for that only. */
 interface DmMessagePart {
   /** The message, when the bot remembers it. */
   message: DmMessage | null;
 }
-
-/** The fields an event of servers and private messages narrows. */
-type PlaceKeys = 'guildId' | 'guild' | 'channel' | 'message' | 'member';
-
-/**
- * What a file receives for an event of servers and private messages,
- * following where it listens: the same fields, plus what each place has.
- */
-type Placed<Where, Common, InServer, InPrivate, InDm> = Where extends 'guild'
-  ? Common & InServer
-  : Where extends 'dm'
-    ? Common & InDm
-    : (Common & InServer) | (Common & InPrivate);
-
-/** An event about a message, with or without the member who did it. */
-type OnMessage<Name extends EventName, Options, Member> = Placed<
-  WhereOf<Options>,
-  Omit<EventContexts[Name], PlaceKeys>,
-  ServerPlace & ServerMessagePart & Member,
-  PrivatePlace &
-    PrivateMessagePart &
-    ([keyof Member] extends [never] ? object : NoMember),
-  DmPlace & DmMessagePart
->;
 
 /** No member in private: who did it is `user`. */
 interface NoMember {
@@ -689,25 +663,92 @@ interface KnownMember {
   member: GuildMember | null;
 }
 
+/** An object about a message (a reaction, a vote), narrowed by where. */
+type AboutMessage<Where, Key extends string, T, Member> = Placed<
+  Where,
+  Key,
+  Unplaced<T> & InServer & ServerMessagePart & Member,
+  Unplaced<T> &
+    InPrivate &
+    PrivateMessagePart &
+    ([keyof Member] extends [never] ? object : NoMember),
+  Unplaced<T> & InDm & DmMessagePart
+>;
+
+/** A message of a server: its author is a member unless bots are let in. */
+type ServerMessage<Options> =
+  IsOn<Options, 'bots'> extends true ? GuildMessage : MemberMessage;
+
+/** A message deleted in a server. */
+interface DeletedInGuild extends Unplaced<DeletedMessage>, InServer {
+  /** The message as it was, when the bot remembered it. */
+  before: GuildMessage | null;
+}
+
+/** A private message deleted, for a file that receives both kinds. */
+interface DeletedInPrivate extends Unplaced<DeletedMessage>, InPrivate {
+  /** The message as it was, when the bot remembered it. */
+  before: PrivateMessage | null;
+}
+
+/** A private message deleted, for a file that only receives those. */
+interface DeletedInDm extends Unplaced<DeletedMessage>, InDm {
+  /** The message as it was, when the bot remembered it. */
+  before: DmMessage | null;
+}
+
 /**
  * The events whose handler receives something more precise than
  * `EventContexts`, following where its file listens.
  */
 interface NarrowedContexts<Options> {
-  messageCreate: { message: MessageFor<Options> };
-  messageUpdate: { message: MessageFor<Options> };
-  messageDelete: DeletedFor<WhereOf<Options>>;
-  reactionAdd: OnMessage<'reactionAdd', Options, SentMember>;
-  reactionRemove: OnMessage<'reactionRemove', Options, KnownMember>;
-  reactionClear: OnMessage<'reactionClear', Options, object>;
-  pollVoteAdd: OnMessage<'pollVoteAdd', Options, KnownMember>;
-  pollVoteRemove: OnMessage<'pollVoteRemove', Options, KnownMember>;
+  messageCreate: Placed<
+    WhereOf<Options>,
+    'message',
+    ServerMessage<Options>,
+    PrivateMessage,
+    DmMessage
+  >;
+  messageUpdate: Placed<
+    WhereOf<Options>,
+    'message',
+    ServerMessage<Options>,
+    PrivateMessage,
+    DmMessage
+  >;
+  messageDelete: Placed<
+    WhereOf<Options>,
+    'message',
+    DeletedInGuild,
+    DeletedInPrivate,
+    DeletedInDm
+  >;
+  reactionAdd: AboutMessage<
+    WhereOf<Options>,
+    'reaction',
+    AddedReaction,
+    SentMember
+  >;
+  reactionRemove: AboutMessage<
+    WhereOf<Options>,
+    'reaction',
+    UserReaction,
+    KnownMember
+  >;
+  reactionClear: AboutMessage<
+    WhereOf<Options>,
+    'reactions',
+    ClearedReactions,
+    object
+  >;
+  pollVoteAdd: AboutMessage<WhereOf<Options>, 'vote', PollVote, KnownMember>;
+  pollVoteRemove: AboutMessage<WhereOf<Options>, 'vote', PollVote, KnownMember>;
   typingStart: Placed<
     WhereOf<Options>,
-    Omit<EventContexts['typingStart'], PlaceKeys>,
-    ServerPlace & SentMember,
-    PrivatePlace & NoMember,
-    DmPlace
+    'typing',
+    Unplaced<Typing> & InServer & SentMember,
+    Unplaced<Typing> & InPrivate & NoMember,
+    Unplaced<Typing> & InDm
   >;
 }
 
@@ -807,7 +848,7 @@ const channel = (
   on,
   build: (ctx, data) => {
     const found = ctx.cache.channels.get(data.id);
-    return found ? { channel: found } : null;
+    return found ? { channel: found, guild: found.guild } : null;
   },
 });
 
@@ -817,7 +858,9 @@ const deletedChannel = (
   on,
   before: (ctx, data) => ctx.cache.channels.get(data.id) ?? null,
   build: (_ctx, _data, { before }) =>
-    before ? { channel: before as Channel } : null,
+    before
+      ? { channel: before as Channel, guild: (before as Channel).guild }
+      : null,
 });
 
 /**
@@ -914,22 +957,29 @@ const userFrom = (
 ): User | null =>
   (prepared as User | undefined) ?? ctx.cache.users.get(id) ?? null;
 
-/** Where something happened in a server or in private, as the bot knows it. */
+/**
+ * Where something happened in a server or in private, as the bot knows
+ * it: `at` goes in the object of the event, `guild` next to it.
+ */
 const placeOf = (
   ctx: Context,
   data: { channel_id: Snowflake; guild_id?: Snowflake }
 ): {
-  channelId: Snowflake;
-  channel: TextBasedChannel | null;
-  guildId: Snowflake | null;
+  at: {
+    channelId: Snowflake;
+    channel: TextBasedChannel | null;
+    guildId: Snowflake | null;
+  };
   guild: Guild | null;
 } => {
   const found = ctx.cache.channels.get(data.channel_id);
   const guildId = data.guild_id ?? found?.guildId ?? null;
   return {
-    channelId: data.channel_id,
-    channel: found?.isTextBased() ? found : null,
-    guildId,
+    at: {
+      channelId: data.channel_id,
+      channel: found?.isTextBased() ? found : null,
+      guildId,
+    },
     guild: guildId ? (ctx.cache.guilds.get(guildId) ?? null) : null,
   };
 };
@@ -951,22 +1001,22 @@ const rememberedMember = (
  * it listens there, and in a server what it is promised is there.
  */
 const wantedPlace = (
-  context: {
+  about: {
     guildId: Snowflake | null;
-    guild: Guild | null;
     channel: unknown;
     member?: GuildMember | null;
   },
+  guild: Guild | null,
   where: EventWhere | undefined,
   needsMember = false
 ): boolean => {
-  const inGuild = context.guildId !== null;
+  const inGuild = about.guildId !== null;
   if (!listensThere(where, inGuild)) return false;
   if (!inGuild) return true;
   return (
-    context.guild !== null &&
-    context.channel !== null &&
-    (!needsMember || context.member != null)
+    guild !== null &&
+    about.channel !== null &&
+    (!needsMember || about.member != null)
   );
 };
 
@@ -1008,9 +1058,10 @@ const message = (
 ): Source<'messageCreate' | 'messageUpdate', typeof on> => ({
   on,
   prepare: channelOf,
-  build: (ctx, data) => ({
-    message: ctx.entities.message(data, data.guild_id),
-  }),
+  build: (ctx, data) => {
+    const message = ctx.entities.message(data, data.guild_id);
+    return { message, guild: message.guild };
+  },
 });
 
 const member = (
@@ -1108,13 +1159,16 @@ const cleared = (
   on,
   prepare: channelOf,
   build: (ctx, data) => {
-    const place = placeOf(ctx, data);
+    const { at, guild } = placeOf(ctx, data);
     return {
-      emoji:
-        'emoji' in data ? toCamelCase(data.emoji as RawPartialEmoji) : null,
-      messageId: data.message_id,
-      message: rememberedMessage(place.channel, data.message_id),
-      ...place,
+      reactions: {
+        emoji:
+          'emoji' in data ? toCamelCase(data.emoji as RawPartialEmoji) : null,
+        messageId: data.message_id,
+        message: rememberedMessage(at.channel, data.message_id),
+        ...at,
+      },
+      guild,
     };
   },
 });
@@ -1125,16 +1179,19 @@ const vote = (
   on,
   prepare: (ctx, data) => placeAndUser(ctx, data, data.user_id),
   build: (ctx, data, { prepared }) => {
-    const place = placeOf(ctx, data);
+    const { at, guild } = placeOf(ctx, data);
     const user = userFrom(ctx, prepared, data.user_id);
     if (!user) return null;
     return {
-      answerId: data.answer_id,
-      user,
-      member: rememberedMember(place.guild, data.user_id),
-      messageId: data.message_id,
-      message: rememberedMessage(place.channel, data.message_id),
-      ...place,
+      vote: {
+        answerId: data.answer_id,
+        user,
+        member: rememberedMember(guild, data.user_id),
+        messageId: data.message_id,
+        message: rememberedMessage(at.channel, data.message_id),
+        ...at,
+      },
+      guild,
     };
   },
 });
@@ -1162,7 +1219,7 @@ const voice = <
   pick: (
     was: VoiceEntry | undefined,
     now: VoiceEntry | undefined
-  ) => Omit<EventContexts[Name], 'member' | 'guild'> | null
+  ) => Omit<EventContexts[Name]['voice'], 'member'> | null
 ): Source<Name, 'VOICE_STATE_UPDATE'> => ({
   on: 'VOICE_STATE_UPDATE',
   before: (ctx, data) => {
@@ -1179,7 +1236,7 @@ const voice = <
       ? ctx.entities.member(guild.id, data.member)
       : guild.members.get(data.user_id);
     if (!picked || !member) return null;
-    return { ...picked, member, guild } as EventContexts[Name];
+    return { voice: { ...picked, member }, guild } as EventContexts[Name];
   },
 });
 
@@ -1214,9 +1271,11 @@ const interested = (
     const user = userFrom(ctx, prepared, data.user_id);
     if (!guild || !user) return null;
     return {
-      scheduledEventId: data.guild_scheduled_event_id,
-      user,
-      member: rememberedMember(guild, data.user_id),
+      interest: {
+        scheduledEventId: data.guild_scheduled_event_id,
+        user,
+        member: rememberedMember(guild, data.user_id),
+      },
       guild,
     };
   },
@@ -1230,7 +1289,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   ready: { intents: 0, sources: [] },
 
   messageCreate: {
-    guildOf: ({ message }) => message.guild,
+    guildOf: ofGuild,
     // Without Message Content, the messages of others come empty.
     intents: ({ where }) => messagesIn(where) | I.MessageContent,
     options: { bots: 'boolean', where: PLACES },
@@ -1238,7 +1297,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     sources: [message('MESSAGE_CREATE')],
   },
   messageUpdate: {
-    guildOf: ({ message }) => message.guild,
+    guildOf: ofGuild,
     intents: ({ where }) => messagesIn(where) | I.MessageContent,
     options: { bots: 'boolean', where: PLACES },
     accepts: wantedMessage,
@@ -1248,10 +1307,8 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     guildOf: ofGuild,
     intents: ({ where }) => messagesIn(where),
     options: { where: PLACES },
-    accepts: ({ guildId, guild, channel }, options) =>
-      listensThere(options.where, guildId !== null) &&
-      // In a server, the server and the channel are promised.
-      (guildId === null || (guild !== null && channel !== null)),
+    accepts: ({ message, guild }, options) =>
+      wantedPlace(message, guild, options.where),
     sources: [
       {
         on: 'MESSAGE_DELETE',
@@ -1262,11 +1319,13 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
             ? (found.messages.get(data.id) ?? null)
             : null;
         },
-        build: (ctx, data, { before }) => ({
-          messageId: data.id,
-          ...placeOf(ctx, data),
-          message: before as Message | null,
-        }),
+        build: (ctx, data, { before }) => {
+          const { at, guild } = placeOf(ctx, data);
+          return {
+            message: { id: data.id, ...at, before: before as Message | null },
+            guild,
+          };
+        },
       },
       {
         // Messages deleted together: one occurrence each.
@@ -1279,12 +1338,11 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
           );
         },
         build: (ctx, data, { before }) => {
-          const place = placeOf(ctx, data);
+          const { at, guild } = placeOf(ctx, data);
           const messages = before as (Message | null)[];
-          return data.ids.map((messageId, index) => ({
-            messageId,
-            ...place,
-            message: messages[index] ?? null,
+          return data.ids.map((id, index) => ({
+            message: { id, ...at, before: messages[index] ?? null },
+            guild,
           }));
         },
       },
@@ -1304,21 +1362,13 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   memberLeave: {
     guildOf: ofGuild,
     intents: I.GuildMembers,
-    // "The member as it was" is a member the bot remembered.
-    remembers: { members: 1000 },
     sources: [
       {
         on: 'GUILD_MEMBER_REMOVE',
-        before: (ctx, data) =>
-          findGuild(ctx, data.guild_id)?.members.get(data.user.id) ?? null,
-        build: (ctx, data, { before }) => {
+        build: (ctx, data) => {
           const guild = findGuild(ctx, data.guild_id);
           if (!guild) return null;
-          return {
-            user: ctx.entities.user(data.user),
-            guild,
-            member: before as GuildMember | null,
-          };
+          return { user: ctx.entities.user(data.user), guild };
         },
       },
     ],
@@ -1352,17 +1402,17 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
   },
 
   channelCreate: {
-    guildOf: ({ channel }) => channel.guild,
+    guildOf: ofGuild,
     intents: I.Guilds,
     sources: [channel('CHANNEL_CREATE'), channel('THREAD_CREATE')],
   },
   channelUpdate: {
-    guildOf: ({ channel }) => channel.guild,
+    guildOf: ofGuild,
     intents: I.Guilds,
     sources: [channel('CHANNEL_UPDATE'), channel('THREAD_UPDATE')],
   },
   channelDelete: {
-    guildOf: ({ channel }) => channel.guild,
+    guildOf: ofGuild,
     intents: I.Guilds,
     sources: [
       deletedChannel('CHANNEL_DELETE'),
@@ -1392,7 +1442,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
           const guild = findGuild(ctx, data.guild_id);
           // Every role of a server is known: one that is not never was.
           if (!guild || !before) return null;
-          return { roleId: data.role_id, guild, role: before as Role };
+          return { role: before as Role, guild };
         },
       },
     ],
@@ -1470,7 +1520,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
             channel: { id: channelId },
             ...(inviter ? { inviter } : {}),
           } as RawInvite);
-          return { invite, ...place };
+          return { invite, guild: place.guild };
         },
       },
     ],
@@ -1484,7 +1534,12 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
         prepare: channelOf,
         build: (ctx, data) => {
           const place = inviteChannel(ctx, data);
-          return place ? { code: data.code, ...place } : null;
+          return place
+            ? {
+                invite: { code: data.code, channel: place.channel },
+                guild: place.guild,
+              }
+            : null;
         },
       },
     ],
@@ -1510,9 +1565,9 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     guildOf: ofGuild,
     intents: ({ where }) => reactionsIn(where),
     options: { bots: 'boolean', where: PLACES },
-    accepts: (context, options) =>
-      wantedPlace(context, options.where, true) &&
-      (options.bots === true || !context.user.bot),
+    accepts: ({ reaction, guild }, options) =>
+      wantedPlace(reaction, guild, options.where, true) &&
+      (options.bots === true || !reaction.user.bot),
     sources: [
       {
         on: 'MESSAGE_REACTION_ADD',
@@ -1520,7 +1575,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
         prepare: (ctx, data) =>
           placeAndUser(ctx, data, data.member?.user ? null : data.user_id),
         build: (ctx, data, { prepared }) => {
-          const place = placeOf(ctx, data);
+          const { at, guild } = placeOf(ctx, data);
           const member =
             data.member && data.guild_id
               ? ctx.entities.member(data.guild_id, data.member)
@@ -1528,14 +1583,17 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
           const user = member?.user ?? userFrom(ctx, prepared, data.user_id);
           if (!user) return null;
           return {
-            emoji: toCamelCase(data.emoji),
-            user,
-            member,
-            burst: data.burst,
-            messageId: data.message_id,
-            message: rememberedMessage(place.channel, data.message_id),
-            messageAuthorId: data.message_author_id ?? null,
-            ...place,
+            reaction: {
+              emoji: toCamelCase(data.emoji),
+              user,
+              member,
+              burst: data.burst,
+              messageId: data.message_id,
+              message: rememberedMessage(at.channel, data.message_id),
+              messageAuthorId: data.message_author_id ?? null,
+              ...at,
+            },
+            guild,
           };
         },
       },
@@ -1545,25 +1603,28 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     guildOf: ofGuild,
     intents: ({ where }) => reactionsIn(where),
     options: { bots: 'boolean', where: PLACES },
-    accepts: (context, options) =>
-      wantedPlace(context, options.where) &&
-      (options.bots === true || !context.user.bot),
+    accepts: ({ reaction, guild }, options) =>
+      wantedPlace(reaction, guild, options.where) &&
+      (options.bots === true || !reaction.user.bot),
     sources: [
       {
         on: 'MESSAGE_REACTION_REMOVE',
         prepare: (ctx, data) => placeAndUser(ctx, data, data.user_id),
         build: (ctx, data, { prepared }) => {
-          const place = placeOf(ctx, data);
+          const { at, guild } = placeOf(ctx, data);
           const user = userFrom(ctx, prepared, data.user_id);
           if (!user) return null;
           return {
-            emoji: toCamelCase(data.emoji),
-            user,
-            member: rememberedMember(place.guild, data.user_id),
-            burst: data.burst,
-            messageId: data.message_id,
-            message: rememberedMessage(place.channel, data.message_id),
-            ...place,
+            reaction: {
+              emoji: toCamelCase(data.emoji),
+              user,
+              member: rememberedMember(guild, data.user_id),
+              burst: data.burst,
+              messageId: data.message_id,
+              message: rememberedMessage(at.channel, data.message_id),
+              ...at,
+            },
+            guild,
           };
         },
       },
@@ -1573,7 +1634,8 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     guildOf: ofGuild,
     intents: ({ where }) => reactionsIn(where),
     options: { where: PLACES },
-    accepts: (context, options) => wantedPlace(context, options.where),
+    accepts: ({ reactions, guild }, options) =>
+      wantedPlace(reactions, guild, options.where),
     sources: [
       cleared('MESSAGE_REACTION_REMOVE_ALL'),
       cleared('MESSAGE_REACTION_REMOVE_EMOJI'),
@@ -1584,14 +1646,16 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     guildOf: ofGuild,
     intents: ({ where }) => pollsIn(where),
     options: { where: PLACES },
-    accepts: (context, options) => wantedPlace(context, options.where),
+    accepts: ({ vote, guild }, options) =>
+      wantedPlace(vote, guild, options.where),
     sources: [vote('MESSAGE_POLL_VOTE_ADD')],
   },
   pollVoteRemove: {
     guildOf: ofGuild,
     intents: ({ where }) => pollsIn(where),
     options: { where: PLACES },
-    accepts: (context, options) => wantedPlace(context, options.where),
+    accepts: ({ vote, guild }, options) =>
+      wantedPlace(vote, guild, options.where),
     sources: [vote('MESSAGE_POLL_VOTE_REMOVE')],
   },
 
@@ -1601,7 +1665,8 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
       (where === 'dm' ? 0 : I.GuildMessageTyping) |
       (where === 'dm' || where === 'both' ? I.DirectMessageTyping : 0),
     options: { where: PLACES },
-    accepts: (context, options) => wantedPlace(context, options.where, true),
+    accepts: ({ typing, guild }, options) =>
+      wantedPlace(typing, guild, options.where, true),
     sources: [
       {
         on: 'TYPING_START',
@@ -1614,11 +1679,15 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
               : null;
           const user = member?.user ?? userFrom(ctx, prepared, data.user_id);
           if (!user) return null;
+          const { at, guild } = placeOf(ctx, data);
           return {
-            user,
-            member,
-            startedAt: new Date(data.timestamp * 1000),
-            ...placeOf(ctx, data),
+            typing: {
+              user,
+              member,
+              startedAt: new Date(data.timestamp * 1000),
+              ...at,
+            },
+            guild,
           };
         },
       },
@@ -1644,7 +1713,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
             // Each one comes with its member in this event.
             if (!added.member?.user) continue;
             const member = ctx.entities.member(data.guild_id, added.member);
-            joined.push({ member, user: member.user, ...place });
+            joined.push({ thread: place.thread, member, guild: place.guild });
           }
           return joined;
         },
@@ -1665,10 +1734,10 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
           const place = threadOf(ctx, data);
           if (!place) return null;
           return (data.removed_member_ids ?? []).map(userId => ({
+            thread: place.thread,
             userId,
-            user: ctx.cache.users.get(userId) ?? null,
             member: rememberedMember(place.guild, userId),
-            ...place,
+            guild: place.guild,
           }));
         },
       },
@@ -1680,7 +1749,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     intents: I.GuildVoiceStates,
     sources: [
       voice<'voiceJoin'>((was, now) =>
-        !was && now ? { channel: now.channel, voice: stateOf(now) } : null
+        !was && now ? { channel: now.channel, state: stateOf(now) } : null
       ),
     ],
   },
@@ -1689,7 +1758,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     intents: I.GuildVoiceStates,
     sources: [
       voice<'voiceLeave'>((was, now) =>
-        was && !now ? { channel: was.channel, voice: stateOf(was) } : null
+        was && !now ? { channel: was.channel, state: stateOf(was) } : null
       ),
     ],
   },
@@ -1699,7 +1768,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
     sources: [
       voice<'voiceMove'>((was, now) =>
         was && now && was.channel.id !== now.channel.id
-          ? { from: was.channel, to: now.channel, voice: stateOf(now) }
+          ? { from: was.channel, to: now.channel, state: stateOf(now) }
           : null
       ),
     ],
@@ -1715,7 +1784,7 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
         JSON.stringify(was.state) !== JSON.stringify(now.state)
           ? {
               channel: now.channel,
-              voice: stateOf(now),
+              state: stateOf(now),
               before: stateOf(was),
             }
           : null
@@ -1740,10 +1809,12 @@ export const EVENTS: { [Name in EventName]: EventDefinition<Name> } = {
               ? ctx.entities.user(raw as RawUser)
               : (ctx.cache.users.get(raw.id) ?? null);
           return {
-            userId: raw.id,
-            user,
-            member: rememberedMember(guild, raw.id),
-            presence: toCamelCase(presence),
+            presence: {
+              ...toCamelCase(presence),
+              userId: raw.id,
+              user,
+              member: rememberedMember(guild, raw.id),
+            },
             guild,
           };
         },

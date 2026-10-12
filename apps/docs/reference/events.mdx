@@ -11,6 +11,55 @@ An event is the `name` of an `event()` declaration. Each section below is one ev
 
 Intents are named as `chapterjs dev` prints them. Three are privileged, to enable in the [Developer Portal](/setup/discord-application): `GUILD_MEMBERS` is the Server Members Intent, `GUILD_PRESENCES` the Presence Intent, `MESSAGE_CONTENT` the Message Content Intent.
 
+## What each event gives
+
+What your function receives, event by event: what the event is about, and the server it happened in (`guild`). Every event also receives `t`, in the language of that server, when the project has a language. The type after a colon is the one of that object, detailed in the section of the event; `where: 'dm'` and `where: 'both'` narrow `guild` as each section says.
+
+| Event | `run` receives |
+| --- | --- |
+| [`ready`](/reference/events#ready) | `user`, `guilds` |
+| [`guildJoin`](/reference/events#guildjoin) | `guild` |
+| [`guildLeave`](/reference/events#guildleave) | `guild` |
+| [`guildUpdate`](/reference/events#guildupdate) | `guild` |
+| [`memberJoin`](/reference/events#memberjoin) | `member`, `guild` |
+| [`memberUpdate`](/reference/events#memberupdate) | `member`, `guild` |
+| [`memberLeave`](/reference/events#memberleave) | `user`, `guild` |
+| [`roleCreate`](/reference/events#rolecreate) | `role`, `guild` |
+| [`roleUpdate`](/reference/events#roleupdate) | `role`, `guild` |
+| [`roleDelete`](/reference/events#roledelete) | `role`, `guild` |
+| [`channelCreate`](/reference/events#channelcreate) | `channel`, `guild` |
+| [`channelUpdate`](/reference/events#channelupdate) | `channel`, `guild` |
+| [`channelDelete`](/reference/events#channeldelete) | `channel`, `guild` |
+| [`messageCreate`](/reference/events#messagecreate) | `message`, `guild` |
+| [`messageUpdate`](/reference/events#messageupdate) | `message`, `guild` |
+| [`messageDelete`](/reference/events#messagedelete) | `message: DeletedMessage`, `guild` |
+| [`reactionAdd`](/reference/events#reactionadd) | `reaction: AddedReaction`, `guild` |
+| [`reactionRemove`](/reference/events#reactionremove) | `reaction: UserReaction`, `guild` |
+| [`reactionClear`](/reference/events#reactionclear) | `reactions: ClearedReactions`, `guild` |
+| [`pollVoteAdd`](/reference/events#pollvoteadd) | `vote: PollVote`, `guild` |
+| [`pollVoteRemove`](/reference/events#pollvoteremove) | `vote: PollVote`, `guild` |
+| [`typingStart`](/reference/events#typingstart) | `typing: Typing`, `guild` |
+| [`threadMemberJoin`](/reference/events#threadmemberjoin) | `thread`, `member`, `guild` |
+| [`threadMemberLeave`](/reference/events#threadmemberleave) | `thread`, `userId`, `member`, `guild` |
+| [`voiceJoin`](/reference/events#voicejoin) | `voice: VoiceActivity`, `guild` |
+| [`voiceLeave`](/reference/events#voiceleave) | `voice: VoiceActivity`, `guild` |
+| [`voiceMove`](/reference/events#voicemove) | `voice: VoiceMove`, `guild` |
+| [`voiceUpdate`](/reference/events#voiceupdate) | `voice: VoiceChange`, `guild` |
+| [`presenceUpdate`](/reference/events#presenceupdate) | `presence: PresenceChange`, `guild` |
+| [`banAdd`](/reference/events#banadd) | `user`, `guild` |
+| [`banRemove`](/reference/events#banremove) | `user`, `guild` |
+| [`auditLogEntryCreate`](/reference/events#auditlogentrycreate) | `entry`, `guild` |
+| [`emojiCreate`](/reference/events#emojicreate) | `emoji`, `guild` |
+| [`emojiUpdate`](/reference/events#emojiupdate) | `emoji`, `guild` |
+| [`emojiDelete`](/reference/events#emojidelete) | `emoji`, `guild` |
+| [`inviteCreate`](/reference/events#invitecreate) | `invite`, `guild` |
+| [`inviteDelete`](/reference/events#invitedelete) | `invite: DeletedInvite`, `guild` |
+| [`scheduledEventCreate`](/reference/events#scheduledeventcreate) | `scheduledEvent`, `guild` |
+| [`scheduledEventUpdate`](/reference/events#scheduledeventupdate) | `scheduledEvent`, `guild` |
+| [`scheduledEventDelete`](/reference/events#scheduledeventdelete) | `scheduledEvent`, `guild` |
+| [`scheduledEventUserAdd`](/reference/events#scheduledeventuseradd) | `interest: ScheduledEventInterest`, `guild` |
+| [`scheduledEventUserRemove`](/reference/events#scheduledeventuserremove) | `interest: ScheduledEventInterest`, `guild` |
+
 ## ready
 
 | | |
@@ -94,16 +143,13 @@ Every event also receives `t`, in the language of the server it happened in, whe
 | When | Someone left a server, or was kicked or banned. |
 | Intents | `GUILD_MEMBERS` (privileged) |
 | Options | None |
-| Remembers | 1000 members per server, so that `member` is there for the ones seen the most recently |
+| Remembers | The default |
 
 <ResponseField name="user" type="User" required>
   The account of who left.
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server they left.
-</ResponseField>
-<ResponseField name="member" type="GuildMember | null" required>
-  The member as it was, when the bot knew it.
 </ResponseField>
 
 ## roleCreate
@@ -147,14 +193,11 @@ Every event also receives `t`, in the language of the server it happened in, whe
 | Options | None |
 | Remembers | The default: the bot knows every role of its servers |
 
-<ResponseField name="roleId" type="Snowflake" required>
-  The id of the deleted role.
+<ResponseField name="role" type="Role" required>
+  The role as it was.
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server the role was in.
-</ResponseField>
-<ResponseField name="role" type="Role" required>
-  The role as it was.
 </ResponseField>
 
 ## channelCreate
@@ -167,7 +210,10 @@ Every event also receives `t`, in the language of the server it happened in, whe
 | Remembers | The default |
 
 <ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
-  The new channel or thread. Use `channel.isText()`, `channel.isThread()`... to know [which kind](/reference/channels) it is.
+  The new channel or thread.
+</ResponseField>
+<ResponseField name="guild" type="Guild | null" required>
+  The server of the channel; `null` for a private conversation.
 </ResponseField>
 
 ## channelUpdate
@@ -182,6 +228,9 @@ Every event also receives `t`, in the language of the server it happened in, whe
 <ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
   The channel or thread, as it is now.
 </ResponseField>
+<ResponseField name="guild" type="Guild | null" required>
+  The server of the channel; `null` for a private conversation.
+</ResponseField>
 
 ## channelDelete
 
@@ -194,6 +243,9 @@ Every event also receives `t`, in the language of the server it happened in, whe
 
 <ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
   The channel or thread as it was.
+</ResponseField>
+<ResponseField name="guild" type="Guild | null" required>
+  The server of the channel; `null` for a private conversation.
 </ResponseField>
 
 ## messageCreate
@@ -208,6 +260,9 @@ Every event also receives `t`, in the language of the server it happened in, whe
 <ResponseField name="message" type="MemberMessage" required>
   The message that was sent. The type follows the options of the file: `MemberMessage` by default, `GuildMessage` with `bots: true`, `DmMessage` with `where: 'dm'`, `MemberMessage | PrivateMessage` with `where: 'both'` (`GuildMessage | PrivateMessage` with both options). The four are in [Message](/reference/message#types).
 </ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  The server. With `where: 'dm'` it does not exist; with `where: 'both'` it is `null` for a private message.
+</ResponseField>
 
 ## messageUpdate
 
@@ -221,6 +276,9 @@ Every event also receives `t`, in the language of the server it happened in, whe
 <ResponseField name="message" type="MemberMessage" required>
   The message, as it is now. The type follows the options of the file, like for `messageCreate`.
 </ResponseField>
+<ResponseField name="guild" type="Guild" required>
+  The server. With `where: 'dm'` it does not exist; with `where: 'both'` it is `null` for a private message.
+</ResponseField>
 
 ## messageDelete
 
@@ -229,30 +287,35 @@ Every event also receives `t`, in the language of the server it happened in, whe
 | When | A message was deleted. By default, only in a server. Messages deleted together (by a moderator, or by `bulkDelete()`) are one `messageDelete` each. |
 | Intents | `GUILD_MESSAGES` for a file that listens in servers, `DIRECT_MESSAGES` for a file that listens in private messages |
 | Options | `where` ([WhereEventOptions](/reference/event#whereeventoptions)) |
-| Remembers | The default: no message, so `message` is `null` today |
+| Remembers | The default: no message, so `message.before` is `null` today |
 
 What a file without `where` receives:
 
-<ResponseField name="messageId" type="Snowflake" required>
-  The id of the deleted message.
-</ResponseField>
-<ResponseField name="channelId" type="Snowflake" required>
-  The id of the channel the message was in.
-</ResponseField>
-<ResponseField name="guildId" type="Snowflake" required>
-  The id of the server.
+<ResponseField name="message" type="DeletedMessage" required>
+  The message that was deleted.
+  <Expandable title="properties">
+    <ResponseField name="id" type="Snowflake" required>
+      The id of the deleted message.
+    </ResponseField>
+    <ResponseField name="channelId" type="Snowflake" required>
+      The id of the channel the message was in.
+    </ResponseField>
+    <ResponseField name="channel" type="GuildTextBasedChannel" required>
+      The channel the message was in.
+    </ResponseField>
+    <ResponseField name="guildId" type="Snowflake" required>
+      The id of the server.
+    </ResponseField>
+    <ResponseField name="before" type="GuildMessage | null" required>
+      The message as it was, when the bot remembered it.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server the message was in.
 </ResponseField>
-<ResponseField name="channel" type="GuildTextBasedChannel" required>
-  The channel the message was in.
-</ResponseField>
-<ResponseField name="message" type="GuildMessage | null" required>
-  The message as it was, when the bot remembered it.
-</ResponseField>
 
-With `where: 'dm'`, `guildId` and `guild` do not exist, `channel` is a `DMChannel | null` (the private conversation, when the bot knows it) and `message` a `DmMessage | null`. With `where: 'both'`, a private message comes with `guildId: null`, `guild: null`, `channel: DMChannel | null` and `message: PrivateMessage | null`, so `guild` tells the two apart.
+With `where: 'dm'`, `guild` does not exist, and in `message` `channel` is a `DMChannel | null` (the private conversation, when the bot knows it), `before` a `DmMessage | null` and `guildId` does not exist. With `where: 'both'`, something private comes with `guild: null`, so `guild` tells the two apart.
 
 ## reactionAdd
 
@@ -261,45 +324,50 @@ With `where: 'dm'`, `guildId` and `guild` do not exist, `channel` is a `DMChanne
 | When | Someone added a reaction to a message. By default, only a person, in a server. |
 | Intents | `GUILD_MESSAGE_REACTIONS` for a file that listens in servers, `DIRECT_MESSAGE_REACTIONS` for a file that listens in private messages |
 | Options | `bots`, `where` ([ReactionEventOptions](/reference/event#reactioneventoptions)) |
-| Remembers | The default: no message, so `message` is `null` today |
+| Remembers | The default: no message, so `reaction.message` is `null` today |
 
 What a file without `where` receives:
 
-<ResponseField name="emoji" type="ReactionEmoji" required>
-  The emoji of the reaction: [`ReactionEmoji`](/reference/data#reactionemoji).
-</ResponseField>
-<ResponseField name="user" type="User" required>
-  Who reacted.
-</ResponseField>
-<ResponseField name="member" type="GuildMember" required>
-  Who reacted, as a member of the server.
-</ResponseField>
-<ResponseField name="burst" type="boolean" required>
-  Whether it is a super reaction.
-</ResponseField>
-<ResponseField name="messageId" type="Snowflake" required>
-  The id of the message.
-</ResponseField>
-<ResponseField name="message" type="GuildMessage | null" required>
-  The message, when the bot remembers it.
-</ResponseField>
-<ResponseField name="messageAuthorId" type="Snowflake | null" required>
-  The id of who wrote the message, when Discord says it.
-</ResponseField>
-<ResponseField name="channelId" type="Snowflake" required>
-  The id of the channel of the message.
-</ResponseField>
-<ResponseField name="channel" type="GuildTextBasedChannel" required>
-  The channel of the message.
-</ResponseField>
-<ResponseField name="guildId" type="Snowflake" required>
-  The id of the server.
+<ResponseField name="reaction" type="AddedReaction" required>
+  The reaction that was added.
+  <Expandable title="properties">
+    <ResponseField name="emoji" type="ReactionEmoji" required>
+      The emoji of the reaction: [`ReactionEmoji`](/reference/data#reactionemoji).
+    </ResponseField>
+    <ResponseField name="user" type="User" required>
+      Who reacted.
+    </ResponseField>
+    <ResponseField name="member" type="GuildMember" required>
+      Who reacted, as a member of the server.
+    </ResponseField>
+    <ResponseField name="burst" type="boolean" required>
+      Whether it is a super reaction.
+    </ResponseField>
+    <ResponseField name="messageId" type="Snowflake" required>
+      The id of the message.
+    </ResponseField>
+    <ResponseField name="message" type="GuildMessage | null" required>
+      The message, when the bot remembers it.
+    </ResponseField>
+    <ResponseField name="messageAuthorId" type="Snowflake | null" required>
+      The id of who wrote the message, when Discord says it.
+    </ResponseField>
+    <ResponseField name="channelId" type="Snowflake" required>
+      The id of the channel of the message.
+    </ResponseField>
+    <ResponseField name="channel" type="GuildTextBasedChannel" required>
+      The channel of the message.
+    </ResponseField>
+    <ResponseField name="guildId" type="Snowflake" required>
+      The id of the server.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server.
 </ResponseField>
 
-With `where: 'dm'`, `guildId`, `guild` and `member` do not exist, `channel` is a `DMChannel | null` (the private conversation, when the bot knows it) and `message` a `DmMessage | null`. With `where: 'both'`, a private reaction comes with `guildId: null`, `guild: null`, `member: null`, `channel: DMChannel | null` and `message: PrivateMessage | null`, so `guild` tells the two apart.
+With `where: 'dm'`, `guild` does not exist, and in `reaction` `channel` is a `DMChannel | null` (the private conversation, when the bot knows it), `message` a `DmMessage | null`, and `guildId` and `member` do not exist; with `'both'`, a private reaction has `guildId: null` and `member: null`. With `where: 'both'`, something private comes with `guild: null`, so `guild` tells the two apart.
 
 ## reactionRemove
 
@@ -312,38 +380,43 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist, `channel` is a
 
 What a file without `where` receives:
 
-<ResponseField name="emoji" type="ReactionEmoji" required>
-  The emoji of the reaction.
-</ResponseField>
-<ResponseField name="user" type="User" required>
-  Who had reacted.
-</ResponseField>
-<ResponseField name="member" type="GuildMember | null" required>
-  Who had reacted, as a member of the server, when the bot remembers it. Discord does not send it with this event: `guild.fetchMember(user)` asks for it.
-</ResponseField>
-<ResponseField name="burst" type="boolean" required>
-  Whether it was a super reaction.
-</ResponseField>
-<ResponseField name="messageId" type="Snowflake" required>
-  The id of the message.
-</ResponseField>
-<ResponseField name="message" type="GuildMessage | null" required>
-  The message, when the bot remembers it.
-</ResponseField>
-<ResponseField name="channelId" type="Snowflake" required>
-  The id of the channel of the message.
-</ResponseField>
-<ResponseField name="channel" type="GuildTextBasedChannel" required>
-  The channel of the message.
-</ResponseField>
-<ResponseField name="guildId" type="Snowflake" required>
-  The id of the server.
+<ResponseField name="reaction" type="UserReaction" required>
+  The reaction that was removed.
+  <Expandable title="properties">
+    <ResponseField name="emoji" type="ReactionEmoji" required>
+      The emoji of the reaction: [`ReactionEmoji`](/reference/data#reactionemoji).
+    </ResponseField>
+    <ResponseField name="user" type="User" required>
+      Who reacted.
+    </ResponseField>
+    <ResponseField name="member" type="GuildMember | null" required>
+      Who reacted, as a member of the server, when the bot remembers it.
+    </ResponseField>
+    <ResponseField name="burst" type="boolean" required>
+      Whether it is a super reaction.
+    </ResponseField>
+    <ResponseField name="messageId" type="Snowflake" required>
+      The id of the message.
+    </ResponseField>
+    <ResponseField name="message" type="GuildMessage | null" required>
+      The message, when the bot remembers it.
+    </ResponseField>
+    <ResponseField name="channelId" type="Snowflake" required>
+      The id of the channel of the message.
+    </ResponseField>
+    <ResponseField name="channel" type="GuildTextBasedChannel" required>
+      The channel of the message.
+    </ResponseField>
+    <ResponseField name="guildId" type="Snowflake" required>
+      The id of the server.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server.
 </ResponseField>
 
-`where` changes the place like for `reactionAdd`.
+With `where: 'dm'`, `guild` does not exist, and in `reaction` `channel` is a `DMChannel | null` (the private conversation, when the bot knows it), `message` a `DmMessage | null`, and `guildId` and `member` do not exist; with `'both'`, a private reaction has `guildId: null` and `member: null`. With `where: 'both'`, something private comes with `guild: null`, so `guild` tells the two apart.
 
 ## reactionClear
 
@@ -356,29 +429,34 @@ What a file without `where` receives:
 
 What a file without `where` receives:
 
-<ResponseField name="emoji" type="ReactionEmoji | null" required>
-  The emoji whose reactions were removed; `null` when all were.
-</ResponseField>
-<ResponseField name="messageId" type="Snowflake" required>
-  The id of the message.
-</ResponseField>
-<ResponseField name="message" type="GuildMessage | null" required>
-  The message, when the bot remembers it.
-</ResponseField>
-<ResponseField name="channelId" type="Snowflake" required>
-  The id of the channel of the message.
-</ResponseField>
-<ResponseField name="channel" type="GuildTextBasedChannel" required>
-  The channel of the message.
-</ResponseField>
-<ResponseField name="guildId" type="Snowflake" required>
-  The id of the server.
+<ResponseField name="reactions" type="ClearedReactions" required>
+  The reactions that were removed.
+  <Expandable title="properties">
+    <ResponseField name="emoji" type="ReactionEmoji | null" required>
+      The emoji whose reactions were removed; `null` when all were.
+    </ResponseField>
+    <ResponseField name="messageId" type="Snowflake" required>
+      The id of the message.
+    </ResponseField>
+    <ResponseField name="message" type="GuildMessage | null" required>
+      The message, when the bot remembers it.
+    </ResponseField>
+    <ResponseField name="channelId" type="Snowflake" required>
+      The id of the channel of the message.
+    </ResponseField>
+    <ResponseField name="channel" type="GuildTextBasedChannel" required>
+      The channel of the message.
+    </ResponseField>
+    <ResponseField name="guildId" type="Snowflake" required>
+      The id of the server.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server.
 </ResponseField>
 
-`where` changes the place like for `reactionAdd`; there is no `member`.
+With `where: 'dm'`, `guild` does not exist, and in `reactions` `channel` is a `DMChannel | null` (the private conversation, when the bot knows it), `message` a `DmMessage | null` and `guildId` does not exist. With `where: 'both'`, something private comes with `guild: null`, so `guild` tells the two apart.
 
 ## pollVoteAdd
 
@@ -391,35 +469,40 @@ What a file without `where` receives:
 
 What a file without `where` receives:
 
-<ResponseField name="answerId" type="number" required>
-  The id Discord gave to the answer they voted for: today, its position in the poll, `1` for the first answer.
-</ResponseField>
-<ResponseField name="user" type="User" required>
-  Who voted.
-</ResponseField>
-<ResponseField name="member" type="GuildMember | null" required>
-  Who voted, as a member of the server, when the bot remembers it.
-</ResponseField>
-<ResponseField name="messageId" type="Snowflake" required>
-  The id of the message of the poll.
-</ResponseField>
-<ResponseField name="message" type="GuildMessage | null" required>
-  The message of the poll, when the bot remembers it.
-</ResponseField>
-<ResponseField name="channelId" type="Snowflake" required>
-  The id of the channel of the poll.
-</ResponseField>
-<ResponseField name="channel" type="GuildTextBasedChannel" required>
-  The channel of the poll.
-</ResponseField>
-<ResponseField name="guildId" type="Snowflake" required>
-  The id of the server.
+<ResponseField name="vote" type="PollVote" required>
+  The vote.
+  <Expandable title="properties">
+    <ResponseField name="answerId" type="number" required>
+      The id Discord gave to the answer: today, its position in the poll, `1` for the first answer.
+    </ResponseField>
+    <ResponseField name="user" type="User" required>
+      Who voted.
+    </ResponseField>
+    <ResponseField name="member" type="GuildMember | null" required>
+      Who voted, as a member of the server, when the bot remembers it.
+    </ResponseField>
+    <ResponseField name="messageId" type="Snowflake" required>
+      The id of the message of the poll.
+    </ResponseField>
+    <ResponseField name="message" type="GuildMessage | null" required>
+      The message of the poll, when the bot remembers it.
+    </ResponseField>
+    <ResponseField name="channelId" type="Snowflake" required>
+      The id of the channel of the poll.
+    </ResponseField>
+    <ResponseField name="channel" type="GuildTextBasedChannel" required>
+      The channel of the poll.
+    </ResponseField>
+    <ResponseField name="guildId" type="Snowflake" required>
+      The id of the server.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server.
 </ResponseField>
 
-`where` changes the place like for `reactionAdd`.
+With `where: 'dm'`, `guild` does not exist, and in `vote` `channel` is a `DMChannel | null` (the private conversation, when the bot knows it), `message` a `DmMessage | null`, and `guildId` and `member` do not exist; with `'both'`, a private vote has `guildId: null` and `member: null`. With `where: 'both'`, something private comes with `guild: null`, so `guild` tells the two apart.
 
 ## pollVoteRemove
 
@@ -430,7 +513,7 @@ What a file without `where` receives:
 | Options | `where` ([WhereEventOptions](/reference/event#whereeventoptions)) |
 | Remembers | The default |
 
-Receives the same as `pollVoteAdd`. `answerId` is the id Discord gave to the answer they no longer vote for: today, its position in the poll, `1` for the first answer; `user` and `member` are who had voted.
+Receives the same as `pollVoteAdd`: `vote` is the vote taken back.
 
 ## typingStart
 
@@ -443,29 +526,34 @@ Receives the same as `pollVoteAdd`. `answerId` is the id Discord gave to the ans
 
 What a file without `where` receives:
 
-<ResponseField name="user" type="User" required>
-  Who is typing.
-</ResponseField>
-<ResponseField name="member" type="GuildMember" required>
-  Who is typing, as a member of the server.
-</ResponseField>
-<ResponseField name="startedAt" type="Date" required>
-  When they started.
-</ResponseField>
-<ResponseField name="channelId" type="Snowflake" required>
-  The id of the channel.
-</ResponseField>
-<ResponseField name="channel" type="GuildTextBasedChannel" required>
-  The channel.
-</ResponseField>
-<ResponseField name="guildId" type="Snowflake" required>
-  The id of the server.
+<ResponseField name="typing" type="Typing" required>
+  Who is typing, and where.
+  <Expandable title="properties">
+    <ResponseField name="user" type="User" required>
+      Who is typing.
+    </ResponseField>
+    <ResponseField name="member" type="GuildMember" required>
+      Who is typing, as a member of the server.
+    </ResponseField>
+    <ResponseField name="startedAt" type="Date" required>
+      When they started.
+    </ResponseField>
+    <ResponseField name="channelId" type="Snowflake" required>
+      The id of the channel.
+    </ResponseField>
+    <ResponseField name="channel" type="GuildTextBasedChannel" required>
+      The channel.
+    </ResponseField>
+    <ResponseField name="guildId" type="Snowflake" required>
+      The id of the server.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server.
 </ResponseField>
 
-With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` is a `DMChannel | null`. With `where: 'both'`, a private conversation comes with `guildId: null`, `guild: null`, `member: null` and `channel: DMChannel | null`.
+With `where: 'dm'`, `guild` does not exist, and in `typing` `channel` is a `DMChannel | null` (the private conversation, when the bot knows it), and `guildId` and `member` do not exist; with `'both'`, someone typing in private has `guildId: null` and `member: null`. With `where: 'both'`, something private comes with `guild: null`, so `guild` tells the two apart.
 
 ## threadMemberJoin
 
@@ -481,9 +569,6 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 </ResponseField>
 <ResponseField name="member" type="GuildMember" required>
   Who was added, as a member of the server.
-</ResponseField>
-<ResponseField name="user" type="User" required>
-  The account of who was added.
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server of the thread.
@@ -504,9 +589,6 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 <ResponseField name="userId" type="Snowflake" required>
   The id of who was removed.
 </ResponseField>
-<ResponseField name="user" type="User | null" required>
-  The account of who was removed, when the bot knows it.
-</ResponseField>
 <ResponseField name="member" type="GuildMember | null" required>
   Who was removed, as a member of the server, when the bot remembers it.
 </ResponseField>
@@ -523,14 +605,19 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | Who is in a voice channel, while they are in it |
 
-<ResponseField name="member" type="GuildMember" required>
-  Who joined.
-</ResponseField>
-<ResponseField name="channel" type="VoiceChannel" required>
-  The channel they joined.
-</ResponseField>
-<ResponseField name="voice" type="VoiceState" required>
-  Their voice state: muted, deafened, streaming... See [`VoiceState`](/reference/data#voicestate).
+<ResponseField name="voice" type="VoiceActivity" required>
+  Who joined, the channel, and their voice state.
+  <Expandable title="properties">
+    <ResponseField name="member" type="GuildMember" required>
+      Who it is.
+    </ResponseField>
+    <ResponseField name="channel" type="VoiceChannel" required>
+      The voice channel.
+    </ResponseField>
+    <ResponseField name="state" type="VoiceState" required>
+      Their voice state: muted, deafened, streaming... ([`VoiceState`](/reference/data#voicestate))
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server of the channel.
@@ -545,14 +632,19 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | Who is in a voice channel, while they are in it |
 
-<ResponseField name="member" type="GuildMember" required>
-  Who left.
-</ResponseField>
-<ResponseField name="channel" type="VoiceChannel" required>
-  The channel they left. Still there when the channel was deleted meanwhile.
-</ResponseField>
-<ResponseField name="voice" type="VoiceState" required>
-  Their voice state as it was, in that channel.
+<ResponseField name="voice" type="VoiceActivity" required>
+  Who left, the channel they left, and their voice state as it was.
+  <Expandable title="properties">
+    <ResponseField name="member" type="GuildMember" required>
+      Who it is.
+    </ResponseField>
+    <ResponseField name="channel" type="VoiceChannel" required>
+      The voice channel.
+    </ResponseField>
+    <ResponseField name="state" type="VoiceState" required>
+      Their voice state, as it was in that channel.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server of the channel.
@@ -567,17 +659,22 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | Who is in a voice channel, while they are in it |
 
-<ResponseField name="member" type="GuildMember" required>
-  Who moved.
-</ResponseField>
-<ResponseField name="from" type="VoiceChannel" required>
-  The channel they left.
-</ResponseField>
-<ResponseField name="to" type="VoiceChannel" required>
-  The channel they are in now.
-</ResponseField>
-<ResponseField name="voice" type="VoiceState" required>
-  Their voice state, as it is now.
+<ResponseField name="voice" type="VoiceMove" required>
+  Who moved, from where, to where.
+  <Expandable title="properties">
+    <ResponseField name="member" type="GuildMember" required>
+      Who moved.
+    </ResponseField>
+    <ResponseField name="from" type="VoiceChannel" required>
+      The channel they left.
+    </ResponseField>
+    <ResponseField name="to" type="VoiceChannel" required>
+      The channel they are in now.
+    </ResponseField>
+    <ResponseField name="state" type="VoiceState" required>
+      Their voice state, as it is now.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server of the channels.
@@ -592,17 +689,22 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | Who is in a voice channel, while they are in it |
 
-<ResponseField name="member" type="GuildMember" required>
-  Who changed.
-</ResponseField>
-<ResponseField name="channel" type="VoiceChannel" required>
-  The channel they are in.
-</ResponseField>
-<ResponseField name="voice" type="VoiceState" required>
-  Their voice state, as it is now.
-</ResponseField>
-<ResponseField name="before" type="VoiceState" required>
-  Their voice state as it was.
+<ResponseField name="voice" type="VoiceChange" required>
+  Who changed, their voice state now and before.
+  <Expandable title="properties">
+    <ResponseField name="member" type="GuildMember" required>
+      Who it is.
+    </ResponseField>
+    <ResponseField name="channel" type="VoiceChannel" required>
+      The voice channel.
+    </ResponseField>
+    <ResponseField name="state" type="VoiceState" required>
+      Their voice state, as it is now.
+    </ResponseField>
+    <ResponseField name="before" type="VoiceState" required>
+      Their voice state as it was.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server of the channel.
@@ -617,17 +719,19 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | The default |
 
-<ResponseField name="userId" type="Snowflake" required>
-  The id of whose presence changed.
-</ResponseField>
-<ResponseField name="user" type="User | null" required>
-  The account of whose presence changed, when the bot knows it.
-</ResponseField>
-<ResponseField name="member" type="GuildMember | null" required>
-  Whose presence changed, as a member of the server, when the bot remembers it.
-</ResponseField>
-<ResponseField name="presence" type="UserPresence" required>
-  Their status, activities and devices, as they are now. See [`UserPresence`](/reference/data#userpresence).
+<ResponseField name="presence" type="PresenceChange" required>
+  The presence as it is now, and whose it is: the fields of [`UserPresence`](/reference/data#userpresence) (`status`, `activities`, `clientStatus`), plus:
+  <Expandable title="properties">
+    <ResponseField name="userId" type="Snowflake" required>
+      The id of whose presence changed.
+    </ResponseField>
+    <ResponseField name="user" type="User | null" required>
+      The account of whose presence changed, when the bot knows it.
+    </ResponseField>
+    <ResponseField name="member" type="GuildMember | null" required>
+      Whose presence changed, as a member of the server, when the bot remembers it.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server the change is seen from.
@@ -752,13 +856,10 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Remembers | The default |
 
 <ResponseField name="invite" type="Invite" required>
-  The new invite: see [Invite](/reference/invite).
+  The new invite. `invite.channel` is the channel it leads to.
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server the invite leads to.
-</ResponseField>
-<ResponseField name="channel" type="GuildChannel" required>
-  The channel the invite leads to.
 </ResponseField>
 
 ## inviteDelete
@@ -770,14 +871,19 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | The default |
 
-<ResponseField name="code" type="string" required>
-  The code of the invite (`discord.gg/code`).
+<ResponseField name="invite" type="DeletedInvite" required>
+  The invite that was deleted.
+  <Expandable title="properties">
+    <ResponseField name="code" type="string" required>
+      The code of the invite (`discord.gg/code`).
+    </ResponseField>
+    <ResponseField name="channel" type="GuildChannel" required>
+      The channel the invite led to.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server the invite led to.
-</ResponseField>
-<ResponseField name="channel" type="GuildChannel" required>
-  The channel the invite led to.
 </ResponseField>
 
 ## scheduledEventCreate
@@ -837,14 +943,19 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | The default |
 
-<ResponseField name="scheduledEventId" type="Snowflake" required>
-  The id of the scheduled event.
-</ResponseField>
-<ResponseField name="user" type="User" required>
-  Who is interested.
-</ResponseField>
-<ResponseField name="member" type="GuildMember | null" required>
-  Who is interested, as a member of the server, when the bot remembers it.
+<ResponseField name="interest" type="ScheduledEventInterest" required>
+  Who is interested, in which scheduled event.
+  <Expandable title="properties">
+    <ResponseField name="scheduledEventId" type="Snowflake" required>
+      The id of the scheduled event.
+    </ResponseField>
+    <ResponseField name="user" type="User" required>
+      Who it is.
+    </ResponseField>
+    <ResponseField name="member" type="GuildMember | null" required>
+      Who it is, as a member of the server, when the bot remembers it.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server of the scheduled event.
@@ -859,14 +970,19 @@ With `where: 'dm'`, `guildId`, `guild` and `member` do not exist and `channel` i
 | Options | None |
 | Remembers | The default |
 
-<ResponseField name="scheduledEventId" type="Snowflake" required>
-  The id of the scheduled event.
-</ResponseField>
-<ResponseField name="user" type="User" required>
-  Who is no longer interested.
-</ResponseField>
-<ResponseField name="member" type="GuildMember | null" required>
-  Who is no longer interested, as a member of the server, when the bot remembers it.
+<ResponseField name="interest" type="ScheduledEventInterest" required>
+  Who is no longer interested, in which scheduled event.
+  <Expandable title="properties">
+    <ResponseField name="scheduledEventId" type="Snowflake" required>
+      The id of the scheduled event.
+    </ResponseField>
+    <ResponseField name="user" type="User" required>
+      Who it is.
+    </ResponseField>
+    <ResponseField name="member" type="GuildMember | null" required>
+      Who it is, as a member of the server, when the bot remembers it.
+    </ResponseField>
+  </Expandable>
 </ResponseField>
 <ResponseField name="guild" type="Guild" required>
   The server of the scheduled event.

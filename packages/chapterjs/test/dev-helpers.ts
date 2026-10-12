@@ -278,3 +278,57 @@ export async function connected(
   await connection.waitFor(2, 8000);
   return connection;
 }
+
+/**
+ * Uses the command `name` in the dev server as alice would, on the gateway
+ * connection `connection`, and resolves with the text the bot answered.
+ * `id` must be new for each use: it names the interaction.
+ */
+export async function useCommand(
+  fake: FakeWorld,
+  name: string,
+  id: string,
+  connection = 0
+): Promise<string> {
+  const callback = `/interactions/${id}/token-${id}/callback`;
+  fake.discord.on('POST', callback, {
+    body: {
+      interaction: { id, type: 2 },
+      resource: { type: 4, message: rawMessage(`${id}9`, '') },
+    },
+  });
+  (await connected(fake, connection)).dispatch('INTERACTION_CREATE', {
+    id,
+    application_id: BOT,
+    type: 2,
+    token: `token-${id}`,
+    version: 1,
+    guild_id: GUILD,
+    channel_id: GENERAL,
+    locale: 'en-US',
+    member: {
+      user: { id: ALICE, username: 'alice', discriminator: '0' },
+      roles: [],
+      permissions: '8',
+      joined_at: '2024-01-01T00:00:00Z',
+      deaf: false,
+      mute: false,
+      flags: 0,
+    },
+    app_permissions: '8',
+    entitlements: [],
+    authorizing_integration_owners: {},
+    attachment_size_limit: 1,
+    data: { id: `${id}0`, name, type: 1 },
+  });
+  const deadline = Date.now() + 5000;
+  let answer;
+  while (
+    !(answer = fake.discord.requestsTo('POST', callback)[0]) &&
+    Date.now() < deadline
+  ) {
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  if (!answer) throw new Error(`/${name} got no answer within 5 s.`);
+  return (answer.body as { data: { content: string } }).data.content;
+}

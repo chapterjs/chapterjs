@@ -1,0 +1,106 @@
+---
+title: 'Rankings'
+description: 'Keep a score per member, in order, and show who is first, with a ranking() declaration'
+---
+
+A ranking is declared with `ranking()`, in any file of `src/`, and exported. It keeps a score per member, always in order, from one restart to the next, and per server unless you say otherwise.
+
+```ts src/levels/xp.ts
+import { event, ranking } from 'chapterjs';
+
+export const xp = ranking();
+
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    const score = await xp.add(message.author.id, 10);
+    if (score % 1000 === 0) await message.reply(`Level up: ${score} xp!`);
+  },
+});
+```
+
+That is all. The name of the export is the name of the ranking (`xp`), and every message written in a server gives its author 10 points in the ranking of that server. `add()` starts from 0, and two messages at the same instant never lose a point, even on [several processes](/run/start#large-bots).
+
+To show who is first:
+
+```ts src/levels/top.ts
+import { command } from 'chapterjs';
+import { xp } from './xp';
+
+export default command({
+  name: 'top',
+  description: 'Shows the ten members with the most xp',
+  async run({ interaction, user }) {
+    const best = await xp.top(10);
+    const mine = await xp.rankOf(user.id);
+    const lines = best.map(entry => `${entry.rank}. <@${entry.id}>: ${entry.score} xp`);
+    lines.push(mine === undefined ? 'You have no xp yet.' : `You are #${mine}.`);
+    await interaction.reply({ content: lines.join('\n'), ephemeral: true });
+  },
+});
+```
+
+`top(10)` is the first ten, `top(10, 10)` the next ten. Each entry has its `id`, its `score` and its `rank`, from 1.
+
+<Note>
+  Everything a ranking declares and does is in the [reference](/reference/ranking).
+</Note>
+
+## What a ranking does
+
+| Call | What it does |
+| --- | --- |
+| `add(id, points)` | Adds points (negative to take away) to a score, from 0, in one go; resolves with the new score |
+| `set(id, score)` | Sets a score, whatever it was |
+| `score(id)` | The score, or `undefined` when there is none |
+| `rankOf(id)` | Where the member is, from 1, or `undefined` |
+| `top(count?, skip?)` | The first `count` (10 by default), after skipping `skip` |
+| `remove(id)` | Forgets a score; `true` when there was one |
+| `size()` | How many members have a score |
+| `clear()` | Forgets every score; resolves with how many there were |
+
+An id is a text: `member.id`, or anything else you rank (a team, a channel). A score is a number, with decimals if you want.
+
+## The lowest first
+
+For a time, a number of tries, a golf score: `order: 'lowest'` puts the lowest score first.
+
+```ts src/race/fastest.ts
+import { command, ranking } from 'chapterjs';
+
+export const fastest = ranking({ order: 'lowest' });
+
+export default command({
+  name: 'race',
+  description: 'Runs a race and keeps your best time',
+  async run({ interaction, user }) {
+    const time = Math.round(5000 + Math.random() * 5000);
+    const best = await fastest.score(user.id);
+    if (best === undefined || time < best) await fastest.set(user.id, time);
+    await interaction.reply(`${time} ms. You are #${await fastest.rankOf(user.id)}.`);
+  },
+});
+```
+
+Two equal scores are ordered by their id, the same way wherever the scores are kept.
+
+## Per server, or for the whole bot
+
+A ranking is per server by default, like a [store](/storage): in a function that runs in a server, `xp.add()` and `xp.top()` work on the ranking of that server. Outside a server (a task, a private message), say which one with `xp.in(guild)`. For one ranking across every server, declare it with `scope: 'global'`.
+
+## Where the scores are
+
+Like a store, a ranking keeps its scores in `data/<name>.json` by default, one entry per member, and with `storage: 'redis'` in the Redis of `REDIS_URL` (see [Storage](/storage#in-redis)), where it is a sorted set: `xp:<server id>`, `dev:xp:<server id>` in `chapterjs dev`.
+
+In a file, `top()` and `rankOf()` put every score in order each time they are called: instant for thousands of members, slower for hundreds of thousands. Redis keeps the scores in order itself, whatever their number: for a large bot, use `storage: 'redis'`.
+
+A ranking and a store can't share a name: they would share a file, or a key. The second one is reported when the files load, and left out.
+
+<CardGroup cols={2}>
+  <Card title="ranking() reference" icon="trophy" href="/reference/ranking">
+    Every field of a ranking, and what each call returns.
+  </Card>
+  <Card title="Storage" icon="database" href="/storage">
+    Keeping anything else, per server.
+  </Card>
+</CardGroup>

@@ -21,7 +21,7 @@ export const warnings = store<string[]>({ expires: '30d' });
 store<T>(config?: StoreConfig): Store<T>
 ```
 
-Declares a store: data the bot keeps from one restart to the next, typed by what it holds. Export the result from any file of `src/`: the name of the export is the name of the store, and its file in `data/`. Per server unless `scope: 'global'` is given, with an expiration if `expires` is.
+Declares a store: data the bot keeps from one restart to the next, typed by what it holds. Export the result from any file of `src/`: the name of the export is the name of the store, and its file in `data/` (or its keys in Redis, with `storage: 'redis'`). Per server unless `scope: 'global'` is given, with an expiration if `expires` is.
 
 ## StoreConfig
 
@@ -29,6 +29,10 @@ What a file gives to `store()`.
 
 <ResponseField name="scope" type="StoreScope">
   `'guild'` (the default): the data is kept per server, and a function that runs in a server reads and writes the data of that server, with nothing to say. `'global'`: one set of data for the whole bot.
+</ResponseField>
+
+<ResponseField name="storage" type="StoreStorage">
+  Where the data is kept: `'file'` (the default), a file in the `data/` folder of the project, or `'redis'`, the Redis of `REDIS_URL` in `.env`. Only stores that say `'redis'` write anything there.
 </ResponseField>
 
 <ResponseField name="expires" type="Duration">
@@ -42,6 +46,14 @@ type StoreScope = 'guild' | 'global';
 ```
 
 Where the data of a store is kept apart: per server, or one for the whole bot.
+
+### StoreStorage
+
+```ts
+type StoreStorage = 'file' | 'redis';
+```
+
+Where a store keeps its data: what `storage` of its config names.
 
 ## Store
 
@@ -81,7 +93,15 @@ Keeps `value` at `key`. The value must be JSON: no `Date`, `Map` or class instan
 update(key: StoreKey, change: (current: T | undefined) => T, options?: StoreSetOptions): Promise<T>
 ```
 
-Reads the value at `key` and keeps what `change` returns, in one go. `change` receives `undefined` when there is no value yet. The expiration stays what it was, unless `options` say otherwise.
+Reads the value at `key` and keeps what `change` returns, in one go: nothing written meanwhile is lost, even by another process. `change` receives `undefined` when there is no value yet, and may run again when the value changed in between: keep it a plain computation. The expiration stays what it was, unless `options` say otherwise.
+
+### increment()
+
+```ts
+increment(this: ScopedStore<number>, key: StoreKey, by?: number, options?: StoreSetOptions): Promise<number>
+```
+
+Adds `by` (1 by default, negative to take away) to the number at `key`, starting from 0, in one go like `update()`, and resolves with the new number. Only for a store of numbers.
 
 ### delete()
 
@@ -90,6 +110,30 @@ delete(key: StoreKey): Promise<boolean>
 ```
 
 Forgets the value at `key`. `true` when there was one.
+
+### getMany()
+
+```ts
+getMany(keys: readonly StoreKey[]): Promise<(T | undefined)[]>
+```
+
+The values at several keys at once, in their order: `undefined` for a key that has none.
+
+### setMany()
+
+```ts
+setMany(values: readonly (readonly [key: StoreKey, value: T])[], options?: StoreSetOptions): Promise<void>
+```
+
+Keeps several values at once, each with the same `options`. Every value is checked before anything is written.
+
+### deleteAll()
+
+```ts
+deleteAll(prefix?: StoreKey): Promise<number>
+```
+
+Forgets every value whose key starts with `prefix`, or every value of the store (of the server, for a store per server) without one. Resolves with how many there were.
 
 ### entries()
 
@@ -145,13 +189,22 @@ One file per store, `data/<name>.json` at the root of the project: `{ "version":
 
 In production on several processes, the process you started keeps the data and answers the others over IPC.
 
+With `storage: 'redis'`, one Redis key per value: `<name>:<part>:<part>` (the server id is the first part of a store per server; `:`, `*`, `?`, `[`, `]`, `\` and `%` inside a part are written `%XX`), its value the JSON of the value, its expiration set on the key (`PX`), so Redis forgets it alone. `chapterjs dev` puts `dev:` in front of every key. `entries()` is a `SCAN` on the prefix. Every process reaches Redis itself. `update()` and `increment()` are a transaction (`WATCH`, `MULTI`, `EXEC`), run again on the new value when another process wrote the key in between, on a connection of their own (at most 4 at once per process, besides the main one); the updates of one key in one process wait for each other. The address comes from `REDIS_URL` and `REDIS_PASSWORD` (see the [CLI reference](/reference/cli#env)); a Redis that does not answer stops `dev` and `start` before Discord is reached, and the connection comes back by itself once it was made.
+
 ## Errors
 
 | When | Message |
 | --- | --- |
+| `update()` never got through: the value changed 50 times meanwhile | `The value of hits changed 50 times while update() was trying to change it: it is written too often by too many at once. Keep what changes this often under several keys.` |
+| `increment()` on a value that is not a number | `increment() adds to a number, and the value at ["a"] is a string: use update() to change it.` |
+| `setMany()` with a value that is not JSON | `the value of item 1 is a Date, which JSON can't hold: …` (nothing is written) |
 | A store per server is used where no server is known | `<name> is a store per server, and this code does not run in one: use <name>.in(guild) to say which server, or declare the store with scope: 'global'.` |
 | A store that is not exported is used | `This store was not loaded by ChapterJS: a store is exported from a file of src/ (export const name = store()), and used once the bot started.` |
 | A value is not JSON | `the value.list[0].at is a Date, which JSON can't hold: a store keeps JSON (texts, numbers, booleans, lists and plain objects). Keep what you need of it: an id, a text, a number.` |
 | A key is empty, or not made of texts | `A key of a store is a text that is not empty, or a list of such texts with at least one.` |
 | Two stores have one name | `✗ src/b.ts (hits) There is already a store named hits, in src/a.ts: the name of the export is the name of the store, so rename one of them.` |
 | A file of `data/` was changed by hand | `data/hits.json is not a file ChapterJS wrote: fix it, or delete it to start the store empty.` |
+| A store says `storage: 'redis'` and `REDIS_URL` is not set | `✗ src/sessions.ts (sessions) sessions is kept in Redis (storage: 'redis'), but REDIS_URL is not set: add it to .env (like redis://localhost:6379) and start again, or remove storage: 'redis' to keep its data in data/.` |
+| Redis does not answer when the bot starts | `✗ Redis at localhost:6379 can't be reached: nothing answers there. Start Redis, or check REDIS_URL in .env.` |
+| Redis refuses the password, or asks for one | `✗ Redis at localhost:6379 refused the password: check REDIS_PASSWORD (or the password in REDIS_URL) in .env.` / `✗ Redis at localhost:6379 asks for a password: set REDIS_PASSWORD (or the password in REDIS_URL) in .env.` |
+| Redis goes away while the bot runs | `⚠ Redis at localhost:6379 closed the connection. Trying again every few seconds.` then `↻ Redis at localhost:6379 is back` |

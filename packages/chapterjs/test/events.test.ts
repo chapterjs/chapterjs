@@ -145,6 +145,84 @@ async function world() {
   };
 }
 
+describe('what a function receives', () => {
+  it.each<
+    [EventName, GatewayDispatchEventName, Record<string, unknown>, string[]]
+  >([
+    [
+      'messageCreate',
+      'MESSAGE_CREATE',
+      {
+        id: MESSAGE,
+        channel_id: GENERAL,
+        guild_id: GUILD,
+        author: user(ALICE, 'alice'),
+        member: member(ALICE, 'alice'),
+        content: 'hi',
+        timestamp: '2024-01-01T00:00:00Z',
+        edited_timestamp: null,
+        tts: false,
+        mention_everyone: false,
+        mentions: [],
+        mention_roles: [],
+        attachments: [],
+        embeds: [],
+        pinned: false,
+        type: 0,
+      },
+      ['guild', 'message'],
+    ],
+    [
+      'memberLeave',
+      'GUILD_MEMBER_REMOVE',
+      { guild_id: GUILD, user: user(ALICE, 'alice') },
+      ['guild', 'user'],
+    ],
+    [
+      'channelCreate',
+      'CHANNEL_CREATE',
+      { id: '100000000000000040', type: 0, name: 'new', guild_id: GUILD },
+      ['channel', 'guild'],
+    ],
+    [
+      'roleCreate',
+      'GUILD_ROLE_CREATE',
+      {
+        guild_id: GUILD,
+        role: {
+          id: '100000000000000041',
+          name: 'Mod',
+          permissions: '0',
+          position: 1,
+        },
+      },
+      ['guild', 'role'],
+    ],
+  ])(
+    'for %s: what it is about and the server, nothing more',
+    async (name, event, data, keys) => {
+      const w = await world();
+      w.listen(name);
+      w.send(event, data);
+      const [context] = await w.of(name);
+      expect(Object.keys(context!).sort()).toEqual(keys);
+      expect((context!.guild as { id: string }).id).toBe(GUILD);
+    }
+  );
+
+  it('gives null for the server of a private conversation', async () => {
+    const w = await world();
+    w.listen('channelUpdate');
+    w.send('CHANNEL_UPDATE', {
+      id: DM,
+      type: 1,
+      recipients: [user(ALICE, 'alice')],
+    });
+    const [context] = await w.of('channelUpdate');
+    expect(context).toMatchObject({ guild: null });
+  });
+});
+
 describe('reactions', () => {
   const add = (more: Record<string, unknown> = {}) => ({
     user_id: ALICE,
@@ -164,7 +242,9 @@ describe('reactions', () => {
     w.listen('reactionAdd');
     w.send('MESSAGE_REACTION_ADD', add());
     const [context] = await w.of('reactionAdd');
-    expect(context).toMatchObject({
+    // The reaction, the server, and nothing else.
+    expect(Object.keys(context!).sort()).toEqual(['guild', 'reaction']);
+    expect(context!.reaction).toMatchObject({
       emoji: { id: null, name: '👍' },
       burst: false,
       messageId: MESSAGE,
@@ -173,15 +253,14 @@ describe('reactions', () => {
       channelId: GENERAL,
       guildId: GUILD,
     });
+    const { guild } = context as never as { guild: { name: string } };
     const {
       user,
       member: who,
-      guild,
       channel,
-    } = context as never as {
+    } = context!.reaction as never as {
       user: { username: string };
       member: { displayName: string; guild: unknown };
-      guild: { name: string };
       channel: { id: string };
     };
     expect(user.username).toBe('alice');
@@ -221,12 +300,15 @@ describe('reactions', () => {
     expect(got).toHaveLength(4);
     for (const context of got) {
       expect(context).toMatchObject({
-        guildId: null,
         guild: null,
-        member: null,
+        reaction: { guildId: null, member: null },
       });
-      expect((context.user as { username: string }).username).toBe('bob');
-      expect((context.channel as { id: string }).id).toBe(DM);
+      const reaction = context.reaction as {
+        user: { username: string };
+        channel: { id: string };
+      };
+      expect(reaction.user.username).toBe('bob');
+      expect(reaction.channel.id).toBe(DM);
     }
     expect(w.discord.requestsTo('GET', `/users/${BOB}`)).toHaveLength(1);
   });
@@ -271,14 +353,20 @@ describe('reactions', () => {
     w.discord.on('GET', `/users/${BOB}`, { body: user(BOB, 'bob') });
     w.send('MESSAGE_REACTION_REMOVE', remove(ALICE));
     w.send('MESSAGE_REACTION_REMOVE', remove(BOB));
-    const [alice, bob] = await w.of('reactionRemove', 2);
-    expect((alice!.member as { id: string }).id).toBe(ALICE);
+    const [alice, bob] = (await w.of('reactionRemove', 2)).map(
+      context =>
+        context.reaction as {
+          member: { id: string } | null;
+          user: { username: string };
+        }
+    );
+    expect(alice!.member!.id).toBe(ALICE);
     expect(alice).toMatchObject({
       emoji: { id: EMOJI, name: 'party' },
       burst: true,
     });
     expect(bob!.member).toBeNull();
-    expect((bob!.user as { username: string }).username).toBe('bob');
+    expect(bob!.user.username).toBe('bob');
     // Alice was known: only Bob was asked.
     expect(w.discord.requests.map(request => request.path)).toEqual([
       `/users/${BOB}`,
@@ -305,10 +393,9 @@ describe('reactions', () => {
       });
       const [context] = await w.of('reactionClear');
       expect(context).toMatchObject({
-        emoji,
-        messageId: MESSAGE,
-        guildId: GUILD,
+        reactions: { emoji, messageId: MESSAGE, guildId: GUILD },
       });
+      expect((context!.guild as { id: string }).id).toBe(GUILD);
     }
   );
 
@@ -331,7 +418,9 @@ describe('reactions', () => {
       guild_id: GUILD,
     });
     const [context] = await w.of('reactionClear');
-    expect((context!.channel as { name: string }).name).toBe('new');
+    expect(
+      (context!.reactions as { channel: { name: string } }).channel.name
+    ).toBe('new');
   });
 });
 
@@ -351,12 +440,13 @@ describe('polls', () => {
       answer_id: 2,
     });
     const [context] = await w.of(name);
-    expect(context).toMatchObject({
+    expect(Object.keys(context!).sort()).toEqual(['guild', 'vote']);
+    expect(context!.vote).toMatchObject({
       answerId: 2,
       messageId: MESSAGE,
       member: null,
     });
-    expect((context!.user as { id: string }).id).toBe(ALICE);
+    expect((context!.vote as { user: { id: string } }).user.id).toBe(ALICE);
   });
 });
 
@@ -372,8 +462,13 @@ describe('typing', () => {
       member: member(ALICE, 'alice'),
     });
     const [context] = await w.of('typingStart');
-    expect(context!.startedAt).toEqual(new Date(1_700_000_000_000));
-    expect((context!.member as { id: string }).id).toBe(ALICE);
+    expect(Object.keys(context!).sort()).toEqual(['guild', 'typing']);
+    const typing = context!.typing as {
+      startedAt: Date;
+      member: { id: string };
+    };
+    expect(typing.startedAt).toEqual(new Date(1_700_000_000_000));
+    expect(typing.member.id).toBe(ALICE);
   });
 });
 
@@ -476,9 +571,15 @@ describe('the server', () => {
     });
     expect(invite.inviter.username).toBe('alice');
     expect(invite.expiresAt).toEqual(new Date('2024-01-01T01:00:00Z'));
+    // The channel is read from what the bot knows.
+    expect((created!.invite as { channel: { id: string } }).channel.id).toBe(
+      GENERAL
+    );
+    expect(Object.keys(created!).sort()).toEqual(['guild', 'invite']);
     const [deleted] = await w.of('inviteDelete');
-    expect(deleted!.code).toBe('abc');
-    expect((deleted!.channel as { id: string }).id).toBe(GENERAL);
+    const gone = deleted!.invite as { code: string; channel: { id: string } };
+    expect(gone.code).toBe('abc');
+    expect(gone.channel.id).toBe(GENERAL);
   });
 
   it('gives what was added to the audit log, in camelCase', async () => {
@@ -520,17 +621,18 @@ describe('the server', () => {
       client_status: { mobile: 'online' },
     });
     const [bob, alice] = await w.of('presenceUpdate', 2);
-    expect(bob).toMatchObject({
+    expect(Object.keys(bob!).sort()).toEqual(['guild', 'presence']);
+    expect(bob!.presence).toMatchObject({
       userId: BOB,
       user: null,
       member: null,
-      presence: {
-        status: 'idle',
-        activities: [],
-        clientStatus: { desktop: 'idle' },
-      },
+      status: 'idle',
+      activities: [],
+      clientStatus: { desktop: 'idle' },
     });
-    expect((alice!.user as { username: string }).username).toBe('alice');
+    expect(
+      (alice!.presence as { user: { username: string } }).user.username
+    ).toBe('alice');
     expect(alice!.presence).toMatchObject({
       activities: [{ name: 'Chess', type: 0, createdAt: 1 }],
     });
@@ -569,7 +671,14 @@ describe('threads', () => {
       '100000000000000077',
     ]);
     expect((left[0]!.member as { id: string }).id).toBe(BOB);
-    expect(left[1]).toMatchObject({ user: null, member: null });
+    expect(left[1]).toMatchObject({ member: null });
+    expect(Object.keys(joined!).sort()).toEqual(['guild', 'member', 'thread']);
+    expect(Object.keys(left[1]!).sort()).toEqual([
+      'guild',
+      'member',
+      'thread',
+      'userId',
+    ]);
   });
 });
 
@@ -603,22 +712,31 @@ describe('voice', () => {
       'voiceMove',
       'voiceLeave',
     ]);
-    const [join, change, move, leave] = w.received.map(entry => entry.context);
-    expect((join!.channel as { id: string }).id).toBe(VOICE);
-    expect(join!.voice).toMatchObject({
+    type Voice = {
+      channel: { id: string };
+      from: { id: string };
+      to: { id: string };
+      member: { displayName: string };
+      state: unknown;
+      before: unknown;
+    };
+    const [join, change, move, leave] = w.received.map(entry => {
+      expect(Object.keys(entry.context).sort()).toEqual(['guild', 'voice']);
+      return entry.context.voice as Voice;
+    });
+    expect(join!.channel.id).toBe(VOICE);
+    expect(join!.state).toMatchObject({
       channelId: VOICE,
       userId: ALICE,
       selfMute: false,
     });
     expect(change!.before).toMatchObject({ selfMute: false });
-    expect(change!.voice).toMatchObject({ selfMute: true });
-    expect((move!.from as { id: string }).id).toBe(VOICE);
-    expect((move!.to as { id: string }).id).toBe(STAGE);
-    expect((leave!.channel as { id: string }).id).toBe(STAGE);
-    expect(leave!.voice).toMatchObject({ channelId: STAGE, selfMute: true });
-    expect((leave!.member as { displayName: string }).displayName).toBe(
-      'alice'
-    );
+    expect(change!.state).toMatchObject({ selfMute: true });
+    expect(move!.from.id).toBe(VOICE);
+    expect(move!.to.id).toBe(STAGE);
+    expect(leave!.channel.id).toBe(STAGE);
+    expect(leave!.state).toMatchObject({ channelId: STAGE, selfMute: true });
+    expect(leave!.member.displayName).toBe('alice');
   });
 
   it('knows who was in voice when the server was sent, even in a channel deleted since', async () => {
@@ -628,7 +746,9 @@ describe('voice', () => {
     w.send('CHANNEL_DELETE', { id: VOICE, type: 2, guild_id: GUILD });
     w.send('VOICE_STATE_UPDATE', update(BOB, null));
     const [leave] = await w.of('voiceLeave');
-    expect((leave!.channel as { name: string }).name).toBe('Voice');
+    expect((leave!.voice as { channel: { name: string } }).channel.name).toBe(
+      'Voice'
+    );
     expect(w.received.map(entry => entry.name)).toEqual(['voiceLeave']);
   });
 
@@ -689,8 +809,13 @@ describe('scheduled events', () => {
         guild_id: GUILD,
       });
       const [context] = await w.of(name);
-      expect(context!.scheduledEventId).toBe(scheduled.id);
-      expect((context!.user as { username: string }).username).toBe('bob');
+      expect(Object.keys(context!).sort()).toEqual(['guild', 'interest']);
+      const interest = context!.interest as {
+        scheduledEventId: string;
+        user: { username: string };
+      };
+      expect(interest.scheduledEventId).toBe(scheduled.id);
+      expect(interest.user.username).toBe('bob');
     }
   );
 });
@@ -705,12 +830,17 @@ describe('messages deleted together', () => {
       guild_id: GUILD,
     });
     const got = await w.of('messageDelete', 3);
-    expect(got.map(context => context.messageId)).toEqual(['1', '2', '3']);
+    expect(got.map(context => (context.message as { id: string }).id)).toEqual([
+      '1',
+      '2',
+      '3',
+    ]);
     for (const context of got) {
-      expect(context).toMatchObject({
+      expect(Object.keys(context).sort()).toEqual(['guild', 'message']);
+      expect(context.message).toMatchObject({
         channelId: GENERAL,
         guildId: GUILD,
-        message: null,
+        before: null,
       });
     }
   });

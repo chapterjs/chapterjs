@@ -14,7 +14,7 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'reactionAdd',
-  async run({ emoji, member, guild, channel, messageId }) {
+  async run({ reaction: { emoji, member, channel, messageId }, guild }) {
     if (emoji.name !== '🔖') return;
     const link = `https://discord.com/channels/${guild.id}/${channel.id}/${messageId}`;
     await member.send(`Vous avez mis un marque-page sur un message de #${channel.name} : ${link}`);
@@ -30,19 +30,19 @@ Enregistrez-le, puis réagissez 🔖 à n’importe quel message de votre serveu
 
 Les réactions ne sont pas privilégiées : Discord ne les considère pas comme personnelles, contrairement à ce que les gens écrivent.
 
-`emoji` est l’emoji de la réaction. Pour un emoji standard, `emoji.name` est le caractère lui-même (`'🔖'`) ; un emoji personnalisé d’un serveur a un nom et un `id`.
+La fonction reçoit la `reaction` et le serveur, `guild`, et prend dans la réaction ce dont elle a besoin : `emoji`, `member`, `channel`, `messageId`. `emoji` est l’emoji de la réaction. Pour un emoji standard, `emoji.name` est le caractère lui-même (`'🔖'`) ; un emoji personnalisé d’un serveur a un nom et un `id`.
 
 ## Sûr par défaut, encore
 
-Les règles de la [page précédente](/fr/tutorial/message-events) valent ici : par défaut, un fichier de réactions tourne **pour les personnes, sur les serveurs**. Les réactions des bots sont laissées de côté, le vôtre compris, donc le fichier ne réagit jamais à ce qu’il fait lui-même ; `bots: true` les laisse entrer. Et comme le fichier écoute sur les serveurs, `guild`, `channel` et `member` sont toujours là, sans `?.` à écrire. `where: 'dm'` ou `where: 'both'` changent cela exactement comme pour les messages.
+Les règles de la [page précédente](/fr/tutorial/message-events) valent ici : par défaut, un fichier de réactions tourne **pour les personnes, sur les serveurs**. Les réactions des bots sont laissées de côté, le vôtre compris, donc le fichier ne réagit jamais à ce qu’il fait lui-même ; `bots: true` les laisse entrer. Et comme le fichier écoute sur les serveurs, `guild`, et le `channel` et le `member` de la réaction, sont toujours là, sans `?.` à écrire. `where: 'dm'` ou `where: 'both'` changent cela exactement comme pour les messages.
 
 ## Seulement un identifiant pour le message
 
-Regardez ce que reçoit la fonction : `messageId`, pas un message. Quand quelqu’un réagit, Discord envoie qui a réagi et avec quoi, mais pas le message : il peut avoir des années. Et votre bot [ne se souvient d’aucun message](/fr/tutorial/memory-and-limits). L’événement donne donc son identifiant, et `message` vaut `null`.
+Regardez ce que contient la réaction : `messageId`, pas un message. Quand quelqu’un réagit, Discord envoie qui a réagi et avec quoi, mais pas le message : il peut avoir des années. Et votre bot [ne se souvient d’aucun message](/fr/tutorial/memory-and-limits). La réaction donne donc son identifiant, et `reaction.message` vaut `null`.
 
 Souvent, l’identifiant suffit : le lien ci-dessus est construit avec, sans rien demander à Discord. Quand vous avez vraiment besoin du message, demandez-le : `await channel.fetchMessage(messageId)`. Faites-le après les vérifications, jamais pour chaque réaction.
 
-`reactionRemove` va plus loin : Discord n’envoie que l’identifiant de qui a retiré sa réaction. ChapterJS demande à Discord qui c’est la première fois, puis s’en souvient, donc `user` est toujours là ; `member` n’est là que quand le bot se souvient de ce membre.
+`reactionRemove` va plus loin : Discord n’envoie que l’identifiant de qui a retiré sa réaction. ChapterJS demande à Discord qui c’est la première fois, puis s’en souvient, donc `reaction.user` est toujours là ; `reaction.member` n’est là que quand le bot se souvient de ce membre.
 
 ## Bonjour en vocal
 
@@ -53,13 +53,13 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceJoin',
-  async run({ member, channel }) {
+  async run({ voice: { member, channel } }) {
     await channel.send(`Bienvenue dans ${channel.name}, ${member.displayName} !`);
   },
 });
 ```
 
-Rejoignez un salon vocal de votre serveur de test : le bot écrit dans le chat de ce salon. Chaque salon vocal a un chat écrit, et `channel` est un `VoiceChannel` auquel vous pouvez envoyer des messages.
+Rejoignez un salon vocal de votre serveur de test : le bot écrit dans le chat de ce salon. Chaque salon vocal a un chat écrit, et `voice.channel` est un `VoiceChannel` auquel vous pouvez envoyer des messages. La fonction reçoit `voice` (qui, où, et son état vocal) et le serveur, `guild`.
 
 Discord dit seulement à un bot que « l’état vocal de quelqu’un a changé ». ChapterJS se souvient de qui est dans quel salon, compare, et vous donne quatre événements au lieu d’un :
 
@@ -85,7 +85,7 @@ Les sondages (`pollVoteAdd`), la saisie (`typingStart`), les bannissements (`ban
 
 - `reactionAdd`, `reactionRemove`, `pollVoteAdd`, `typingStart`, les événements vocaux et les autres se déclarent avec `event()`, comme `memberJoin`.
 - Les réactions ignorent par défaut les bots et les messages privés, comme les messages ; `bots` et `where` changent cela.
-- Certains événements ne donnent que des identifiants : `messageId` est toujours là, `message` vaut `null` ; `user` est demandé une fois à Discord quand il le faut.
+- Chaque événement donne ce dont il parle et `guild` : `reaction`, `vote`, `voice`... Certains ne contiennent que des identifiants : `reaction.messageId` est toujours là, `reaction.message` vaut `null` ; `user` est demandé une fois à Discord quand il le faut.
 - Quatre événements vocaux distinguent une arrivée, un départ, un changement de salon et un changement d’état.
 
 <CardGroup cols={2}>

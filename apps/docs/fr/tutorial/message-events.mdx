@@ -85,15 +85,15 @@ export default event({
 
 ## Messages supprimés et modifiés
 
-`messageUpdate` donne le message après la modification. `messageDelete` est différent : le message n’existe plus, donc vous recevez son identifiant, le salon et le serveur où il était, et le message lui-même seulement quand le bot s’en souvenait, ce qui n’est pas le cas par défaut (les messages sont ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message). Utilisez toujours `messageId` :
+`messageUpdate` donne le message après la modification. `messageDelete` est différent : le message n’existe plus, donc son `message` est ce qu’il en reste : son `id`, le `channel` où il était, et `before`, le message lui-même, seulement quand le bot s’en souvenait, ce qui n’est pas le cas par défaut (les messages sont ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message). Utilisez toujours `message.id` :
 
 ```ts src/events/audit.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'messageDelete',
-  run({ messageId, channel, guild }) {
-    console.log(`Message ${messageId} supprimé dans #${channel.name} de ${guild.name}`);
+  run({ message, guild }) {
+    console.log(`Message ${message.id} supprimé dans #${message.channel.name} de ${guild.name}`);
   },
 });
 ```
@@ -112,7 +112,7 @@ export default event({
 - Un événement `messageCreate` tourne pour les messages écrits par des personnes, sur les serveurs, par défaut : aucune vérification `author.bot` à écrire.
 - Le Message Content Intent est nécessaire pour lire `message.content` dans `messageCreate` et `messageUpdate`.
 - `bots: true` et `where: 'dm'` ou `where: 'both'` élargissent ce qu’un fichier entend, et les types suivent.
-- `messageDelete` donne l’identifiant, le salon et le serveur ; le message lui-même est `null`.
+- `messageDelete` donne ce qui reste du message (`id`, `channel`) et le serveur ; `message.before` est `null`.
 
 <CardGroup cols={2}>
   <Card title="Réactions et vocal" icon="smile-plus" href="/fr/tutorial/reactions-and-voice">
