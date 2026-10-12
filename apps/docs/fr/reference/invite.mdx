@@ -40,6 +40,10 @@ async function invite(channel: TextChannel) {
   L’identifiant du salon vers lequel mène l’invitation.
 </ResponseField>
 
+<ResponseField name="channel" type="GuildChannel | null">
+  Le salon vers lequel mène l’invitation, quand le bot le connaît. N’envoie jamais de requête.
+</ResponseField>
+
 <ResponseField name="expiresAt" type="Date | null">
   Quand l’invitation cesse de fonctionner ; `null` quand elle ne cesse jamais.
 </ResponseField>

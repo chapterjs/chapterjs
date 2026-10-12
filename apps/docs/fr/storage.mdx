@@ -74,15 +74,39 @@ export const settings = store<{ maintenance: boolean }>({ scope: 'global' });
 | --- | --- |
 | `get(key)` | La valeur, ou `undefined` quand il n’y en a pas, ou qu’elle a expiré |
 | `set(key, value, options?)` | Garde une valeur |
-| `update(key, change, options?)` | Lit, change et garde d’un trait : `change` reçoit la valeur, ou `undefined`, et renvoie la nouvelle |
+| `update(key, change, options?)` | Lit, change et garde d’un trait : `change` reçoit la valeur, ou `undefined`, et renvoie la nouvelle. Rien de ce qui est écrit entre-temps n’est perdu, même par un autre processus |
+| `increment(key, by?, options?)` | Ajoute `by` (1 par défaut) à un nombre, depuis 0, d’un trait ; renvoie le nouveau nombre. Seulement sur un store de nombres |
 | `delete(key)` | Oublie une valeur ; `true` quand il y en avait une |
+| `getMany(keys)` | Les valeurs de plusieurs clés, dans leur ordre |
+| `setMany([[key, value], ...], options?)` | Garde plusieurs valeurs ; chacune est vérifiée avant qu’aucune ne soit écrite |
+| `deleteAll(prefix?)` | Oublie chaque valeur sous `prefix`, ou chaque valeur du serveur (du store, pour un store global) ; renvoie combien |
 | `entries(prefix?)` | Chaque entrée (`key`, `value`, `expires`), ou celles dont la clé commence par `prefix` |
 | `ttl(key)` | Combien de temps la valeur est encore gardée, en millisecondes : `null` pour toujours, `undefined` pour aucune |
 | `in(guild)` | Le même store, pour un serveur |
 
 Une clé est un texte, ou une liste de textes pour une clé en plusieurs parties : `[channel.id, message.id]`. `entries(channel.id)` liste alors ce que ce salon a.
 
+Deux `update()` en même temps sur la même clé ne se perdent jamais l’un l’autre, qu’ils tournent dans un processus, dans [plusieurs](/fr/run/start#gros-bots), ou sur plusieurs machines qui partagent un Redis : `change` peut alors tourner une seconde fois, sur la valeur que l’autre a gardée, donc gardez-le un simple calcul (aucun message envoyé depuis lui). Pour un compteur, `increment()` le dit en un mot :
+
+```ts src/events/count-messages.ts
+import { event, store } from 'chapterjs';
+
+export const sent = store<number>({ storage: 'redis' });
+
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    const count = await sent.increment(message.author.id);
+    if (count === 100) await message.reply('C’était votre 100e message ici !');
+  },
+});
+```
+
 Une valeur est du JSON : textes, nombres, booléens, listes et objets simples. Une `Date`, une `Map` ou l’instance d’une classe ne reviendrait pas pareille, donc `set()` les refuse et dit quoi garder à la place (un id, un texte, un nombre). Chaque appel renvoie une promesse.
+
+<Tip>
+  Pour garder un score par membre dans l’ordre (xp, niveaux, meilleurs temps) et montrer qui est premier, utilisez un [classement](/fr/rankings).
+</Tip>
 
 ## Expiration
 
@@ -118,6 +142,37 @@ En production sur [plusieurs processus](/fr/run/start#gros-bots), les données o
 <Warning>
   `chapterjs dev` et `chapterjs start` dans le même dossier partagent le même `data/`. Avec deux bots dans un dossier, ce que vous essayez en dev est ce que la production lit.
 </Warning>
+
+## Dans Redis
+
+Un store peut garder ses données dans Redis plutôt que dans un fichier : dites `storage: 'redis'` en le déclarant, et donnez l’adresse de votre Redis dans `.env`. Rien d’autre ne change : mêmes appels, mêmes clés, même portée, même expiration.
+
+```ts src/sessions.ts
+import { store } from 'chapterjs';
+
+interface Session {
+  startedAt: number;
+}
+
+export const sessions = store<Session>({ storage: 'redis', expires: '1h' });
+```
+
+```bash .env
+REDIS_URL=redis://localhost:6379
+REDIS_PASSWORD=
+```
+
+`REDIS_URL` est l’adresse, `redis://hôte:port` (`rediss://` pour une connexion TLS, `/1` à la fin pour une base autre que la première) ; un utilisateur et un mot de passe peuvent y être (`redis://user:password@host:6379`), ou le mot de passe dans `REDIS_PASSWORD`, qui l’emporte. Seuls les stores qui disent `storage: 'redis'` y vont : avec `REDIS_URL` réglé et aucun store de ce genre, rien n’est même connecté. Le bot se connecte au démarrage et dit quels stores il garde là :
+
+```text
+ℹ The store sessions is kept in Redis at localhost:6379
+```
+
+Chaque valeur est une clé, `sessions:<id du serveur>:<clé>` (`sessions:<clé>` pour un store global), avec le JSON de la valeur et son expiration, donc vous pouvez la regarder avec `redis-cli`. Dans `chapterjs dev`, chaque clé commence par `dev:`, pour qu’un bot de développement et un bot de production sur un même Redis ne lisent jamais les données l’un de l’autre. Donnez quand même à chacun son Redis, comme vous donnez à chacun son token : un Redis partagé, c’est une panne partagée, et la même mémoire.
+
+Redis est d’abord pour ce qui expire : sessions, codes, délais, brouillons, ce que plusieurs processus ou [plusieurs machines](/fr/run/start#gros-bots) doivent partager, et ce qui doit survivre à un hébergeur sans disque persistant. Des données durables y marchent aussi, avec une chose à savoir : les données ne suivent pas le store. Un store qui passe d’un fichier à Redis repart de ce que Redis contient, et `data/<nom>.json` reste sur le disque, sans être lu.
+
+Un store gardé dans Redis sans `REDIS_URL` est signalé au chargement des fichiers, et refuse de servir tant qu’il n’est pas réglé. Un Redis qui ne répond pas arrête `chapterjs dev` et `chapterjs start` avant qu’ils n’atteignent Discord, avec la raison. Une fois le bot lancé, un Redis qui disparaît est dit une fois avec `⚠`, le bot continue (les appels des stores gardés là échouent, la personne apprend que quelque chose s’est mal passé), la connexion est retentée toute seule avec une attente qui grandit, et `↻` dit quand il est revenu. `chapterjs test` n’a besoin d’aucun Redis : un store gardé là tourne en mémoire, comme les autres.
 
 ## En développement
 

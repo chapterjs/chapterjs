@@ -1,0 +1,166 @@
+---
+title: 'ranking()'
+description: 'Everything ranking() declares and does: the scope, the storage, the order, and each call'
+---
+
+`ranking()` declares a ranking, from any file of `src/`, and the name of its export is the name of the ranking. It takes an object, `RankingConfig`, or nothing.
+
+```ts src/levels/best.ts
+import { ranking } from 'chapterjs';
+
+export const best = ranking({ order: 'lowest' });
+```
+
+<Note>
+  How to use a ranking, and where its scores are, is in the [guide](/rankings). This page lists what exists.
+</Note>
+
+## ranking()
+
+```ts
+ranking(config?: RankingConfig): Ranking
+```
+
+Declares a ranking: a score per member, kept in order from one restart to the next. Export the result from any file of `src/`: the name of the export is the name of the ranking. Per server unless `scope: 'global'` is given, the highest score first unless `order: 'lowest'` is.
+
+## RankingConfig
+
+What a file gives to `ranking()`.
+
+<ResponseField name="scope" type="StoreScope">
+  `'guild'` (the default): a ranking per server, and a function that runs in a server reads and writes the ranking of that server, with nothing to say. `'global'`: one ranking for the whole bot.
+</ResponseField>
+
+<ResponseField name="storage" type="StoreStorage">
+  Where the scores are kept: `'file'` (the default), a file in the `data/` folder of the project, or `'redis'`, the Redis of `REDIS_URL` in `.env`, where a ranking is a sorted set.
+</ResponseField>
+
+<ResponseField name="order" type="RankingOrder">
+  Which end comes first: `'highest'` (the default), the highest score first, or `'lowest'`, the lowest first (a time, a number of tries).
+</ResponseField>
+
+### RankingOrder
+
+```ts
+type RankingOrder = 'highest' | 'lowest';
+```
+
+Which end of a ranking comes first.
+
+`StoreScope` and `StoreStorage` are the ones of [`store()`](/reference/store#storescope).
+
+## Ranking
+
+What `ranking()` returns: a declaration the framework finds in the exports of a file. It is a `ScopedRanking` for the server the code runs in, plus:
+
+### in()
+
+```ts
+in(guild: Guild | string): ScopedRanking
+```
+
+The same ranking, for one server: what a task, or a function that runs outside a server, uses to read and write the ranking of that server.
+
+## ScopedRanking
+
+A ranking, for one server or for the whole bot.
+
+### add()
+
+```ts
+add(id: string, points: number): Promise<number>
+```
+
+Adds `points` (negative to take away) to the score of `id`, starting from 0, in one go: nothing added meanwhile is lost, even by another process. Resolves with the new score.
+
+### set()
+
+```ts
+set(id: string, score: number): Promise<void>
+```
+
+Sets the score of `id`, whatever it was.
+
+### score()
+
+```ts
+score(id: string): Promise<number | undefined>
+```
+
+The score of `id`, or `undefined` when it has none.
+
+### rankOf()
+
+```ts
+rankOf(id: string): Promise<number | undefined>
+```
+
+Where `id` is, from 1, or `undefined` when it has no score.
+
+### top()
+
+```ts
+top(count?: number, skip?: number): Promise<RankingEntry[]>
+```
+
+The first `count` (10 by default) members, after skipping `skip` (0 by default): `top(10, 10)` is the second page.
+
+### remove()
+
+```ts
+remove(id: string): Promise<boolean>
+```
+
+Forgets the score of `id`. `true` when it had one.
+
+### size()
+
+```ts
+size(): Promise<number>
+```
+
+How many members have a score.
+
+### clear()
+
+```ts
+clear(): Promise<number>
+```
+
+Forgets every score. Resolves with how many there were.
+
+## RankingEntry
+
+A member of a ranking, as `top()` lists them.
+
+<ResponseField name="id" type="string" required>
+  The id given to `add()` or `set()`: a member, or anything else.
+</ResponseField>
+
+<ResponseField name="score" type="number" required>
+  The score.
+</ResponseField>
+
+<ResponseField name="rank" type="number" required>
+  Where it is, from 1. Equal scores are ordered by id.
+</ResponseField>
+
+## Where the scores live
+
+With `storage: 'file'`, one entry per member in `data/<name>.json`, written like the entries of a store (`[[server id, member id], score, null]`). `top()`, `rankOf()` and `size()` put every score of the server in order on each call; `add()` is an update of the entry, in one go.
+
+With `storage: 'redis'`, one sorted set per server: `<name>:<server id>`, `<name>` for a global ranking, `dev:` in front in `chapterjs dev`. `add()` is `ZINCRBY`, `set()` `ZADD`, `score()` `ZSCORE`, `rankOf()` `ZREVRANK` (`ZRANK` for `order: 'lowest'`), `top()` `ZREVRANGE … WITHSCORES` (`ZRANGE`), `remove()` `ZREM`, `size()` `ZCARD`, `clear()` `DEL`.
+
+Equal scores are ordered by the bytes of their id, as Redis does: in reverse for the highest first. Both storages give the same order.
+
+## Errors
+
+| When | Message |
+| --- | --- |
+| A ranking per server is used where no server is known | `<name> is a ranking per server, and this code does not run in one: use <name>.in(guild) to say which server, or declare the ranking with scope: 'global'.` |
+| A ranking that is not exported is used | `This ranking was not loaded by ChapterJS: a ranking is exported from a file of src/ (export const name = ranking()), and used once the bot started.` |
+| An id is empty, or not a text | `The id of a member of a ranking is a text that is not empty, got 12. Write an id as a text: member.id, not a number.` |
+| A score is not a number | `What add() adds is a number, got "3".` / `The score set() is a number, got null.` |
+| `top()` is given a count that is not a whole number | `How many top() lists is a whole number, 0 or more, got -1.` |
+| A store and a ranking have one name | `✗ src/b.ts (xp) There is already a store named xp, in src/a.ts: the name of the export is the name of the ranking, so rename one of them.` |
+| A ranking says `storage: 'redis'` and `REDIS_URL` is not set | `✗ src/b.ts (best) best is kept in Redis (storage: 'redis'), but REDIS_URL is not set: add it to .env (like redis://localhost:6379) and start again, or remove storage: 'redis' to keep its scores in data/.` |

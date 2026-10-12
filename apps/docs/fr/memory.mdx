@@ -13,7 +13,7 @@ Tout vit dans la mémoire du processus qui fait tourner votre bot. Rien n’est 
 | --- | --- | --- |
 | Serveurs, salons, fils, rôles, emojis personnalisés | Tous | Discord les annonce à la connexion du bot, puis chaque changement |
 | Votre bot en tant que membre de chaque serveur | Toujours | `guild.me` ne manque jamais, quelle que soit la limite sur les membres |
-| Membres | Les 100 vus le plus récemment dans chaque serveur ; 1000 quand un événement `memberLeave` en a besoin | Un serveur peut avoir des millions de membres, et un bot a rarement besoin des silencieux |
+| Membres | Les 100 vus le plus récemment dans chaque serveur | Un serveur peut avoir des millions de membres, et un bot a rarement besoin des silencieux |
 | Utilisateurs | Chacun de ceux qu’il a rencontrés, dans tous les serveurs | Ils viennent avec les membres et les messages |
 | Messages | Aucun | C’est de loin ce qu’un bot reçoit le plus, et la plupart des bots ne relisent jamais un vieux message |
 | Qui est dans un salon vocal | Tout le monde, tant que la personne y est, quand un fichier d’un [événement vocal](/fr/events/voice) en a besoin | Pour distinguer une arrivée d’un changement de salon ou d’un micro coupé, et donner le salon que quelqu’un a quitté |
@@ -21,7 +21,7 @@ Tout vit dans la mémoire du processus qui fait tourner votre bot. Rien n’est 
 « Vu » veut dire que Discord vient d’envoyer ce membre : il a écrit un message, utilisé une commande, est arrivé ou a changé. Un membre vu à nouveau devient le plus récent ; quand la limite est atteinte, celui vu il y a le plus longtemps laisse sa place.
 
 <Info>
-  Les nombres de ce tableau ne sont pas un réglage : ils suivent vos fichiers. Quand un fichier en demande plus (`memberLeave` et ses 1000 membres par serveur), le bot se souvient de plus, et rien n’est gardé pour ce qu’aucun fichier n’utilise. Enregistrer un fichier dans `chapterjs dev` applique le changement immédiatement.
+  Les nombres de ce tableau ne sont pas un réglage : ils suivent vos fichiers. Rien n’est gardé pour ce qu’aucun fichier n’utilise. Enregistrer un fichier dans `chapterjs dev` applique le changement immédiatement.
 </Info>
 
 ## Ce que cela veut dire pour votre code
@@ -58,7 +58,7 @@ export default command({
 });
 ```
 
-La seule chose qui dépend de ce dont le bot se souvient est le « tel qu’il était » : `member` dans `memberLeave` est `null` quand le bot n’a jamais vu ce membre, et `message` dans `messageDelete` est `null` puisque le bot ne garde aucun message.
+La seule chose qui dépend de ce dont le bot se souvient est le « tel qu’il était » : `message.before` dans `messageDelete` est `null` puisque le bot ne garde aucun message.
 
 ## Comment la mémoire est libérée
 

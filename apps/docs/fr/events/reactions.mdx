@@ -18,7 +18,7 @@ import { ROLES, ROLES_MESSAGE } from '../lib/reaction-roles';
 
 export default event({
   name: 'reactionAdd',
-  async run({ messageId, emoji, member, guild }) {
+  async run({ reaction: { messageId, emoji, member }, guild }) {
     if (messageId !== ROLES_MESSAGE || !emoji.name) return;
     const name = ROLES[emoji.name];
     const role = [...guild.roles.values()].find(role => role.name === name);
@@ -27,9 +27,9 @@ export default event({
 });
 ```
 
-C’est tout. Comme les [événements sur les messages](/fr/events/messages), un fichier de réactions ne tourne par défaut **que pour les personnes, sur les serveurs** : les réactions des bots, le vôtre compris, sont laissées de côté, donc `guild`, `channel` et `member` sont toujours là.
+C’est tout. Comme les [événements sur les messages](/fr/events/messages), un fichier de réactions ne tourne par défaut **que pour les personnes, sur les serveurs** : les réactions des bots, le vôtre compris, sont laissées de côté, donc `guild`, et le `channel` et le `member` de la réaction, sont toujours là.
 
-`emoji` est un [`ReactionEmoji`](/fr/reference/data#reactionemoji) : `name` est le caractère d’un emoji standard (`'👍'`) ou le nom d’un emoji personnalisé, qui a aussi un `id`.
+Votre fonction reçoit la `reaction` et le serveur, `guild`. `reaction.emoji` est un [`ReactionEmoji`](/fr/reference/data#reactionemoji) : `name` est le caractère d’un emoji standard (`'👍'`) ou le nom d’un emoji personnalisé, qui a aussi un `id`.
 
 <Note>
   Les événements de cette page, avec tout ce qu’ils donnent, sont dans la [référence](/fr/reference/events#reactionadd).
@@ -44,7 +44,7 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'reactionAdd',
-  async run({ emoji, channel, messageId }) {
+  async run({ reaction: { emoji, channel, messageId } }) {
     if (emoji.name !== '⭐') return;
     const message = await channel.fetchMessage(messageId);
     console.log(`En favori : ${message.content}`);
@@ -56,7 +56,7 @@ Ne le demandez que quand vous en avez besoin, après avoir vérifié l’emoji :
 
 ## Réactions retirées
 
-`reactionRemove` tourne quand quelqu’un retire sa réaction. Discord n’envoie pas le membre avec, donc `member` n’est là que quand le bot se souvient de cette personne : demandez-le avec `fetchMember()`.
+`reactionRemove` tourne quand quelqu’un retire sa réaction. Discord n’envoie pas le membre avec, donc `reaction.member` n’est là que quand le bot se souvient de cette personne : demandez-le avec `fetchMember()`.
 
 ```ts src/events/roles.ts
 import { event } from 'chapterjs';
@@ -64,7 +64,7 @@ import { ROLES, ROLES_MESSAGE } from '../lib/reaction-roles';
 
 export default event({
   name: 'reactionRemove',
-  async run({ messageId, emoji, user, guild }) {
+  async run({ reaction: { messageId, emoji, user }, guild }) {
     if (messageId !== ROLES_MESSAGE || !emoji.name) return;
     const name = ROLES[emoji.name];
     const role = [...guild.roles.values()].find(role => role.name === name);
@@ -75,9 +75,9 @@ export default event({
 });
 ```
 
-`user` est toujours là : quand Discord ne donne que l’identifiant de quelqu’un que le bot ne connaît pas, il le demande une fois avant que votre fichier tourne.
+`reaction.user` est toujours là : quand Discord ne donne que l’identifiant de quelqu’un que le bot ne connaît pas, il le demande une fois avant que votre fichier tourne.
 
-`reactionClear` tourne quand toutes les réactions d’un message sont retirées d’un coup (`emoji` vaut `null`), ou toutes celles d’un emoji (`emoji` est cet emoji).
+`reactionClear` tourne quand toutes les réactions d’un message sont retirées d’un coup, ou toutes celles d’un emoji : il donne `reactions`, dont l’`emoji` vaut `null` dans le premier cas et cet emoji dans le second.
 
 ## Options
 
@@ -92,7 +92,7 @@ import { event } from 'chapterjs';
 export default event({
   name: 'reactionAdd',
   where: 'both',
-  run({ user, emoji, guild }) {
+  run({ reaction: { user, emoji }, guild }) {
     console.log(`${user.username} a réagi ${emoji.name} ${guild ? `sur ${guild.name}` : 'en privé'}`);
   },
 });
@@ -100,14 +100,14 @@ export default event({
 
 ## Sondages
 
-`pollVoteAdd` et `pollVoteRemove` tournent quand quelqu’un vote dans un sondage, ou retire son vote. `answerId` dit pour quelle réponse : Discord les numérote dans l’ordre du sondage, `1` pour la première.
+`pollVoteAdd` et `pollVoteRemove` tournent quand quelqu’un vote dans un sondage, ou retire son vote. Ils donnent le `vote` et le serveur ; `vote.answerId` dit pour quelle réponse : Discord les numérote dans l’ordre du sondage, `1` pour la première.
 
 ```ts src/events/log.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'pollVoteAdd',
-  run({ user, answerId, channel }) {
+  run({ vote: { user, answerId, channel } }) {
     console.log(`${user.username} a voté pour la réponse ${answerId} dans #${channel.name}`);
   },
 });
@@ -117,14 +117,14 @@ Ils prennent `where` aussi. Un sondage s’envoie avec un message : voir [Envoye
 
 ## Saisie
 
-`typingStart` tourne quand quelqu’un commence à écrire dans un salon. `startedAt` dit quand.
+`typingStart` tourne quand quelqu’un commence à écrire dans un salon. Il donne `typing` et le serveur ; `typing.startedAt` dit quand.
 
 ```ts src/events/log.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'typingStart',
-  run({ member, channel, startedAt }) {
+  run({ typing: { member, channel, startedAt } }) {
     console.log(`${member.displayName} a commencé à écrire dans #${channel.name} à ${startedAt.toLocaleTimeString()}`);
   },
 });

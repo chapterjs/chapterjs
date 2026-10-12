@@ -18,7 +18,7 @@ import { ROLES, ROLES_MESSAGE } from '../lib/reaction-roles';
 
 export default event({
   name: 'reactionAdd',
-  async run({ messageId, emoji, member, guild }) {
+  async run({ reaction: { messageId, emoji, member }, guild }) {
     if (messageId !== ROLES_MESSAGE || !emoji.name) return;
     const name = ROLES[emoji.name];
     const role = [...guild.roles.values()].find(role => role.name === name);
@@ -27,9 +27,9 @@ export default event({
 });
 ```
 
-That is all. Like the [events about messages](/events/messages), a reaction file only runs **for people, in servers** by default: reactions of bots, yours included, are left out, so `guild`, `channel` and `member` are always there.
+That is all. Like the [events about messages](/events/messages), a reaction file only runs **for people, in servers** by default: reactions of bots, yours included, are left out, so `guild`, and the `channel` and `member` of the reaction, are always there.
 
-`emoji` is a [`ReactionEmoji`](/reference/data#reactionemoji): `name` is the character of a standard emoji (`'👍'`) or the name of a custom one, which also has an `id`.
+Your function receives the `reaction` and the server, `guild`. `reaction.emoji` is a [`ReactionEmoji`](/reference/data#reactionemoji): `name` is the character of a standard emoji (`'👍'`) or the name of a custom one, which also has an `id`.
 
 <Note>
   The events of this page, with everything they give, are in the [reference](/reference/events#reactionadd).
@@ -44,7 +44,7 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'reactionAdd',
-  async run({ emoji, channel, messageId }) {
+  async run({ reaction: { emoji, channel, messageId } }) {
     if (emoji.name !== '⭐') return;
     const message = await channel.fetchMessage(messageId);
     console.log(`Starred: ${message.content}`);
@@ -56,7 +56,7 @@ Only ask when you need it, after checking the emoji: a request per reaction adds
 
 ## Removed reactions
 
-`reactionRemove` runs when someone takes their reaction back. Discord does not send the member with it, so `member` is only there when the bot remembers that person: ask for it with `fetchMember()`.
+`reactionRemove` runs when someone takes their reaction back. Discord does not send the member with it, so `reaction.member` is only there when the bot remembers that person: ask for it with `fetchMember()`.
 
 ```ts src/events/roles.ts
 import { event } from 'chapterjs';
@@ -64,7 +64,7 @@ import { ROLES, ROLES_MESSAGE } from '../lib/reaction-roles';
 
 export default event({
   name: 'reactionRemove',
-  async run({ messageId, emoji, user, guild }) {
+  async run({ reaction: { messageId, emoji, user }, guild }) {
     if (messageId !== ROLES_MESSAGE || !emoji.name) return;
     const name = ROLES[emoji.name];
     const role = [...guild.roles.values()].find(role => role.name === name);
@@ -75,9 +75,9 @@ export default event({
 });
 ```
 
-`user` is always there: when Discord only gives the id of someone the bot does not know, it asks for them once before your file runs.
+`reaction.user` is always there: when Discord only gives the id of someone the bot does not know, it asks for them once before your file runs.
 
-`reactionClear` runs when every reaction of a message is removed at once (`emoji` is `null`), or every reaction of one emoji (`emoji` is that emoji).
+`reactionClear` runs when every reaction of a message is removed at once, or every reaction of one emoji: it gives `reactions`, whose `emoji` is `null` in the first case and that emoji in the second.
 
 ## Options
 
@@ -92,7 +92,7 @@ import { event } from 'chapterjs';
 export default event({
   name: 'reactionAdd',
   where: 'both',
-  run({ user, emoji, guild }) {
+  run({ reaction: { user, emoji }, guild }) {
     console.log(`${user.username} reacted ${emoji.name} ${guild ? `in ${guild.name}` : 'in private'}`);
   },
 });
@@ -100,14 +100,14 @@ export default event({
 
 ## Polls
 
-`pollVoteAdd` and `pollVoteRemove` run when someone votes in a poll, or takes their vote back. `answerId` tells which answer: Discord numbers them in the order of the poll, `1` for the first one.
+`pollVoteAdd` and `pollVoteRemove` run when someone votes in a poll, or takes their vote back. They give the `vote` and the server; `vote.answerId` tells which answer: Discord numbers them in the order of the poll, `1` for the first one.
 
 ```ts src/events/log.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'pollVoteAdd',
-  run({ user, answerId, channel }) {
+  run({ vote: { user, answerId, channel } }) {
     console.log(`${user.username} voted for answer ${answerId} in #${channel.name}`);
   },
 });
@@ -117,14 +117,14 @@ They take `where` too. A poll is sent with a message: see [Sending messages](/me
 
 ## Typing
 
-`typingStart` runs when someone starts writing in a channel. `startedAt` says when.
+`typingStart` runs when someone starts writing in a channel. It gives `typing` and the server; `typing.startedAt` says when.
 
 ```ts src/events/log.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'typingStart',
-  run({ member, channel, startedAt }) {
+  run({ typing: { member, channel, startedAt } }) {
     console.log(`${member.displayName} started typing in #${channel.name} at ${startedAt.toLocaleTimeString()}`);
   },
 });

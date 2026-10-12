@@ -26,7 +26,7 @@ export default event({
 });
 ```
 
-Compare with a command: an event has no description and no options to declare, only its `name` and `run`. And the function receives what the event is about: here a `member` (who joined) and a `guild` (where). Hover `member` in your editor: it is a `GuildMember`, with everything the previous pages showed. The same `import { event } from 'chapterjs'` line, with `name: 'roleDelete'`, would give your function a `role`.
+Compare with a command: an event has no description and no options to declare, only its `name` and `run`. And the function receives what the event is about: here a `member` (who joined) and a `guild` (where). Hover `member` in your editor: it is a `GuildMember`, with everything the previous pages showed. The same `import { event } from 'chapterjs'` line, with `name: 'roleDelete'`, would give your function a `role`. Every event works this way: what it is about, and the server, `guild`. Nothing else, so you never search for where something is.
 
 `guild.systemChannelId` is the channel where Discord itself posts "X joined the server", when the server has one: a sensible default for a welcome. `guild.channels.get()` reads it from what the bot knows, and `isTextBased()` makes sure a message can go there.
 
@@ -106,29 +106,29 @@ export default event({
 | ------------------------------------------------- | --------------------------------------------------- | ------------------------------------------ |
 | `ready`                                           | The bot is connected                                | `user`, `guilds`                           |
 | `guildJoin`, `guildLeave`                         | The bot is added to a server, or removed            | `guild`                                    |
-| `memberJoin`, `memberUpdate`, `memberLeave`       | Someone joins, changes (nickname, roles...), leaves | `member`, `guild` (and `user` for a leave) |
+| `memberJoin`, `memberUpdate`, `memberLeave`       | Someone joins, changes (nickname, roles...), leaves | `member`, `guild` (`user` for a leave)     |
 | `roleCreate`, `roleUpdate`, `roleDelete`          | A role is created, changed, deleted                 | `role`, `guild`                            |
 | `channelCreate`, `channelUpdate`, `channelDelete` | A channel is created, changed, deleted              | `channel`, `guild`                         |
-| `messageCreate`, `messageUpdate`, `messageDelete` | A message is sent, edited, deleted                  | `message` and more: the next page          |
+| `messageCreate`, `messageUpdate`, `messageDelete` | A message is sent, edited, deleted                  | `message`, `guild`: the next page          |
 | `reactionAdd`, `voiceJoin`, `banAdd`...           | A reaction, someone in voice, a ban, and more       | Two pages from here                        |
 
 A `name` that is not an event is underlined in the editor, then reported when it loads, with the closest event name when there is one. The exact contents of each are in the [Reference](/reference/events).
 
 ### What was deleted
 
-For something that no longer exists, the event gives it to you **as it was**: `roleDelete` gives the role, `channelDelete` the channel, `guildLeave` the server. The bot remembered them all, so they are there. `memberLeave` is the exception: a server can have more members than the bot remembers, so `member` is `null` when the bot never saw that person, and `user` (the account) is always there.
+For something that no longer exists, the event gives it to you **as it was**: `roleDelete` gives the role, `channelDelete` the channel, `guildLeave` the server. The bot remembered them all, so they are there. `memberLeave` gives the account of who left, `user`: a server can have more members than the bot remembers, so the member they were may be long forgotten, but the account is always there.
 
 ```ts src/events/bye.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'memberLeave',
-  async run({ user, member, guild }) {
+  async run({ user, guild }) {
     const channel = guild.systemChannelId
       ? guild.channels.get(guild.systemChannelId)
       : undefined;
     if (!channel?.isTextBased()) return;
-    const name = member?.displayName ?? user.displayName;
+    const name = user.displayName;
     await channel.send(`${name} left. We are ${guild.memberCount ?? '?'} now.`);
   },
 });

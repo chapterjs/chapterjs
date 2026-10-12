@@ -269,6 +269,44 @@ export const onJoin = event({
     expect(output).toContain('✗ 4 of 4 checks failed');
   });
 
+  it('runs a store kept in Redis in memory, with no REDIS_URL and no Redis', () => {
+    const cwd = full({
+      'src/sessions.ts': `import { command, ranking, store } from 'chapterjs';
+export const sessions = store<number>({ storage: 'redis', expires: '1h' });
+export const visitors = ranking({ storage: 'redis' });
+export default command({
+  name: 'visit',
+  description: 'Counts your visits',
+  async run({ interaction, user }) {
+    const count = await sessions.update(user.id, (n = 0) => n + 1);
+    await visitors.add(user.id, 1);
+    await interaction.reply(\`Visit \${count}, rank \${await visitors.rankOf(user.id)}\`);
+  },
+});
+`,
+      'src/visit.test.ts': `import { scenario } from 'chapterjs/test';
+import visit from './sessions';
+export default [
+  scenario('counts from one on each scenario', async bot => {
+    (await bot.use(visit)).says('Visit 1, rank 1');
+    (await bot.use(visit)).says('Visit 2, rank 1');
+  }),
+  scenario('starts empty again', async bot => {
+    (await bot.use(visit)).says('Visit 1, rank 1');
+  }),
+];
+`,
+    });
+    const { code, output } = runTest(cwd);
+    expect(code, output).toBe(0);
+    expect(output).toContain(
+      '3 commands, 2 events, 2 components, 1 task, 2 stores, 1 ranking loaded'
+    );
+    expect(output).not.toContain('Redis');
+    expect(output).toContain('✓ Tested src/visit.test.ts');
+    expect(existsSync(join(cwd, 'data'))).toBe(false);
+  });
+
   it('says which events it can not make happen yet', () => {
     const cwd = project({
       'src/polls.ts': `import { event } from 'chapterjs';

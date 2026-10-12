@@ -108,6 +108,40 @@ export default command({
 });
 ```
 
+Three more calls save you a loop. `increment(key)` adds 1 to a number, starting from 0, and gives the new number back: a counter in one line. `getMany([a, b])` reads several keys at once, `setMany([[a, 1], [b, 2]])` keeps several values at once, and `deleteAll(prefix)` forgets everything under a prefix. Why not `update(key, n => n + 1)` for a counter? It works too: `increment()` only says it in one word. And when two people trigger it at the same instant, neither loses the other's change: `update()` reads and keeps in one go, even if the bot runs on several processes.
+
+## A ranking
+
+A store keeps values by key, in no order. To know who wrote the most messages, you would read every key and sort them yourself, each time. A **ranking** keeps a score per member, already in order. Create `src/activity/talkers.ts`:
+
+```ts src/activity/talkers.ts
+import { command, event, ranking } from 'chapterjs';
+
+export const talkers = ranking();
+
+export const count = event({
+  name: 'messageCreate',
+  async run({ message }) {
+    await talkers.add(message.author.id, 1);
+  },
+});
+
+export default command({
+  name: 'talkers',
+  description: 'Shows who wrote the most messages here',
+  async run({ interaction }) {
+    const best = await talkers.top(5);
+    const lines = best.map(entry => `${entry.rank}. <@${entry.id}>: ${entry.score} messages`);
+    await interaction.reply({
+      content: lines.length > 0 ? lines.join('\n') : 'Nobody wrote anything yet.',
+      ephemeral: true,
+    });
+  },
+});
+```
+
+One file, two declarations: an event that gives a point for each message, and a command that shows the first five. `add()` starts from 0, `top(5)` gives the first five with their `rank`, from 1. Like a store, the ranking is per server without saying so, kept in `data/talkers.json`, and named by its export. `rankOf(id)` says where one member is; `ranking({ order: 'lowest' })` puts the lowest score first, for a time or a number of tries.
+
 ## Points of attention
 
 - **A store is for what fits in memory.** The bot keeps the data in memory and the file is its copy. Settings, scores, warnings, who opened what: yes. Millions of rows: a database.
@@ -115,13 +149,16 @@ export default command({
 - **Two stores can't have one name.** They would share a file: the second one is reported when the files load, and left out.
 - **Saving a file keeps the data.** A store is tied to its name: change the code, the data stays. Delete `data/<name>.json` to start empty.
 - **On several processes**, the process you started keeps the data for the others: nothing to set up, and nothing to think about.
+- **Redis, when you want it.** `store({ storage: 'redis' })` or `ranking({ storage: 'redis' })`, and `REDIS_URL` in `.env`: the data goes to your Redis instead of `data/`, the calls stay the same. Useful when several machines share the data, or when your host has no disk that lasts. See [Storage](/storage#in-redis).
+- **A store and a ranking can't share a name**, for the same reason as two stores.
 
 ## Recap
 
 - `export const name = store<T>({ scope?, expires? })`: per server by default, forever by default.
 - In a server, the key is yours; elsewhere, `name.in(guild)`.
-- `update()` is read, change and keep in one go; `entries()` lists; `expires` on the store or on one value.
-- One JSON file per store in `data/`, written for you.
+- `update()` is read, change and keep in one go; `increment()` counts; `entries()` lists; `getMany()`, `setMany()`, `deleteAll()` work on several values; `expires` on the store or on one value.
+- `export const name = ranking({ order? })`: a score per member, in order; `add()`, `top()`, `rankOf()`.
+- One JSON file per store or ranking in `data/`, written for you, or Redis with `storage: 'redis'`.
 
 <CardGroup cols={2}>
   <Card title="Organising your files" icon="folder-tree" href="/tutorial/organising">

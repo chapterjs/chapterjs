@@ -135,7 +135,8 @@
                 "group": "Storage",
                 "icon": "database",
                 "pages": [
-                  "storage"
+                  "storage",
+                  "rankings"
                 ]
               },
               {
@@ -305,6 +306,7 @@
                   "reference/layout",
                   "reference/task",
                   "reference/store",
+                  "reference/ranking",
                   "reference/presence",
                   "reference/messages",
                   "reference/testing"
@@ -463,7 +465,8 @@
                 "group": "Stockage",
                 "icon": "database",
                 "pages": [
-                  "fr/storage"
+                  "fr/storage",
+                  "fr/rankings"
                 ]
               },
               {
@@ -633,6 +636,7 @@
                   "fr/reference/layout",
                   "fr/reference/task",
                   "fr/reference/store",
+                  "fr/reference/ranking",
                   "fr/reference/presence",
                   "fr/reference/messages",
                   "fr/reference/testing"

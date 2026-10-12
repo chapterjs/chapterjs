@@ -92,16 +92,16 @@ export default event({
 
 ## Deleted and edited messages
 
-`messageUpdate` gives the message after the edit. `messageDelete` is different: the message no longer exists, so you get its id, the channel and the server it was in, and the message itself only when the bot remembered it, which it does not by default (messages are what a bot receives the most, and most bots never read an old one). Always use `messageId`:
+`messageUpdate` gives the message after the edit. `messageDelete` is different: the message no longer exists, so its `message` is what is left of it: its `id`, the `channel` it was in, and `before`, the message itself, only when the bot remembered it, which it does not by default (messages are what a bot receives the most, and most bots never read an old one). Always use `message.id`:
 
 ```ts src/events/audit.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'messageDelete',
-  run({ messageId, channel, guild }) {
+  run({ message, guild }) {
     console.log(
-      `Message ${messageId} deleted in #${channel.name} of ${guild.name}`
+      `Message ${message.id} deleted in #${message.channel.name} of ${guild.name}`
     );
   },
 });
@@ -121,7 +121,7 @@ export default event({
 - A `messageCreate` event runs for messages written by people, in servers, by default: no `author.bot` check to write.
 - The Message Content Intent is needed to read `message.content` for `messageCreate` and `messageUpdate`.
 - `bots: true` and `where: 'dm'` or `where: 'both'` widen what a file hears, and the types follow.
-- `messageDelete` gives the id, the channel and the server; the message itself is `null`.
+- `messageDelete` gives what is left of the message (`id`, `channel`) and the server; `message.before` is `null`.
 
 <CardGroup cols={2}>
   <Card title="Reactions and voice" icon="smile-plus" href="/tutorial/reactions-and-voice">

@@ -55,8 +55,8 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'inviteCreate',
-  run({ invite, channel }) {
-    console.log(`${invite.inviter?.username ?? 'Quelqu’un'} a créé ${invite.url} pour #${channel.name}`);
+  run({ invite }) {
+    console.log(`${invite.inviter?.username ?? 'Quelqu’un'} a créé ${invite.url} pour #${invite.channel?.name}`);
   },
 });
 ```
@@ -81,7 +81,7 @@ export default event({
 
 ## Fils
 
-Un fil créé, modifié ou supprimé est un salon : [`channelCreate`, `channelUpdate` et `channelDelete`](/fr/reference/events#channelcreate) tournent pour lui. Qui est dans un fil a deux événements à lui : `threadMemberJoin` (avec `thread` et `member`) et `threadMemberLeave` (avec `thread` et `userId` ; `user` et `member` quand le bot les connaît).
+Un fil créé, modifié ou supprimé est un salon : [`channelCreate`, `channelUpdate` et `channelDelete`](/fr/reference/events#channelcreate) tournent pour lui. Qui est dans un fil a deux événements à lui : `threadMemberJoin` (avec `thread` et `member`) et `threadMemberLeave` (avec `thread` et `userId` ; `member` quand le bot s’en souvient), tous deux avec `guild`.
 
 ```ts src/events/hello.ts
 import { event } from 'chapterjs';
@@ -98,14 +98,15 @@ Ils ont besoin du **Server Members Intent** : sans lui, Discord ne dit que quand
 
 ## Présences
 
-`presenceUpdate` tourne quand le statut ou l’activité de quelqu’un change : en ligne, absent, en train de jouer. `presence` est une [`UserPresence`](/fr/reference/data#userpresence).
+`presenceUpdate` tourne quand le statut ou l’activité de quelqu’un change : en ligne, absent, en train de jouer. `presence` a les champs d’une [`UserPresence`](/fr/reference/data#userpresence) (`status`, `activities`, `clientStatus`), plus à qui elle est : `userId`, et `user` et `member` quand le bot les connaît.
 
 ```ts src/events/games.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'presenceUpdate',
-  run({ userId, user, presence }) {
+  run({ presence }) {
+    const { userId, user } = presence;
     const game = presence.activities.find(activity => activity.type === 0);
     if (game) console.log(`${user?.username ?? userId} joue à ${game.name}`);
   },

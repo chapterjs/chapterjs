@@ -10,14 +10,14 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceJoin',
-  async run({ member, channel }) {
+  async run({ voice: { member, channel } }) {
     // Un salon vocal a son propre chat écrit : le bot y écrit.
     await channel.send(`${member.displayName} a rejoint ${channel.name}.`);
   },
 });
 ```
 
-C’est tout. `member` est qui a rejoint, `channel` le [`VoiceChannel`](/fr/reference/channels/voice) (un salon de conférence en est un aussi, avec `channel.isStage`), et `voice` son [`VoiceState`](/fr/reference/data#voicestate) : micro coupé, casque coupé, en stream, caméra allumée...
+C’est tout. Votre fonction reçoit `voice` et le serveur, `guild` : `voice.member` est qui a rejoint, `voice.channel` le [`VoiceChannel`](/fr/reference/channels/voice) (un salon de conférence en est un aussi, avec `channel.isStage`), et `voice.state` son [`VoiceState`](/fr/reference/data#voicestate) : micro coupé, casque coupé, en stream, caméra allumée...
 
 <Note>
   Les quatre événements vocaux, avec ce qu’ils donnent, sont dans la [référence](/fr/reference/events#voicejoin). Votre bot qui rejoint lui-même un salon vocal, pour y jouer du son, est dans [Jouer en vocal](/fr/voice).
@@ -29,10 +29,10 @@ Discord envoie une seule sorte de changement pour le vocal ; ChapterJS vous dit 
 
 | Événement | Tourne quand | Votre fonction reçoit |
 | --- | --- | --- |
-| `voiceJoin` | Quelqu’un rejoint un salon vocal | `member`, `channel`, `voice`, `guild` |
-| `voiceLeave` | Quelqu’un part, ou est déconnecté | `member`, `channel` (celui quitté), `voice` (tel qu’il était), `guild` |
-| `voiceMove` | Quelqu’un va dans un autre salon vocal, ou y est déplacé | `member`, `from`, `to`, `voice`, `guild` |
-| `voiceUpdate` | Quelqu’un dans un salon change : micro, casque, stream, caméra | `member`, `channel`, `voice` (maintenant), `before` (tel qu’il était), `guild` |
+| `voiceJoin` | Quelqu’un rejoint un salon vocal | `voice` (`member`, `channel`, `state`), `guild` |
+| `voiceLeave` | Quelqu’un part, ou est déconnecté | `voice` (`member`, `channel` quitté, `state` tel qu’il était), `guild` |
+| `voiceMove` | Quelqu’un va dans un autre salon vocal, ou y est déplacé | `voice` (`member`, `from`, `to`, `state`), `guild` |
+| `voiceUpdate` | Quelqu’un dans un salon change : micro, casque, stream, caméra | `voice` (`member`, `channel`, `state` maintenant, `before` tel qu’il était), `guild` |
 
 Un changement de salon n’est qu’un `voiceMove` : pas un `voiceLeave` suivi d’un `voiceJoin`. Et `voiceUpdate` ne tourne jamais pour une arrivée, un départ ou un changement de salon.
 
@@ -41,8 +41,8 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceUpdate',
-  async run({ member, channel, voice, before }) {
-    if (voice.selfStream && !before.selfStream) {
+  async run({ voice: { member, channel, state, before } }) {
+    if (state.selfStream && !before.selfStream) {
       await channel.send(`${member.displayName} est en direct !`);
     }
   },
@@ -58,7 +58,7 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceLeave',
-  run({ member, channel, guild }) {
+  run({ voice: { member, channel }, guild }) {
     console.log(`${member.displayName} a quitté ${channel.name} de ${guild.name}`);
   },
 });

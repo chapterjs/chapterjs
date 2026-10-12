@@ -18,6 +18,8 @@ export default event({
 
 C’est tout. `chapterjs dev` trouve la déclaration et lance votre fonction chaque fois que quelqu’un rejoint votre serveur de test. Rien à enregistrer, aucune liste à tenir à jour, et aucun type à écrire : votre éditeur sait déjà que `member` est un [`GuildMember`](/fr/reference/member) et `guild` un [`Guild`](/fr/reference/guild).
 
+Chaque événement donne les deux mêmes choses : **ce dont il parle** (`member` ici, `message`, `role`, `reaction`, `voice`...) et **le serveur** où il s’est produit, `guild`. Rien d’autre, plus `t` quand votre projet a des [langues](/fr/translated-messages). Ce que donne chaque événement est listé dans un seul tableau de la [référence](/fr/reference/events#ce-que-donne-chaque-événement).
+
 ## Le nom est l’événement
 
 - **`name` est l’événement.** C’est l’un des [événements](/fr/reference/events), et votre éditeur les propose pendant que vous tapez ; un autre mot est souligné, et signalé avec le nom d’événement le plus proche quand le fichier se charge.
@@ -56,26 +58,26 @@ Votre fonction reçoit des [structures](/fr/reference) que vous pouvez lire et u
 
 Ils restent là pendant que votre fonction tourne, même si la personne part ou que le salon est supprimé entre-temps : votre fonction les garde tels qu’ils étaient. Le bot garde aussi `guild.me` à part de [ce dont il se souvient](/fr/memory), donc il est là dans un serveur de n’importe quelle taille.
 
-Ce qui peut être `null` est ce qui peut vraiment ne pas exister : un salon sans catégorie (`channel.parent`), un message jamais modifié (`message.editedAt`), un nombre de membres que Discord n’a jamais envoyé (`guild.memberCount`), un membre que le bot n’a jamais vu dans `memberLeave`.
+Ce qui peut être `null` est ce qui peut vraiment ne pas exister : un salon sans catégorie (`channel.parent`), un message jamais modifié (`message.editedAt`), un nombre de membres que Discord n’a jamais envoyé (`guild.memberCount`), un message supprimé dont le bot ne se souvenait pas (`message.before` dans `messageDelete`).
 
 ### Ce qui a été supprimé
 
-Les événements sur quelque chose qui n’existe plus donnent son identifiant, et la chose elle-même **telle qu’elle était** :
+Les événements sur quelque chose qui n’existe plus donnent la chose elle-même **telle qu’elle était** :
 
 - `roleDelete` : `role` est toujours là, le bot connaît chaque rôle de ses serveurs.
 - `channelDelete` : `channel` est le salon ou le fil tel qu’il était.
 - `guildLeave` : `guild` est le serveur tel qu’il était.
-- `memberLeave` : `member` est `null` quand le bot n’a jamais vu ce membre. `user` est toujours là.
+- `memberLeave` : `user` est le compte de la personne partie, toujours là.
 
 ```ts src/events/goodbye.ts
 import { event } from 'chapterjs';
 
 export default event({
   name: 'memberLeave',
-  async run({ user, guild, member }) {
+  async run({ user, guild }) {
     const channel = guild.systemChannelId ? guild.channels.get(guild.systemChannelId) : undefined;
     if (!channel || !channel.isTextBased()) return;
-    const name = member?.displayName ?? user.displayName;
+    const name = user.displayName;
     await channel.send(`${name} a quitté ${guild.name}.`);
   },
 });

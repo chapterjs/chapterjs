@@ -10,14 +10,14 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceJoin',
-  async run({ member, channel }) {
+  async run({ voice: { member, channel } }) {
     // A voice channel has its own text chat: the bot writes there.
     await channel.send(`${member.displayName} joined ${channel.name}.`);
   },
 });
 ```
 
-That is all. `member` is who joined, `channel` the [`VoiceChannel`](/reference/channels/voice) (a stage channel is one too, with `channel.isStage`), and `voice` their [`VoiceState`](/reference/data#voicestate): muted, deafened, streaming, camera on...
+That is all. Your function receives `voice` and the server, `guild`: `voice.member` is who joined, `voice.channel` the [`VoiceChannel`](/reference/channels/voice) (a stage channel is one too, with `channel.isStage`), and `voice.state` their [`VoiceState`](/reference/data#voicestate): muted, deafened, streaming, camera on...
 
 <Note>
   The four voice events, with what they give, are in the [reference](/reference/events#voicejoin). Your bot joining a voice channel itself, to play sound there, is in [Playing in voice](/voice).
@@ -29,10 +29,10 @@ Discord sends one kind of change for voice; ChapterJS tells you what it was, by 
 
 | Event | Runs when | Your function receives |
 | --- | --- | --- |
-| `voiceJoin` | Someone joins a voice channel | `member`, `channel`, `voice`, `guild` |
-| `voiceLeave` | Someone leaves, or is disconnected | `member`, `channel` (the one they left), `voice` (as it was), `guild` |
-| `voiceMove` | Someone goes to another voice channel, or is moved | `member`, `from`, `to`, `voice`, `guild` |
-| `voiceUpdate` | Someone in a channel changes: mute, deafen, stream, camera | `member`, `channel`, `voice` (now), `before` (as it was), `guild` |
+| `voiceJoin` | Someone joins a voice channel | `voice` (`member`, `channel`, `state`), `guild` |
+| `voiceLeave` | Someone leaves, or is disconnected | `voice` (`member`, `channel` they left, `state` as it was), `guild` |
+| `voiceMove` | Someone goes to another voice channel, or is moved | `voice` (`member`, `from`, `to`, `state`), `guild` |
+| `voiceUpdate` | Someone in a channel changes: mute, deafen, stream, camera | `voice` (`member`, `channel`, `state` now, `before` as it was), `guild` |
 
 A move is only a `voiceMove`: not a `voiceLeave` followed by a `voiceJoin`. And `voiceUpdate` never runs for a join, a leave or a move.
 
@@ -41,8 +41,8 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceUpdate',
-  async run({ member, channel, voice, before }) {
-    if (voice.selfStream && !before.selfStream) {
+  async run({ voice: { member, channel, state, before } }) {
+    if (state.selfStream && !before.selfStream) {
       await channel.send(`${member.displayName} is live!`);
     }
   },
@@ -58,7 +58,7 @@ import { event } from 'chapterjs';
 
 export default event({
   name: 'voiceLeave',
-  run({ member, channel, guild }) {
+  run({ voice: { member, channel }, guild }) {
     console.log(`${member.displayName} left ${channel.name} of ${guild.name}`);
   },
 });

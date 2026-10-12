@@ -166,7 +166,7 @@ BOT_TOKEN=
 DEV_GUILD_ID=
 ```
 
-Où les trouver est dans [Votre application Discord](/fr/setup/discord-application). Le vrai environnement l’emporte sur le fichier : chez un hébergeur, vous donnez `BOT_TOKEN` dans ses réglages et n’envoyez aucun `.env`.
+Où les trouver est dans [Votre application Discord](/fr/setup/discord-application). Le vrai environnement l’emporte sur le fichier : chez un hébergeur, vous donnez `BOT_TOKEN` dans ses réglages et n’envoyez aucun `.env`. Deux de plus, `REDIS_URL` et `REDIS_PASSWORD`, ne comptent que quand un store garde ses données dans Redis : voir [Stockage](/fr/storage#dans-redis).
 
 <Warning>
   Votre token est un mot de passe : ne le partagez jamais, et ne committez

@@ -34,9 +34,10 @@ Runs the bot of the current folder on the test server of `DEV_GUILD_ID`, and rel
 
 | Step | What happens |
 | --- | --- |
-| `.env` | `BOT_TOKEN` and `DEV_GUILD_ID` are read and checked. Every problem is printed, then the command stops. |
+| `.env` | `BOT_TOKEN` and `DEV_GUILD_ID` are read and checked, and `REDIS_URL` and `REDIS_PASSWORD` when they are there. Every problem is printed, then the command stops. |
 | Types | `.chapterjs/` is written, like `chapterjs sync`. |
 | Files | Every file of `src/` is loaded, and what they export with `command()`, `event()`, `button()`... is read. A broken file or declaration is reported and left out. |
+| Redis | When a store says `storage: 'redis'`, Redis must answer: otherwise the reason is printed and the command stops. Every key written from `dev` starts with `dev:`. |
 | Token | Checked with Discord. |
 | Test server | The bot must be in it: otherwise an invite link is printed and, in a terminal, the command waits. |
 | Privileged intents | Those the files need must be enabled: otherwise the files and the link are printed and, in a terminal, the command waits. |
@@ -72,9 +73,10 @@ chapterjs start [--processes <n>]
 
 | Step | What happens |
 | --- | --- |
-| `.env` | `BOT_TOKEN` is read and checked; `DEV_GUILD_ID` is read when it is there. |
+| `.env` | `BOT_TOKEN` is read and checked; `DEV_GUILD_ID`, `REDIS_URL` and `REDIS_PASSWORD` are read when they are there. |
 | Build | `.chapterjs/build/` must exist and have been made by the same version of `chapterjs`. When `src/` is there and changed since the build, a `⚠` says so and the build runs anyway. |
 | Files | Loaded from the build, never from `src/`. |
+| Redis | When a store says `storage: 'redis'`, Redis must answer. Every process reaches it itself. |
 | Token and privileged intents | Checked once. A problem is an error: nothing waits. |
 | Commands | Registered for everyone, only when they changed since the last start from this folder. |
 | Sessions | Discord is asked how many shards the bot needs and how many sessions it may still start today. Not enough sessions left stops the command. |
@@ -126,6 +128,14 @@ Prints the usage above. `-h` and no command at all do the same. Any other word i
 
 <ResponseField name="DEV_GUILD_ID" type="string">
   The ID of the test server: 17 to 20 digits. Required by `dev`, which runs the bot in that server only. Optional for `start`, which then ignores that server, so that `dev` and `start` can share one token without answering the same thing twice. Refused when it is not an ID.
+</ResponseField>
+
+<ResponseField name="REDIS_URL" type="string">
+  The address of the Redis that the stores declared with `storage: 'redis'` use: `redis://host:port`, `rediss://` for a TLS connection, `/1` at the end for a database other than the first, a user and a password before the host when there are some (`redis://user:password@host:6379`). Only needed when a store says `storage: 'redis'`; with it set and no such store, nothing is connected. Refused when it is not an address of that form. See [Storage](/storage#in-redis).
+</ResponseField>
+
+<ResponseField name="REDIS_PASSWORD" type="string">
+  The password of that Redis, when it is not in `REDIS_URL` (or to replace the one that is). Refused when `REDIS_URL` is not set.
 </ResponseField>
 
 Without a `.env` file, `dev` stops with `✗ There is no .env file in this folder.` when neither value is in the environment, and `start` with `✗ BOT_TOKEN is not set.` when the token is not.

@@ -71,18 +71,20 @@ describe('how many members a server remembers', () => {
       event: { name, handler: () => {}, options: {} } as never,
     });
     expect(limitsFor([])).toEqual(DEFAULT_CACHE_LIMITS);
-    // What comes with the event needs nothing remembered.
+    // What comes with the event needs nothing remembered: no event asks
+    // for more today (memberLeave gives who left, not the member as it was).
     expect(
       limitsFor(
-        ['messageCreate', 'memberJoin', 'memberUpdate', 'ready'].map(file)
+        [
+          'messageCreate',
+          'memberJoin',
+          'memberUpdate',
+          'memberLeave',
+          'messageDelete',
+          'ready',
+        ].map(file)
       )
     ).toEqual(DEFAULT_CACHE_LIMITS);
-    // "The member as it was" is a member the bot remembered.
-    expect(limitsFor([file('messageCreate'), file('memberLeave')])).toEqual({
-      users: Infinity,
-      members: 1000,
-      messages: 0,
-    });
     // Never mutated by asking.
     expect(DEFAULT_CACHE_LIMITS.members).toBe(100);
   });

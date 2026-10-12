@@ -21,7 +21,7 @@ export const warnings = store<string[]>({ expires: '30d' });
 store<T>(config?: StoreConfig): Store<T>
 ```
 
-Déclare un store : des données que le bot garde d’un redémarrage à l’autre, typées par ce qu’il contient. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est le nom du store, et de son fichier dans `data/`. Par serveur sauf si `scope: 'global'` est donné, avec une expiration si `expires` l’est.
+Déclare un store : des données que le bot garde d’un redémarrage à l’autre, typées par ce qu’il contient. Exportez le résultat depuis n’importe quel fichier de `src/` : le nom de l’export est le nom du store, et de son fichier dans `data/` (ou de ses clés dans Redis, avec `storage: 'redis'`). Par serveur sauf si `scope: 'global'` est donné, avec une expiration si `expires` l’est.
 
 ## StoreConfig
 
@@ -29,6 +29,10 @@ Ce qu’un fichier donne à `store()`.
 
 <ResponseField name="scope" type="StoreScope">
   `'guild'` (le défaut) : les données sont gardées par serveur, et une fonction qui tourne dans un serveur lit et écrit les données de ce serveur, sans rien dire. `'global'` : un seul jeu de données pour tout le bot.
+</ResponseField>
+
+<ResponseField name="storage" type="StoreStorage">
+  Où les données sont gardées : `'file'` (le défaut), un fichier dans le dossier `data/` du projet, ou `'redis'`, le Redis de `REDIS_URL` dans `.env`. Seuls les stores qui disent `'redis'` y écrivent quelque chose.
 </ResponseField>
 
 <ResponseField name="expires" type="Duration">
@@ -42,6 +46,14 @@ type StoreScope = 'guild' | 'global';
 ```
 
 Où les données d’un store sont gardées à part : par serveur, ou une seule fois pour tout le bot.
+
+### StoreStorage
+
+```ts
+type StoreStorage = 'file' | 'redis';
+```
+
+Où un store garde ses données : ce que `storage` de sa config nomme.
 
 ## Store
 
@@ -81,7 +93,15 @@ Garde `value` à `key`. La valeur doit être du JSON : pas de `Date`, de `Map` n
 update(key: StoreKey, change: (current: T | undefined) => T, options?: StoreSetOptions): Promise<T>
 ```
 
-Lit la valeur à `key` et garde ce que renvoie `change`, d’un trait. `change` reçoit `undefined` quand il n’y a pas encore de valeur. L’expiration reste ce qu’elle était, sauf si `options` dit autrement.
+Lit la valeur à `key` et garde ce que renvoie `change`, d’un trait : rien de ce qui est écrit entre-temps n’est perdu, même par un autre processus. `change` reçoit `undefined` quand il n’y a pas encore de valeur, et peut tourner de nouveau quand la valeur a changé entre-temps : gardez-le un simple calcul. L’expiration reste ce qu’elle était, sauf si `options` dit autrement.
+
+### increment()
+
+```ts
+increment(this: ScopedStore<number>, key: StoreKey, by?: number, options?: StoreSetOptions): Promise<number>
+```
+
+Ajoute `by` (1 par défaut, négatif pour retirer) au nombre à `key`, en partant de 0, d’un trait comme `update()`, et renvoie le nouveau nombre. Seulement pour un store de nombres.
 
 ### delete()
 
@@ -90,6 +110,30 @@ delete(key: StoreKey): Promise<boolean>
 ```
 
 Oublie la valeur à `key`. `true` quand il y en avait une.
+
+### getMany()
+
+```ts
+getMany(keys: readonly StoreKey[]): Promise<(T | undefined)[]>
+```
+
+Les valeurs de plusieurs clés d’un coup, dans leur ordre : `undefined` pour une clé qui n’en a pas.
+
+### setMany()
+
+```ts
+setMany(values: readonly (readonly [key: StoreKey, value: T])[], options?: StoreSetOptions): Promise<void>
+```
+
+Garde plusieurs valeurs d’un coup, chacune avec les mêmes `options`. Chaque valeur est vérifiée avant que rien ne soit écrit.
+
+### deleteAll()
+
+```ts
+deleteAll(prefix?: StoreKey): Promise<number>
+```
+
+Oublie chaque valeur dont la clé commence par `prefix`, ou chaque valeur du store (du serveur, pour un store par serveur) sans préfixe. Renvoie combien il y en avait.
 
 ### entries()
 
@@ -145,13 +189,22 @@ Un fichier par store, `data/<nom>.json` à la racine du projet : `{ "version": 1
 
 En production sur plusieurs processus, le processus que vous avez lancé garde les données et répond aux autres par IPC.
 
+Avec `storage: 'redis'`, une clé Redis par valeur : `<nom>:<partie>:<partie>` (l’id du serveur est la première partie d’un store par serveur ; `:`, `*`, `?`, `[`, `]`, `\` et `%` dans une partie s’écrivent `%XX`), sa valeur le JSON de la valeur, son expiration posée sur la clé (`PX`), pour que Redis l’oublie seul. `chapterjs dev` met `dev:` devant chaque clé. `entries()` est un `SCAN` sur le préfixe. Chaque processus atteint Redis lui-même. `update()` et `increment()` sont une transaction (`WATCH`, `MULTI`, `EXEC`), refaite sur la nouvelle valeur quand un autre processus a écrit la clé entre-temps, sur une connexion à elles (4 au plus à la fois par processus, en plus de la principale) ; les mises à jour d’une même clé dans un processus s’attendent l’une l’autre. L’adresse vient de `REDIS_URL` et `REDIS_PASSWORD` (voir la [référence du CLI](/fr/reference/cli#env)) ; un Redis qui ne répond pas arrête `dev` et `start` avant d’atteindre Discord, et la connexion revient d’elle-même une fois qu’elle a été faite.
+
 ## Erreurs
 
 | Quand | Message |
 | --- | --- |
+| `update()` n’est jamais passé : la valeur a changé 50 fois entre-temps | `The value of hits changed 50 times while update() was trying to change it: it is written too often by too many at once. Keep what changes this often under several keys.` |
+| `increment()` sur une valeur qui n’est pas un nombre | `increment() adds to a number, and the value at ["a"] is a string: use update() to change it.` |
+| `setMany()` avec une valeur qui n’est pas du JSON | `the value of item 1 is a Date, which JSON can't hold: …` (rien n’est écrit) |
 | Un store par serveur est utilisé là où aucun serveur n’est connu | `<name> is a store per server, and this code does not run in one: use <name>.in(guild) to say which server, or declare the store with scope: 'global'.` |
 | Un store qui n’est pas exporté est utilisé | `This store was not loaded by ChapterJS: a store is exported from a file of src/ (export const name = store()), and used once the bot started.` |
 | Une valeur n’est pas du JSON | `the value.list[0].at is a Date, which JSON can't hold: a store keeps JSON (texts, numbers, booleans, lists and plain objects). Keep what you need of it: an id, a text, a number.` |
 | Une clé est vide, ou pas faite de textes | `A key of a store is a text that is not empty, or a list of such texts with at least one.` |
 | Deux stores ont le même nom | `✗ src/b.ts (hits) There is already a store named hits, in src/a.ts: the name of the export is the name of the store, so rename one of them.` |
 | Un fichier de `data/` a été modifié à la main | `data/hits.json is not a file ChapterJS wrote: fix it, or delete it to start the store empty.` |
+| Un store dit `storage: 'redis'` et `REDIS_URL` n’est pas réglé | `✗ src/sessions.ts (sessions) sessions is kept in Redis (storage: 'redis'), but REDIS_URL is not set: add it to .env (like redis://localhost:6379) and start again, or remove storage: 'redis' to keep its data in data/.` |
+| Redis ne répond pas au démarrage du bot | `✗ Redis at localhost:6379 can't be reached: nothing answers there. Start Redis, or check REDIS_URL in .env.` |
+| Redis refuse le mot de passe, ou en demande un | `✗ Redis at localhost:6379 refused the password: check REDIS_PASSWORD (or the password in REDIS_URL) in .env.` / `✗ Redis at localhost:6379 asks for a password: set REDIS_PASSWORD (or the password in REDIS_URL) in .env.` |
+| Redis disparaît pendant que le bot tourne | `⚠ Redis at localhost:6379 closed the connection. Trying again every few seconds.` puis `↻ Redis at localhost:6379 is back` |

@@ -14,6 +14,12 @@ export type {
   FakeGatewayConnection,
   FakeGatewayPayload,
 } from './fake-gateway.js';
+export { fakeRedis } from './fake-redis.js';
+export type {
+  FakeRedis,
+  FakeRedisBehavior,
+  FakeRedisConnection,
+} from './fake-redis.js';
 export { fakeVoice } from './fake-voice.js';
 export type {
   FakeVoice,

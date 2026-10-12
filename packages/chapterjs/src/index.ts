@@ -167,6 +167,18 @@ export type {
   EventOptions,
   MessageEventOptions,
   ReactionEventOptions,
+  AddedReaction,
+  ClearedReactions,
+  DeletedInvite,
+  DeletedMessage,
+  PollVote,
+  PresenceChange,
+  ScheduledEventInterest,
+  Typing,
+  UserReaction,
+  VoiceActivity,
+  VoiceChange,
+  VoiceMove,
 } from './events/registry.js';
 
 // What handlers receive.
@@ -266,7 +278,16 @@ export type {
   StoreKey,
   StoreScope,
   StoreSetOptions,
+  StoreStorage,
 } from './store/store.js';
+export { ranking } from './ranking/ranking.js';
+export type {
+  Ranking,
+  RankingConfig,
+  RankingEntry,
+  RankingOrder,
+  ScopedRanking,
+} from './ranking/ranking.js';
 export { task } from './tasks/task.js';
 export type {
   CronTaskConfig,
