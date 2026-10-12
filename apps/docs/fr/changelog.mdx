@@ -27,16 +27,11 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
-<Update label="0.4.0" description="Commandes de menu, attente, présence tournante, Redis, classements">
-
-**À changer dans vos fichiers :** chaque événement donne maintenant ce dont il parle, plus `guild`. Voir [Ce que donne chaque événement](/fr/reference/events#ce-que-donne-chaque-événement) ; un fichier écrit à l’ancienne est souligné dans votre éditeur.
+<Update label="0.5.0" description="Commandes de menu, attente, présence tournante">
 
 - [Commandes de menu](/fr/commands/menus) : `command({ type: 'message' | 'user', ... })`, utilisées avec un clic droit.
 - [Attendre une réponse](/fr/waiting) : `waitForMessage()`, `collectMessages()`, `waitForClick()`, `waitForReaction()`.
 - [Présence](/fr/presence#plusieurs-activités) : plusieurs activités tour à tour, des textes qui sont des fonctions.
-- [Stores dans Redis](/fr/storage#dans-redis) : `storage: 'redis'`, avec `REDIS_URL` dans `.env`.
-- Stores : `increment()`, `getMany()`, `setMany()`, `deleteAll()` ; `update()` ne perd plus un changement fait au même moment.
-- [Classements](/fr/rankings) : `ranking()`, un score par membre, toujours dans l’ordre.
 - Un sixième modèle, `games`.
 
 **Corrections**
@@ -55,6 +50,16 @@ bun add chapterjs@latest
 - `reply.opensForm()` accepte un formulaire qui porte des données.
 - `chapterjs test` : le serveur refuse, comme Discord, d’expulser, bannir ou renommer le propriétaire ou quelqu’un au-dessus du bot.
 - Des messages plus clairs : les permissions en mots (« Ban Members »), ce que veulent dire les refus de Discord, les erreurs de syntaxe, Redis qui refuse au démarrage, `--processes` au-delà des shards, le serveur de dev dans `start`.
+
+</Update>
+
+<Update label="0.4.0" description="Redis, classements, événements avec guild">
+
+**À changer dans vos fichiers :** chaque événement donne maintenant ce dont il parle, plus `guild`. Voir [Ce que donne chaque événement](/fr/reference/events#ce-que-donne-chaque-événement) ; un fichier écrit à l’ancienne est souligné dans votre éditeur.
+
+- [Stores dans Redis](/fr/storage#dans-redis) : `storage: 'redis'`, avec `REDIS_URL` dans `.env`.
+- Stores : `increment()`, `getMany()`, `setMany()`, `deleteAll()` ; `update()` ne perd plus un changement fait au même moment.
+- [Classements](/fr/rankings) : `ranking()`, un score par membre, toujours dans l’ordre.
 
 </Update>
 

@@ -27,16 +27,11 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
-<Update label="0.4.0" description="Menu commands, waiting, rotating presence, Redis, rankings">
-
-**To change in your files:** every event now gives what it is about plus `guild`. See [What each event gives](/reference/events#what-each-event-gives); a file written the old way is underlined in your editor.
+<Update label="0.5.0" description="Menu commands, waiting, rotating presence">
 
 - [Menu commands](/commands/menus): `command({ type: 'message' | 'user', ... })`, used with a right click.
 - [Waiting for an answer](/waiting): `waitForMessage()`, `collectMessages()`, `waitForClick()`, `waitForReaction()`.
 - [Presence](/presence#several-activities): several activities in turn, texts that are functions.
-- [Stores in Redis](/storage#in-redis): `storage: 'redis'`, with `REDIS_URL` in `.env`.
-- Stores: `increment()`, `getMany()`, `setMany()`, `deleteAll()`; `update()` no longer loses a change made at the same time.
-- [Rankings](/rankings): `ranking()`, a score per member, always in order.
 - A sixth template, `games`.
 
 **Fixes**
@@ -55,6 +50,16 @@ bun add chapterjs@latest
 - `reply.opensForm()` takes a form that carries data.
 - `chapterjs test`: the server refuses, as Discord does, to kick, ban or rename the owner or someone above the bot.
 - Clearer messages: permissions in words ("Ban Members"), what Discord refusals mean, syntax errors, Redis refusing at start, `--processes` above the shards, the dev server in `start`.
+
+</Update>
+
+<Update label="0.4.0" description="Redis, rankings, events with guild">
+
+**To change in your files:** every event now gives what it is about plus `guild`. See [What each event gives](/reference/events#what-each-event-gives); a file written the old way is underlined in your editor.
+
+- [Stores in Redis](/storage#in-redis): `storage: 'redis'`, with `REDIS_URL` in `.env`.
+- Stores: `increment()`, `getMany()`, `setMany()`, `deleteAll()`; `update()` no longer loses a change made at the same time.
+- [Rankings](/rankings): `ranking()`, a score per member, always in order.
 
 </Update>
 
