@@ -102,7 +102,7 @@ export async function start(options: StartOptions): Promise<number> {
     version: options.version,
     log,
     built: files,
-    joinsVoice: built.info.voice === true,
+    uses: built.info.uses ?? {},
     stores: {
       // A process started by another keeps no file: the first one does,
       // for all of them.
@@ -275,12 +275,15 @@ async function run(
     project.ready(bot);
     // A task runs once for the whole bot: in one process only.
     if (tasks) project.startTasks(() => bot);
+    // The presence is shown by every process, on its own shards.
+    project.startPresence(() => bot);
     return await Promise.race([
       stopped.then(() => 'stopped' as const),
       refused,
     ]);
   } finally {
     project.stopTasks();
+    project.stopPresence();
     memory.stop();
     await bot?.close();
     await project.closeStores();

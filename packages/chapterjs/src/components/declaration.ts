@@ -158,6 +158,19 @@ function checkRun(what: string, value: unknown, example: string): void {
   }
 }
 
+/**
+ * The `run` of a button or a menu: optional, since one may only be waited
+ * for (`message.waitForClick()`); when given, a function.
+ */
+function checkOptionalRun(what: string, value: unknown, example: string): void {
+  if (value === undefined) return;
+  if (typeof value !== 'function') {
+    fail(
+      `"run" of ${what} is the function to run when someone uses it, like ${example}. Leave it out for one that is only waited for with message.waitForClick().`
+    );
+  }
+}
+
 function readButton(name: string, config: unknown): LoadedButton {
   if (!isRecord(config)) {
     return fail(
@@ -185,7 +198,7 @@ function readButton(name: string, config: unknown): LoadedButton {
   if (look.label === undefined && look.emoji === undefined) {
     fail('A button needs a label or an emoji.');
   }
-  checkRun(
+  checkOptionalRun(
     what,
     config.run,
     `async run({ interaction }) { await interaction.update('Done!'); }`
@@ -246,7 +259,11 @@ function readSelect(name: string, config: unknown): LoadedSelect {
   }
   const options = type === 'string' ? readOptions(what, config.options) : [];
   const placeholder = readPlaceholder(what, config.placeholder);
-  checkRun(what, config.run, `async run({ interaction, values }) { ... }`);
+  checkOptionalRun(
+    what,
+    config.run,
+    `async run({ interaction, values }) { ... }`
+  );
   return Object.freeze({
     kind: 'select',
     name,

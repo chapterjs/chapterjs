@@ -288,7 +288,9 @@ export async function useCommand(
   fake: FakeWorld,
   name: string,
   id: string,
-  connection = 0
+  connection = 0,
+  /** What the `data` of the interaction has besides its name and type 1. */
+  data: Record<string, unknown> = {}
 ): Promise<string> {
   const callback = `/interactions/${id}/token-${id}/callback`;
   fake.discord.on('POST', callback, {
@@ -319,7 +321,7 @@ export async function useCommand(
     entitlements: [],
     authorizing_integration_owners: {},
     attachment_size_limit: 1,
-    data: { id: `${id}0`, name, type: 1 },
+    data: { id: `${id}0`, name, type: 1, ...data },
   });
   const deadline = Date.now() + 5000;
   let answer;
@@ -329,6 +331,6 @@ export async function useCommand(
   ) {
     await new Promise(resolve => setTimeout(resolve, 20));
   }
-  if (!answer) throw new Error(`/${name} got no answer within 5 s.`);
+  if (!answer) throw new Error(`${name} got no answer within 5 s.`);
   return (answer.body as { data: { content: string } }).data.content;
 }

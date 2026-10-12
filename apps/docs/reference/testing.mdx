@@ -104,9 +104,10 @@ A channel of the server, made the first time the name is given. `#general` exist
 
 ```ts
 use(command: CommandDeclaration, options?: OptionInputsOf<Options>, where?: TestWhere): Promise<TestReply>
+use(command: MenuDeclaration, target: TestMenuTarget, where?: TestWhere): Promise<TestReply>
 ```
 
-Uses a slash command, as a person would. Resolves once the bot answered.
+Uses a command, as a person would: a slash command with its options, or a menu command on what it is used on (`{ on: message }`, `{ on: member }`; a message menu is used in the channel of its message). Resolves once the bot answered.
 
 `options` is typed from the options of the command (`OptionInputsOf`): a text, a number, `true` or `false`, one of the `choices`, a `TestMember` for a `user` option, a `TestRole` for a `role` one, a `TestChannel` for a `channel` one, a `TestFile` for an `attachment` one. It may be left out when the command requires none. What Discord would not let a person send (a required option missing, a number out of its range, a text too long, a value that is not one of the choices) fails the scenario before the bot hears of it.
 
@@ -116,7 +117,7 @@ Uses a slash command, as a person would. Resolves once the bot answered.
 click(button: ButtonTarget, where?: TestWhere): Promise<TestReply>
 ```
 
-Clicks a button. Resolves once the bot answered.
+Clicks a button. Resolves once the bot answered. A button found on a message (`reply.button('Confirm')`) is clicked on that message, as a person would.
 
 ### select()
 
@@ -189,6 +190,16 @@ settle(): Promise<void>
 ```
 
 Waits for everything the bot started to be done.
+
+Everything but what waits for the test to act: a function waiting for a message, a click or a reaction (`waitForMessage()`...) is left waiting, and `use()`, `say()`, `click()`... resolve meanwhile.
+
+### endWaits()
+
+```ts
+endWaits(): Promise<void>
+```
+
+Ends everything the bot waits for (`waitForMessage()`, `waitForClick()`...) as if its time was up: time does not pass in the test server. Resolves once the bot handled it.
 
 ## TestWhere
 
@@ -703,6 +714,7 @@ A suggestion the bot gave while someone typed in an option.
 - `OptionInputsOf<Options>`: the options of a command as a test fills them in. A required option can not be left out.
 - `FieldInputsOf<Fields>`: the fields of a form as a test fills them in: a field left out stays empty.
 - `SelectInput`: what a test picks in a menu: texts, or people, roles and channels.
+- `TestMenuTarget<Type>`: what a menu command is used on in a test: `{ on }`, a `TestMember` for a `'user'` menu, a `TestMessage` for a `'message'` menu.
 - `ButtonTarget`: a button, as a test names it: the declaration, an instance, or one found on a message (`reply.button('Confirm')`).
 - `SelectTarget`: a menu, the same way (`reply.menu()`).
 - `FormTarget<Fields>`: a form, the same way (`reply.form`).

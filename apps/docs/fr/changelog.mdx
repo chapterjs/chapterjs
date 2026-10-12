@@ -27,7 +27,7 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
-<Update label="0.4.0" description="Des stores gardés dans Redis sans rien installer, des compteurs, des classements, et des événements qui donnent ce dont ils parlent et le serveur">
+<Update label="0.4.0" description="Des commandes de menu, attendre une réponse, une présence qui tourne, des stores gardés dans Redis, des compteurs, des classements, et des événements qui donnent ce dont ils parlent et le serveur">
 
 **Ce qu’il faut changer dans vos fichiers.** Chaque événement donne maintenant les deux mêmes choses : ce dont il parle, et le serveur où il s’est produit, `guild` (plus `t`, comme avant). La liste complète est dans un seul tableau : [Ce que donne chaque événement](/fr/reference/events#ce-que-donne-chaque-événement).
 
@@ -48,6 +48,14 @@ Un store peut garder ses données dans Redis : `store<Session>({ storage: 'redis
 Chaque store, dans un fichier ou dans Redis, gagne `increment()` pour les compteurs, `getMany()`, `setMany()` et `deleteAll(prefix)` pour plusieurs valeurs d’un coup. Et `update()` ne perd plus rien quand plusieurs tournent en même temps sur la même clé, dans un processus ou dans plusieurs : avant, deux mises à jour rapprochées pouvaient ne garder qu’un des deux changements. Voir [Ce que fait un store](/fr/storage#ce-que-fait-un-store).
 
 `ranking()` garde un score par membre, toujours dans l’ordre : `xp.add(member.id, 10)`, `xp.top(10)`, `xp.rankOf(member.id)`, le plus haut en premier ou `order: 'lowest'` pour des temps. Par serveur comme un store, dans `data/` ou dans Redis, où c’est un sorted set. Voir [Classements](/fr/rankings).
+
+Les commandes de menu : `command({ type: 'message', name: 'Citer', run({ message }) { ... } })` apparaît d’un clic droit sur un message, `type: 'user'` d’un clic droit sur une personne (`target`, `targetMember`). Les mêmes `where`, `permissions`, `cooldown` qu’une commande slash ; `bot.use(quote, { on: message })` dans un scénario. Voir [Commandes de menu](/fr/commands/menus).
+
+Vos fonctions peuvent attendre ce qui suit : `channel.waitForMessage({ from, matches: 'paris', within: '30s' })`, `channel.collectMessages()`, `message.waitForClick()` et `message.waitForReaction()`, chacune donnant ce qui est arrivé ou `null` quand le temps est écoulé. Un bouton ou un menu qui n’est qu’attendu n’a pas besoin de `run`. Les intents suivent votre code. Dans un scénario, `bot.use()` se résout pendant que votre fonction attend, et `bot.endWaits()` termine les attentes. Voir [Attendre une réponse](/fr/waiting).
+
+La présence peut afficher plusieurs activités tour à tour, chacune pendant son `for` (`activities: [...]`), avec des textes qui sont des fonctions (``name: ({ guilds }) => `${guilds} serveurs` ``) et une liste qui vient de vos données (`activities: async () => ...`, depuis un store). `activity` reste comme avant. Voir [Présence](/fr/presence#plusieurs-activités).
+
+`create chapterjs` propose un sixième modèle, `games`, fait de ces trois-là : un quiz contre la montre, des duels à boutons, une commande de menu sur une personne et une sur un message, et une présence qui tourne. Voir [Modèles](/fr/setup/project-structure#modèles).
 
 </Update>
 

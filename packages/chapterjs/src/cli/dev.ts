@@ -3,7 +3,12 @@
 
 import { join } from 'node:path';
 import { registerCommands } from '../commands/register.js';
-import { buildCommands, commandName, privateOnly } from '../commands/tree.js';
+import {
+  buildCommands,
+  capitalize,
+  describeCommand,
+  privateOnly,
+} from '../commands/tree.js';
 import { withoutGlobalTwins } from '../commands/twins.js';
 import type { Bot } from '../core/bot.js';
 import { configure } from '../core/memory.js';
@@ -195,7 +200,7 @@ export async function dev(options: DevOptions): Promise<number> {
         if (saidTwice.has(name)) continue;
         saidTwice.add(name);
         log.info(
-          `/${name} is not the same here as in production, so ${guild.name} shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.`
+          `${capitalize(name)} is not the same here as in production, so ${guild.name} shows it twice: yours, and the one everyone has. It is shown once again when production runs your version.`
         );
       }
       try {
@@ -225,6 +230,7 @@ export async function dev(options: DevOptions): Promise<number> {
     project.ready(bot);
     // Tasks follow the bot through reconnections: they read the current one.
     project.startTasks(() => bot);
+    project.startPresence(() => bot);
 
     // Said once per file: what only happens in private messages can't be
     // tried here. Discord only offers the commands of a server in that
@@ -239,7 +245,7 @@ export async function dev(options: DevOptions): Promise<number> {
         );
       };
       for (const entry of privateOnly([...project.commands.values()])) {
-        note(siteName(entry), commandName(entry.command.path));
+        note(siteName(entry), describeCommand(entry.command));
       }
       for (const entry of project.events.values()) {
         const { event } = entry;
@@ -332,6 +338,7 @@ export async function dev(options: DevOptions): Promise<number> {
     const code = await ended;
     await reloading.catch(() => {});
     project.stopTasks();
+    project.stopPresence();
     watcher.close();
     assets.close();
     memory.stop();
@@ -342,6 +349,7 @@ export async function dev(options: DevOptions): Promise<number> {
     return code;
   } catch (error) {
     project.stopTasks();
+    project.stopPresence();
     watcher?.close();
     assets.close();
     memory.stop();

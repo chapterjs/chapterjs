@@ -79,6 +79,7 @@
                   "commands/index",
                   "commands/options",
                   "commands/answering",
+                  "commands/menus",
                   "commands/translations"
                 ]
               },
@@ -86,7 +87,8 @@
                 "group": "Messages",
                 "icon": "mail",
                 "pages": [
-                  "messages"
+                  "messages",
+                  "waiting"
                 ]
               },
               {
@@ -236,7 +238,8 @@
                   "tutorial/buttons",
                   "tutorial/selects",
                   "tutorial/forms",
-                  "tutorial/embeds-and-layout"
+                  "tutorial/embeds-and-layout",
+                  "tutorial/conversations"
                 ]
               },
               {
@@ -409,6 +412,7 @@
                   "fr/commands/index",
                   "fr/commands/options",
                   "fr/commands/answering",
+                  "fr/commands/menus",
                   "fr/commands/translations"
                 ]
               },
@@ -416,7 +420,8 @@
                 "group": "Messages",
                 "icon": "mail",
                 "pages": [
-                  "fr/messages"
+                  "fr/messages",
+                  "fr/waiting"
                 ]
               },
               {
@@ -566,7 +571,8 @@
                   "fr/tutorial/buttons",
                   "fr/tutorial/selects",
                   "fr/tutorial/forms",
-                  "fr/tutorial/embeds-and-layout"
+                  "fr/tutorial/embeds-and-layout",
+                  "fr/tutorial/conversations"
                 ]
               },
               {

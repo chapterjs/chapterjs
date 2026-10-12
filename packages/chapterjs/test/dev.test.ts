@@ -1055,6 +1055,97 @@ describe.skipIf(process.platform === 'win32')(
     > = {
       async default() {},
 
+      async games(fake, connection) {
+        const bob = '100000000000000777';
+        const bobUser = { id: bob, username: 'bob', discriminator: '0' };
+        const asBob = { ...admin, user: bobUser, permissions: '0' };
+        // /duel @bob: Accept and Decline, which only bob may use.
+        ask(
+          fake,
+          connection,
+          slash('1', ['duel'], [{ name: 'opponent', type: 6, value: bob }], {
+            users: { [bob]: bobUser },
+          })
+        );
+        const asked = await waitForAnswer(fake, '1');
+        expect(asked.data).toMatchObject({
+          content: `⚔️ <@${bob}>, alice challenges you to a duel! You have a minute.`,
+          components: [
+            {
+              type: 1,
+              components: [
+                { type: 2, custom_id: 'accept', label: 'Accept' },
+                { type: 2, custom_id: 'decline', label: 'Decline' },
+              ],
+            },
+          ],
+        });
+        // The answer of /duel is the message `ask` made: '19'. Bob accepts.
+        ask(fake, connection, {
+          ...base('2'),
+          member: asBob,
+          type: 3,
+          message: rawMessage('19', ''),
+          data: { custom_id: 'accept', component_type: 2 },
+        });
+        const fought = await waitForAnswer(fake, '2');
+        expect(fought.type).toBe(7);
+        expect(fought.data.content).toMatch(
+          /^🎲 alice rolls [1-6], bob rolls [1-6]\.\n(alice wins!|bob wins!|A draw!)$/
+        );
+
+        // /quiz start, then the answers in the channel until one is right.
+        fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+          body: rawMessage('100000000000000095', ''),
+        });
+        ask(fake, connection, slash('3', ['quiz', 'start']));
+        expect((await waitForAnswer(fake, '3')).data.content).toMatch(
+          /^❓ .* First to answer in 30 seconds wins!$/
+        );
+        for (const [index, answer] of [
+          'Paris',
+          '8',
+          'Jupiter',
+          '1969',
+          'H2O',
+        ].entries()) {
+          connection.dispatch(
+            'MESSAGE_CREATE',
+            rawMessage(`10000000000000060${index}`, answer)
+          );
+        }
+        const won = await waitForRequest(
+          fake,
+          'POST',
+          `/channels/${GENERAL}/messages`
+        );
+        expect(won.body).toMatchObject({
+          content: '🎉 alice found it, 1 point now.',
+        });
+
+        // The menu of a person: right click alice, Apps, Quiz score.
+        ask(fake, connection, {
+          ...base('4'),
+          type: 2,
+          data: {
+            id: '40',
+            name: 'Quiz score',
+            type: 2,
+            target_id: ALICE,
+            resolved: {
+              users: { [ALICE]: admin.user },
+            },
+          },
+        });
+        expect(await waitForAnswer(fake, '4')).toEqual({
+          type: 4,
+          data: {
+            content: 'alice has 1 point, rank 1 on this server.',
+            flags: 64,
+          },
+        });
+      },
+
       async tickets(fake, connection) {
         // /ticket panel posts the embed and its button.
         fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
@@ -1470,9 +1561,10 @@ describe.skipIf(process.platform === 'win32')(
         });
 
         // A template runs on a brand new bot: no privileged intent, except
-        // the community one, which welcomes members and says it needs one.
+        // the community one, which welcomes members, and the games one,
+        // which reads the answers of its quiz: both say they need one.
         const fake = await world({
-          flags: name === 'community' ? ALL_PRIVILEGED : 0,
+          flags: name === 'community' || name === 'games' ? ALL_PRIVILEGED : 0,
           devGuild: {
             // View Channel, Connect, Speak, Send Messages.
             roles: [

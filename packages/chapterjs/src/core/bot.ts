@@ -22,6 +22,9 @@ import { createContext } from '../structures/entities.js';
 import { GatewayOpcode } from '../discord/codes.js';
 import { GatewayIntent } from '../discord/intents.js';
 import { VoiceManager } from '../voice/connection.js';
+import { MemoryWaiters, type Waiters } from '../waiting/waiters.js';
+import { GetUser } from '../discord/endpoints.js';
+import { toCamelCase } from '../util/case.js';
 
 /** What a dispatched event is, besides its data. */
 export interface DispatchInfo {
@@ -90,6 +93,11 @@ export interface BotOptions {
    * (an outage of Discord). Default: 15000.
    */
   guildsTimeout?: number;
+  /**
+   * What the files wait for (`channel.waitForMessage()`...): in memory by
+   * default.
+   */
+  waiters?: Waiters;
   /** Only tests change these. */
   rest?: Partial<RestOptions>;
   gateway?: Pick<GatewayOptions, 'backoff' | 'identifyInterval'>;
@@ -113,6 +121,38 @@ export interface Bot {
    * it allows.
    */
   setPresence(presence: RawGatewayPresenceUpdate): void;
+}
+
+/**
+ * Gives a reaction to what waits for one, with who reacted: the member
+ * Discord sends in a server, else the user the bot knows, else asked.
+ * @see https://docs.discord.com/developers/events/gateway-events#message-reaction-add
+ */
+function offerReaction(
+  ctx: Context,
+  data: GatewayDispatchEvents['MESSAGE_REACTION_ADD']
+): void {
+  const member =
+    data.member && data.guild_id
+      ? ctx.entities.member(data.guild_id, data.member)
+      : null;
+  const known = member?.user ?? ctx.cache.users.get(data.user_id);
+  const user = known
+    ? Promise.resolve(known)
+    : ctx.rest
+        .request(GetUser, [data.user_id])
+        .then(raw => ctx.entities.user(raw));
+  user
+    .then(user =>
+      ctx.waiters?.offer('reaction', {
+        messageId: data.message_id,
+        emoji: toCamelCase(data.emoji),
+        user,
+        member,
+      })
+    )
+    // Who reacted could not be known: nothing to give.
+    .catch(() => {});
 }
 
 /** The server a gateway event belongs to, when it belongs to one. */
@@ -149,6 +189,8 @@ export function createBot(options: BotOptions): Bot {
     ...options.rest,
   });
   const ctx = createContext({ rest, cache: new Cache(options.cache) });
+  const waiters = options.waiters ?? new MemoryWaiters();
+  ctx.waiters = waiters;
 
   /** Servers announced by Ready whose data has not come yet, per shard. */
   const pending = new Map<number, Set<Snowflake>>();
@@ -241,6 +283,19 @@ export function createBot(options: BotOptions): Bot {
           data as GatewayDispatchEvents['VOICE_SERVER_UPDATE']
         );
       }
+      // What the files wait for: built only when a wait wants it.
+      if (event === 'MESSAGE_CREATE' && waiters.wants('message')) {
+        const message = data as GatewayDispatchEvents['MESSAGE_CREATE'];
+        waiters.offer('message', ctx.entities.message(message));
+      } else if (
+        event === 'MESSAGE_REACTION_ADD' &&
+        waiters.wants('reaction')
+      ) {
+        offerReaction(
+          ctx,
+          data as GatewayDispatchEvents['MESSAGE_REACTION_ADD']
+        );
+      }
       options.onDispatch?.(event, data, { shardId, joined, before });
       if (awaited) checkGuilds();
     },
@@ -288,6 +343,8 @@ export function createBot(options: BotOptions): Bot {
       if (guildsTimer) clearTimeout(guildsTimer);
       guildsTimer = null;
       voice.closeAll();
+      // What the files waited for will not come: they go on with nothing.
+      waiters.close();
       await gateway.close();
     },
     setPresence: presence => gateway.setPresence(presence),

@@ -65,8 +65,8 @@ Les deux ont chaque champ d’[InteractiveConfig](/fr/reference/button#interacti
   Combien d’éléments peuvent être choisis au plus (1 à 25). 1 par défaut.
 </ResponseField>
 
-<ResponseField name="run" type="(context: SelectContext<Picked, Data, Where>) => unknown" required>
-  Ce qu’il faut faire quand quelque chose est choisi.
+<ResponseField name="run" type="(context: SelectContext<Picked, Data, Where>) => unknown">
+  Ce qu’il faut faire quand quelque chose est choisi. Omis pour un menu qui n’est qu’attendu (`message.waitForClick()`).
 </ResponseField>
 
 ### StringSelectConfig

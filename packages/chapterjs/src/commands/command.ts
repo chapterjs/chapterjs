@@ -16,7 +16,12 @@ import type {
   PrivateCommandInteraction,
 } from '../structures/interaction.js';
 import type { GuildMember } from '../structures/member.js';
-import type { Attachment } from '../structures/message.js';
+import type {
+  Attachment,
+  DmMessage,
+  GuildMessage,
+  PrivateMessage,
+} from '../structures/message.js';
 import type { Role } from '../structures/role.js';
 import type { User } from '../structures/user.js';
 import type { TranslationContext } from '../messages/messages.js';
@@ -366,6 +371,151 @@ export type CommandContext<
       : CommandInGuild | CommandInPrivate);
 
 /**
+ * What a menu command is used on, in the menu people open with a right
+ * click (or a long press): a message (`'message'`) or a person
+ * (`'user'`).
+ * @see https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-types
+ */
+export type MenuType = 'message' | 'user';
+
+/** What a menu command receives about what it was used on, in a server. */
+type MenuTargetInGuild<Type extends MenuType> = Type extends 'user'
+  ? {
+      /** The person the menu was used on. */
+      target: User;
+      /**
+       * That person as a member of the server, or `null` when they are not
+       * in it (any more).
+       */
+      targetMember: GuildMember | null;
+    }
+  : {
+      /** The message the menu was used on. */
+      message: GuildMessage;
+    };
+
+/**
+ * What a menu command receives about what it was used on, in a private
+ * message with the bot.
+ */
+type MenuTargetInPrivate<Type extends MenuType> = Type extends 'user'
+  ? {
+      /** The person the menu was used on. */
+      target: User;
+      /** No server: no member. */
+      targetMember: null;
+    }
+  : {
+      /** The message the menu was used on. */
+      message: PrivateMessage;
+    };
+
+/** The same, for a menu command only used in private messages. */
+type MenuTargetInDm<Type extends MenuType> = Type extends 'user'
+  ? {
+      /** The person the menu was used on. */
+      target: User;
+    }
+  : {
+      /** The message the menu was used on. */
+      message: DmMessage;
+    };
+
+/**
+ * What the `run` function of a menu command receives: what it was used on
+ * (`message`, or `target` and `targetMember`), who used it, and the place,
+ * which follows `where` like the one of a slash command.
+ */
+export type MenuContext<
+  Type extends MenuType = 'message',
+  Where extends CommandWhere = 'guild',
+> = {
+  /** Who used the menu. */
+  user: User;
+} & TranslationContext &
+  (Where extends 'guild'
+    ? CommandInGuild & MenuTargetInGuild<Type>
+    : Where extends 'dm'
+      ? CommandInDm & MenuTargetInDm<Type>
+      : | (CommandInGuild & MenuTargetInGuild<Type>)
+        | (CommandInPrivate & MenuTargetInPrivate<Type>));
+
+/** The translation of a menu command in one language: its name. */
+export interface MenuTranslation {
+  /** The name shown in the menu in that language (1-32 characters). */
+  name?: string;
+}
+
+/** The translations of a menu command, by language. */
+export type MenuLocales = {
+  readonly [Language in Locale]?: MenuTranslation;
+};
+
+/**
+ * What a file gives to `command()` for a menu command: one used on a
+ * message or a person, from the menu of a right click. It has no
+ * description and no options: what it receives is what it was used on.
+ */
+export interface MenuConfig<
+  Type extends MenuType = 'message',
+  Where extends CommandWhere = 'guild',
+> {
+  /**
+   * What the command is used on: `'message'` (a right click on a message)
+   * or `'user'` (a right click on a person).
+   */
+  type: Type;
+  /**
+   * What the menu shows (1-32 characters): capitals and spaces are fine,
+   * like `'Report message'`.
+   */
+  name: string;
+  /**
+   * The name in other languages: Discord shows each person the name of
+   * their language.
+   * @see https://docs.discord.com/developers/interactions/application-commands#localization
+   */
+  locales?: MenuLocales;
+  /**
+   * The permissions a member needs to use the command. Server admins can
+   * change who sees it in the server settings.
+   */
+  permissions?: readonly PermissionName[];
+  /**
+   * Where the command can be used: `'guild'` (in servers, the default),
+   * `'dm'` (in private messages with the bot) or `'both'`. What `run`
+   * receives follows it.
+   */
+  where?: Where;
+  /** Only show the command in age-restricted channels. */
+  nsfw?: boolean;
+  /** Make the answers of the command only visible to who used it. */
+  ephemeral?: boolean;
+  /**
+   * How long to wait before the command can be used again: `'10s'` for
+   * each person, or `{ user, channel, guild }` for each place.
+   */
+  cooldown?: Cooldown;
+  /** A menu command has no description: Discord only shows its name. */
+  description?: never;
+  /** A menu command has no options: it receives what it was used on. */
+  options?: never;
+  /** A menu command has no options to suggest values for. */
+  autocomplete?: never;
+  /** What to do when someone uses the command. */
+  run: (context: MenuContext<Type, Where>) => unknown;
+}
+
+/** What `command()` returns for a menu command. */
+export interface MenuDeclaration<
+  Type extends MenuType = MenuType,
+  Where extends CommandWhere = CommandWhere,
+> {
+  /** What the file gave to `command()`, not checked yet. */
+  readonly config: MenuConfig<Type, Where>;
+}
+
+/**
  * The name of a slash command: lowercase letters, digits, `-` and `_`, 32
  * characters at most (`'ping'`). A subcommand is written with its parents,
  * separated by spaces: `'mod ban'` is `/mod ban`, `'mod roles add'` is
@@ -429,6 +579,11 @@ export interface CommandConfig<
    * uses it too soon gets a private answer saying when they can.
    */
   cooldown?: Cooldown;
+  /**
+   * Leave it out for a slash command. `'message'` or `'user'` makes a menu
+   * command instead, used with a right click on a message or a person.
+   */
+  type?: undefined;
   /** What to do when someone uses the command. */
   run: (context: CommandContext<Options, Where>) => unknown;
 }
@@ -445,8 +600,10 @@ export interface CommandDeclaration<
 const BRAND = Symbol.for('chapterjs.command');
 
 /**
- * Declares a slash command. Export the result from any file of `src/`:
- * `name` is what people type after the `/` (`'mod ban'` for `/mod ban`).
+ * Declares a command. Export the result from any file of `src/`.
+ *
+ * A slash command: `name` is what people type after the `/` (`'mod ban'`
+ * for `/mod ban`).
  *
  * ```ts
  * import { command } from 'chapterjs';
@@ -459,18 +616,38 @@ const BRAND = Symbol.for('chapterjs.command');
  *   },
  * });
  * ```
+ *
+ * A menu command, with `type`: used with a right click on a message
+ * (`'message'`) or on a person (`'user'`), `name` being what the menu shows.
+ *
+ * ```ts
+ * export const quote = command({
+ *   type: 'message',
+ *   name: 'Quote',
+ *   async run({ interaction, message }) {
+ *     await interaction.reply(`> ${message.content}`);
+ *   },
+ * });
+ * ```
  */
 export function command<
   const Options extends CommandOptions = {},
   const Where extends CommandWhere = 'guild',
->(config: CommandConfig<Options, Where>): CommandDeclaration<Options, Where> {
-  return Object.freeze({ [BRAND]: true, config });
+  const Type extends MenuType | undefined = undefined,
+>(
+  config: Type extends MenuType
+    ? MenuConfig<Type, Where>
+    : CommandConfig<Options, Where>
+): Type extends MenuType
+  ? MenuDeclaration<Type, Where>
+  : CommandDeclaration<Options, Where> {
+  return Object.freeze({ [BRAND]: true, config }) as never;
 }
 
 /** Whether a value was made by `command()`. */
 export function isCommandDeclaration(
   value: unknown
-): value is CommandDeclaration {
+): value is CommandDeclaration | MenuDeclaration {
   return (
     typeof value === 'object' &&
     value !== null &&

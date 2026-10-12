@@ -27,7 +27,7 @@ bun add chapterjs@latest
 
 </CodeGroup>
 
-<Update label="0.4.0" description="Stores kept in Redis with nothing to install, counters, rankings, and events that give what they are about and the server">
+<Update label="0.4.0" description="Menu commands, waiting for an answer, a presence that rotates, stores kept in Redis, counters, rankings, and events that give what they are about and the server">
 
 **What to change in your files.** Every event now gives the same two things: what it is about, and the server it happened in, `guild` (plus `t`, as before). The full list is in one table: [What each event gives](/reference/events#what-each-event-gives).
 
@@ -48,6 +48,14 @@ A store can keep its data in Redis: `store<Session>({ storage: 'redis', expires:
 Every store, in a file or in Redis, gets `increment()` for counters, `getMany()`, `setMany()` and `deleteAll(prefix)` for several values at once. And `update()` now loses nothing when several run at once on the same key, in one process or several: before, two updates close together could keep only one of the two changes. See [What a store does](/storage#what-a-store-does).
 
 `ranking()` keeps a score per member, always in order: `xp.add(member.id, 10)`, `xp.top(10)`, `xp.rankOf(member.id)`, the highest first or `order: 'lowest'` for times. Per server like a store, in `data/` or in Redis, where it is a sorted set. See [Rankings](/rankings).
+
+Menu commands: `command({ type: 'message', name: 'Quote', run({ message }) { ... } })` shows up with a right click on a message, `type: 'user'` with a right click on a person (`target`, `targetMember`). Same `where`, `permissions`, `cooldown` as a slash command; `bot.use(quote, { on: message })` in a scenario. See [Menu commands](/commands/menus).
+
+Your functions can wait for what comes next: `channel.waitForMessage({ from, matches: 'paris', within: '30s' })`, `channel.collectMessages()`, `message.waitForClick()` and `message.waitForReaction()`, each resolving with what came or `null` when the time is up. A button or a menu only waited for needs no `run`. The intents follow your code. In a scenario, `bot.use()` resolves while your function waits, and `bot.endWaits()` ends the waits. See [Waiting for an answer](/waiting).
+
+The presence can show several activities in turn, each for its `for` (`activities: [...]`), with texts that are functions (``name: ({ guilds }) => `${guilds} servers` ``) and a list that comes from your data (`activities: async () => ...`, from a store). `activity` stays as it was. See [Presence](/presence#several-activities).
+
+`create chapterjs` offers a sixth template, `games`, made of these three: a quiz against the clock, duels with buttons, a menu command on a person and one on a message, and a presence that takes turns. See [Templates](/setup/project-structure#templates).
 
 </Update>
 

@@ -14,7 +14,7 @@ export default presence({
 });
 ```
 
-That is all: as soon as the bot is connected, it is online and "Watching over the server". Without this file, the bot is online and shows nothing. Both fields are optional: a `status` alone, or an `activity` alone, works.
+That is all: as soon as the bot is connected, it is online and "Watching over the server". Without this file, the bot is online and shows nothing. Both fields are optional: a `status` alone, or an `activity` alone, works. Several activities shown in turn, and texts that change, are [below](#several-activities).
 
 <Note>
   Everything the file declares is in the [reference](/reference/presence).
@@ -58,6 +58,74 @@ export default presence({
 
 A status or a type that is not in these lists, an empty `name`, or a `url` on another type, is an error when the file loads, with what to write.
 
+## Several activities
+
+`activities` shows several activities one after the other, each for its `for`: a duration like `'30s'` or `'2m'`, 30 seconds when left out, 5 seconds at least. After the last one, the first one comes back.
+
+```ts src/presence.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  activities: [
+    { type: 'watching', name: 'the tickets', for: '30s' },
+    { type: 'playing', name: '/help', for: '10s' },
+    { type: 'custom', name: 'Open every day', for: '1m' },
+  ],
+});
+```
+
+A presence has `activity` or `activities`, never both. Which activity is shown is read from the clock: a large bot running on several processes shows the same one everywhere, at the same time.
+
+## Texts that change
+
+A `name` can be a function. It runs each time its activity is shown, and receives `guilds`, the number of servers the bot is in (all processes together), and `t`, the texts of your language files in the default language.
+
+```ts src/status.ts
+import { presence } from 'chapterjs';
+
+export default presence({
+  activities: [
+    { type: 'watching', name: ({ guilds }) => `${guilds} servers`, for: '1m' },
+    { type: 'playing', name: '/help', for: '20s' },
+  ],
+});
+```
+
+Alone, an activity whose `name` is a function runs it again every `for`.
+
+## Activities from your data
+
+`activities` can be a function too, `async` if it needs to: it gives the list, and runs again each time the list has been shown in full. The activities can then come from a [store](/storage), kept in a file or in Redis, that a command fills:
+
+```ts src/rotation.ts
+import { command, presence, store } from 'chapterjs';
+
+/** The texts shown under the name of the bot, for the whole bot. */
+export const statuses = store<string[]>({ scope: 'global' });
+
+export default presence({
+  activities: async () => {
+    const texts = (await statuses.get('list')) ?? ['/help'];
+    return texts.map(text => ({ type: 'custom', name: text, for: '20s' }));
+  },
+});
+
+export const addStatus = command({
+  name: 'status-add',
+  description: 'Adds a text under the name of the bot',
+  permissions: ['ManageGuild'],
+  options: { text: { type: 'string', description: 'The text', required: true, maxLength: 100 } },
+  async run({ interaction, options }) {
+    await statuses.update('list', texts => [...(texts ?? []), options.text]);
+    await interaction.reply({ content: 'Added: it shows up after the current list.', ephemeral: true });
+  },
+});
+```
+
+When a function throws, or gives something that is not an activity, the error is shown once with the file and the line, and the bot keeps the last text or list that worked. Until a list function has run, the bot shows its status alone.
+
+`chapterjs test` runs each function of the presence once, and reports the one that throws with its line.
+
 ## In development
 
 In `chapterjs dev`, saving `src/presence.ts` changes the presence at once, without reconnecting:
@@ -66,7 +134,7 @@ In `chapterjs dev`, saving `src/presence.ts` changes the presence at once, witho
 ↻ Presence updated
 ```
 
-A file that does not load is reported with what is wrong, and the bot keeps the last presence that worked. Deleting the file puts the bot back to online with nothing shown. Discord accepts a few changes of presence per minute: when you save faster than that, only the latest one is sent, when it may be.
+A file that does not load is reported with what is wrong, and the bot keeps the last presence that worked. Deleting the file puts the bot back to online with nothing shown. Discord accepts 5 changes of presence per 20 seconds: when you save faster than that, only the latest one is sent, when it may be. The functions of the presence always run as your files are now, even when the presence file itself did not change.
 
 The presence is the bot's, not the server's. With one bot for dev and production, what you try here may be shown to everyone: see [A second bot for development](/run/start#a-second-bot-for-development).
 

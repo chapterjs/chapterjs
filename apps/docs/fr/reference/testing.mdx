@@ -104,9 +104,10 @@ Un salon du serveur, créé la première fois que le nom est donné. `#general` 
 
 ```ts
 use(command: CommandDeclaration, options?: OptionInputsOf<Options>, where?: TestWhere): Promise<TestReply>
+use(command: MenuDeclaration, target: TestMenuTarget, where?: TestWhere): Promise<TestReply>
 ```
 
-Utilise une commande slash, comme une personne le ferait. Se résout une fois que le bot a répondu.
+Utilise une commande, comme une personne le ferait : une commande slash avec ses options, ou une commande de menu sur ce sur quoi elle s’utilise (`{ on: message }`, `{ on: member }` ; un menu de message s’utilise dans le salon de son message). Se résout une fois que le bot a répondu.
 
 `options` est typé depuis les options de la commande (`OptionInputsOf`) : un texte, un nombre, `true` ou `false`, l’un des `choices`, un `TestMember` pour une option `user`, un `TestRole` pour une option `role`, un `TestChannel` pour une option `channel`, un `TestFile` pour une option `attachment`. Il peut être omis quand la commande n’en exige aucune. Ce que Discord ne laisserait pas une personne envoyer (une option obligatoire manquante, un nombre hors de sa plage, un texte trop long, une valeur qui n’est pas un des choix) fait échouer le scénario avant que le bot n’en entende parler.
 
@@ -116,7 +117,7 @@ Utilise une commande slash, comme une personne le ferait. Se résout une fois qu
 click(button: ButtonTarget, where?: TestWhere): Promise<TestReply>
 ```
 
-Clique sur un bouton. Se résout une fois que le bot a répondu.
+Clique sur un bouton. Se résout une fois que le bot a répondu. Un bouton trouvé sur un message (`reply.button('Confirmer')`) est cliqué sur ce message, comme le ferait une personne.
 
 ### select()
 
@@ -189,6 +190,16 @@ settle(): Promise<void>
 ```
 
 Attend que tout ce que le bot a commencé soit terminé.
+
+Tout sauf ce qui attend que le test agisse : une fonction qui attend un message, un clic ou une réaction (`waitForMessage()`…) reste en attente, et `use()`, `say()`, `click()`… se résolvent pendant ce temps.
+
+### endWaits()
+
+```ts
+endWaits(): Promise<void>
+```
+
+Termine tout ce qu’attend le bot (`waitForMessage()`, `waitForClick()`…) comme si son temps était écoulé : le temps ne passe pas dans le serveur de test. Se résout une fois que le bot l’a traité.
 
 ## TestWhere
 
@@ -703,6 +714,7 @@ Une suggestion que le bot a faite pendant que quelqu’un tapait dans une option
 - `OptionInputsOf<Options>` : les options d’une commande telles qu’un test les remplit. Une option obligatoire ne peut pas être omise.
 - `FieldInputsOf<Fields>` : les champs d’un formulaire tels qu’un test les remplit : un champ omis reste vide.
 - `SelectInput` : ce qu’un test choisit dans un menu : des textes, ou des personnes, rôles et salons.
+- `TestMenuTarget<Type>` : ce sur quoi s’utilise une commande de menu dans un test : `{ on }`, un `TestMember` pour un menu `'user'`, un `TestMessage` pour un menu `'message'`.
 - `ButtonTarget` : un bouton, tel qu’un test le nomme : la déclaration, une instance, ou un bouton trouvé sur un message (`reply.button('Confirmer')`).
 - `SelectTarget` : un menu, de la même façon (`reply.menu()`).
 - `FormTarget<Fields>` : un formulaire, de la même façon (`reply.form`).

@@ -544,8 +544,9 @@ describe('a component declared in a file', () => {
       '"disabled" of this button is true or false.',
     ],
     [
-      { default: button({ label: 'x' } as never) },
-      'this button has no "run": the function to run when someone uses it',
+      // Left out: a button only waited for. Not a function: refused.
+      { default: button({ label: 'x', run: 'go' } as never) },
+      '"run" of this button is the function to run when someone uses it, like async run({ interaction }) { await interaction.update(\'Done!\'); }. Leave it out for one that is only waited for with message.waitForClick().',
     ],
     [
       { default: button({ label: 'x', data: 'userId' as never, run() {} }) },
@@ -789,8 +790,8 @@ describe('a component declared in a file', () => {
       '"min" of this select menu is a whole number between 0 and 25, got -1.',
     ],
     [
-      { default: select({ options: ['a'] } as never) },
-      'this select menu has no "run"',
+      { default: select({ options: ['a'], run: 1 } as never) },
+      '"run" of this select menu is the function to run when someone uses it',
     ],
   ])('refuse a select file that is wrong (%#)', (exports, message) => {
     expect(() => load('pick.ts', exports)).toThrow(message);

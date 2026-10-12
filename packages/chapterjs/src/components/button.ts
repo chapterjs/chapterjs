@@ -71,8 +71,12 @@ export interface ButtonConfig<
   Where extends ComponentWhere = 'guild',
 >
   extends ButtonLook<Data>, InteractiveConfig<Data, Where> {
-  /** What to do when someone clicks the button. */
-  run: (context: ButtonContext<Data, Where>) => unknown;
+  /**
+   * What to do when someone clicks the button. Leave it out for a button
+   * that is only waited for (`message.waitForClick()`): once nothing waits,
+   * a click answers that it is not available any more.
+   */
+  run?: (context: ButtonContext<Data, Where>) => unknown;
 }
 
 /**
@@ -128,7 +132,10 @@ export interface LoadedButton {
   readonly where: ComponentWhere;
   readonly who: 'everyone' | 'author';
   readonly ephemeral: boolean;
-  readonly run: (context: ButtonContext<DataShape, ComponentWhere>) => unknown;
+  /** `undefined` for a button that is only waited for. */
+  readonly run:
+    | ((context: ButtonContext<DataShape, ComponentWhere>) => unknown)
+    | undefined;
 }
 
 const fail = (message: string): never => {

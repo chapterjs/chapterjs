@@ -40,8 +40,15 @@ import type {
   CommandOption,
   CommandOptions,
   CommandWhere,
+  MenuDeclaration,
+  MenuType,
 } from '../commands/command.js';
-import { commandName, type CommandEntry } from '../commands/tree.js';
+import {
+  capitalize,
+  commandName,
+  describeCommand,
+  type CommandEntry,
+} from '../commands/tree.js';
 import type { ButtonDeclaration } from '../components/button.js';
 import { componentStateOf } from '../components/declared.js';
 import {
@@ -77,6 +84,12 @@ import type { TaskDeclaration } from '../tasks/task.js';
 import { toCamelCase, type Camelize } from '../util/case.js';
 import { expectThat, shown, TestFailure } from './failure.js';
 import { World, type InteractionRecord } from './world.js';
+
+/** The type Discord gives each kind of menu command. */
+const MENU_COMMAND_TYPES = {
+  user: ApplicationCommandType.User,
+  message: ApplicationCommandType.Message,
+} as const;
 
 // ── What a scenario sees ─────────────────────────────────────────────
 
@@ -390,6 +403,15 @@ export type SelectTarget =
 export type FormTarget<Fields extends ModalFields = ModalFields> =
   ModalDeclaration<Fields, never> | ModalComponent | TestForm;
 
+/**
+ * What a menu command is used on in a test: a person for a `'user'` menu,
+ * a message for a `'message'` menu.
+ */
+export type TestMenuTarget<Type extends MenuType = MenuType> = {
+  /** The person or the message the menu is used on. */
+  readonly on: Type extends 'user' ? TestMember : TestMessage;
+};
+
 /** The arguments of `bot.use()`: the options may be left out when none is required. */
 type UseArgs<Options extends CommandOptions> =
   {} extends OptionInputsOf<Options>
@@ -420,7 +442,17 @@ export interface TestBot {
   role(name: string, options?: TestRoleOptions): TestRole;
   /** A channel of the server, made the first time the name is given. `#general` exists. */
   channel(name: string, options?: TestChannelOptions): TestChannel;
-  /** Uses a slash command, as a person would. Resolves once the bot answered. */
+  /**
+   * Uses a command, as a person would: a slash command with its options,
+   * or a menu command on what it is used on (`{ on: message }`,
+   * `{ on: member }`; a message menu is used in the channel of its
+   * message). Resolves once the bot answered.
+   */
+  use<Type extends MenuType, Where extends CommandWhere>(
+    command: MenuDeclaration<Type, Where>,
+    target: TestMenuTarget<Type>,
+    where?: TestWhere
+  ): Promise<TestReply>;
   use<Options extends CommandOptions, Where extends CommandWhere>(
     command: CommandDeclaration<Options, Where>,
     ...args: UseArgs<Options>
@@ -463,6 +495,12 @@ export interface TestBot {
   leave(member: TestMember): Promise<void>;
   /** Runs a task now, as if its time had come. Resolves once it is done. */
   run(task: TaskDeclaration, at?: Date): Promise<void>;
+  /**
+   * Ends everything the bot waits for (`waitForMessage()`,
+   * `waitForClick()`...) as if its time was up: time does not pass in the
+   * test server. Resolves once the bot handled it.
+   */
+  endWaits(): Promise<void>;
   /** Waits for everything the bot started to be done. */
   settle(): Promise<void>;
 }
@@ -498,6 +536,13 @@ export function captureLog(): { log: Log; take(): Captured } {
 /** Watches what the bot does with the files, to wait for it. */
 export class Observer {
   readonly #pending = new Set<Promise<void>>();
+  /**
+   * The runs of the files waiting for what comes next: each keeps one
+   * promise pending that only the test can end (`bot.say()`...).
+   */
+  readonly #parked = new Set<object>();
+  /** Resolves the next time a run starts or stops waiting. */
+  #parkChanged: () => void = () => {};
   readonly #interactions = new Map<string, Promise<void>>();
   readonly #interactionWaiters = new Map<
     string,
@@ -509,6 +554,16 @@ export class Observer {
   }[] = [];
 
   readonly observe: ProjectObserver = {
+    waits: {
+      parked: run => {
+        this.#parked.add(run);
+        this.#parkChanged();
+      },
+      resumed: run => {
+        this.#parked.delete(run);
+        this.#parkChanged();
+      },
+    },
     interaction: (raw, done) => {
       const settled = done.then(
         () => {},
@@ -548,10 +603,12 @@ export class Observer {
     this.#interactions.clear();
   }
 
-  /** Resolves once the files are done with the interaction `id`. */
+  /**
+   * Resolves once the files were given the interaction `id`: `settle()`
+   * then waits for them to be done with it.
+   */
   interaction(id: string, timeout: number): Promise<void> {
-    const known = this.#interactions.get(id);
-    if (known) return known;
+    if (this.#interactions.has(id)) return Promise.resolve();
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.#interactionWaiters.delete(id);
@@ -561,14 +618,17 @@ export class Observer {
           )
         );
       }, timeout);
-      this.#interactionWaiters.set(id, done => {
+      this.#interactionWaiters.set(id, () => {
         clearTimeout(timer);
-        resolve(done);
+        resolve();
       });
     });
   }
 
-  /** Resolves once the files are done with the next event that matches. */
+  /**
+   * Resolves once the files were given the next event that matches:
+   * `settle()` then waits for them to be done with it.
+   */
   event(
     match: (event: string, data: unknown) => boolean,
     timeout: number
@@ -576,9 +636,9 @@ export class Observer {
     return new Promise((resolve, reject) => {
       const waiter = {
         match,
-        resolve: (done: Promise<void>) => {
+        resolve: () => {
           clearTimeout(timer);
-          resolve(done);
+          resolve();
         },
       };
       const timer = setTimeout(() => {
@@ -594,13 +654,24 @@ export class Observer {
     });
   }
 
-  /** Resolves once nothing the files started is still running. */
+  /**
+   * Resolves once nothing the files started is still running, but what
+   * waits for the test to act (a run waiting for a message, a click...).
+   */
   async settle(): Promise<void> {
-    while (this.#pending.size > 0) {
-      await Promise.all([...this.#pending]);
-    }
-    // Answers sent at the very end have reached the world by now.
-    await new Promise(resolve => setImmediate(resolve));
+    do {
+      while (this.#pending.size > this.#parked.size) {
+        const changed = new Promise<void>(
+          resolve => (this.#parkChanged = resolve)
+        );
+        // Looked at again as soon as one is done: the one left may be a
+        // run that waits, which only the test ends.
+        await Promise.race([...this.#pending, changed]);
+      }
+      // Answers sent at the very end have reached the world by now, and a
+      // wait given what just happened has started running again.
+      await new Promise(resolve => setImmediate(resolve));
+    } while (this.#pending.size > this.#parked.size);
   }
 }
 
@@ -674,28 +745,50 @@ function collectComponents(components: readonly RawComponent[] | undefined): {
   return { buttons, menus };
 }
 
-const buttonHandle = (raw: RawButton): TestButton =>
-  Object.freeze({
-    label: raw.label ?? null,
-    style: BUTTON_STYLES[raw.style] ?? 'secondary',
-    disabled: raw.disabled === true,
-    customId: raw.custom_id ?? null,
-  });
+/**
+ * The message a button or a menu was found on, kept out of sight: clicking
+ * it clicks that message, as a person would.
+ */
+const FOUND_ON = Symbol('found on');
 
-const menuHandle = (raw: RawSelectMenu): TestMenu =>
-  Object.freeze({
-    type: MENU_TYPES[raw.type] ?? 'string',
-    placeholder: raw.placeholder ?? null,
-    disabled: raw.disabled === true,
-    options:
-      'options' in raw
-        ? raw.options.map(option => ({
-            label: option.label,
-            value: option.value,
-          }))
-        : [],
-    customId: raw.custom_id,
-  });
+/** The id of the message a handle was found on, if it was found on one. */
+const foundOn = (target: unknown): string | undefined =>
+  typeof target === 'object' && target !== null
+    ? (target as { [FOUND_ON]?: string })[FOUND_ON]
+    : undefined;
+
+/** Keeps the message a handle was found on, without showing it. */
+const onMessage = <T extends object>(handle: T, messageId: string): T =>
+  Object.freeze(Object.defineProperty(handle, FOUND_ON, { value: messageId }));
+
+const buttonHandle = (raw: RawButton, messageId: string): TestButton =>
+  onMessage(
+    {
+      label: raw.label ?? null,
+      style: BUTTON_STYLES[raw.style] ?? 'secondary',
+      disabled: raw.disabled === true,
+      customId: raw.custom_id ?? null,
+    },
+    messageId
+  );
+
+const menuHandle = (raw: RawSelectMenu, messageId: string): TestMenu =>
+  onMessage(
+    {
+      type: MENU_TYPES[raw.type] ?? 'string',
+      placeholder: raw.placeholder ?? null,
+      disabled: raw.disabled === true,
+      options:
+        'options' in raw
+          ? raw.options.map(option => ({
+              label: option.label,
+              value: option.value,
+            }))
+          : [],
+      customId: raw.custom_id,
+    },
+    messageId
+  );
 
 /** Checks a message or an answer; written once for both. */
 function check<Self>(
@@ -1018,8 +1111,8 @@ export class Session implements TestBot {
       return {
         content: message.content,
         embeds: toCamelCase(message.embeds) as Camelize<RawEmbed>[],
-        buttons: buttons.map(buttonHandle),
-        menus: menus.map(menuHandle),
+        buttons: buttons.map(button => buttonHandle(button, raw.id)),
+        menus: menus.map(menu => menuHandle(menu, raw.id)),
         ephemeral: ((message.flags ?? 0) & MessageFlags.Ephemeral) !== 0,
         present: true,
       };
@@ -1378,7 +1471,8 @@ export class Session implements TestBot {
   }
 
   #commandEntry(
-    declaration: CommandDeclaration<CommandOptions, CommandWhere>
+    declaration:
+      CommandDeclaration<CommandOptions, CommandWhere> | MenuDeclaration
   ): CommandEntry {
     const run = declaration?.config?.run;
     const entry = [...this.project.commands.values()].find(
@@ -1392,12 +1486,28 @@ export class Session implements TestBot {
     return entry;
   }
 
-  async use<Options extends CommandOptions, Where extends CommandWhere>(
+  use<Type extends MenuType, Where extends CommandWhere>(
+    command: MenuDeclaration<Type, Where>,
+    target: TestMenuTarget<Type>,
+    where?: TestWhere
+  ): Promise<TestReply>;
+  use<Options extends CommandOptions, Where extends CommandWhere>(
     command: CommandDeclaration<Options, Where>,
     ...args: UseArgs<Options>
+  ): Promise<TestReply>;
+  async use(
+    command: CommandDeclaration | MenuDeclaration,
+    ...args: unknown[]
   ): Promise<TestReply> {
-    const [given = {}, where] = args as [Record<string, unknown>?, TestWhere?];
     const entry = this.#commandEntry(command as never);
+    if (entry.command.type !== 'slash') {
+      return this.#useMenu(
+        entry,
+        args[0] as TestMenuTarget | undefined,
+        args[1] as TestWhere | undefined
+      );
+    }
+    const [given = {}, where] = args as [Record<string, unknown>?, TestWhere?];
     const actor = this.#actor(where);
     const channel = this.#place(where, actor, entry.command.where === 'dm');
     const { options, resolved } = this.#commandOptions(entry, given, channel);
@@ -1449,6 +1559,77 @@ export class Session implements TestBot {
     }));
   }
 
+  /**
+   * Uses a menu command on a person or a message, as Discord's client
+   * does: on a message, in the channel of that message; on a person, where
+   * `where` says (`#general`, or the private conversation of a
+   * `where: 'dm'` command, by default).
+   */
+  async #useMenu(
+    entry: CommandEntry,
+    target: TestMenuTarget | undefined,
+    where: TestWhere | undefined
+  ): Promise<TestReply> {
+    const { type, path, where: place } = entry.command;
+    const kind = MENU_COMMAND_TYPES[type as MenuType];
+    const name = describeCommand(entry.command);
+    const on = target?.on as TestMember | TestMessage | undefined;
+    const actor = this.#actor(where);
+    const resolved: RawResolvedData = {};
+    let channel: RawChannel;
+    let targetId: Snowflake;
+    if (type === 'message') {
+      const message =
+        on && !this.#isMember(on) ? this.world.findMessage(on.id) : undefined;
+      if (!message) {
+        throw new TestFailure(
+          on && !this.#isMember(on)
+            ? `The message ${on.id} does not exist any more: ${name} can not be used on it.`
+            : `${capitalize(name)} is used on a message: bot.use(command, { on: message }), with a message of the test (await bot.say('...'), or one the bot sent).`
+        );
+      }
+      const found = this.world.channels.get(message.channel_id);
+      if (!found) {
+        throw new TestFailure(
+          `The channel of the message ${message.id} does not exist any more.`
+        );
+      }
+      channel = found;
+      targetId = message.id;
+      (resolved.messages ??= {})[message.id] = message;
+    } else {
+      if (!this.#isMember(on)) {
+        throw new TestFailure(
+          `${capitalize(name)} is used on a person: bot.use(command, { on: bot.member('alice') }).`
+        );
+      }
+      channel = this.#place(where, actor, place === 'dm');
+      targetId = this.#resolveMember(
+        `${capitalize(name)}`,
+        on,
+        resolved,
+        channel
+      );
+    }
+    const registered = this.world.guildCommands.find(
+      command => command.name === path[0] && command.type === kind
+    );
+    const raw = this.#rawInteraction(
+      InteractionType.ApplicationCommand,
+      actor,
+      channel,
+      {
+        id: registered?.id ?? this.world.snowflake(),
+        name: path[0]!,
+        type: kind,
+        target_id: targetId,
+        resolved,
+        ...(channel.guild_id ? { guild_id: channel.guild_id } : {}),
+      } as never
+    );
+    return this.#reply(await this.#interact(raw));
+  }
+
   /** The `data` of a command interaction, subcommands nested as Discord does. */
   #commandData(
     entry: CommandEntry,
@@ -1470,7 +1651,10 @@ export class Session implements TestBot {
       ];
     }
     const registered = this.world.guildCommands.find(
-      command => command.name === name
+      command =>
+        command.name === name &&
+        (command.type ?? ApplicationCommandType.ChatInput) ===
+          ApplicationCommandType.ChatInput
     );
     return {
       id: registered?.id ?? this.world.snowflake(),
@@ -1766,9 +1950,14 @@ export class Session implements TestBot {
     where: TestWhere | undefined,
     actor: RawUser,
     channel: RawChannel,
-    component: RawComponent
+    component: RawComponent,
+    target?: unknown
   ): RawMessage {
     const given = where?.on;
+    // Found on a message: that message, as long as it is there.
+    const found = given ? undefined : foundOn(target);
+    const sent = found ? this.world.findMessage(found) : undefined;
+    if (sent) return sent;
     if (given) {
       const id = 'message' in given ? given.message?.id : given.id;
       const found = id ? this.world.findMessage(id) : undefined;
@@ -1819,11 +2008,13 @@ export class Session implements TestBot {
       actor,
       entry?.component.kind === 'button' && entry.component.where === 'dm'
     );
-    const message = this.#messageFor(where, actor, channel, {
-      type: ComponentType.Button,
-      style: 2,
-      custom_id: customId,
-    });
+    const message = this.#messageFor(
+      where,
+      actor,
+      channel,
+      { type: ComponentType.Button, style: 2, custom_id: customId },
+      button
+    );
     const raw = this.#rawInteraction(
       InteractionType.MessageComponent,
       actor,
@@ -1893,11 +2084,19 @@ export class Session implements TestBot {
     }
     const componentType =
       SELECT_COMPONENT_TYPES[type] ?? ComponentType.StringSelect;
-    const message = this.#messageFor(where, actor, channel, {
-      type: componentType,
-      custom_id: customId,
-      ...(componentType === ComponentType.StringSelect ? { options: [] } : {}),
-    } as never);
+    const message = this.#messageFor(
+      where,
+      actor,
+      channel,
+      {
+        type: componentType,
+        custom_id: customId,
+        ...(componentType === ComponentType.StringSelect
+          ? { options: [] }
+          : {}),
+      } as never,
+      menu
+    );
     const raw = this.#rawInteraction(
       InteractionType.MessageComponent,
       actor,
@@ -2274,6 +2473,11 @@ export class Session implements TestBot {
 
   settle(): Promise<void> {
     return this.#observer.settle();
+  }
+
+  async endWaits(): Promise<void> {
+    this.bot.ctx.waiters?.close();
+    await this.#observer.settle();
   }
 
   /**

@@ -1,9 +1,9 @@
 ---
 title: 'command()'
-description: 'Tout ce que déclare un fichier de commande, chaque sorte d’option, et ce que reçoit la fonction run'
+description: 'Tout ce que déclare un fichier de commande, chaque sorte d’option, les commandes de menu, et ce que reçoit la fonction run'
 ---
 
-`command()` déclare une commande slash, depuis n’importe quel fichier de `src/` ; son `name` est ce que les gens tapent après le `/`. Elle prend un objet, `CommandConfig`, et type `run` d’après lui.
+`command()` déclare une commande slash, depuis n’importe quel fichier de `src/` ; son `name` est ce que les gens tapent après le `/`. Elle prend un objet, `CommandConfig`, et type `run` d’après lui. Avec un `type`, elle déclare à la place une [commande de menu](#commandes-de-menu), utilisée d’un clic droit sur un message ou une personne.
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
@@ -18,18 +18,22 @@ export default command({
 ```
 
 <Note>
-  Comment écrire une commande, ses options, ses réponses et ses traductions est dans le [guide](/fr/commands). Cette page liste ce qui existe.
+  Comment écrire une commande, ses options, ses réponses et ses traductions est dans le [guide](/fr/commands), et les commandes de menu dans [leur propre page](/fr/commands/menus). Cette page liste ce qui existe.
 </Note>
 
 ## command()
 
 ```ts
-command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild'>(config: CommandConfig<Options, Where>): CommandDeclaration<Options, Where>
+command<Options extends CommandOptions = {}, Where extends CommandWhere = 'guild', Type extends MenuType | undefined = undefined>(
+  config: Type extends MenuType ? MenuConfig<Type, Where> : CommandConfig<Options, Where>
+): Type extends MenuType ? MenuDeclaration<Type, Where> : CommandDeclaration<Options, Where>
 ```
 
-Déclare une commande slash. Exportez le résultat depuis n’importe quel fichier de `src/` : `name` est ce que les gens tapent après le `/` (`'mod ban'` pour `/mod ban`).
+Déclare une commande. Exportez le résultat depuis n’importe quel fichier de `src/`.
 
-`Options` et `Where` sont déduits de ce que vous passez : vous ne les écrivez jamais.
+Une commande slash : `name` est ce que les gens tapent après le `/` (`'mod ban'` pour `/mod ban`). Une commande de menu, avec `type` : utilisée d’un clic droit sur un message (`'message'`) ou sur une personne (`'user'`), `name` étant ce qu’affiche le menu.
+
+`Options`, `Where` et `Type` sont déduits de ce que vous passez : vous ne les écrivez jamais.
 
 ### CommandDeclaration
 
@@ -91,6 +95,10 @@ Ce qu’un fichier de commande donne à `command()` : ce qu’est la commande et
 
 <ResponseField name="autocomplete" type="CommandAutocomplete<Options, Where>">
   Des suggestions qui viennent de votre bot pendant que la personne tape, pour les options nommées ici (une option `string`, `integer` ou `number` sans `choices`) : chaque fonction reçoit ce qu’elle a tapé et renvoie les suggestions. La personne peut quand même taper autre chose.
+</ResponseField>
+
+<ResponseField name="type" type="undefined">
+  Omis pour une commande slash. `'message'` ou `'user'` en fait une commande de menu, utilisée d’un clic droit sur un message ou une personne.
 </ResponseField>
 
 ### CommandName
@@ -459,6 +467,144 @@ La traduction d’une option. Tout est facultatif.
   Comment s’appelle chaque choix dans cette langue. Les clés sont les choix tels que déclarés : les valeurs d’une liste, ou les clés d’un objet. Chaque valeur fait de 1 à 100 caractères.
 </ResponseField>
 
+## Commandes de menu
+
+```ts src/commands/quote.ts
+import { command } from 'chapterjs';
+
+export const quote = command({
+  type: 'message',
+  name: 'Citer',
+  async run({ interaction, message }) {
+    await interaction.reply(`> ${message.content}`);
+  },
+});
+```
+
+### MenuType
+
+```ts
+type MenuType = 'message' | 'user';
+```
+
+Ce sur quoi s’utilise une commande de menu, dans le menu que les gens ouvrent d’un clic droit (ou d’un appui long) : un message (`'message'`) ou une personne (`'user'`).
+
+[Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-types)
+
+### MenuConfig
+
+```ts
+interface MenuConfig<Type extends MenuType = 'message', Where extends CommandWhere = 'guild'>
+```
+
+Ce qu’un fichier donne à `command()` pour une commande de menu : une commande utilisée sur un message ou une personne, depuis le menu d’un clic droit. Elle n’a ni description ni options : ce qu’elle reçoit est ce sur quoi elle a été utilisée.
+
+<ResponseField name="type" type="Type" required>
+  Ce sur quoi la commande s’utilise : `'message'` (un clic droit sur un message) ou `'user'` (un clic droit sur une personne).
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Ce qu’affiche le menu (1 à 32 caractères) : les majuscules et les espaces sont permis, comme `'Signaler le message'`.
+</ResponseField>
+
+<ResponseField name="run" type="(context: MenuContext<Type, Where>) => unknown" required>
+  Ce qu’il faut faire quand quelqu’un utilise la commande.
+</ResponseField>
+
+<ResponseField name="locales" type="MenuLocales">
+  Le nom dans d’autres langues : Discord montre à chaque personne le nom de sa langue.
+
+  [Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#localization)
+</ResponseField>
+
+<ResponseField name="permissions" type="readonly PermissionName[]">
+  Les permissions qu’un membre doit avoir pour utiliser la commande. Les administrateurs du serveur peuvent changer qui la voit dans les paramètres du serveur.
+</ResponseField>
+
+<ResponseField name="where" type="CommandWhere">
+  Où la commande peut être utilisée : `'guild'` (sur les serveurs, par défaut), `'dm'` (en messages privés avec le bot) ou `'both'`. Ce que reçoit `run` en dépend.
+</ResponseField>
+
+<ResponseField name="nsfw" type="boolean">
+  N’afficher la commande que dans les salons réservés aux adultes.
+</ResponseField>
+
+<ResponseField name="ephemeral" type="boolean">
+  Rendre les réponses de la commande visibles seulement par qui l’a utilisée.
+</ResponseField>
+
+<ResponseField name="cooldown" type="Cooldown">
+  Combien de temps attendre avant de pouvoir réutiliser la commande : `'10s'` pour chaque personne, ou `{ user, channel, guild }` pour chaque endroit.
+</ResponseField>
+
+<ResponseField name="description" type="never">
+  Une commande de menu n’a pas de description : Discord n’affiche que son nom.
+</ResponseField>
+
+<ResponseField name="options" type="never">
+  Une commande de menu n’a pas d’options : elle reçoit ce sur quoi elle a été utilisée.
+</ResponseField>
+
+<ResponseField name="autocomplete" type="never">
+  Une commande de menu n’a pas d’options pour lesquelles suggérer des valeurs.
+</ResponseField>
+
+### MenuDeclaration
+
+```ts
+interface MenuDeclaration<Type extends MenuType = MenuType, Where extends CommandWhere = CommandWhere>
+```
+
+Ce que renvoie `command()` pour une commande de menu.
+
+<ResponseField name="config" type="MenuConfig<Type, Where>">
+  Ce que le fichier a donné à `command()`, pas encore vérifié.
+</ResponseField>
+
+### MenuContext
+
+```ts
+type MenuContext<Type extends MenuType = 'message', Where extends CommandWhere = 'guild'>
+```
+
+Ce que reçoit la fonction `run` d’une commande de menu : ce sur quoi elle a été utilisée (`message`, ou `target` et `targetMember`), qui l’a utilisée, et l’endroit, qui suit `where` comme celui d’une commande slash ([`CommandInGuild`](#commandinguild), [`CommandInDm`](#commandindm), [`CommandInPrivate`](#commandinprivate)).
+
+<ResponseField name="user" type="User" required>
+  Qui a utilisé le menu.
+</ResponseField>
+
+<ResponseField name="message" type="GuildMessage | PrivateMessage | DmMessage">
+  Avec `type: 'message'` : le message sur lequel le menu a été utilisé. Un `GuildMessage` sur un serveur, un `PrivateMessage` en message privé pour une commande `where: 'both'`, un `DmMessage` avec `where: 'dm'`.
+</ResponseField>
+
+<ResponseField name="target" type="User">
+  Avec `type: 'user'` : la personne sur laquelle le menu a été utilisé.
+</ResponseField>
+
+<ResponseField name="targetMember" type="GuildMember | null">
+  Avec `type: 'user'`, sur un serveur : cette personne en tant que membre du serveur, ou `null` quand elle n’y est pas (ou plus). `null` en message privé ; absent avec `where: 'dm'`.
+</ResponseField>
+
+<ResponseField name="t" type="Translator">
+  Les textes du projet dans la langue de la personne, quand le projet a une langue. Voir [`Translator`](/fr/reference/messages#translator).
+</ResponseField>
+
+### MenuLocales
+
+```ts
+type MenuLocales = { readonly [Language in Locale]?: MenuTranslation }
+```
+
+Les traductions d’une commande de menu, par langue.
+
+### MenuTranslation
+
+La traduction d’une commande de menu dans une langue : son nom.
+
+<ResponseField name="name" type="string">
+  Le nom affiché dans le menu dans cette langue (1 à 32 caractères).
+</ResponseField>
+
 ## Les limites
 
 Ce que déclare un fichier est vérifié à son chargement, par rapport aux limites de Discord, avec un message qui dit quoi écrire :
@@ -475,6 +621,8 @@ Ce que déclare un fichier est vérifié à son chargement, par rapport aux limi
 | Les noms traduits des options | Pas deux options avec le même nom dans une langue |
 | `cooldown` | Une durée d’une seconde au moins ; pas de `guild` pour une commande avec `where: 'dm'` |
 | `autocomplete` | Une fonction par option, pour une option `string`, `integer` ou `number` sans `choices` |
+| Le nom d’une commande de menu (et ses traductions) | 1 à 32 caractères, majuscules et espaces permis, pas d’espace à un bout |
+| Commandes de menu | 15 utilisées sur un message et 15 sur une personne ; une commande slash, un menu de message et un menu de personne peuvent avoir le même nom |
 | Les suggestions (vérifiées à l’envoi) | 25 au plus (les premières sont gardées), chacune affichée en 1 à 100 caractères (coupée au-delà), une valeur texte de 100 caractères au plus, un nombre pour une option nombre, entier pour une option `'integer'` |
 
 [Documentation de Discord](https://docs.discord.com/developers/interactions/application-commands#application-command-object-application-command-naming)

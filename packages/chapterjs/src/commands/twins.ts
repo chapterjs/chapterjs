@@ -6,7 +6,23 @@
 // https://docs.discord.com/developers/interactions/application-commands#registering-a-command
 
 import type { RawApplicationCommand } from '../discord/types/application-command.js';
+import { ApplicationCommandType } from '../discord/types/application-command.js';
 import type { CommandPayload } from './tree.js';
+
+/**
+ * A registered command as messages name it: `/ping`, or `the message menu
+ * "Report"`.
+ */
+export function shownName(command: { type?: number; name: string }): string {
+  switch (command.type ?? ApplicationCommandType.ChatInput) {
+    case ApplicationCommandType.User:
+      return `the user menu "${command.name}"`;
+    case ApplicationCommandType.Message:
+      return `the message menu "${command.name}"`;
+    default:
+      return `/${command.name}`;
+  }
+}
 
 /** What says how a command looks and works: the rest is not compared. */
 const DEFINITION = new Set([
@@ -31,6 +47,9 @@ const DEFINITION = new Set([
 
 const isEmpty = (value: unknown): boolean =>
   value === null ||
+  // The description of a menu command: "an empty string (instead of
+  // null) when fetching commands", and never sent.
+  value === '' ||
   value === undefined ||
   value === false ||
   (Array.isArray(value) && value.length === 0) ||
@@ -74,21 +93,20 @@ export function withoutGlobalTwins(
   commands: readonly CommandPayload[],
   global: readonly RawApplicationCommand[]
 ): { kept: CommandPayload[]; twins: string[]; changed: string[] } {
-  const byName = new Map(
-    global
-      .filter(command => (command.type ?? 1) === 1)
-      .map(command => [command.name, command])
-  );
+  // A slash command and a menu command may share a name.
+  const keyOf = (command: { type?: number; name: string }): string =>
+    `${command.type ?? 1}:${command.name}`;
+  const byName = new Map(global.map(command => [keyOf(command), command]));
   const kept: CommandPayload[] = [];
   const twins: string[] = [];
   const changed: string[] = [];
   for (const command of commands) {
-    const other = byName.get(command.name);
+    const other = byName.get(keyOf(command));
     if (other && sameDefinition(command, other)) {
-      twins.push(command.name);
+      twins.push(shownName(command));
       continue;
     }
-    if (other) changed.push(command.name);
+    if (other) changed.push(shownName(command));
     kept.push(command);
   }
   return { kept, twins, changed };

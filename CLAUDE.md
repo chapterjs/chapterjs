@@ -9,7 +9,7 @@ ChapterJS is a Discord bot framework: "ultra simple, but ultra customizable". A 
 This file holds the rules of the repo. What a package or a module does is described next to it, in a `CLAUDE.md` loaded when you work there. **Read the one of the folder you touch before changing anything in it**, and update it in the same change:
 
 - `packages/chapterjs/CLAUDE.md`: the framework, its layers and every core module (`discord/`, `util/`, `rest/`, `cache/`, `structures/`, `gateway/`, `core/`, `loader/`, `assets/`, `interactions/`, `presence/`, `cli/`).
-- `packages/chapterjs/src/<feature>/CLAUDE.md`, one per feature: `events/`, `commands/`, `components/`, `messages/`, `tasks/`, `store/`, `ranking/`, `voice/`.
+- `packages/chapterjs/src/<feature>/CLAUDE.md`, one per feature: `events/`, `commands/`, `components/`, `messages/`, `tasks/`, `store/`, `ranking/`, `voice/`, `waiting/`.
 - `packages/create-chapterjs/CLAUDE.md`: the scaffolder and its templates.
 - `apps/docs/AGENTS.md`: the style guide of the documentation site.
 

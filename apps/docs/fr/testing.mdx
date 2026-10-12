@@ -41,7 +41,9 @@ Chaque fichier de `src/` est chargé, comme `chapterjs dev` le fait. Un fichier 
 - **Chaque commande** est utilisée avec toutes ses options remplies, puis avec les obligatoires seulement, puis une fois par valeur difficile : un texte au plus long et en unicode, un nombre au plus bas, au plus haut et à zéro, chacun de ses `choices`, une personne qui a quitté le serveur, le bot lui-même, le propriétaire. Une commande qui ne fonctionne qu’en message privé y est utilisée ; une qui fonctionne aux deux endroits est utilisée aux deux. Quelqu’un qui a les `permissions` que la commande demande l’utilise.
 - **Chaque bouton, menu et formulaire** est utilisé avec ses `data`, puis une fois par valeur difficile de ces données : un texte vide, un `:` dedans, un nombre énorme. Un formulaire est aussi envoyé avec ses champs obligatoires seulement.
 - **Chaque événement** se produit une fois : un message, quelqu’un qui arrive ou qui part, une réaction, un nouveau salon… Un événement que le serveur de test ne sait pas encore provoquer est nommé avec `ℹ`, et son fichier est laissé tranquille.
+- **Chaque commande de menu** est utilisée sur un message ou une personne ordinaires, puis sur les cas difficiles : un message à sa longueur maximale en unicode, un message du propriétaire ou de quelqu’un qui est parti ; le bot, le propriétaire, qui l’utilise, quelqu’un qui est parti.
 - **Chaque tâche** tourne une fois, comme si son heure était venue.
+- **La présence**, quand elle a des fonctions : chacune s’exécute une fois.
 
 Les fichiers qui passent tiennent sur une ligne à la fin de ces vérifications : ce qui a été vérifié dedans n’est pas listé, puisque rien n’y est à lire pour vous. Pendant qu’un fichier est vérifié, le terminal l’affiche avec la chose et le cas en cours (`↻ Checking src/tickets/close.ts`, puis `→ button close(), with userId = ""`…), et l’efface une fois fini. Une vérification réussit quand le bot a répondu et que rien n’a lancé d’erreur. Elle échoue quand une fonction en a lancé une, avec le fichier et la ligne, ou quand une commande a fini sans répondre ; c’est seulement là qu’un fichier a ses propres lignes, avec la chose nommée :
 
@@ -161,6 +163,8 @@ export default scenario('au troisième avertissement, dehors', async bot => {
 
 Un scénario échoue aussi quand une fonction du bot a lancé une erreur pendant qu’il tournait, même si chaque vérification est passée : une personne aurait vu « Something went wrong ».
 
+Une commande de menu s’utilise avec `on` : `bot.use(quote, { on: message })`, `bot.use(avatar, { on: alice })` (voir [Commandes de menu](/fr/commands/menus#tester)). Une fonction qui [attend une réponse](/fr/waiting#tester) laisse `bot.use()` se résoudre pendant qu’elle attend : le `bot.say()`, `bot.click()` ou `bot.react()` suivant est ce qu’elle attend, et `bot.endWaits()` termine chaque attente comme si son temps était écoulé.
+
 ## Le serveur de test
 
 Il a un salon, `#general`, son propriétaire (`bot.owner`), le bot en admin (`bot.me`), et `bot.someone` : une personne sans droit particulier, qui fait tout quand personne n’est nommé. `bot.member('alice')` crée une personne la première fois que le nom est donné (avec des `permissions` ou des `roles` quand il lui en faut), `bot.role()` un rôle et `bot.channel()` un salon.
@@ -169,7 +173,7 @@ Tout ce que fait le bot est gardé là où le scénario peut le lire : `channel.
 
 ## Ce qu’il ne fait pas encore
 
-Le temps ne passe pas : un `cooldown`, ou une tâche qui tourne `every` tant de temps, ne se teste pas par l’horloge. Le vocal n’est pas là, ni les sondages, les événements planifiés et l’auto-modération : un événement que le serveur ne sait pas provoquer est nommé dans le rapport, et une requête pour quelque chose qu’il ne modélise pas répond comme Discord le fait pour ce qui n’existe pas, donc votre fonction voit la même erreur qu’en ligne.
+Le temps ne passe pas : un `cooldown`, ou une tâche qui tourne `every` tant de temps, ne se teste pas par l’horloge, et une attente ne se termine que quand le test y répond ou appelle `bot.endWaits()`. Le vocal n’est pas là, ni les sondages, les événements planifiés et l’auto-modération : un événement que le serveur ne sait pas provoquer est nommé dans le rapport, et une requête pour quelque chose qu’il ne modélise pas répond comme Discord le fait pour ce qui n’existe pas, donc votre fonction voit la même erreur qu’en ligne.
 
 <CardGroup cols={2}>
   <Card title="Référence des tests" icon="flask-conical" href="/fr/reference/testing">

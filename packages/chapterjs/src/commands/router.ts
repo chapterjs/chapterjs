@@ -8,6 +8,7 @@ import {
 } from '../discord/types/application-command.js';
 import type { RawChannel } from '../discord/types/channel.js';
 import type { RawGuildMember } from '../discord/types/guild.js';
+import type { RawMessage } from '../discord/types/message.js';
 import {
   InteractionType,
   type RawApplicationCommandData,
@@ -35,7 +36,8 @@ import { remember } from '../structures/known.js';
 import { toCamelCase } from '../util/case.js';
 import { suggest } from './autocomplete.js';
 import type { CommandContext } from './command.js';
-import { commandName, type CommandEntry } from './tree.js';
+import type { MenuType } from './command.js';
+import { commandKey, describeCommand, type CommandEntry } from './tree.js';
 
 export interface CommandRouterOptions extends Reporter {
   /** Where the last uses of the commands with a `cooldown` are kept. */
@@ -48,6 +50,12 @@ export interface CommandRouterOptions extends Reporter {
  * @see https://docs.discord.com/developers/interactions/receiving-and-responding#interaction-object
  */
 const DELETE_WITHIN = 14 * 60_000;
+
+/** The menu commands, by the type Discord sends. */
+const MENUS = {
+  [ApplicationCommandType.User]: 'user',
+  [ApplicationCommandType.Message]: 'message',
+} as const satisfies Record<number, MenuType>;
 
 const SUB = ApplicationCommandOptionType.SubCommand;
 const GROUP = ApplicationCommandOptionType.SubCommandGroup;
@@ -69,7 +77,7 @@ export class CommandRouter {
   set(entries: Iterable<CommandEntry>): void {
     const commands = new Map<string, CommandEntry>();
     for (const entry of entries) {
-      commands.set(entry.command.path.join(' '), entry);
+      commands.set(commandKey(entry.command), entry);
     }
     this.#commands = commands;
   }
@@ -88,20 +96,32 @@ export class CommandRouter {
       return null;
     }
     const data = raw.data as RawApplicationCommandData | undefined;
-    if (!data || data.type !== ApplicationCommandType.ChatInput) return null;
+    if (!data) return null;
+    const menu = MENUS[data.type as keyof typeof MENUS];
+    if (data.type !== ApplicationCommandType.ChatInput && !menu) return null;
 
-    // `/mod roles add` comes as a command with nested options.
-    const path = [data.name];
-    let given = data.options ?? [];
-    while (given[0] && (given[0].type === SUB || given[0].type === GROUP)) {
-      path.push(given[0].name);
-      given = given[0].options ?? [];
+    let path: string[];
+    let given: readonly RawApplicationCommandInteractionDataOption[] = [];
+    if (menu) {
+      // Discord sends no autocomplete for a command without options.
+      if (autocomplete) return null;
+      path = [data.name];
+    } else {
+      // `/mod roles add` comes as a command with nested options.
+      path = [data.name];
+      given = data.options ?? [];
+      while (given[0] && (given[0].type === SUB || given[0].type === GROUP)) {
+        path.push(given[0].name);
+        given = given[0].options ?? [];
+      }
     }
-    const entry = this.#commands.get(path.join(' '));
+    const type = menu ?? 'slash';
+    const key = commandKey({ type, path });
+    const entry = this.#commands.get(key);
     if (autocomplete) {
       return suggest(ctx, raw, entry, given, this.#options, this.#warnedOnce);
     }
-    const name = commandName(path);
+    const name = describeCommand({ type, path });
 
     const author = authorOf(raw);
     if (!author) return null;
@@ -109,7 +129,7 @@ export class CommandRouter {
     const user = ctx.entities.user(author.user);
     const interaction = new CommandInteraction(ctx, rest, user, {
       ephemeral: entry?.command.ephemeral ?? false,
-      commandName: name,
+      commandName: menu ? data.name : name,
     });
     if (!entry) {
       // Still registered on Discord, but its file is gone or broken.
@@ -143,23 +163,26 @@ export class CommandRouter {
     }
 
     // Used too soon: the person is told when, and nothing runs.
-    const again = checkCooldown(
-      this.#cooldowns,
-      path.join(' '),
-      command.cooldown,
-      {
-        user: user.id,
-        channel: place.channel.id,
-        guild: place.guild?.id,
-      }
-    );
+    const again = checkCooldown(this.#cooldowns, key, command.cooldown, {
+      user: user.id,
+      channel: place.channel.id,
+      guild: place.guild?.id,
+    });
     if (again > 0) {
       return this.#refuseUntil(interaction, again);
     }
 
-    let options: Record<string, unknown>;
+    // What `run` receives besides the place: the options of a slash
+    // command, or what a menu command was used on.
+    let received: Record<string, unknown>;
     try {
-      options = this.#readOptions(ctx, raw, data, given, entry);
+      received = menu
+        ? this.#readTarget(ctx, raw, data, menu)
+        : {
+            options: Object.freeze(
+              this.#readOptions(ctx, raw, data, given, entry)
+            ),
+          };
     } catch (error) {
       this.#options.onError(file, error);
       return refuse(interaction, 'failed', { what: 'command' });
@@ -171,7 +194,7 @@ export class CommandRouter {
     });
     const context = Object.freeze({
       interaction,
-      options: Object.freeze(options),
+      ...received,
       user,
       ...placeContext(place, command.where),
       // `t` speaks the language of who will read the answer.
@@ -183,7 +206,7 @@ export class CommandRouter {
           ephemeral: command.ephemeral,
         })
       ),
-    }) as unknown as CommandContext;
+    });
 
     return runInteraction({
       interaction,
@@ -195,7 +218,7 @@ export class CommandRouter {
       defer: () => interaction.defer(),
       unanswered:
         'finished without answering: the person sees "The application did not respond". Call interaction.reply() in run.',
-      run: () => command.run(context),
+      run: () => command.run(context as CommandContext),
     });
   }
 
@@ -222,6 +245,50 @@ export class CommandRouter {
     // Nothing of the bot waits for it: the process may stop meanwhile.
     timer.unref();
     return refused;
+  }
+
+  /**
+   * What a menu command was used on: the person (`target`, and
+   * `targetMember` in a server, `null` when they are not in it), or the
+   * message. Discord sends it whole in `resolved`, keyed by `target_id`.
+   * @see https://docs.discord.com/developers/interactions/application-commands#user-commands
+   * @see https://docs.discord.com/developers/interactions/application-commands#message-commands
+   */
+  #readTarget(
+    ctx: Context,
+    raw: RawInteraction,
+    data: RawApplicationCommandData,
+    type: MenuType
+  ): Record<string, unknown> {
+    const id = data.target_id;
+    const resolved = data.resolved ?? {};
+    const guildId = raw.guild_id;
+    if (type === 'message') {
+      const message = id ? resolved.messages?.[id] : undefined;
+      if (!message) {
+        throw new Error(
+          `Discord sent the message menu "${data.name}" without the message it was used on.`
+        );
+      }
+      return { message: ctx.entities.message(message as RawMessage, guildId) };
+    }
+    const rawUser = id ? resolved.users?.[id] : undefined;
+    if (!rawUser) {
+      throw new Error(
+        `Discord sent the user menu "${data.name}" without the person it was used on.`
+      );
+    }
+    const target = ctx.entities.user(rawUser);
+    // Outside a server, there is no member.
+    if (!guildId) return { target, targetMember: null };
+    const member = resolved.members?.[id!];
+    return {
+      target,
+      targetMember:
+        member && guildId
+          ? ctx.entities.member(guildId, member as RawGuildMember, rawUser)
+          : null,
+    };
   }
 
   /** The value of each declared option, as structures where it applies. */
