@@ -32,22 +32,22 @@ describe('listTemplates', () => {
     ]);
   });
 
-  it('puts default first, then sorts by name', async () => {
+  it('puts minimal first, then sorts by name', async () => {
     const root = templatesFolder({
       zeta: {},
       alpha: {},
-      default: {},
+      minimal: {},
       middle: {},
     });
     expect((await listTemplates(root)).map(t => t.name)).toEqual([
-      'default',
+      'minimal',
       'alpha',
       'middle',
       'zeta',
     ]);
   });
 
-  it('sorts without default too', async () => {
+  it('sorts without minimal too', async () => {
     const root = templatesFolder({ b: {}, a: {}, c: {} });
     expect((await listTemplates(root)).map(t => t.name)).toEqual([
       'a',
@@ -86,8 +86,24 @@ describe('listTemplates', () => {
 describe('shipped templates', async () => {
   const templates = await listTemplates();
 
-  it('include a default template, listed first', () => {
-    expect(templates[0]?.name).toBe('default');
+  it('include the minimal template, listed first', () => {
+    expect(templates[0]?.name).toBe('minimal');
+  });
+
+  it('are minimal and the complete bots', () => {
+    expect(templates.map(t => t.name)).toEqual([
+      'minimal',
+      'giveaways',
+      'levels',
+      'moderation',
+      'tickets',
+    ]);
+  });
+
+  it('keep minimal to its presence alone', () => {
+    expect(
+      readdirSync(join(templatesDir, 'minimal', 'src'), { recursive: true })
+    ).toEqual(['presence.ts']);
   });
 
   describe.each(templates.map(t => t.name))('%s', name => {

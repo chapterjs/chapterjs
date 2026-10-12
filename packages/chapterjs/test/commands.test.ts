@@ -1542,7 +1542,7 @@ export default command({ name: 'typo', description: 'd', options: { a: { type: '
 `,
     });
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -1935,7 +1935,7 @@ export default command({
         ),
       });
       cpSync(
-        join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+        join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
         join(cwd, 'tsconfig.json')
       );
       symlinkSync(
@@ -2107,7 +2107,7 @@ export default event({ name: 'roleDelete', run: ({ member }) => member });
 `,
     });
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2557,7 +2557,7 @@ export default command({
 `,
     });
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(

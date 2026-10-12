@@ -1,18 +1,18 @@
 import { AuditLogEvent, event } from 'chapterjs';
 
-// Every moderation action, whoever did it and however (a command of this
-// bot, another bot, the Discord app), reaches the audit log of the server.
-// This posts the ones below in the channel named mod-log. Discord only
-// sends the audit log to a bot with the View Audit Log permission.
+// Every moderation action reaches the audit log of the server, whoever did
+// it and however: a command of this bot, another bot, the Discord app. This
+// posts the ones below in the channel named mod-log, when there is one.
+// Discord only sends the audit log to a bot with View Audit Log.
 const ACTIONS: Partial<Record<number, string>> = {
-  [AuditLogEvent.MemberKick]: 'kicked',
-  [AuditLogEvent.MemberBanAdd]: 'banned',
-  [AuditLogEvent.MemberBanRemove]: 'unbanned',
-  [AuditLogEvent.MemberUpdate]: 'updated (timeout, nickname...)',
-  [AuditLogEvent.MessageBulkDelete]: 'purged messages in',
-  [AuditLogEvent.ChannelOverwriteUpdate]: 'changed the permissions of',
-  [AuditLogEvent.ChannelOverwriteCreate]: 'changed the permissions of',
-  [AuditLogEvent.ChannelOverwriteDelete]: 'changed the permissions of',
+  [AuditLogEvent.MemberKick]: '👢 kicked',
+  [AuditLogEvent.MemberBanAdd]: '🔨 banned',
+  [AuditLogEvent.MemberBanRemove]: '🕊️ unbanned',
+  [AuditLogEvent.MemberUpdate]: '✏️ updated',
+  [AuditLogEvent.MessageBulkDelete]: '🧹 purged messages in',
+  [AuditLogEvent.ChannelOverwriteCreate]: '🔒 changed the permissions of',
+  [AuditLogEvent.ChannelOverwriteUpdate]: '🔒 changed the permissions of',
+  [AuditLogEvent.ChannelOverwriteDelete]: '🔓 changed the permissions of',
 };
 
 export default event({
@@ -24,14 +24,15 @@ export default event({
       channel => channel.isText() && channel.name === 'mod-log'
     );
     if (!log?.isText()) return;
-    const who = `<@${entry.userId}>`;
-    const target = entry.targetId
-      ? guild.channels.has(entry.targetId)
+    const target = !entry.targetId
+      ? 'something'
+      : guild.channels.has(entry.targetId)
         ? `<#${entry.targetId}>`
-        : `<@${entry.targetId}>`
-      : 'something';
-    await log.send(
-      `🛡️ ${who} ${action} ${target}${entry.reason ? `: ${entry.reason}` : ''}`
-    );
+        : `<@${entry.targetId}>`;
+    await log.send({
+      content: `<@${entry.userId}> ${action} ${target}${entry.reason ? `: ${entry.reason}` : ''}`,
+      // The log names people without pinging them.
+      allowedMentions: { parse: [] },
+    });
   },
 });

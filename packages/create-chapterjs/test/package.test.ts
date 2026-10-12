@@ -44,8 +44,8 @@ describe('the published package', () => {
 
   it('contains every template file, _gitignore and dotfiles included', () => {
     const templateFiles = filesIn('templates');
-    expect(templateFiles).toContain('templates/default/_gitignore');
-    expect(templateFiles).toContain('templates/default/.env.example');
+    expect(templateFiles).toContain('templates/minimal/_gitignore');
+    expect(templateFiles).toContain('templates/minimal/.env.example');
     for (const file of templateFiles) expect(published).toContain(file);
   });
 

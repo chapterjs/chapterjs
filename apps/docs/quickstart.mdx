@@ -31,7 +31,7 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
 
     1. **Where to create the project**: a folder name like `my-bot`, or `.` for the current folder. The folder must be new or empty.
     2. **Which package manager to use**: only the ones installed on your computer can be picked, and the one you ran the command with is selected by default.
-    3. **Which template to start from**: `default`, one event and nothing else, is preselected. The others are complete bots: see [Templates](/setup/project-structure#templates).
+    3. **Which template to start from**: `minimal`, a presence and nothing else, is preselected. The others are complete bots: see [Templates](/setup/project-structure#templates).
 
     A question with only one possible answer is skipped: with a single package manager installed, it is used and you are told so.
 
@@ -84,11 +84,10 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
     ```text
     ✓ Connected to My Server as my-bot
     ℹ Intents computed from your files: GUILDS
-    ✓ 1 event loaded
-    my-bot is online in 1 server(s)
+    ✓ a presence loaded
     ```
 
-    The third line is printed by the `ready` event of the template, `src/events/ready.ts`: the one file it has.
+    The presence is the one file of the template, `src/presence.ts`: what Discord shows under the name of your bot.
 
     If the bot is not in your test server yet, the command prints a link that adds it there and waits for you. If one of your files needs an option that is not enabled for your bot, it says which one and where to enable it, and waits too. Every message says what to do: see [chapterjs dev](/run/dev).
 
@@ -111,7 +110,7 @@ You need [Node.js](https://nodejs.org) 24 or newer, a Discord application with a
     Save it: the file is loaded, and the command sent to your test server:
 
     ```text
-    ↻ Reloaded in 12 ms, 1 command, 1 event loaded
+    ↻ Reloaded in 12 ms, 1 command, a presence loaded
     ↻ Commands updated on My Server
     ```
 

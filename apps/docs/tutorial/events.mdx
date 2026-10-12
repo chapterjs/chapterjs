@@ -7,7 +7,7 @@ Commands run when someone asks. Events run when something **happens**: a member 
 
 ## A declaration per reaction
 
-To react to an event, declare it with `event()` and export it: `name` is the event, and the rest is one reaction. The file is yours to place and to name; the template keeps its events in `src/events/`. Create `src/events/hello.ts`:
+To react to an event, declare it with `event()` and export it: `name` is the event, and the rest is one reaction. The file is yours to place and to name; this tutorial keeps its events in `src/events/`. Create `src/events/hello.ts`:
 
 ```ts src/events/hello.ts
 import { event } from 'chapterjs';
@@ -49,7 +49,7 @@ Open the link (it goes straight to the **Bot** page of your dev application), tu
 ```text
 ✓ Privileged intents enabled
 ↻ Your files now need more from Discord (GUILD_MEMBERS): reconnecting...
-✓ Reconnected, 2 events loaded
+✓ Reconnected, 1 event, a presence loaded
 ```
 
 Intents are given to Discord when the bot connects, so needing a new one means reconnecting. The framework did it. From now on, every time someone joins your test server, your file runs. Try it with a second account, or by leaving and joining again.
@@ -85,7 +85,7 @@ Why one declaration per thing, rather than one big function? Because one that fa
 
 ## The ready event
 
-`ready` is special: it is not something that happens on Discord, but the moment your bot is connected and knows every server it is in. It runs **once per start**, never on a reload. The template is that one file:
+`ready` is special: it is not something that happens on Discord, but the moment your bot is connected and knows every server it is in. It runs **once per start**, never on a reload. Create `src/events/ready.ts`:
 
 ```ts src/events/ready.ts
 import { event } from 'chapterjs';
@@ -98,7 +98,7 @@ export default event({
 });
 ```
 
-`user` is the bot itself, `guilds` the servers it is in. Use it for things that must happen once at startup. Do not use it for things that must happen regularly: that is what tasks are for, a few chapters from here.
+Save it, then stop the bot and start it again: the terminal prints `buddy is online in 1 server(s)`, once. `user` is the bot itself, `guilds` the servers it is in. Use it for things that must happen once at startup. Do not use it for things that must happen regularly: that is what tasks are for, a few chapters from here.
 
 ## The events you can react to
 

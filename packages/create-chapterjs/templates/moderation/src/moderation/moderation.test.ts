@@ -1,64 +1,93 @@
 import assert from 'node:assert/strict';
 import { scenario } from 'chapterjs/test';
-import { lock, slowmode } from './channel';
+import { lock, slowmode, unlock } from './channel';
+import { ban, kick, timeout } from './members';
 import purge from './purge';
-import timeout from './timeout';
-import warn, { list } from './warn';
+import { clear, list, warn } from './warnings';
 
 // `chapterjs test` runs these against a Discord in memory: no token, no
 // server. Each scenario starts on a fresh server, with empty stores.
 const mod = {
-  permissions: ['ModerateMembers', 'ManageMessages', 'ManageChannels'],
+  permissions: [
+    'ModerateMembers',
+    'KickMembers',
+    'BanMembers',
+    'ManageMessages',
+    'ManageChannels',
+  ],
 } as const;
 
 export default [
-  scenario('warnings add up, per member', async bot => {
+  scenario('warnings add up, are listed and cleared', async bot => {
     const alice = bot.member('alice');
     const by = { by: bot.member('mod', mod) };
-    const first = await bot.use(warn, { user: alice, reason: 'spam' }, by);
-    first.says('They have 1 warning.');
-    const second = await bot.use(warn, { user: alice, reason: 'again' }, by);
-    second.says('They have 2 warnings.');
+    (await bot.use(warn, { user: alice, reason: 'spam' }, by)).says(
+      'They have 1 warning.'
+    );
+    (await bot.use(warn, { user: alice, reason: 'again' }, by)).says(
+      'They have 2 warnings.'
+    );
+    alice.privateMessages.at(-1)!.says('You were warned on Test Server: again');
 
     const listed = await bot.use(list, { user: alice }, by);
     listed.isEphemeral().says('has 2 warnings').says('spam').says('again');
-    const nobody = await bot.use(list, { user: bot.member('bob') }, by);
-    nobody.says('has no warning');
+
+    await bot.use(clear, { user: alice }, by);
+    (await bot.use(list, { user: alice }, by)).says('has no warning');
   }),
 
-  scenario(
-    'a timeout needs the permission, and spares the owner',
-    async bot => {
-      const alice = bot.member('alice');
-      const refused = await bot.use(timeout, { user: alice, duration: 5 });
-      refused.isEphemeral().says('Moderate Members');
+  scenario('a sanction spares the owner, yourself and who left', async bot => {
+    const alice = bot.member('alice');
+    (await bot.use(timeout, { user: alice, duration: 5 }))
+      .isEphemeral()
+      .says('Moderate Members');
 
-      const by = { by: bot.member('mod', mod) };
-      const owner = await bot.use(
-        timeout,
-        { user: bot.owner, duration: 5 },
-        by
-      );
-      owner.isEphemeral().says('You can not moderate');
+    const moderator = bot.member('mod', mod);
+    const by = { by: moderator };
+    (await bot.use(kick, { user: bot.owner }, by))
+      .isEphemeral()
+      .says('You can not moderate');
+    (await bot.use(ban, { user: moderator }, by))
+      .isEphemeral()
+      .says('not do that to yourself');
 
-      // Someone who left is no member any more.
-      const gone = await bot.join('gone');
-      await bot.leave(gone);
-      const left = await bot.use(timeout, { user: gone, duration: 5 }, by);
-      left.isEphemeral().says('is not in this server');
+    const gone = await bot.join('gone');
+    await bot.leave(gone);
+    (await bot.use(timeout, { user: gone, duration: 5 }, by))
+      .isEphemeral()
+      .says('is not in this server');
+  }),
 
-      const done = await bot.use(timeout, { user: alice, duration: 60 }, by);
-      done.says('is timed out');
-      assert.equal(alice.timedOut, true);
-    }
-  ),
+  scenario('timeout, kick and ban do what they say', async bot => {
+    const by = { by: bot.member('mod', mod) };
+    const alice = bot.member('alice');
+    (await bot.use(timeout, { user: alice, duration: 60 }, by)).says(
+      'is timed out'
+    );
+    assert.equal(alice.timedOut, true);
+
+    const bob = bot.member('bob');
+    (await bot.use(kick, { user: bob, reason: 'rude' }, by)).says(
+      'bob was kicked. Reason: rude'
+    );
+    assert.equal(bob.inServer, false);
+
+    const carol = bot.member('carol');
+    (await bot.use(ban, { user: carol, messages: 3600 }, by)).says(
+      'carol was banned. Reason: none given'
+    );
+    assert.equal(carol.banned, true);
+  }),
 
   scenario('purge deletes the last messages', async bot => {
     await bot.say('one');
     await bot.say('two');
     await bot.say('three');
-    const by = { by: bot.member('mod', mod) };
-    const reply = await bot.use(purge, { count: 2 }, by);
+    const reply = await bot.use(
+      purge,
+      { count: 2 },
+      { by: bot.member('mod', mod) }
+    );
     reply.isDeferred().isEphemeral().says('2 messages deleted.');
     assert.deepEqual(
       bot.channel('general').messages.map(message => message.content),
@@ -66,17 +95,23 @@ export default [
     );
   }),
 
-  scenario('slowmode and lock change the channel', async bot => {
+  scenario('slowmode, lock and unlock change the channel', async bot => {
     const by = { by: bot.member('mod', mod) };
-    const slow = await bot.use(slowmode, { seconds: 5 }, by);
-    slow.says('one message every 5 seconds');
+    (await bot.use(slowmode, { seconds: 5 }, by)).says(
+      'one message every 5 seconds'
+    );
     assert.equal(bot.channel('general').slowmode, 5);
 
-    const locked = await bot.use(lock, { reason: 'calm down' }, by);
-    locked.says('locked').says('calm down');
+    (await bot.use(lock, { reason: 'calm down' }, by)).says('calm down');
     assert.equal(
       bot.channel('general').allows(bot.someone, 'SendMessages'),
       false
+    );
+
+    (await bot.use(unlock, {}, by)).says('open again');
+    assert.equal(
+      bot.channel('general').allows(bot.someone, 'SendMessages'),
+      true
     );
   }),
 ];

@@ -11,9 +11,7 @@ Your project runs. Before changing it, take a tour: a ChapterJS project is small
     <Tree.Folder name="node_modules" />
     <Tree.Folder name="public" />
     <Tree.Folder name="src" defaultOpen>
-      <Tree.Folder name="events" defaultOpen>
-        <Tree.File name="ready.ts" />
-      </Tree.Folder>
+      <Tree.File name="presence.ts" />
     </Tree.Folder>
     <Tree.File name=".env" />
     <Tree.File name=".env.example" />
@@ -25,7 +23,7 @@ Your project runs. Before changing it, take a tour: a ChapterJS project is small
 
 ## The one rule: what a file exports says what it is
 
-Everything your bot does lives in `src/`. ChapterJS never asks you to register anything: it loads every file of `src/`, and what the files **export**, made with one of its functions, is what the bot runs. The template has one file, `src/events/ready.ts`: the event that printed the line in your terminal. Add a second one, a command, in `src/commands/ping.ts`:
+Everything your bot does lives in `src/`. ChapterJS never asks you to register anything: it loads every file of `src/`, and what the files **export**, made with one of its functions, is what the bot runs. The template has one file, `src/presence.ts`: what Discord shows under the name of your bot, "Getting ready". Add a second one, a command, in `src/commands/ping.ts`:
 
 ```ts src/commands/ping.ts
 import { command } from 'chapterjs';
@@ -39,7 +37,7 @@ export default command({
 });
 ```
 
-Save: the terminal says `↻ Reloaded in 12 ms, 1 command, 1 event loaded`, then `↻ Commands updated on My Server`, and `/ping` is in your test server. Nothing else says "this is a command": `command()` does. Its `name` is what people type after the `/`, and the file only says what the command _does_. Change `name` to `'hello'`, and the command becomes `/hello`; move the file to `src/fun/ping.ts`, and nothing changes.
+Save: the terminal says `↻ Reloaded in 12 ms, 1 command, a presence loaded`, then `↻ Commands updated on My Server`, and `/ping` is in your test server. Nothing else says "this is a command": `command()` does. Its `name` is what people type after the `/`, and the file only says what the command _does_. Change `name` to `'hello'`, and the command becomes `/hello`; move the file to `src/fun/ping.ts`, and nothing changes.
 
 That is the rule for everything the framework runs:
 
@@ -52,7 +50,7 @@ That is the rule for everything the framework runs:
 | `language({ locale, ... })` | One language of the bot: `locale: 'fr'` is French                                                            |
 | `presence({ ... })`         | What the bot shows under its name, declared once                                                             |
 
-A file may declare several of them, and a file that declares none is plain code: `src/lib/`, `src/db/`, anything you import from the others. The templates of `create chapterjs` do both: `default` keeps a folder per kind (`src/events/`, and now `src/commands/`), and `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons, and their texts in both languages. A folder is only a folder.
+A file may declare several of them, and a file that declares none is plain code: `src/lib/`, `src/db/`, anything you import from the others. The templates of `create chapterjs` do both: your project keeps a folder per kind (`src/commands/`, and later `src/events/`), and `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons, and their texts in both languages. A folder is only a folder.
 
 Why this design? Because the alternative, a list somewhere that says "the `/ping` command is in this file, the welcome event is in that one", is a list you have to keep in sync with your files by hand. Here, there is no list. Adding a command is adding a declaration; removing one is deleting it.
 
@@ -98,7 +96,7 @@ export default command({
 Save. The terminal says:
 
 ```text
-↻ Reloaded in 12 ms, 1 command, 1 event loaded
+↻ Reloaded in 12 ms, 1 command, a presence loaded
 ```
 
 Use `/ping` again in Discord: the new answer. You never restart the bot while you write it: every file of `src/` is watched, and a save reloads it, along with every file that imports it.

@@ -14,18 +14,19 @@ pnpm create chapterjs my-bot
 
 ```
 src/
-└── events/
-    └── ready.ts             → event({ name: 'ready' }): the one file of a new project
+└── presence.ts              → presence({ ... }): the one file of a new project
 ```
 
-That is the `default` template. The others are complete bots to start from or to read: `tickets` (support tickets in private threads), `music` (a player with a queue and buttons), `community` (welcome cards, roles people pick, weekly stats), `moderation` (timeouts, purge, slowmode, lock, and a log of every action) and `games` (a quiz against the clock, duels with buttons, menu commands, a presence that takes turns). Every file of `src/` exports what it declares:
+That is the `minimal` template. The others are complete bots to start from or to read: `tickets` (support tickets in private threads, claimed and closed with buttons), `moderation` (warnings, timeouts, kicks, bans, purge, slowmode, lock, and a log of every action), `levels` (XP for every message, roles at each level, a leaderboard page after page) and `giveaways` (giveaways people enter with a button, drawn by a task when time is up). Every file of `src/` exports what it declares:
 
 ```
 src/
 ├── tickets/
 │   ├── panel.ts             → command({ name: 'ticket panel' }), and the button it posts
-│   ├── open.ts              → modal({ ... }): the form a ticket starts with
-│   ├── close.ts             → button({ ... }): the close button of every ticket
+│   ├── form.ts              → modal({ ... }): the form a ticket starts with
+│   ├── actions.ts           → button({ ... }) twice: claim and close, on every ticket
+│   ├── add.ts               → command({ name: 'ticket add' })
+│   ├── tickets.ts           → store(): the open tickets, and event({ name: 'channelDelete' })
 │   └── messages.ts          → language({ locale: 'en-US' }), language({ locale: 'fr' })
 └── presence.ts              → what the bot shows under its name
 ```

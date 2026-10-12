@@ -1076,9 +1076,7 @@ describe.skipIf(process.platform === 'win32')(
   'the templates of the scaffolder',
   () => {
     const templates = join(packageDir, '../create-chapterjs/templates');
-    const WELCOME = '100000000000000022';
     const THREAD = '100000000000000023';
-    const VOICE = '100000000000000501';
     /** A member who may do everything: the person trying the template. */
     const admin = {
       user: { id: ALICE, username: 'alice', discriminator: '0' },
@@ -1171,97 +1169,15 @@ describe.skipIf(process.platform === 'win32')(
         cwd: string
       ) => Promise<void>
     > = {
-      async default() {},
-
-      async games(fake, connection) {
-        const bob = '100000000000000777';
-        const bobUser = { id: bob, username: 'bob', discriminator: '0' };
-        const asBob = { ...admin, user: bobUser, permissions: '0' };
-        // /duel @bob: Accept and Decline, which only bob may use.
-        ask(
-          fake,
-          connection,
-          slash('1', ['duel'], [{ name: 'opponent', type: 6, value: bob }], {
-            users: { [bob]: bobUser },
-          })
-        );
-        const asked = await waitForAnswer(fake, '1');
-        expect(asked.data).toMatchObject({
-          content: `⚔️ <@${bob}>, alice challenges you to a duel! You have a minute.`,
-          components: [
-            {
-              type: 1,
-              components: [
-                { type: 2, custom_id: 'accept', label: 'Accept' },
-                { type: 2, custom_id: 'decline', label: 'Decline' },
-              ],
-            },
-          ],
-        });
-        // The answer of /duel is the message `ask` made: '19'. Bob accepts.
-        ask(fake, connection, {
-          ...base('2'),
-          member: asBob,
-          type: 3,
-          message: rawMessage('19', ''),
-          data: { custom_id: 'accept', component_type: 2 },
-        });
-        const fought = await waitForAnswer(fake, '2');
-        expect(fought.type).toBe(7);
-        expect(fought.data.content).toMatch(
-          /^🎲 alice rolls [1-6], bob rolls [1-6]\.\n(alice wins!|bob wins!|A draw!)$/
-        );
-
-        // /quiz start, then the answers in the channel until one is right.
-        fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
-          body: rawMessage('100000000000000095', ''),
-        });
-        ask(fake, connection, slash('3', ['quiz', 'start']));
-        expect((await waitForAnswer(fake, '3')).data.content).toMatch(
-          /^❓ .* First to answer in 30 seconds wins!$/
-        );
-        for (const [index, answer] of [
-          'Paris',
-          '8',
-          'Jupiter',
-          '1969',
-          'H2O',
-        ].entries()) {
-          connection.dispatch(
-            'MESSAGE_CREATE',
-            rawMessage(`10000000000000060${index}`, answer)
-          );
-        }
-        const won = await waitForRequest(
-          fake,
-          'POST',
-          `/channels/${GENERAL}/messages`
-        );
-        expect(won.body).toMatchObject({
-          content: '🎉 alice found it, 1 point now.',
-        });
-
-        // The menu of a person: right click alice, Apps, Quiz score.
-        ask(fake, connection, {
-          ...base('4'),
-          type: 2,
-          data: {
-            id: '40',
-            name: 'Quiz score',
-            type: 2,
-            target_id: ALICE,
-            resolved: {
-              users: { [ALICE]: admin.user },
-            },
-          },
-        });
-        expect(await waitForAnswer(fake, '4')).toEqual({
-          type: 4,
-          data: {
-            content: 'alice has 1 point, rank 1 on this server.',
-            flags: 64,
-          },
-        });
+      async minimal(_fake, connection) {
+        // The one file is the presence, sent with Identify.
+        const identify = await connection.waitFor(2);
+        expect(
+          (identify.d as { presence: { activities: unknown[] } }).presence
+            .activities
+        ).toEqual([
+          expect.objectContaining({ type: 4, state: 'Getting ready' }),
+        ]);
       },
 
       async tickets(fake, connection) {
@@ -1300,7 +1216,7 @@ describe.skipIf(process.platform === 'win32')(
         const form = await waitForAnswer(fake, '2');
         expect(form.type).toBe(9);
         expect(form.data).toMatchObject({
-          custom_id: 'openTicket',
+          custom_id: 'ticketForm',
           title: 'New ticket',
         });
         // Sending the form opens a private thread with the person in it.
@@ -1321,38 +1237,40 @@ describe.skipIf(process.platform === 'win32')(
         fake.discord.on('POST', `/channels/${THREAD}/messages`, {
           body: rawMessage('100000000000000091', 'ticket'),
         });
-        ask(fake, connection, {
-          ...base('3'),
-          type: 5,
-          data: {
-            custom_id: 'openTicket',
-            components: [
-              {
-                type: 18,
-                id: 1,
-                component: {
-                  type: 4,
-                  custom_id: 'subject',
-                  value: 'It does not start',
+        const submit = (id: string, subject: string, category: string) =>
+          ask(fake, connection, {
+            ...base(id),
+            type: 5,
+            data: {
+              custom_id: 'ticketForm',
+              components: [
+                {
+                  type: 18,
+                  id: 1,
+                  component: { type: 4, custom_id: 'subject', value: subject },
                 },
-              },
-              {
-                type: 18,
-                id: 2,
-                component: { type: 21, custom_id: 'category', value: 'bug' },
-              },
-              {
-                type: 18,
-                id: 3,
-                component: {
-                  type: 4,
-                  custom_id: 'details',
-                  value: 'When I click, nothing happens at all.',
+                {
+                  type: 18,
+                  id: 2,
+                  component: {
+                    type: 21,
+                    custom_id: 'category',
+                    value: category,
+                  },
                 },
-              },
-            ],
-          },
-        });
+                {
+                  type: 18,
+                  id: 3,
+                  component: {
+                    type: 4,
+                    custom_id: 'details',
+                    value: 'When I click, nothing happens at all.',
+                  },
+                },
+              ],
+            },
+          });
+        submit('3', 'It does not start', 'bug');
         const thread = await waitForRequest(
           fake,
           'POST',
@@ -1385,11 +1303,8 @@ describe.skipIf(process.platform === 'win32')(
             {
               type: 1,
               components: [
-                {
-                  type: 2,
-                  custom_id: `close:${ALICE}`,
-                  label: 'Close the ticket',
-                },
+                { type: 2, custom_id: `claim:${ALICE}`, label: 'Claim' },
+                { type: 2, custom_id: `close:${ALICE}`, label: 'Close' },
               ],
             },
           ],
@@ -1399,38 +1314,7 @@ describe.skipIf(process.platform === 'win32')(
           data: { content: `Your ticket is open: <#${THREAD}>`, flags: 64 },
         });
         // One ticket at a time: the store remembers it.
-        ask(fake, connection, {
-          ...base('4'),
-          type: 5,
-          data: {
-            custom_id: 'openTicket',
-            components: [
-              {
-                type: 18,
-                id: 1,
-                component: {
-                  type: 4,
-                  custom_id: 'subject',
-                  value: 'Another one',
-                },
-              },
-              {
-                type: 18,
-                id: 2,
-                component: { type: 21, custom_id: 'category', value: 'other' },
-              },
-              {
-                type: 18,
-                id: 3,
-                component: {
-                  type: 4,
-                  custom_id: 'details',
-                  value: 'Something else is wrong, I think.',
-                },
-              },
-            ],
-          },
-        });
+        submit('4', 'Another one', 'other');
         expect(await waitForAnswer(fake, '4')).toEqual({
           type: 4,
           data: {
@@ -1441,90 +1325,6 @@ describe.skipIf(process.platform === 'win32')(
         expect(
           fake.discord.requestsTo('POST', `/channels/${GENERAL}/threads`)
         ).toHaveLength(1);
-      },
-
-      async music(fake, connection) {
-        // Nothing plays yet, and /play needs the person in a voice channel.
-        ask(fake, connection, slash('1', ['queue']));
-        expect(await waitForAnswer(fake, '1')).toEqual({
-          type: 4,
-          data: { content: 'Nothing is playing.', flags: 64 },
-        });
-        ask(
-          fake,
-          connection,
-          slash(
-            '2',
-            ['play'],
-            [{ name: 'url', type: 3, value: 'https://example.com/song.ogg' }]
-          )
-        );
-        expect(await waitForAnswer(fake, '2')).toEqual({
-          type: 4,
-          data: {
-            content: 'Join a voice channel first, then ask again.',
-            flags: 64,
-          },
-        });
-        ask(fake, connection, slash('3', ['leave']));
-        expect(await waitForAnswer(fake, '3')).toEqual({
-          type: 4,
-          data: { content: 'I am not in a voice channel.', flags: 64 },
-        });
-      },
-
-      async community(fake, connection) {
-        // Someone joins: the welcome channel gets the card.
-        fake.discord.on('POST', `/channels/${WELCOME}/messages`, {
-          body: rawMessage('100000000000000092', 'welcome'),
-        });
-        connection.dispatch('GUILD_MEMBER_ADD', {
-          guild_id: GUILD,
-          user: {
-            id: '100000000000000004',
-            username: 'bob',
-            discriminator: '0',
-          },
-          roles: [],
-          joined_at: '2024-01-02T00:00:00Z',
-          deaf: false,
-          mute: false,
-          flags: 0,
-        });
-        const welcome = await waitForRequest(
-          fake,
-          'POST',
-          `/channels/${WELCOME}/messages`
-        );
-        expect(welcome.body).toMatchObject({
-          content: 'Welcome to Dev Server, <@100000000000000004>!',
-          embeds: [{ title: 'bob' }],
-        });
-        // /roles shows the menu, with nothing picked yet.
-        ask(fake, connection, slash('1', ['roles']));
-        const roles = await waitForAnswer(fake, '1');
-        expect(roles.data).toMatchObject({
-          content: 'Pick the roles you want:',
-          flags: 64,
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 3,
-                  custom_id: 'pick',
-                  min_values: 0,
-                  max_values: 3,
-                  options: [
-                    { label: 'Announcements', value: 'Announcements' },
-                    { label: 'Events', value: 'Events' },
-                    { label: 'Gaming', value: 'Gaming' },
-                  ],
-                },
-              ],
-            },
-          ],
-        });
       },
 
       async moderation(fake, connection, cwd) {
@@ -1618,6 +1418,8 @@ describe.skipIf(process.platform === 'win32')(
             flags: 0,
           },
         });
+        // Bob is told in private.
+        await waitForRequest(fake, 'POST', '/users/@me/channels');
         ask(
           fake,
           connection,
@@ -1642,6 +1444,136 @@ describe.skipIf(process.platform === 'win32')(
           await new Promise(resolve => setTimeout(resolve, 20));
         }
         expect(existsSync(file)).toBe(true);
+      },
+
+      async levels(fake, connection, cwd) {
+        // A message gives XP: the first level is not reached yet.
+        connection.dispatch(
+          'MESSAGE_CREATE',
+          rawMessage('100000000000000610', 'hello')
+        );
+        ask(fake, connection, slash('1', ['rank']));
+        const card = await waitForAnswer(fake, '1');
+        const [embed] = card.data.embeds as {
+          title: string;
+          fields: { name: string; value: string }[];
+        }[];
+        expect(embed!.title).toBe('alice');
+        expect(embed!.fields.slice(0, 2)).toMatchObject([
+          { name: 'Level', value: '0' },
+          { name: 'Rank', value: '#1' },
+        ]);
+        expect(embed!.fields[2]!.value).toMatch(
+          /^▰*▱+ (1[5-9]|2[0-5]) \/ 100 XP$/
+        );
+        // /xp set changes it by hand.
+        ask(
+          fake,
+          connection,
+          slash(
+            '2',
+            ['xp', 'set'],
+            [
+              { name: 'user', type: 6, value: ALICE },
+              { name: 'amount', type: 4, value: 1490 },
+            ],
+            { users: { [ALICE]: admin.user } }
+          )
+        );
+        expect(await waitForAnswer(fake, '2')).toEqual({
+          type: 4,
+          data: { content: `<@${ALICE}> now has 1,490 XP: level 4.`, flags: 0 },
+        });
+        // One page, so both buttons are greyed out.
+        ask(fake, connection, slash('3', ['leaderboard']));
+        const board = await waitForAnswer(fake, '3');
+        expect(board.data).toMatchObject({
+          embeds: [
+            {
+              title: '🏆 Leaderboard',
+              description: `**1.** <@${ALICE}>: level 4, 1490 XP`,
+              footer: { text: 'Page 1 of 1' },
+            },
+          ],
+          components: [
+            {
+              type: 1,
+              components: [
+                { type: 2, label: 'Previous', disabled: true },
+                { type: 2, label: 'Next', disabled: true },
+              ],
+            },
+          ],
+        });
+        // The ranking is kept in data/, like a store.
+        const file = join(cwd, 'data', 'xp.json');
+        const deadline = Date.now() + 2000;
+        while (!existsSync(file) && Date.now() < deadline) {
+          await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        expect(existsSync(file)).toBe(true);
+      },
+
+      async giveaways(fake, connection) {
+        // /giveaway start: the answer is the giveaway, with its button.
+        ask(
+          fake,
+          connection,
+          slash(
+            '1',
+            ['giveaway', 'start'],
+            [
+              { name: 'prize', type: 3, value: 'Nitro' },
+              { name: 'duration', type: 4, value: 60 },
+            ]
+          )
+        );
+        const started = await waitForAnswer(fake, '1');
+        expect(started.data).toMatchObject({
+          embeds: [{ title: '🎁 Nitro', footer: { text: '1 winner' } }],
+          components: [
+            {
+              type: 1,
+              components: [{ type: 2, custom_id: 'enter', label: 'Enter (0)' }],
+            },
+          ],
+        });
+        // The answer of /giveaway start is the message `ask` made: '19'.
+        // Alice clicks: the button counts her, and she is told in private.
+        fake.discord.on('POST', `/webhooks/${BOT}/token-2`, {
+          body: rawMessage('100000000000000620', ''),
+        });
+        ask(fake, connection, {
+          ...base('2'),
+          type: 3,
+          message: rawMessage('19', ''),
+          data: { custom_id: 'enter', component_type: 2 },
+        });
+        const entered = await waitForAnswer(fake, '2');
+        expect(entered).toMatchObject({
+          type: 7,
+          data: {
+            components: [{ components: [{ label: 'Enter (1)' }] }],
+          },
+        });
+        const told = await waitForRequest(
+          fake,
+          'POST',
+          `/webhooks/${BOT}/token-2`
+        );
+        expect(told.body).toEqual({
+          content: 'You are in! Good luck.',
+          flags: 64,
+        });
+        // /giveaway list shows it, privately.
+        ask(fake, connection, slash('3', ['giveaway', 'list']));
+        const listed = await waitForAnswer(fake, '3');
+        expect(listed.data.flags).toBe(64);
+        expect(listed.data.content).toMatch(
+          new RegExp(
+            `^• \\*\\*Nitro\\*\\*, ends <t:\\d+:R>: https://discord\\.com/channels/${GUILD}/${GENERAL}/19$`
+          )
+        );
       },
     };
 
@@ -1677,37 +1609,36 @@ describe.skipIf(process.platform === 'win32')(
           cwd,
           stdio: 'pipe',
         });
+        // Its `test` script passes: every file once, and its scenarios.
+        const tested = spawnSync(process.execPath, [bin, 'test'], {
+          cwd,
+          encoding: 'utf8',
+          env: { PATH: process.env.PATH ?? '', NO_COLOR: '1' },
+        });
+        expect(`${tested.stdout}${tested.stderr}`).not.toMatch(/[✗⚠]/);
+        expect(tested.status).toBe(0);
 
         // A template runs on a brand new bot: no privileged intent, except
-        // the community one, which welcomes members, and the games one,
-        // which reads the answers of its quiz: both say they need one.
+        // the levels one, which hears every message (Message Content) and
+        // says so.
         const fake = await world({
-          flags: name === 'community' || name === 'games' ? ALL_PRIVILEGED : 0,
+          flags: name === 'levels' ? ALL_PRIVILEGED : 0,
           devGuild: {
-            // View Channel, Connect, Speak, Send Messages.
+            // View Channel, Send Messages.
             roles: [
               {
                 id: GUILD,
                 name: '@everyone',
-                permissions: String(
-                  (1n << 10n) | (1n << 11n) | (1n << 20n) | (1n << 21n)
-                ),
+                permissions: String((1n << 10n) | (1n << 11n)),
                 position: 0,
               },
             ],
-            channels: [
-              { id: GENERAL, type: 0, name: 'general' },
-              { id: WELCOME, type: 0, name: 'welcome' },
-              { id: VOICE, type: 2, name: 'Lounge' },
-            ],
+            channels: [{ id: GENERAL, type: 0, name: 'general' }],
           },
         });
         const cli = runDev(cwd, fake);
         await cli.waitFor('✓ Connected to Dev Server as test-bot');
         await cli.waitFor(/✓ .* loaded/);
-        if (name === 'default') {
-          await cli.waitFor('test-bot is online in 1 server(s)');
-        }
         await flows[name]!(fake, await connected(fake), cwd);
         cli.signal('SIGINT');
         const { code, output } = await cli.exited;
@@ -1815,7 +1746,7 @@ export default event({ name: 'roleDelete', run: ({ role, guild }) => role.name +
       'src/lib/wrong.ts': `export const count: number = 'three';\n`,
     });
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2272,7 +2203,7 @@ export default event({ name: 'messageDelete', where: 'both', run: ({ message }) 
 `,
     });
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2408,7 +2339,7 @@ describe.skipIf(process.platform === 'win32')('the other events', () => {
       ),
     });
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(
@@ -2938,7 +2869,7 @@ export default event({ name: 'memberJoin', bots: true, run: ({ member }) => memb
 `,
       });
       cpSync(
-        join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+        join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
         join(cwd, 'tsconfig.json')
       );
       symlinkSync(
@@ -3002,7 +2933,7 @@ export default event({ name: 'ready', run: () => console.log('nested ran') });
 
     // What the project type-checks is what runs.
     cpSync(
-      join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+      join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
       join(cwd, 'tsconfig.json')
     );
     symlinkSync(

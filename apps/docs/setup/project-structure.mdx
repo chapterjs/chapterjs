@@ -3,16 +3,14 @@ title: 'Project structure'
 description: 'What each folder and file of your project is for, and how the framework finds what your files declare'
 ---
 
-A project made with `create chapterjs`, from the `default` template, looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
+A project made with `create chapterjs`, from the `minimal` template, looks like this. Everything your bot does lives in `src/`; the rest is configuration you rarely touch.
 
 <Tree>
   <Tree.Folder name="my-bot" defaultOpen>
     <Tree.Folder name=".chapterjs" />
     <Tree.Folder name="public" />
     <Tree.Folder name="src" defaultOpen>
-      <Tree.Folder name="events" defaultOpen>
-        <Tree.File name="ready.ts" highlight />
-      </Tree.Folder>
+      <Tree.File name="presence.ts" highlight />
     </Tree.Folder>
     <Tree.File name=".env" />
     <Tree.File name=".env.example" />
@@ -24,18 +22,17 @@ A project made with `create chapterjs`, from the `default` template, looks like 
 
 ## Templates
 
-`create chapterjs` offers six templates. `default` is preselected: one file, and the rest of this site to grow it. The others are complete bots: read them once you know the framework, or start from one.
+`create chapterjs` offers five templates. `minimal` is preselected: one file, and the rest of this site to grow it. The others are complete bots: read them once you know the framework, or start from one.
 
-| Template     | What it is                                                                                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `default`    | One event, `ready`, which prints a line when the bot is online. Nothing else.                                                                                     |
-| `tickets`    | Support tickets in private threads: `/ticket panel` posts a button, which opens a form, which opens a thread with a close button for the staff or the person.    |
-| `music`      | A music player in voice: `/play` with a file or a link, a queue per server, `/queue`, `/leave`, and pause, skip and stop buttons under "Now playing".            |
-| `community`  | A welcome card when someone joins, a goodbye when they leave, `/roles` to pick roles from a menu, and a weekly task posting the numbers of the server.           |
-| `moderation` | `/timeout` and `/untimeout`, `/purge`, `/slowmode`, `/lock` and `/unlock`, with the permissions each one needs, and a log of every moderation action in `#mod-log`. |
-| `games`      | `/quiz start` asks a question and the first right answer in the channel wins a point, `/duel` waits for the click of who was challenged, a menu command on a person shows their score and one on a message challenges its author, and a presence that takes turns. |
+| Template     | What it is                                                                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `minimal`    | One file, `src/presence.ts`: the text Discord shows under the name of your bot. Nothing else.                                                                                                               |
+| `tickets`    | Support tickets in private threads: `/ticket panel` posts a button, which opens a form, which opens a thread with a claim button for the staff and a close button; `/ticket add` brings someone in.         |
+| `moderation` | `/warn add`, `/warn list` and `/warn clear` (forgotten after 30 days), `/timeout`, `/untimeout`, `/kick`, `/ban`, `/purge`, `/slowmode`, `/lock` and `/unlock`, and a log of every action in `#mod-log`.     |
+| `levels`     | XP for every message, once a minute per person, a message and a role at each new level, `/rank` (and the same in the menu of a person), `/leaderboard` page after page, and `/xp set` for the staff.        |
+| `giveaways`  | `/giveaway start` posts a giveaway people enter with a button; a task draws the winners when time is up, and the menu of its message ends it early or draws again. `/giveaway list` shows the ones running. |
 
-Every template but `default` has its texts in two languages (`en-US` and `fr`) and a presence. `community` needs the Server Members Intent, to know who joins, and `games` the Message Content Intent, to read the answers of its quiz: `chapterjs dev` says where to enable them.
+Every template but `minimal` has its texts in two languages (`en-US` and `fr`), a presence and a [test file](/testing). `levels` needs the Message Content Intent, to hear every message: `chapterjs dev` says where to enable it.
 
 ## `src/`: what a file exports says what it is
 
@@ -50,7 +47,7 @@ ChapterJS never asks you to register anything. It loads every file of `src/`, wh
 | `presence({ ... })`                               | What the bot shows under its name: its status and what it is doing, declared once                                                                  |
 | `language({ locale, ... })`                       | One language of the bot: `locale` says which one; every function then receives `t`                                                                 |
 
-All are imported from the same place, and a file may declare as many as you like. The templates do both: `default` keeps a folder per kind (`src/events/`), `tickets` puts everything about tickets in `src/tickets/`: the command, the form, the buttons and their texts. A file that declares several things looks like this:
+All are imported from the same place, and a file may declare as many as you like. The `tickets` template puts everything about tickets in `src/tickets/`: the commands, the form, the buttons and their texts, and its `tickets.ts` declares both a store and an event. A file that declares several things looks like this:
 
 ```ts src/moderation/ban.ts
 import { button, command, event } from 'chapterjs';

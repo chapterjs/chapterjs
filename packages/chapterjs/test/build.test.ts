@@ -32,7 +32,7 @@ const files = {
 function typed(content: Record<string, string>): string {
   const cwd = project(content);
   cpSync(
-    join(packageDir, '../create-chapterjs/templates/default/tsconfig.json'),
+    join(packageDir, '../create-chapterjs/templates/minimal/tsconfig.json'),
     join(cwd, 'tsconfig.json')
   );
   symlinkSync(
