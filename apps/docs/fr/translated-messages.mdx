@@ -100,7 +100,7 @@ export default command({
 });
 ```
 
-Les formes sont `zero`, `one`, `two`, `few`, `many` et `other`. `other` est toujours là ; écrivez les formes qu’utilise votre langue, les autres retombent sur `other`. `count` est un nombre, et `{count}` dans une forme est ce nombre ; une forme peut avoir d’autres paramètres, donnés de la même façon. Un pluriel dans une langue peut être un simple texte dans une autre (`'{count} membre(s)'`), tant que les paramètres correspondent.
+Les formes sont `zero`, `one`, `two`, `few`, `many` et `other`. `other` est toujours là ; écrivez les formes qu’utilise votre langue, les autres retombent sur `other`. `zero`, quand il est écrit, sert pour 0 dans toutes les langues (`{ zero: 'aucune pomme', one: '{count} pomme', other: '{count} pommes' }`). `count` est un nombre, et `{count}` dans une forme est ce nombre ; une forme peut avoir d’autres paramètres, donnés de la même façon. Un pluriel dans une langue peut être un simple texte dans une autre (`'{count} membre(s)'`), tant que les paramètres correspondent.
 
 ## Quelle langue parle t
 

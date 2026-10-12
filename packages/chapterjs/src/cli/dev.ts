@@ -310,7 +310,7 @@ export async function dev(options: DevOptions): Promise<number> {
               bot = await connect();
               log.success(`Reconnected, ${project.summary()}`);
               if (await syncCommands())
-                log.reload('Commands updated on Discord');
+                log.reload(`Commands updated on ${guild.name}`);
               return;
             }
             const ms = Math.max(1, Math.round(performance.now() - started));
@@ -322,7 +322,7 @@ export async function dev(options: DevOptions): Promise<number> {
                 `Reloaded with ${failures.length === 1 ? 'an error' : `${failures.length} errors`}: ${failures.length === 1 ? 'that file keeps' : 'those files keep'} running ${failures.length === 1 ? 'its' : 'their'} last working version`
               );
             }
-            if (updated) log.reload('Commands updated on Discord');
+            if (updated) log.reload(`Commands updated on ${guild.name}`);
           })
           .catch(error => {
             if (!signal.aborted) explain(error, log);

@@ -115,7 +115,7 @@ Votre code lèvera une erreur un jour : un bug, ou Discord qui refuse quelque ch
 - **Vous** recevez l’erreur dans votre terminal, avec le fichier et la ligne :
 
 ```text
-✗ src/commands/whois.ts:11 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)
+✗ src/commands/whois.ts:11 Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013). The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role.
 ```
 
 - **Le bot** continue de tourner. Une commande qui échoue n’arrête jamais rien d’autre.

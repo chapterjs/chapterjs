@@ -302,6 +302,61 @@ describe('the world', () => {
         failed_users: ['nobody'],
       });
     });
+
+    it('refuses what the bot is not high enough for, as Discord does', async () => {
+      // A role made after the bot's goes below it, as on Discord.
+      const helper = world.addRole('Helper');
+      const botRole = world.roles.get(
+        world.members.get(world.botId)!.roles[0]!
+      )!;
+      expect(helper.position).toBeLessThan(botRole.position);
+      const above = world.addRole('Above', { position: botRole.position + 1 });
+      const boss = world.addUser('boss');
+      world.addMember(boss.id, { roles: [above.id] });
+      const helped = world.addUser('helped');
+      world.addMember(helped.id, { roles: [helper.id] });
+      const owner = world.ownerId;
+      const refused = async (promise: Promise<unknown>) =>
+        expect((await failure(promise)).code).toBe(50013);
+
+      // The owner: never kicked, banned, renamed, given a role.
+      await refused(rest.request(E.RemoveGuildMember, [world.guildId, owner]));
+      await refused(
+        rest.request(E.CreateGuildBan, [world.guildId, owner], { body: {} })
+      );
+      await refused(
+        rest.request(E.ModifyGuildMember, [world.guildId, owner], {
+          body: { nick: 'x' },
+        })
+      );
+      await refused(
+        rest.request(E.AddGuildMemberRole, [world.guildId, owner, helper.id])
+      );
+      // Someone whose highest role is above the bot's.
+      await refused(
+        rest.request(E.RemoveGuildMember, [world.guildId, boss.id])
+      );
+      // A role above the bot's, even on someone below it.
+      await refused(
+        rest.request(E.AddGuildMemberRole, [world.guildId, helped.id, above.id])
+      );
+      const bulk = await rest.request(E.BulkGuildBan, [world.guildId], {
+        body: { user_ids: [owner, helped.id] },
+      });
+      expect(bulk).toEqual({
+        banned_users: [helped.id],
+        failed_users: [owner],
+      });
+      expect(world.members.has(owner)).toBe(true);
+      expect(world.members.has(boss.id)).toBe(true);
+      // Below the bot: everything goes.
+      const other = world.addUser('other');
+      world.addMember(other.id, { roles: [helper.id] });
+      await rest.request(E.ModifyGuildMember, [world.guildId, other.id], {
+        body: { nick: 'ok' },
+      });
+      await rest.request(E.RemoveGuildMember, [world.guildId, other.id]);
+    });
   });
 
   describe('channels and threads', () => {

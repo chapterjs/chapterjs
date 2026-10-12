@@ -278,8 +278,7 @@ function menuCheck({ command, file }: CommandEntry): Check {
           label: 'on a message of someone who left',
           run: session =>
             use(session, async (current, by) => {
-              // Not 'gone': the checks share their people, and 'gone' of
-              // another check may have left already.
+              // Someone of its own, who writes and then leaves.
               const writer = current.member('gone-writer');
               const message = await say('Hello!', () => writer)(current, by);
               current.world.members.delete(writer.id);

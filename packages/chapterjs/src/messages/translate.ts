@@ -211,7 +211,12 @@ export function fill(
         `The message "${key}" is a plural: its {count} is a number, got ${JSON.stringify(count)}.`
       );
     }
-    const form = pluralRule(locale).select(count) as PluralForm;
+    // A `zero` written is for 0 in every language, as people expect it
+    // ("no apple"): the rules of English never pick it by themselves.
+    const form =
+      count === 0 && template.forms.has('zero')
+        ? 'zero'
+        : (pluralRule(locale).select(count) as PluralForm);
     template = template.forms.get(form) ?? template.forms.get('other')!;
   }
   let text = '';

@@ -85,7 +85,9 @@ Un texte d’une langue : une chaîne, avec ses `{paramètres}`, ou un texte à 
 Un texte à plusieurs formes, une par quantité : `t('members', { count })` choisit la forme de la langue pour ce nombre (`one` pour 1 en anglais, `other` pour le reste ; le français, le russe ou l’arabe en ont d’autres). `other` est toujours là ; les formes qu’une langue n’utilise pas sont laissées de côté. `{count}` dans une forme est le nombre lui-même.
 
 <ResponseField name="other" type="string" required />
-<ResponseField name="zero" type="string" />
+<ResponseField name="zero" type="string">
+  Pour 0, dans toutes les langues ; et là où une langue a une forme à elle pour d’autres nombres aussi (l’arabe, le letton).
+</ResponseField>
 <ResponseField name="one" type="string" />
 <ResponseField name="two" type="string" />
 <ResponseField name="few" type="string" />
@@ -111,7 +113,7 @@ Ce que le bot répond de lui-même, quand il ne peut pas lancer ce qui a été d
 | `failed` | « Something went wrong while running this {what}. » |
 | `missingPermission` | « I don’t have the permission to do that here. » |
 | `cooldown` | « You can use this {what} again {when}. » (un `cooldown` pas encore terminé) ; `{when}` est un horodatage Discord, affiché comme « dans 5 secondes » (ou une date et une heure au-delà de 15 minutes) dans la langue de la personne. |
-| `needsPermissions` | « You need the {permissions} permission to use this command. » Un pluriel de `count`, le nombre de permissions manquantes ; `{permissions}` est leurs noms, séparés par des virgules. |
+| `needsPermissions` | « You need the {permissions} permission to use this command. » Un pluriel de `count`, le nombre de permissions manquantes ; `{permissions}` est leurs noms tels qu’on les lit (Ban Members), séparés par des virgules. |
 
 ### CommandsTranslations
 

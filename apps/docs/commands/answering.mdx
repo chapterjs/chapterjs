@@ -144,7 +144,7 @@ export default command({
 An error never stops the bot. The person gets a short, private answer, and you get the error in your terminal with the file and the line:
 
 ```text
-✗ src/commands/mod/ban.ts:14 Discord refused PUT /guilds/{guild.id}/bans/{user.id}: Missing Permissions (50013)
+✗ src/commands/mod/ban.ts:14 Discord refused PUT /guilds/{guild.id}/bans/{user.id}: Missing Permissions (50013). The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role.
 ```
 
 What the person reads depends on what happened:

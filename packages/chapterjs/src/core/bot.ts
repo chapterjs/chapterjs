@@ -101,7 +101,7 @@ export interface BotOptions {
   /** Only tests change these. */
   rest?: Partial<RestOptions>;
   gateway?: Pick<GatewayOptions, 'backoff' | 'identifyInterval'>;
-  voice?: { secure?: boolean };
+  voice?: { secure?: boolean; unavailable?: string };
 }
 
 export interface Bot {
@@ -319,6 +319,9 @@ export function createBot(options: BotOptions): Bot {
       ...(options.voice?.secure === undefined
         ? {}
         : { secure: options.voice.secure }),
+      ...(options.voice?.unavailable === undefined
+        ? {}
+        : { unavailable: options.voice.unavailable }),
     }
   );
   ctx.voice = voice;

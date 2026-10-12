@@ -1,7 +1,7 @@
 // Runs the command someone used: finds its file, turns what Discord sent
 // into what `run` receives, and makes sure the person always gets an answer.
 
-import { Permissions } from '../discord/permissions.js';
+import { Permissions, permissionWords } from '../discord/permissions.js';
 import {
   ApplicationCommandOptionType,
   ApplicationCommandType,
@@ -156,7 +156,7 @@ export class CommandRouter {
       );
       if (missing.length > 0) {
         return refuse(interaction, 'needsPermissions', {
-          permissions: missing.join(', '),
+          permissions: missing.map(permissionWords).join(', '),
           count: missing.length,
         });
       }

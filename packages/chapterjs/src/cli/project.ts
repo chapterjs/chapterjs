@@ -85,7 +85,9 @@ import {
 import { GatewayFatalError, SessionLimitError } from '../gateway/errors.js';
 import {
   loadSources,
+  bySite,
   readDeclarations,
+  siteKey,
   siteName,
   type BuiltFile,
   type Declaration,
@@ -240,6 +242,8 @@ export interface ConnectOptions {
   globalLimit?: number | undefined;
   /** Only tests change this. */
   identifyInterval?: number | undefined;
+  /** Where nothing can play (`chapterjs test`): what `join()` says at once. */
+  voiceUnavailable?: string | undefined;
   /** Discord refused the bot for good. */
   onFatal: (bot: Bot) => void;
 }
@@ -375,8 +379,7 @@ const megabytes = (bytes: number): string =>
   `${Math.round(bytes / 1024 / 1024)} MB`;
 
 /** What tells one declaration from another: its file and its export. */
-const keyOf = (site: { file: string; export: string }): string =>
-  `${site.file}#${site.export}`;
+const keyOf = siteKey;
 
 /**
  * Two declarations with the same name, where the name is the export's
@@ -385,38 +388,29 @@ const keyOf = (site: { file: string; export: string }): string =>
 function sameNames<T extends { file: string; export: string }>(
   entries: readonly T[],
   nameOf: (entry: T) => string,
-  what: string | ((entry: T) => string)
+  what: string | ((entry: T) => string),
+  running?: ReadonlySet<string>
 ): {
   valid: T[];
   conflicts: { file: string; export: string; message: string }[];
 } {
   const seen = new Map<string, T>();
   const conflicts: { file: string; export: string; message: string }[] = [];
-  const valid = [...entries]
-    .sort((a, b) =>
-      a.file === b.file
-        ? a.export < b.export
-          ? -1
-          : 1
-        : a.file < b.file
-          ? -1
-          : 1
-    )
-    .filter(entry => {
-      const first = seen.get(nameOf(entry));
-      if (!first) {
-        seen.set(nameOf(entry), entry);
-        return true;
-      }
-      const kind = (one: T): string =>
-        typeof what === 'string' ? what : what(one);
-      conflicts.push({
-        file: entry.file,
-        export: entry.export,
-        message: `There is already a ${kind(first)} named ${nameOf(entry)}, in ${first.file}: the name of the export is the name of the ${kind(entry)}, so rename one of them.`,
-      });
-      return false;
+  const valid = bySite(entries, running).filter(entry => {
+    const first = seen.get(nameOf(entry));
+    if (!first) {
+      seen.set(nameOf(entry), entry);
+      return true;
+    }
+    const kind = (one: T): string =>
+      typeof what === 'string' ? what : what(one);
+    conflicts.push({
+      file: entry.file,
+      export: entry.export,
+      message: `There is already a ${kind(first)} named ${nameOf(entry)}, in ${first.file}: the name of the export is the name of the ${kind(entry)}, so rename one of them.`,
     });
+    return false;
+  });
   return { valid, conflicts };
 }
 
@@ -486,6 +480,8 @@ export function createProject(options: ProjectOptions): Project {
   /** The last version of each language that loaded. */
   let languages = new Map<string, LanguageEntry>();
   let languageDefaults: readonly Locale[] = [];
+  /** Whether the files were loaded before: what a reload compares with. */
+  let loadedOnce = false;
   /** The bot running the files now, to give it what a reload changes. */
   let running: Bot | null = null;
   /** The presence each bot was given last, to send only what changed. */
@@ -662,22 +658,29 @@ export function createProject(options: ProjectOptions): Project {
       }));
       router.set(events.values());
 
-      const { valid, conflicts } = findConflicts([
-        ...next(commands, commandItems, item => ({
-          file: item.file,
-          export: item.export,
-          command: item.value,
-        })).values(),
-      ]);
+      // A name two declarations share stays with the one that ran before.
+      const { valid, conflicts } = findConflicts(
+        [
+          ...next(commands, commandItems, item => ({
+            file: item.file,
+            export: item.export,
+            command: item.value,
+          })).values(),
+        ],
+        new Set(commands.keys())
+      );
       commands = new Map(valid.map(entry => [keyOf(entry), entry]));
 
-      const unique = findDuplicates([
-        ...next(components, componentItems, item => ({
-          file: item.file,
-          export: item.export,
-          component: item.value,
-        })).values(),
-      ]);
+      const unique = findDuplicates(
+        [
+          ...next(components, componentItems, item => ({
+            file: item.file,
+            export: item.export,
+            component: item.value,
+          })).values(),
+        ],
+        new Set(components.keys())
+      );
       components = new Map(unique.valid.map(entry => [keyOf(entry), entry]));
       componentRouter.set(components.values());
 
@@ -690,7 +693,8 @@ export function createProject(options: ProjectOptions): Project {
           })).values(),
         ],
         entry => entry.task.name,
-        'task'
+        'task',
+        new Set(tasks.keys())
       );
       tasks = new Map(sameTask.valid.map(entry => [keyOf(entry), entry]));
       scheduler.set(tasks.values());
@@ -714,7 +718,8 @@ export function createProject(options: ProjectOptions): Project {
           })).values(),
         ],
         entry => keptOf(entry).name,
-        entry => ('store' in entry ? 'store' : 'ranking')
+        entry => ('store' in entry ? 'store' : 'ranking'),
+        new Set([...stores.keys(), ...rankings.keys()])
       );
       // What is kept where nothing keeps it (Redis without REDIS_URL) is
       // reported and left out: it says so itself when used.
@@ -780,14 +785,19 @@ export function createProject(options: ProjectOptions): Project {
       languages = nextLanguages;
       let assembled = assembleMessages([...languages.values()]);
       // A language that no longer matches the others keeps its last version
-      // that did, like a declaration that no longer loads.
+      // that did, like a declaration that no longer loads; one that was not
+      // there before is left out. What already ran is never what breaks
+      // the languages: a second default: true saved in a new file must not
+      // take the texts of every command away.
       const restored = assembled.failed.filter(failure => {
         const key = keyOf({
           file: failure.file,
           export: failure.export ?? 'default',
         });
+        const current = languages.get(key);
+        if (current === undefined) return false;
         const previous = previousLanguages.get(key);
-        return previous !== undefined && previous !== languages.get(key);
+        return previous === undefined ? loadedOnce : previous !== current;
       });
       if (restored.length > 0) {
         for (const failure of restored) {
@@ -795,7 +805,9 @@ export function createProject(options: ProjectOptions): Project {
             file: failure.file,
             export: failure.export ?? 'default',
           });
-          languages.set(key, previousLanguages.get(key)!);
+          const previous = previousLanguages.get(key);
+          if (previous) languages.set(key, previous);
+          else languages.delete(key);
         }
         const again = assembleMessages([...languages.values()]);
         assembled = {
@@ -809,6 +821,7 @@ export function createProject(options: ProjectOptions): Project {
         };
       }
       messages = assembled.messages;
+      loadedOnce = true;
       if (running) running.ctx.messages = messages;
 
       // A command has its texts in its file, or in the language files: the
@@ -943,7 +956,12 @@ export function createProject(options: ProjectOptions): Project {
         // Only what the files of the project use is remembered.
         cache: { limits: limitsFor(events.values()) },
         // A local fake of Discord (tests) serves voice without TLS too.
-        voice: { secure: !connection.apiUrl?.startsWith('http://') },
+        voice: {
+          secure: !connection.apiUrl?.startsWith('http://'),
+          ...(connection.voiceUnavailable === undefined
+            ? {}
+            : { unavailable: connection.voiceUnavailable }),
+        },
         rest: {
           ...(connection.apiUrl ? { baseUrl: connection.apiUrl } : {}),
           ...(connection.globalLimit === undefined

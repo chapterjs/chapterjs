@@ -46,6 +46,23 @@ export function flattenFieldErrors(
 }
 
 /** Discord answered a request with an error. */
+/**
+ * What a refusal means, in plain words, for the codes a bot meets most: the
+ * text of Discord names the problem, not what to do about it.
+ * @see https://docs.discord.com/developers/topics/opcodes-and-status-codes#json-json-error-codes
+ */
+const HINTS: Readonly<Record<number, string>> = {
+  50013:
+    "The bot is missing a permission for this, or acts on someone above it: the owner of the server, or a member or role higher than the bot's highest role.",
+  50001:
+    'The bot can not see this channel or server: give it View Channel there, or check that it is still in the server.',
+  10008: 'The message does not exist any more: it was deleted.',
+  10003: 'The channel does not exist any more: it was deleted.',
+  10007: 'This person is not a member of the server any more.',
+  50007:
+    'This person does not accept private messages from the bot: they closed them, or share no server with it.',
+};
+
 export class DiscordApiError extends Error {
   override readonly name = 'DiscordApiError';
   /** The HTTP status of the response (403, 404...). */
@@ -84,8 +101,9 @@ export class DiscordApiError extends Error {
     const details = fieldErrors
       .map(error => `\n  ${error.path || 'request'}: ${error.message}`)
       .join('');
+    const hint = HINTS[code] ? ` ${HINTS[code]}` : '';
     super(
-      `Discord refused ${input.method} ${input.route}: ${reason} (${code || input.status})${details}`
+      `Discord refused ${input.method} ${input.route}: ${reason} (${code || input.status}).${hint}${details}`
     );
     this.status = input.status;
     this.code = code;

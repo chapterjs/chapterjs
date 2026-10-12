@@ -275,7 +275,9 @@ export default event({
       join(cwd, 'src/events/messageCreate/ping.ts'),
       `import { event } from 'chapterjs';\n\nexport default event(async ({ message }) => {\n  await message.reply(;\n};\n`
     );
-    await cli.waitFor(/✗ src\/events\/messageCreate\/ping\.ts:4 .+/);
+    await cli.waitFor(
+      /✗ src\/events\/messageCreate\/ping\.ts:4 .+\. This line can not be read: look for a bracket, a comma or a quote missing or in excess, here or just before\./
+    );
     await cli.waitFor(
       '⚠ Reloaded with an error: that file keeps running its last working version'
     );
@@ -296,6 +298,122 @@ export default event({
       rawMessage('100000000000000071', '!ping')
     );
     expect(await replies(fake, 2)).toEqual(['pong', 'fixed']);
+  });
+
+  it('names the line of a call refused by Discord that was not awaited, and goes on', async () => {
+    const fake = await world();
+    fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+      body: rawMessage('100000000000000080', 'x'),
+    });
+    fake.discord.on('PUT', `/guilds/${GUILD}/bans/${ALICE}`, {
+      status: 403,
+      body: { code: 50013, message: 'Missing Permissions' },
+    });
+    const cwd = project({
+      'src/ban.ts': `import { event } from 'chapterjs';
+export default event({
+  name: 'messageCreate',
+  async run({ message, guild }) {
+    if (message.content === '!ban') {
+      guild.ban('${ALICE}');
+      return;
+    }
+    if (message.content === '!ping') await message.reply('pong');
+  },
+});
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 1 event loaded');
+    const connection = await connected(fake);
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000070', '!ban')
+    );
+    await cli.waitFor(
+      /✗ src\/ban\.ts:6 Discord refused PUT \/guilds\/\{guild\.id\}\/bans\/\{user\.id\}: Missing Permissions \(50013\)\..*\n {2}This call was not awaited/
+    );
+    // Still running.
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000071', '!ping')
+    );
+    expect(await replies(fake, 1)).toEqual(['pong']);
+    cli.signal('SIGTERM');
+    expect((await cli.exited).code).toBe(0);
+  });
+
+  it('runs every one of a list exported under one name', async () => {
+    const fake = await world();
+    fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+      body: rawMessage('100000000000000080', 'x'),
+    });
+    const cwd = project({
+      'src/many.ts': `import { event } from 'chapterjs';
+export const replies = [
+  event({ name: 'messageCreate', async run({ message }) { if (message.content === '!a') await message.reply('a'); } }),
+  event({ name: 'messageCreate', async run({ message }) { if (message.content === '!b') await message.reply('b'); } }),
+];
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 2 events loaded');
+    const connection = await connected(fake);
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000070', '!a')
+    );
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000071', '!b')
+    );
+    expect((await replies(fake, 2)).sort()).toEqual(['a', 'b']);
+    cli.signal('SIGTERM');
+    await cli.exited;
+  });
+
+  it('keeps a name with what already runs when a new file takes it', async () => {
+    const fake = await world();
+    fake.discord.on('POST', `/channels/${GENERAL}/messages`, {
+      body: rawMessage('100000000000000080', 'x'),
+    });
+    // src/z.ts comes after src/a.ts: a new src/a.ts would win by its name.
+    const cwd = project({
+      'src/z.ts': `import { event, store } from 'chapterjs';
+export const seen = store<number>();
+export default event({
+  name: 'messageCreate',
+  async run({ message }) {
+    if (message.content !== '!count') return;
+    await message.reply(String(await seen.increment('n')));
+  },
+});
+`,
+    });
+    const cli = runDev(cwd, fake);
+    await cli.waitFor('✓ 1 event, 1 store loaded');
+    const connection = await connected(fake);
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000070', '!count')
+    );
+    expect(await replies(fake, 1)).toEqual(['1']);
+
+    writeFileSync(
+      join(cwd, 'src/a.ts'),
+      `import { store } from 'chapterjs';\nexport const seen = store<string>();\n`
+    );
+    await cli.waitFor(
+      '✗ src/a.ts (seen) There is already a store named seen, in src/z.ts: the name of the export is the name of the store, so rename one of them.'
+    );
+    connection.dispatch(
+      'MESSAGE_CREATE',
+      rawMessage('100000000000000071', '!count')
+    );
+    expect(await replies(fake, 2)).toEqual(['1', '2']);
+    expect(cli.output).not.toContain('✗ src/z.ts');
+    cli.signal('SIGTERM');
+    await cli.exited;
   });
 
   it('reports a handler that throws with its file and line, and goes on', async () => {

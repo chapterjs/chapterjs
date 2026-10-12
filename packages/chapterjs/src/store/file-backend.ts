@@ -40,6 +40,23 @@ export interface FileStoreBackendOptions {
 }
 
 /** The data of every store, one file each, loaded on first use. */
+/**
+ * One entry as this backend writes it: `[key parts, value, expiresAt]`. An
+ * entry of another shape makes the whole file one it did not write, rather
+ * than an entry dropped without a word the next time the file is written.
+ */
+function isEntry(entry: unknown): boolean {
+  if (!Array.isArray(entry) || entry.length !== 3) return false;
+  const [key, value, expiresAt] = entry as unknown[];
+  return (
+    Array.isArray(key) &&
+    key.length > 0 &&
+    key.every(part => typeof part === 'string') &&
+    value !== undefined &&
+    (expiresAt === null || typeof expiresAt === 'number')
+  );
+}
+
 export class FileStoreBackend implements StoreBackend {
   readonly #dir: string;
   readonly #stores = new Map<string, Map<string, StoreEntry>>();
@@ -88,7 +105,11 @@ export class FileStoreBackend implements StoreBackend {
       let parsed: StoreFile;
       try {
         parsed = JSON.parse(text) as StoreFile;
-        if (parsed?.version !== 1 || !Array.isArray(parsed.entries)) {
+        if (
+          parsed?.version !== 1 ||
+          !Array.isArray(parsed.entries) ||
+          !parsed.entries.every(isEntry)
+        ) {
           throw new Error('not a store file');
         }
       } catch {

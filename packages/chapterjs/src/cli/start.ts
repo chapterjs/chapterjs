@@ -206,6 +206,11 @@ export async function start(options: StartOptions): Promise<number> {
       );
     }
     const processes = planProcesses(plan.shards, options.processes);
+    if (options.processes !== undefined && processes < options.processes) {
+      log.info(
+        `--processes ${options.processes} asks for more processes than your bot has shards (${plan.shards}): each process runs one at least, so it runs in ${processes === 1 ? '1 process' : `${processes} processes`}. Discord gives a bot more shards as it joins more servers.`
+      );
+    }
     const online = (user: string, guilds: number): void => {
       const split = [
         ...(plan.shards > 1 ? [`${plan.shards} shards`] : []),
@@ -214,6 +219,12 @@ export async function start(options: StartOptions): Promise<number> {
       log.success(
         `Online as ${user} in ${guilds} ${guilds === 1 ? 'server' : 'servers'}${split ? ` (${split})` : ''}`
       );
+      // A bot only in its dev server would read "in 0 servers".
+      if (devGuildId) {
+        log.info(
+          'The dev server (DEV_GUILD_ID) is not counted: chapterjs start leaves it to chapterjs dev, and answers nothing there.'
+        );
+      }
       log.info(`Intents computed from your files: ${describeIntents(intents)}`);
       (project.isEmpty() ? log.info : log.success)(project.summary());
       const kept = describeRedisStores(project, redis);

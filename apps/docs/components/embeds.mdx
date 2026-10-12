@@ -124,7 +124,7 @@ export default command({
 });
 ```
 
-A message holds 40 components at most, rows and the pieces inside containers included. Going over a limit throws before anything is sent, with the limit in the message.
+A message of buttons and menus only holds 5 rows at most (a menu takes a row by itself). A message built with these pieces holds 40 components at most, rows and the pieces inside containers included. Going over a limit throws before anything is sent, with the limit in the message.
 
 <CardGroup cols={2}>
   <Card title="Sending messages" icon="mail" href="/messages">

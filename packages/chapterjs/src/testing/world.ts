@@ -104,6 +104,12 @@ const unknown = (what: string, code: number): FakeDiscordResponse => ({
   body: { message: `Unknown ${what}`, code },
 });
 
+/** What Discord answers an action the bot is not high enough for. */
+const MISSING_PERMISSIONS: FakeDiscordResponse = {
+  status: 403,
+  body: { message: 'Missing Permissions', code: 50013 },
+};
+
 /** An interaction someone made, and everything the bot answered to it. */
 export interface InteractionRecord {
   readonly id: Snowflake;
@@ -373,14 +379,54 @@ export class World {
         tertiary_color: null,
       },
       hoist: false,
-      position: options.position ?? this.roles.size,
+      position: options.position ?? 1,
       permissions: (options.permissions ?? 0n).toString(),
       managed: false,
       mentionable: false,
       flags: 0,
     };
+    // A new role goes at the bottom, just above @everyone, as Discord
+    // places it: the ones from there up move up one.
+    for (const other of this.roles.values()) {
+      if (other.position >= role.position && other.id !== this.guildId)
+        other.position += 1;
+    }
     this.roles.set(role.id, role);
     return role;
+  }
+
+  /**
+   * Whether the bot may act on someone: kick, ban, change their nickname,
+   * roles or timeout. Never on the owner of the server, and only on members
+   * whose highest role is lower than the bot's.
+   * @see https://docs.discord.com/developers/topics/permissions#permission-hierarchy
+   */
+  #outranks(userId: Snowflake): boolean {
+    if (userId === this.ownerId) return false;
+    if (userId === this.botId) return true;
+    const member = this.members.get(userId);
+    return !member || this.#highest(this.botId) > this.#highest(userId);
+  }
+
+  /**
+   * Whether the bot may give or take this role from someone: a role lower
+   * than its highest, on someone it outranks (itself included).
+   */
+  #givable(userId: Snowflake, roleId: Snowflake): boolean {
+    const role = this.roles.get(roleId);
+    return (
+      this.#outranks(userId) &&
+      (role?.position ?? 0) < this.#highest(this.botId)
+    );
+  }
+
+  /** The position of someone's highest role (0: @everyone only). */
+  #highest(userId: Snowflake): number {
+    const member = this.members.get(userId);
+    return Math.max(
+      0,
+      ...(member?.roles ?? []).map(id => this.roles.get(id)?.position ?? 0)
+    );
   }
 
   addChannel(name: string, options: WorldChannelOptions = {}): RawChannel {
@@ -952,6 +998,7 @@ export class World {
       if ('refused' in found) return found.refused;
       const { member } = found;
       const changes = body(request);
+      if (!this.#outranks(userId!)) return MISSING_PERMISSIONS;
       if ('nick' in changes)
         member.nick = (changes.nick as string | null) ?? null;
       if (Array.isArray(changes.roles))
@@ -979,6 +1026,7 @@ export class World {
       const found = memberOr404(guildId!, userId!);
       if ('refused' in found) return found.refused;
       if (!this.roles.has(roleId!)) return unknown('Role', 10011);
+      if (!this.#givable(userId!, roleId!)) return MISSING_PERMISSIONS;
       if (!found.member.roles.includes(roleId!))
         found.member.roles.push(roleId!);
       this.memberUpdated(found.member);
@@ -988,6 +1036,7 @@ export class World {
       const found = memberOr404(guildId!, userId!);
       if ('refused' in found) return found.refused;
       if (!this.roles.has(roleId!)) return unknown('Role', 10011);
+      if (!this.#givable(userId!, roleId!)) return MISSING_PERMISSIONS;
       found.member.roles = found.member.roles.filter(id => id !== roleId);
       this.memberUpdated(found.member);
       return {};
@@ -995,6 +1044,7 @@ export class World {
     this.#route(E.RemoveGuildMember, ([guildId, userId]) => {
       const found = memberOr404(guildId!, userId!);
       if ('refused' in found) return found.refused;
+      if (!this.#outranks(userId!)) return MISSING_PERMISSIONS;
       this.removeMember(userId!);
       return {};
     });
@@ -1023,6 +1073,7 @@ export class World {
       if (refused) return refused;
       const user = this.users.get(userId!);
       if (!user) return unknown('User', 10013);
+      if (!this.#outranks(userId!)) return MISSING_PERMISSIONS;
       const reason = request.headers['x-audit-log-reason'];
       this.bans.set(userId!, {
         user,
@@ -1055,7 +1106,7 @@ export class World {
       const failed: string[] = [];
       for (const id of ids) {
         const user = this.users.get(id);
-        if (!user || this.bans.has(id)) {
+        if (!user || this.bans.has(id) || !this.#outranks(id)) {
           failed.push(id);
           continue;
         }

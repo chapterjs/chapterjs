@@ -36,7 +36,7 @@ That is all: with nothing written, every command, button, menu, form, event and 
 
 ## What is checked by itself
 
-Every file of `src/` is loaded, like `chapterjs dev` does. A file that can not run stops everything, with its line: nothing is tested until it is fixed. Then, in a server where the bot is an admin:
+Every file of `src/` is loaded, like `chapterjs dev` does. A file that can not run stops everything, with its line: nothing is tested until it is fixed. Then, in a server where the bot is an admin, each case on a fresh one (so a `/ban` tried on someone never leaves the next case without them):
 
 - **Every command** is used with every option filled in, then with the required ones only, then once per hard value: a text at its longest and in unicode, a number at its lowest, its highest and at zero, each of its `choices`, a person who left the server, the bot itself, the owner. A command that only works in private messages is used there; one that works in both places is used in both. Someone with the `permissions` the command asks for uses it.
 - **Every button, menu and form** is used with its `data`, then once per hard value of that data: an empty text, a `:` in it, a huge number. A form is also sent with its required fields only.
@@ -45,7 +45,7 @@ Every file of `src/` is loaded, like `chapterjs dev` does. A file that can not r
 - **Every task** runs once, as if its time had come.
 - **The presence**, when it has functions: each runs once.
 
-The files that pass are one line at the end of these checks: what was checked in them is not listed, since none of it is yours to read. While a file is checked, the terminal shows it with the thing and the case being tried (`↻ Checking src/tickets/close.ts`, then `→ button close(), with userId = ""`...), and erases that once done. A check passes when the bot answered and nothing threw. It fails when a function threw, with the file and the line, or when a command finished without answering; only then does a file get its own lines, with the thing named:
+The files that pass are one line at the end of these checks: what was checked in them is not listed, since none of it is yours to read. While a file is checked, the terminal shows it with the thing and the case being tried (`↻ Checking src/tickets/close.ts`, then `→ button close(), with userId = ""`...), and erases that once done. A check passes when the bot answered and nothing threw. A check has 5 seconds to answer, as on Discord (a command that takes longer is deferred by the framework, which counts), then 30 seconds to finish. It fails when a function threw, with the file and the line, when a command finished without answering, or when it ran out of time; only then does a file get its own lines, with the thing named:
 
 ```text
 ✗ Checked src/bugs.ts: command /crash failed in 1 of 3 cases
@@ -169,11 +169,11 @@ A menu command is used with `on`: `bot.use(quote, { on: message })`, `bot.use(av
 
 It has one channel, `#general`, its owner (`bot.owner`), the bot as an admin (`bot.me`), and `bot.someone`: a person with no special rights, who does everything when nobody is named. `bot.member('alice')` makes a person the first time the name is given (with `permissions` or `roles` when they need some), `bot.role()` a role and `bot.channel()` a channel.
 
-Everything the bot does is kept where the scenario can read it: `channel.messages` and `channel.last`, `member.banned`, `member.timedOut`, `member.roles`, `member.privateMessages`, `channel.threads`, `thread.archived`... And the server refuses what Discord would refuse: a second answer to the same interaction, a member who is not there, a channel that was deleted. A form sent without a required field, or a command used without one, is refused before it reaches the bot, as the Discord app would.
+Everything the bot does is kept where the scenario can read it: `channel.messages` and `channel.last`, `member.banned`, `member.timedOut`, `member.roles`, `member.privateMessages`, `channel.threads`, `thread.archived`... And the server refuses what Discord would refuse: a second answer to the same interaction, a member who is not there, a channel that was deleted, and, as on Discord, kicking, banning, renaming or giving a role to the owner or to someone whose highest role is above the bot's (a role the scenario makes goes below the bot's, as a new role does on Discord). A form sent without a required field, or a command used without one, is refused before it reaches the bot, as the Discord app would.
 
 ## What it does not do yet
 
-Time does not pass: a `cooldown` or a task that runs `every` so often can not be tested through the clock, and a wait only ends when the test answers it or calls `bot.endWaits()`. Voice is not there, nor polls, scheduled events and auto-moderation: an event the server can not make happen is named in the report, and a request for something it does not model answers as Discord does for something that does not exist, so your function sees the same error it would online.
+Time does not pass: a `cooldown` or a task that runs `every` so often can not be tested through the clock, and a wait only ends when the test answers it or calls `bot.endWaits()`. Voice is not there: `join()` throws at once, and what comes after it is named with `ℹ` instead of failing. Nor are polls, scheduled events and auto-moderation: an event the server can not make happen is named in the report, and a request for something it does not model answers as Discord does for something that does not exist, so your function sees the same error it would online.
 
 <CardGroup cols={2}>
   <Card title="Testing reference" icon="flask-conical" href="/reference/testing">

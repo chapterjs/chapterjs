@@ -291,6 +291,8 @@ export class VoiceManager {
   readonly #secure: boolean;
   readonly #joinTimeout: number;
   readonly #endedGrace: number;
+  /** Why voice can't be joined here (`chapterjs test`), or `null`. */
+  readonly #unavailable: string | null;
 
   constructor(
     ctx: Context,
@@ -300,6 +302,8 @@ export class VoiceManager {
       secure?: boolean;
       joinTimeout?: number;
       endedGrace?: number;
+      /** Where nothing can play: what `join()` says at once. */
+      unavailable?: string;
     }
   ) {
     this.#ctx = ctx;
@@ -308,6 +312,7 @@ export class VoiceManager {
     this.#secure = options.secure ?? true;
     this.#joinTimeout = options.joinTimeout ?? JOIN_TIMEOUT;
     this.#endedGrace = options.endedGrace ?? 3000;
+    this.#unavailable = options.unavailable ?? null;
   }
 
   /** The connection of the bot in a server, if it is in voice there. */
@@ -343,6 +348,7 @@ export class VoiceManager {
     channel: VoiceChannel,
     options: JoinOptions = {}
   ): Promise<VoiceConnection> {
+    if (this.#unavailable !== null) throw new Error(this.#unavailable);
     const guild = channel.guild;
     const me = guild.me;
     const permissions = me.permissionsIn(channel);
@@ -372,7 +378,15 @@ export class VoiceManager {
       ? existing
       : new VoiceConnection(this, guild.id, channel.id);
     this.#connections.set(guild.id, connection);
-    await this.#request(guild.id, channel, options);
+    try {
+      await this.#request(guild.id, channel, options);
+    } catch (error) {
+      // Made again here: the reason comes from a timer or from leave(),
+      // whose lines are not the one of the file that asked to join.
+      throw error instanceof Error
+        ? new Error(error.message, { cause: error })
+        : error;
+    }
     if (channel.isStage) await this.#speakOnStage(guild.id, channel);
     return connection;
   }

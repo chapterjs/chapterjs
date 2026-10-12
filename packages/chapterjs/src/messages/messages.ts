@@ -14,6 +14,7 @@ import type { Locale } from '../discord/types/common.js';
  * out. `{count}` in a form is the number itself.
  */
 export interface PluralText {
+  /** For 0, in every language; and where a language has a form of its own for other numbers too (Arabic, Latvian). */
   zero?: string;
   one?: string;
   two?: string;

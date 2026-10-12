@@ -19,11 +19,19 @@ export function redisStores(
   options: { prefix?: string } = {}
 ): RedisStoreBackend {
   const client = new RedisClient(address, {
-    onError: message => log.warn(message),
+    // While checkRedis() asks, a failure is what stops the bot, said once
+    // by it: "trying again" would not be true.
+    onError: message => {
+      if (!checking.has(backend)) log.warn(message);
+    },
     onReconnect: () => log.reload(`Redis at ${client.where} is back`),
   });
-  return new RedisStoreBackend(client, options);
+  const backend = new RedisStoreBackend(client, options);
+  return backend;
 }
+
+/** The backends `checkRedis()` is asking right now. */
+const checking = new WeakSet<RedisStoreBackend>();
 
 /** `a`, `a and b`, `a, b and c`. */
 const and = (items: readonly string[]): string =>
@@ -65,6 +73,7 @@ export async function checkRedis(
 ): Promise<boolean> {
   const { stores, rankings } = project.redisStores();
   if (!backend || stores.length + rankings.length === 0) return true;
+  checking.add(backend);
   try {
     await backend.client.ping();
     return true;
@@ -73,5 +82,7 @@ export async function checkRedis(
       `${error instanceof Error ? error.message.replace(/ Trying again in \d+ s\.$/, '') : String(error)}`
     );
     return false;
+  } finally {
+    checking.delete(backend);
   }
 }

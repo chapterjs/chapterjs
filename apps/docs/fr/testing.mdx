@@ -36,7 +36,7 @@ C’est tout : sans rien écrire, chaque commande, bouton, menu, formulaire, év
 
 ## Ce qui est vérifié tout seul
 
-Chaque fichier de `src/` est chargé, comme `chapterjs dev` le fait. Un fichier qui ne peut pas tourner arrête tout, avec sa ligne : rien n’est testé tant qu’il n’est pas corrigé. Puis, dans un serveur où le bot est admin :
+Chaque fichier de `src/` est chargé, comme `chapterjs dev` le fait. Un fichier qui ne peut pas tourner arrête tout, avec sa ligne : rien n’est testé tant qu’il n’est pas corrigé. Puis, dans un serveur où le bot est admin, chaque cas sur un serveur neuf (un `/ban` essayé sur quelqu’un ne prive donc jamais le cas suivant de cette personne) :
 
 - **Chaque commande** est utilisée avec toutes ses options remplies, puis avec les obligatoires seulement, puis une fois par valeur difficile : un texte au plus long et en unicode, un nombre au plus bas, au plus haut et à zéro, chacun de ses `choices`, une personne qui a quitté le serveur, le bot lui-même, le propriétaire. Une commande qui ne fonctionne qu’en message privé y est utilisée ; une qui fonctionne aux deux endroits est utilisée aux deux. Quelqu’un qui a les `permissions` que la commande demande l’utilise.
 - **Chaque bouton, menu et formulaire** est utilisé avec ses `data`, puis une fois par valeur difficile de ces données : un texte vide, un `:` dedans, un nombre énorme. Un formulaire est aussi envoyé avec ses champs obligatoires seulement.
@@ -45,7 +45,7 @@ Chaque fichier de `src/` est chargé, comme `chapterjs dev` le fait. Un fichier 
 - **Chaque tâche** tourne une fois, comme si son heure était venue.
 - **La présence**, quand elle a des fonctions : chacune s’exécute une fois.
 
-Les fichiers qui passent tiennent sur une ligne à la fin de ces vérifications : ce qui a été vérifié dedans n’est pas listé, puisque rien n’y est à lire pour vous. Pendant qu’un fichier est vérifié, le terminal l’affiche avec la chose et le cas en cours (`↻ Checking src/tickets/close.ts`, puis `→ button close(), with userId = ""`…), et l’efface une fois fini. Une vérification réussit quand le bot a répondu et que rien n’a lancé d’erreur. Elle échoue quand une fonction en a lancé une, avec le fichier et la ligne, ou quand une commande a fini sans répondre ; c’est seulement là qu’un fichier a ses propres lignes, avec la chose nommée :
+Les fichiers qui passent tiennent sur une ligne à la fin de ces vérifications : ce qui a été vérifié dedans n’est pas listé, puisque rien n’y est à lire pour vous. Pendant qu’un fichier est vérifié, le terminal l’affiche avec la chose et le cas en cours (`↻ Checking src/tickets/close.ts`, puis `→ button close(), with userId = ""`…), et l’efface une fois fini. Une vérification réussit quand le bot a répondu et que rien n’a lancé d’erreur. Elle a 5 secondes pour répondre, comme sur Discord (une commande plus longue est différée par le framework, ce qui compte), puis 30 secondes pour finir. Elle échoue quand une fonction a lancé une erreur, avec le fichier et la ligne, quand une commande a fini sans répondre, ou quand le temps est écoulé ; c’est seulement là qu’un fichier a ses propres lignes, avec la chose nommée :
 
 ```text
 ✗ Checked src/bugs.ts: command /crash failed in 1 of 3 cases
@@ -169,11 +169,11 @@ Une commande de menu s’utilise avec `on` : `bot.use(quote, { on: message })`, 
 
 Il a un salon, `#general`, son propriétaire (`bot.owner`), le bot en admin (`bot.me`), et `bot.someone` : une personne sans droit particulier, qui fait tout quand personne n’est nommé. `bot.member('alice')` crée une personne la première fois que le nom est donné (avec des `permissions` ou des `roles` quand il lui en faut), `bot.role()` un rôle et `bot.channel()` un salon.
 
-Tout ce que fait le bot est gardé là où le scénario peut le lire : `channel.messages` et `channel.last`, `member.banned`, `member.timedOut`, `member.roles`, `member.privateMessages`, `channel.threads`, `thread.archived`… Et le serveur refuse ce que Discord refuserait : une seconde réponse à la même interaction, un membre qui n’est pas là, un salon supprimé. Un formulaire envoyé sans un champ obligatoire, ou une commande utilisée sans une option obligatoire, est refusé avant d’atteindre le bot, comme l’application Discord le ferait.
+Tout ce que fait le bot est gardé là où le scénario peut le lire : `channel.messages` et `channel.last`, `member.banned`, `member.timedOut`, `member.roles`, `member.privateMessages`, `channel.threads`, `thread.archived`… Et le serveur refuse ce que Discord refuserait : une seconde réponse à la même interaction, un membre qui n’est pas là, un salon supprimé, et, comme sur Discord, expulser, bannir, renommer ou donner un rôle au propriétaire ou à quelqu’un dont le rôle le plus haut est au-dessus de celui du bot (un rôle créé par le scénario va sous celui du bot, comme un nouveau rôle sur Discord). Un formulaire envoyé sans un champ obligatoire, ou une commande utilisée sans une option obligatoire, est refusé avant d’atteindre le bot, comme l’application Discord le ferait.
 
 ## Ce qu’il ne fait pas encore
 
-Le temps ne passe pas : un `cooldown`, ou une tâche qui tourne `every` tant de temps, ne se teste pas par l’horloge, et une attente ne se termine que quand le test y répond ou appelle `bot.endWaits()`. Le vocal n’est pas là, ni les sondages, les événements planifiés et l’auto-modération : un événement que le serveur ne sait pas provoquer est nommé dans le rapport, et une requête pour quelque chose qu’il ne modélise pas répond comme Discord le fait pour ce qui n’existe pas, donc votre fonction voit la même erreur qu’en ligne.
+Le temps ne passe pas : un `cooldown`, ou une tâche qui tourne `every` tant de temps, ne se teste pas par l’horloge, et une attente ne se termine que quand le test y répond ou appelle `bot.endWaits()`. Le vocal n’est pas là : `join()` lève une erreur tout de suite, et ce qui vient après est nommé avec `ℹ` au lieu d’échouer. Ni les sondages, les événements planifiés et l’auto-modération : un événement que le serveur ne sait pas provoquer est nommé dans le rapport, et une requête pour quelque chose qu’il ne modélise pas répond comme Discord le fait pour ce qui n’existe pas, donc votre fonction voit la même erreur qu’en ligne.
 
 <CardGroup cols={2}>
   <Card title="Référence des tests" icon="flask-conical" href="/fr/reference/testing">

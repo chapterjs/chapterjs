@@ -340,10 +340,10 @@ Checks that the bot changed the message of the button or menu.
 ### opensForm()
 
 ```ts
-opensForm(form?: ModalDeclaration | TestForm): TestReply
+opensForm(form?: ModalDeclaration | ModalComponent | TestForm): TestReply
 ```
 
-Checks that the bot opened a form, this one when given.
+Checks that the bot opened a form, this one when given: its export (whatever data it carries), the form called with its data, or one found on an answer.
 
 ### changesNothing()
 

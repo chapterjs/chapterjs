@@ -1,3 +1,4 @@
+import { permissionWords } from '../src/discord/permissions.js';
 import { cpSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -231,7 +232,7 @@ export default command({ name: 'mod roles add', description: 'Give a role', perm
       join(cwd, 'src/commands/ping.ts'),
       PING.replace('Replies with Pong!', 'Answers')
     );
-    await cli.waitFor('↻ Commands updated on Discord');
+    await cli.waitFor('↻ Commands updated on Dev Server');
     expect(registered(fake)).toHaveLength(2);
     expect(registered(fake)[1]!.at(-1)).toMatchObject({
       name: 'ping',
@@ -508,11 +509,11 @@ export default command({
     };
     expect(await run('100000000000000621', '1024')).toEqual({
       content:
-        'You need the KickMembers, BanMembers permissions to use this command.',
+        'You need the Kick Members, Ban Members permissions to use this command.',
       flags: 64,
     });
     expect(await run('100000000000000622', '4')).toEqual({
-      content: 'You need the KickMembers permission to use this command.',
+      content: 'You need the Kick Members permission to use this command.',
       flags: 64,
     });
     expect(cli.output).not.toContain('ban ran');
@@ -900,7 +901,7 @@ export const same = list[0];
       fake
     );
     await cli.waitFor(
-      "✗ src/commands/twice.ts (list) /ping is already declared in src/commands/ping.ts: two commands can't have the same name."
+      "✗ src/commands/twice.ts (list[0]) /ping is already declared in src/commands/ping.ts: two commands can't have the same name."
     );
     await cli.waitFor(
       "✗ src/commands/mod.ts /mod can't be a command and have subcommands (src/commands/mod/ban.ts is /mod ban): Discord only lets people use the subcommands. Make this one a subcommand too, for example name: 'mod run'."
@@ -1229,7 +1230,7 @@ export default command({
       join(cwd, 'src/commands/ping.ts'),
       PING.replace('Replies with Pong!', 'Answers')
     );
-    await cli.waitFor('↻ Commands updated on Discord');
+    await cli.waitFor('↻ Commands updated on Dev Server');
     expect(registered(fake)[1]!.map(command => command.name)).toEqual([
       'new',
       'ping',
@@ -1298,7 +1299,7 @@ export default command({
       join(cwd, 'src/commands/server.ts'),
       place('server', 'guild').replace("'d'", "'changed'")
     );
-    await cli.waitFor('↻ Commands updated on Discord');
+    await cli.waitFor('↻ Commands updated on Dev Server');
     expect(cli.output.match(/only works in private messages/g)).toHaveLength(3);
 
     // Used in private all the same (the bot in production offers it):
@@ -1783,7 +1784,7 @@ export default command({
         join(cwd, 'src/commands/ban.ts'),
         BAN.replace('Bannir un membre', 'Bannir quelqu’un')
       );
-      await cli.waitFor('↻ Commands updated on Discord');
+      await cli.waitFor('↻ Commands updated on Dev Server');
       expect(registered(fake)[1]![0]).toMatchObject({
         description_localizations: { fr: 'Bannir quelqu’un' },
       });
@@ -2590,5 +2591,17 @@ export default command({
     expect(errors[4]).toMatch(
       /Type '\(\) => string\[\]' is not assignable to type '\(context: AutocompleteContext<number \| undefined/
     );
+  });
+});
+
+describe('a permission as people read it', () => {
+  it.each([
+    ['BanMembers', 'Ban Members'],
+    ['Administrator', 'Administrator'],
+    ['SendTtsMessages', 'Send TTS Messages'],
+    ['UseVad', 'Use VAD'],
+    ['ViewCreatorMonetizationAnalytics', 'View Creator Monetization Analytics'],
+  ] as const)('%s is "%s"', (name, words) => {
+    expect(permissionWords(name)).toBe(words);
   });
 });

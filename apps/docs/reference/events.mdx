@@ -209,11 +209,11 @@ Every event also receives `t`, in the language of the server it happened in, whe
 | Options | None |
 | Remembers | The default |
 
-<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+<ResponseField name="channel" type="GuildChannel | ThreadChannel" required>
   The new channel or thread.
 </ResponseField>
-<ResponseField name="guild" type="Guild | null" required>
-  The server of the channel; `null` for a private conversation.
+<ResponseField name="guild" type="Guild" required>
+  The server of the channel: Discord only sends these events, with the Guilds intent, for the channels of a server.
 </ResponseField>
 
 ## channelUpdate
@@ -225,11 +225,11 @@ Every event also receives `t`, in the language of the server it happened in, whe
 | Options | None |
 | Remembers | The default |
 
-<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+<ResponseField name="channel" type="GuildChannel | ThreadChannel" required>
   The channel or thread, as it is now.
 </ResponseField>
-<ResponseField name="guild" type="Guild | null" required>
-  The server of the channel; `null` for a private conversation.
+<ResponseField name="guild" type="Guild" required>
+  The server of the channel: Discord only sends these events, with the Guilds intent, for the channels of a server.
 </ResponseField>
 
 ## channelDelete
@@ -241,11 +241,11 @@ Every event also receives `t`, in the language of the server it happened in, whe
 | Options | None |
 | Remembers | The default |
 
-<ResponseField name="channel" type="GuildChannel | ThreadChannel | Channel" required>
+<ResponseField name="channel" type="GuildChannel | ThreadChannel" required>
   The channel or thread as it was.
 </ResponseField>
-<ResponseField name="guild" type="Guild | null" required>
-  The server of the channel; `null` for a private conversation.
+<ResponseField name="guild" type="Guild" required>
+  The server of the channel: Discord only sends these events, with the Guilds intent, for the channels of a server.
 </ResponseField>
 
 ## messageCreate

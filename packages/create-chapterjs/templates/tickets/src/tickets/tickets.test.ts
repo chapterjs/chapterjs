@@ -8,7 +8,7 @@ import panel, { open } from './panel';
 export default [
   scenario('the panel is posted by the staff only', async bot => {
     const refused = await bot.use(panel);
-    refused.isEphemeral().says('ManageThreads');
+    refused.isEphemeral().says('Manage Threads');
 
     const staff = bot.member('staff', { permissions: ['ManageThreads'] });
     const reply = await bot.use(panel, {}, { by: staff });

@@ -210,16 +210,25 @@ describe('what a function receives', () => {
     }
   );
 
-  it('gives null for the server of a private conversation', async () => {
+  it('only gives the channels of a server, as the types promise', async () => {
     const w = await world();
     w.listen('channelUpdate');
+    // Discord sends channel events with the Guilds intent only: a private
+    // conversation that came anyway is not given as one of a server.
     w.send('CHANNEL_UPDATE', {
       id: DM,
       type: 1,
       recipients: [user(ALICE, 'alice')],
     });
-    const [context] = await w.of('channelUpdate');
-    expect(context).toMatchObject({ guild: null });
+    w.send('CHANNEL_UPDATE', {
+      id: '100000000000000040',
+      type: 0,
+      name: 'renamed',
+      guild_id: GUILD,
+    });
+    const contexts = await w.of('channelUpdate');
+    expect(contexts).toHaveLength(1);
+    expect(contexts[0]).toMatchObject({ guild: { id: GUILD } });
   });
 });
 

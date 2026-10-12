@@ -58,6 +58,21 @@ function resolve(permission: PermissionResolvable): bigint {
  * regular number.
  * @see https://docs.discord.com/developers/topics/permissions
  */
+/** Letters that are said one by one in the name of a permission. */
+const ACRONYMS: Readonly<Record<string, string>> = { Tts: 'TTS', Vad: 'VAD' };
+
+/**
+ * A permission as people read it: `BanMembers` is "Ban Members". For what
+ * the bot says to the people of a server, never to the developer, who
+ * writes the names as they are.
+ */
+export function permissionWords(name: PermissionName): string {
+  return name
+    .split(/(?=[A-Z])/)
+    .map(word => ACRONYMS[word] ?? word)
+    .join(' ');
+}
+
 export class Permissions {
   /** The permissions as one number, each bit being a permission. */
   readonly bits: bigint;

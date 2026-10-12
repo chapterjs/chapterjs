@@ -31,7 +31,7 @@ Discord answered a request with an error.
 It is thrown when Discord refuses what the bot asked: a missing permission, something that no longer exists, a value it does not accept. The request was received and understood; retrying it gives the same answer until something changes.
 
 <ResponseField name="name" type="'DiscordApiError'" required>What `instanceof` tells, as text.</ResponseField>
-<ResponseField name="message" type="string" required>What happened, with the reason Discord gave and the fields it refused: `Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013)`, followed by one line per refused field when there are some.</ResponseField>
+<ResponseField name="message" type="string" required>What happened, with the reason Discord gave and the fields it refused: `Discord refused POST /channels/{channel.id}/messages: Missing Permissions (50013).`, then what it means in plain words for the codes a bot meets most (a missing permission, something deleted, private messages closed), and one line per refused field when there are some.</ResponseField>
 <ResponseField name="status" type="number" required>The HTTP status of the response (403, 404...).</ResponseField>
 <ResponseField name="code" type="number" required>The JSON error code of Discord (50013 for "Missing Permissions"...), or 0 when the response had none.</ResponseField>
 <ResponseField name="fieldErrors" type="readonly DiscordFieldError[]" required>The fields of the request Discord refused, when it says which.</ResponseField>

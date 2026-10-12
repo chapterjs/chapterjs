@@ -5,7 +5,7 @@
 // instances.
 
 import { Limits } from '../discord/api.js';
-import type { Declaration, ExportSite } from '../loader/loader.js';
+import { bySite, type Declaration, type ExportSite } from '../loader/loader.js';
 import { checkEmbed, type Embed } from '../structures/payload.js';
 import { isDynamic } from './component.js';
 import {
@@ -441,37 +441,28 @@ export function findDuplicates<
     component: { kind: ComponentKind; name: string };
   },
 >(
-  entries: readonly T[]
+  entries: readonly T[],
+  running?: ReadonlySet<string>
 ): {
   valid: T[];
   conflicts: { file: string; export: string; message: string }[];
 } {
   const seen = new Map<string, T>();
   const conflicts: { file: string; export: string; message: string }[] = [];
-  const valid = [...entries]
-    .sort((a, b) =>
-      a.file === b.file
-        ? a.export < b.export
-          ? -1
-          : 1
-        : a.file < b.file
-          ? -1
-          : 1
-    )
-    .filter(entry => {
-      const key = `${entry.component.kind}:${entry.component.name}`;
-      const first = seen.get(key);
-      if (!first) {
-        seen.set(key, entry);
-        return true;
-      }
-      conflicts.push({
-        file: entry.file,
-        export: entry.export,
-        message: `There is already a ${WHAT[entry.component.kind]} named ${entry.component.name}, in ${first.file}: the name of the export is what tells a ${WHAT[entry.component.kind]} apart, so rename one of them.`,
-      });
-      return false;
+  const valid = bySite(entries, running).filter(entry => {
+    const key = `${entry.component.kind}:${entry.component.name}`;
+    const first = seen.get(key);
+    if (!first) {
+      seen.set(key, entry);
+      return true;
+    }
+    conflicts.push({
+      file: entry.file,
+      export: entry.export,
+      message: `There is already a ${WHAT[entry.component.kind]} named ${entry.component.name}, in ${first.file}: the name of the export is what tells a ${WHAT[entry.component.kind]} apart, so rename one of them.`,
     });
+    return false;
+  });
   return { valid, conflicts };
 }
 

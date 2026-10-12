@@ -10,7 +10,7 @@ import {
 } from '../discord/types/application-command.js';
 import { ApplicationIntegrationType } from '../discord/types/application.js';
 import { InteractionContextType } from '../discord/types/interaction.js';
-import { siteName } from '../loader/loader.js';
+import { bySite, siteName } from '../loader/loader.js';
 import type { LoadedOption } from './declaration.js';
 import type { CommandOption } from './command.js';
 import type { Locale } from '../discord/types/common.js';
@@ -168,36 +168,29 @@ const MENU_TYPES = {
  *   subcommands;
  * - a menu command beyond the 15 of its type Discord accepts.
  */
-export function findConflicts(entries: readonly CommandEntry[]): {
+export function findConflicts(
+  entries: readonly CommandEntry[],
+  running?: ReadonlySet<string>
+): {
   valid: CommandEntry[];
   conflicts: CommandConflict[];
 } {
   const conflicts: CommandConflict[] = [];
   const seen = new Map<string, CommandEntry>();
-  const unique = [...entries]
-    .sort((a, b) =>
-      a.file === b.file
-        ? a.export < b.export
-          ? -1
-          : 1
-        : a.file < b.file
-          ? -1
-          : 1
-    )
-    .filter(entry => {
-      const key = commandKey(entry.command);
-      const first = seen.get(key);
-      if (!first) {
-        seen.set(key, entry);
-        return true;
-      }
-      conflicts.push({
-        file: entry.file,
-        export: entry.export,
-        message: `${capitalize(describeCommand(entry.command))} is already declared in ${siteName(first)}: two ${entry.command.type === 'slash' ? 'commands' : `${entry.command.type} menu commands`} can't have the same name.`,
-      });
-      return false;
+  const unique = bySite(entries, running).filter(entry => {
+    const key = commandKey(entry.command);
+    const first = seen.get(key);
+    if (!first) {
+      seen.set(key, entry);
+      return true;
+    }
+    conflicts.push({
+      file: entry.file,
+      export: entry.export,
+      message: `${capitalize(describeCommand(entry.command))} is already declared in ${siteName(first)}: two ${entry.command.type === 'slash' ? 'commands' : `${entry.command.type} menu commands`} can't have the same name.`,
     });
+    return false;
+  });
   const menus = { user: 0, message: 0 };
   const valid = unique.filter(entry => {
     const { path, type } = entry.command;

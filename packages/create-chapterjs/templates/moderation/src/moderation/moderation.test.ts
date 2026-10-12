@@ -31,7 +31,7 @@ export default [
     async bot => {
       const alice = bot.member('alice');
       const refused = await bot.use(timeout, { user: alice, duration: 5 });
-      refused.isEphemeral().says('ModerateMembers');
+      refused.isEphemeral().says('Moderate Members');
 
       const by = { by: bot.member('mod', mod) };
       const owner = await bot.use(
@@ -40,6 +40,12 @@ export default [
         by
       );
       owner.isEphemeral().says('You can not moderate');
+
+      // Someone who left is no member any more.
+      const gone = await bot.join('gone');
+      await bot.leave(gone);
+      const left = await bot.use(timeout, { user: gone, duration: 5 }, by);
+      left.isEphemeral().says('is not in this server');
 
       const done = await bot.use(timeout, { user: alice, duration: 60 }, by);
       done.says('is timed out');

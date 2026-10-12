@@ -72,6 +72,7 @@ import type {
   SelectField,
   TextField,
 } from '../components/modal.js';
+import type { DataShape } from '../components/custom-id.js';
 import type { OptionValue } from '../components/options.js';
 import type { ComponentEntry } from '../components/router.js';
 import type { SelectDeclaration } from '../components/select.js';
@@ -279,8 +280,14 @@ export interface TestReply extends TestAssertions<TestReply> {
   isDeferred(): TestReply;
   /** Checks that the bot changed the message of the button or menu. */
   updatesMessage(): TestReply;
-  /** Checks that the bot opened a form, this one when given. */
-  opensForm(form?: ModalDeclaration<ModalFields, never> | TestForm): TestReply;
+  /**
+   * Checks that the bot opened a form, this one when given: its export
+   * (whatever data it carries), the form called with its data, or one found
+   * on an answer.
+   */
+  opensForm<Fields extends ModalFields, Data extends DataShape>(
+    form?: ModalDeclaration<Fields, Data> | ModalComponent | TestForm
+  ): TestReply;
   /** Checks that the bot answered with nothing visible (a deferred update). */
   changesNothing(): TestReply;
   /** The button with this label, to click it. Fails when there is none. */
@@ -598,9 +605,17 @@ export class Observer {
     settled.finally(() => this.#pending.delete(settled));
   }
 
-  /** Forgets the interactions seen so far: a new world starts. */
+  /**
+   * Forgets everything of the world before: a new world starts. What the
+   * files of the last one still run (a case given up on) is never waited
+   * for again.
+   */
   reset(): void {
     this.#interactions.clear();
+    this.#pending.clear();
+    this.#parked.clear();
+    this.#interactionWaiters.clear();
+    this.#eventWaiters.length = 0;
   }
 
   /**
@@ -1250,16 +1265,21 @@ export class Session implements TestBot {
         );
         return reply;
       },
-      opensForm(form?: ModalDeclaration<ModalFields, never> | TestForm) {
+      opensForm(form?: unknown) {
         expectThat(
           record.modal !== null,
           `The bot should have opened a form, it ${record.original ? `answered ${shown(record.original.content)}` : 'opened none'}.`
         );
         if (form) {
+          // Only the name is compared: the form itself names it, with no
+          // need for the data it was opened with.
+          const state = componentStateOf(form);
           const expected =
-            'customId' in form
-              ? form.customId
-              : self.#customIdOf(form, 'modal');
+            state?.kind === 'modal' && state.bound
+              ? state.bound.name
+              : typeof form === 'object' && 'customId' in form
+                ? (form as TestForm).customId
+                : self.#customIdOf(form, 'modal');
           const opened = record.modal!.custom_id.split(':')[0];
           expectThat(
             opened === expected.split(':')[0],

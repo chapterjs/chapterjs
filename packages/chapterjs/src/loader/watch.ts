@@ -24,9 +24,11 @@ export async function snapshotFolder(dir: string): Promise<string> {
 }
 
 /**
- * Calls `onChange` when files under `dir` are saved, once per burst: an
- * editor often writes a file in several steps, and saving several files at
- * once is one change.
+ * Calls `onChange` when files under `dir` are saved, once per change: an
+ * editor often writes a file in several steps, saving several files at once
+ * is one change, and the system may tell a save twice, a moment apart (macOS
+ * does for a file written then renamed over the old one). What is compared
+ * is the folder itself, so a save that changed nothing reloads nothing.
  */
 export function watchFolder(
   dir: string,
@@ -42,12 +44,25 @@ export function watchFolder(
 ): { close(): void } {
   let timer: NodeJS.Timeout | null = null;
   let closed = false;
+  /** The folder as the last load saw it. */
+  let lastSeen: Promise<string> = loaded;
+  /** One comparison at a time, in the order the bursts ended. */
+  let comparing: Promise<void> = Promise.resolve();
+  const compare = (): void => {
+    comparing = comparing.then(async () => {
+      if (closed) return;
+      const [then, now] = await Promise.all([lastSeen, snapshotFolder(dir)]);
+      if (closed || then === now) return;
+      lastSeen = Promise.resolve(now);
+      onChange();
+    });
+  };
   const changed = (): void => {
     if (closed) return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      onChange();
+      compare();
     }, delay);
   };
   const watcher: FSWatcher = watch(dir, { recursive: true }, changed);
@@ -57,18 +72,7 @@ export function watchFolder(
   // The system takes a moment to really start watching: a file saved
   // between the load and that moment would be missed. The folder is
   // compared, a little later, with what it was when it was loaded.
-  const before = loaded;
-  const catchUps = [300, 1500].map(wait =>
-    setTimeout(() => {
-      void Promise.all([before, snapshotFolder(dir)]).then(([then, now]) => {
-        if (then !== now && lastSeen !== now) {
-          lastSeen = now;
-          changed();
-        }
-      });
-    }, wait)
-  );
-  let lastSeen: string | null = null;
+  const catchUps = [300, 1500].map(wait => setTimeout(compare, wait));
 
   return {
     close() {
