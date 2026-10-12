@@ -46,7 +46,7 @@ bun add chapterjs@latest
 - Events and commands exported together in a list all run: only the last one did.
 - A call refused by Discord that was not awaited (`member.ban()` without `await`) no longer stops the bot: it is reported with its line. `chapterjs test` no longer stops on one either.
 - An answer asked without `await` is no longer reported as "finished without answering".
-- `chapterjs dev`: one save reloads once, even when the editor writes then renames the file.
+- `chapterjs dev`: one save reloads once, even when the editor writes then renames the file, and on Linux the saves that follow are no longer missed.
 - A message with more than 5 rows of buttons and menus is refused before Discord with a clear message.
 - `chapterjs test`: each case runs on a fresh server (a `/ban` no longer breaks the cases after it), a command that defers is no longer failed after 5 s, a stuck run no longer blocks what follows, and `join()` says voice is not simulated.
 - `channelCreate`, `channelUpdate`, `channelDelete`: `guild` is never `null`, and `channel` is one of a server.

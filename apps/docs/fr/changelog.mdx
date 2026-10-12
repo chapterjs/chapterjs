@@ -46,7 +46,7 @@ bun add chapterjs@latest
 - Les événements et commandes exportés ensemble dans une liste tournent tous : seul le dernier tournait.
 - Un appel refusé par Discord sans `await` (`member.ban()` sans `await`) n’arrête plus le bot : il est signalé avec sa ligne. `chapterjs test` ne s’arrête plus non plus.
 - Une réponse demandée sans `await` n’est plus signalée comme « finished without answering ».
-- `chapterjs dev` : un enregistrement recharge une seule fois, même quand l’éditeur écrit puis renomme le fichier.
+- `chapterjs dev` : un enregistrement recharge une seule fois, même quand l’éditeur écrit puis renomme le fichier, et sous Linux les enregistrements suivants ne sont plus ratés.
 - Un message de plus de 5 rangées de boutons et de menus est refusé avant Discord, avec un message clair.
 - `chapterjs test` : chaque cas tourne sur un serveur neuf (un `/ban` ne casse plus les cas suivants), une commande différée n’échoue plus au bout de 5 s, un run bloqué ne bloque plus la suite, et `join()` dit que le vocal n’est pas simulé.
 - `channelCreate`, `channelUpdate`, `channelDelete` : `guild` n’est jamais `null`, et `channel` est celui d’un serveur.

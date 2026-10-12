@@ -1,6 +1,6 @@
 // Watching src/ and public/: one reload per change, none for no change.
 import { tempDir } from '@chapterjs/test-utils';
-import { chmodSync, renameSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { snapshotFolder, watchFolder } from '../src/loader/watch.js';
@@ -38,6 +38,28 @@ describe('watching a folder', () => {
       writeFileSync(join(dir, 'a.ts'), 'export const a = 33;\n');
       await wait(800);
       expect(watch.count).toBe(2);
+    } finally {
+      watch.close();
+    }
+  });
+
+  it('follows a folder created after the start, and its saves', async () => {
+    const dir = tempDir();
+    writeFileSync(join(dir, 'a.ts'), 'x');
+    const watch = await counting(dir);
+    try {
+      mkdirSync(join(dir, 'commands', 'mod'), { recursive: true });
+      writeFileSync(join(dir, 'commands', 'mod', 'ban.ts'), 'export {};\n');
+      await wait(800);
+      expect(watch.count).toBe(1);
+      const ban = join(dir, 'commands', 'mod', 'ban.ts');
+      writeFileSync(`${ban}.tmp`, 'export const ban = 1;\n');
+      renameSync(`${ban}.tmp`, ban);
+      await wait(800);
+      expect(watch.count).toBe(2);
+      writeFileSync(ban, 'export const ban = 22;\n');
+      await wait(800);
+      expect(watch.count).toBe(3);
     } finally {
       watch.close();
     }
